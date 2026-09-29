@@ -23,6 +23,7 @@ A real-time strategy (RTS) game, tactics-focused with no base building, built in
 project.godot
 sim/            # pure gameplay logic, no Nodes
   world.gd      # tick loop, entity registry, command queue
+  commands/     # tick-stamped command objects (the lockstep/replay stream)
   terrain.gd    # heightmap sampling, passability, water depth
   pathing.gd    # flow-field or A* on the grid
   units/        # unit state machines, formations, veterancy
@@ -38,6 +39,7 @@ maps/           # heightmaps, passability masks, spawn/trigger layouts
 assets/         # placeholder art and audio (original only)
 tests/          # GUT tests for sim/
 docs/           # design notes, prompts.md
+scripts/        # dev tooling (sim purity check)
 ```
 
 ## Conventions
