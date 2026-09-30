@@ -8,7 +8,8 @@ extends Node3D
 ## quad a clean upright rectangle on screen at the steep RTS camera pitch,
 ## where a vertical quad would look squashed and lean with perspective.
 ##
-## A hit or block tints the quad for FLASH_TIME. A dead unit's quad stops
+## A hit or block tints the quad for FLASH_TIME, and show_notice() floats a
+## line of text over the unit for NOTICE_TIME. A dead unit's quad stops
 ## billboarding and lies on the ground, head away from the killing blow, dimmed
 ## and unlabeled, and stays there. A gibbed body is not drawn at all; the gibs
 ## replace it.
@@ -20,6 +21,9 @@ const HIT_FLASH_COLOR: Color = Color(1.0, 0.96, 0.9)
 const BLOCK_FLASH_COLOR: Color = Color(0.55, 0.66, 0.82)
 ## Seconds a hit or block tint takes to fade out.
 const FLASH_TIME: float = 0.12
+## Seconds a notice ("Can't reach") stays over the unit.
+const NOTICE_TIME: float = 1.0
+const NOTICE_COLOR: Color = Color(1.0, 0.72, 0.3)
 ## Labels farther than this from the camera are hidden: zoomed out, a
 ## formation's worth of names would bury the units under text.
 const LABEL_RANGE: float = 35.0
@@ -49,6 +53,7 @@ var _color: Color
 var _body_material: StandardMaterial3D
 var _body: MeshInstance3D
 var _label: Label3D
+var _notice: Label3D
 var _ring: MeshInstance3D
 var _facing_pivot: Node3D
 var _hp_bar: Node3D
@@ -66,6 +71,7 @@ var _gibbed: bool = false
 var _facing: Vector2 = Vector2(0.0, -1.0)
 var _flash_color: Color = HIT_FLASH_COLOR
 var _flash_left: float = 0.0
+var _notice_left: float = 0.0
 
 
 func setup(unit: Unit) -> void:
@@ -89,16 +95,8 @@ func setup(unit: Unit) -> void:
 	_body.material_override = _body_material
 	add_child(_body)
 
-	_label = Label3D.new()
-	_label.text = t.display_name
-	_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	# About 0.25 m tall, so a name spans roughly one unit spacing.
-	_label.pixel_size = 0.008
-	_label.font_size = 32
-	_label.outline_size = 8
-	_label.no_depth_test = true
+	_label = _make_label(t.display_name, Color.WHITE)
 	_label.position = Vector3(0.0, height + 0.3, 0.0)
-	_label.visibility_range_end = LABEL_RANGE
 	add_child(_label)
 
 	var torus: TorusMesh = TorusMesh.new()
@@ -131,7 +129,7 @@ func setup(unit: Unit) -> void:
 	_max_hp = maxi(t.max_hp, 1)
 	_build_hp_bar()
 	_refresh_overlays()
-	# Only a flash needs _process; it turns itself on then.
+	# Only a flash or a notice needs _process; each turns it on then.
 	set_process(false)
 
 
@@ -171,6 +169,25 @@ func flash(kind: CombatEvent.Kind) -> void:
 	_flash_left = FLASH_TIME
 	_apply_body_color()
 	set_process(true)
+
+
+## Floats text over the unit for NOTICE_TIME seconds, replacing any notice
+## already showing.
+func show_notice(text: String) -> void:
+	if _notice == null:
+		_notice = _make_label(text, NOTICE_COLOR)
+		# Above the name label.
+		_notice.position = Vector3(0.0, height + 0.7, 0.0)
+		add_child(_notice)
+	_notice.text = text
+	_notice.visible = not _dead
+	_notice_left = NOTICE_TIME
+	set_process(true)
+
+
+## The notice's text while it is showing, else an empty string.
+func notice_text() -> String:
+	return _notice.text if _notice != null and _notice.visible else ""
 
 
 ## Lays the body on the ground, or stands it back up. blow_dir is the ground
@@ -220,9 +237,14 @@ func lying_corners() -> PackedVector3Array:
 
 
 func _process(delta: float) -> void:
-	_flash_left = maxf(_flash_left - delta, 0.0)
-	_apply_body_color()
-	if _flash_left <= 0.0:
+	if _flash_left > 0.0:
+		_flash_left = maxf(_flash_left - delta, 0.0)
+		_apply_body_color()
+	if _notice_left > 0.0:
+		_notice_left -= delta
+		if _notice_left <= 0.0:
+			_notice.visible = false
+	if _flash_left <= 0.0 and _notice_left <= 0.0:
 		set_process(false)
 
 
@@ -238,6 +260,8 @@ func _refresh_overlays() -> void:
 	var alive: bool = not _dead
 	_ring.visible = alive and _selected
 	_label.visible = alive
+	if _notice != null and not alive:
+		_notice.visible = false
 	_facing_pivot.visible = alive
 	_hp_bar.visible = alive and (_selected or _hp < _max_hp)
 
@@ -299,6 +323,21 @@ func _update_hp_bar() -> void:
 	_hp_fill_material.albedo_color = Color.from_hsv(
 		fraction * HP_HUE_FULL, HP_FILL_SATURATION, HP_FILL_VALUE
 	)
+
+
+# A camera-facing label, about 0.25 m tall so a name spans roughly one unit
+# spacing, hidden beyond LABEL_RANGE.
+static func _make_label(text: String, color: Color) -> Label3D:
+	var label: Label3D = Label3D.new()
+	label.text = text
+	label.modulate = color
+	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	label.pixel_size = 0.008
+	label.font_size = 32
+	label.outline_size = 8
+	label.no_depth_test = true
+	label.visibility_range_end = LABEL_RANGE
+	return label
 
 
 static func _unshaded(color: Color) -> StandardMaterial3D:

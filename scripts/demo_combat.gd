@@ -15,10 +15,8 @@ extends SceneTree
 ## DEMO_CAPTURE=<dir> saves a screenshot at each result and quits at the end,
 ## for checking the showcase without watching it.
 ##
-## Units spawn and move through sim commands, exactly like player input. The
-## one thing done outside the command stream is adding a stand-in archer type
-## to the catalog, since the real Longbow arrives in Phase 4. Bodies from each
-## event stay where they fell.
+## Units spawn and move through sim commands, exactly like player input. Bodies
+## from each event stay where they fell.
 
 const M: int = 1000
 const LIGHT: UnitType.Faction = UnitType.Faction.LIGHT
@@ -37,7 +35,7 @@ const BEHIND_LIGHT: float = PI
 ## combat, from this far (meters) behind the rearmost Husk.
 const ANVIL_ENGAGED: int = 8
 const HAMMER_BACK: float = 7.0
-const STANDIN_ID: StringName = &"longbow_standin"
+const LONGBOW_ID: StringName = &"longbow"
 
 var _main: MainView
 var _world: World
@@ -87,7 +85,6 @@ func _run() -> void:
 	_camera = _main.get_node("CameraRig") as RtsCamera
 	_selection = _main.get_node("Hud/Selection") as SelectionController
 	_build_labels()
-	_add_standin_archer()
 	await _shield_wall()
 	await _surrounded()
 	await _hammer_and_anvil()
@@ -165,8 +162,8 @@ func _hammer_and_anvil() -> void:
 
 func _ripper_raid() -> void:
 	var c: Vector2 = Vector2(340.0, 320.0)
-	_begin(4, "Ripper raid", "3 archers (green, stand-ins until Phase 4) behind a screen of 6 Shieldmen. 6 Rippers attack. Rippers go for ranged and support units first, and run past the Shieldmen to reach them.", c, BEHIND_LIGHT, 24.0)
-	var archers: PackedInt32Array = await _spawn(STANDIN_ID, LIGHT, _row(c + Vector2(0.0, -6.0), 3, 2.0), Vector2i(0, 1))
+	_begin(4, "Ripper raid", "3 Longbows (green) behind a screen of 6 Shieldmen. 6 Rippers attack. Rippers go for ranged and support units first, and run past the Shieldmen to reach them, while the Longbows shoot as they come.", c, BEHIND_LIGHT, 24.0)
+	var archers: PackedInt32Array = await _spawn(LONGBOW_ID, LIGHT, _row(c + Vector2(0.0, -6.0), 3, 2.0), Vector2i(0, 1))
 	var screen: PackedInt32Array = await _spawn(&"shieldman", LIGHT, _row(c, 6, 1.6), Vector2i(0, 1))
 	var dark: PackedInt32Array = await _spawn(&"ripper", DARK, _row(c + Vector2(0.0, 18.0), 6, 1.6), Vector2i(0, -1))
 	await _wait(READ_BEFORE)
@@ -174,9 +171,9 @@ func _ripper_raid() -> void:
 	var light: PackedInt32Array = archers.duplicate()
 	light.append_array(screen)
 	var seconds: float = await _fight(light, dark, FIGHT_TIMEOUT)
-	_result("After %.0f s: %d/3 archers and %d/6 Shieldmen standing, %d/6 Rippers left. Ripper swings: %d at archers, %d at Shieldmen." % [
+	_result("After %.0f s: %d/3 Longbows and %d/6 Shieldmen standing, %d/6 Rippers left. Ripper swings: %d at Longbows, %d at Shieldmen." % [
 		seconds, _alive(archers), _alive(screen), _alive(dark),
-		_ripper_swings.get(STANDIN_ID, 0), _ripper_swings.get(&"shieldman", 0),
+		_ripper_swings.get(LONGBOW_ID, 0), _ripper_swings.get(&"shieldman", 0),
 	])
 	await _wait(READ_AFTER)
 
@@ -385,27 +382,3 @@ static func _label(font_size: int) -> Label:
 	label.add_theme_constant_override("outline_size", 8)
 	label.add_theme_color_override("font_outline_color", Color.BLACK)
 	return label
-
-
-# A weak archer stand-in: role RANGED so Rippers hunt it, a dagger for melee.
-func _add_standin_archer() -> void:
-	var t: UnitType = UnitType.new()
-	t.id = STANDIN_ID
-	t.display_name = "Archer (stand-in)"
-	t.role = UnitType.Role.RANGED
-	t.max_hp = 70
-	t.body_radius = 400
-	t.body_height = 1800
-	t.move_speed = 2600
-	t.water_speed_permille = PackedInt32Array([1000, 700, 450, 0, 0])
-	t.uphill_slowdown_permille = 500
-	t.melee_damage = 6
-	t.melee_accuracy_permille = 700
-	t.melee_reach = 500
-	t.melee_windup_ticks = 6
-	t.melee_cooldown_ticks = 30
-	t.acquire_radius = 8000
-	t.placeholder_color = Color(0.35, 0.8, 0.3)
-	var errors: PackedStringArray = t.validate()
-	assert(errors.is_empty(), "stand-in archer: %s" % [errors])
-	_world.catalog.types.append(t)

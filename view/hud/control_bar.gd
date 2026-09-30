@@ -1,12 +1,13 @@
 class_name ControlBar
 extends PanelContainer
 ## Bottom bar mirroring the keyboard controls so the game is playable with the
-## mouse alone: formation buttons (1..0), control groups (click to recall;
-## toggle Set, then click a slot to save), Stop, Move and Attack-move (each
-## arms that order for the next left click on the ground, once), a selection
-## summary, how many units are alive on each side, and the side being
-## controlled. All actions go through the SelectionController, so keys and
-## buttons can't drift apart.
+## mouse alone. Three rows: formation buttons (1..0); control groups (click to
+## recall; toggle Set, then click a slot to save) beside a status line (the
+## selection, how many units are alive on each side, the side being
+## controlled); and the orders: Stop, Move, Attack-move and Ground attack (each
+## arms that order for the next left click on the ground, once), Ability (the
+## selection's special), and Switch side. All actions go through the
+## SelectionController, so keys and buttons can't drift apart.
 
 const GROUP_LABELS: Array[String] = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"]
 
@@ -17,6 +18,7 @@ var _group_buttons: Array[Button] = []
 var _set_toggle: Button
 var _move_toggle: Button
 var _attack_move_toggle: Button
+var _ground_attack_toggle: Button
 var _status: Label
 ## Living units per side, recounted when the tick changes.
 var _light_alive: int = 0
@@ -68,28 +70,40 @@ func _build() -> void:
 	_set_toggle.tooltip_text = "Then click a group slot to save the selection there"
 	groups.add_child(_set_toggle)
 	groups.add_child(VSeparator.new())
+	_status = Label.new()
+	groups.add_child(_status)
+	rows.add_child(groups)
+
+	var orders: HBoxContainer = HBoxContainer.new()
+	orders.add_child(_caption("Orders"))
 	var stop: Button = _button("Stop")
 	stop.tooltip_text = "Halt the selection (H)"
 	stop.pressed.connect(_controller.stop_selected)
-	groups.add_child(stop)
+	orders.add_child(stop)
 	_move_toggle = _arm_button(
 		"Move", SelectionController.ArmedOrder.MOVE,
 		"Then left-click the ground to move there (or just right-click)"
 	)
-	groups.add_child(_move_toggle)
+	orders.add_child(_move_toggle)
 	_attack_move_toggle = _arm_button(
 		"Attack-move", SelectionController.ArmedOrder.ATTACK_MOVE,
 		"Then left-click the ground to attack-move there (or Cmd/Ctrl + right-click)"
 	)
-	groups.add_child(_attack_move_toggle)
+	orders.add_child(_attack_move_toggle)
+	_ground_attack_toggle = _arm_button(
+		"Ground attack", SelectionController.ArmedOrder.GROUND_ATTACK,
+		"Then left-click the ground to bombard it with the selected archers and grenadiers (or Cmd/Ctrl + left-click)"
+	)
+	orders.add_child(_ground_attack_toggle)
+	var ability: Button = _button("Ability (T)")
+	ability.tooltip_text = "Use the selection's special: a Sapper drops a satchel charge, a Longbow nocks its fire arrow (T)"
+	ability.pressed.connect(_controller.use_special_selected)
+	orders.add_child(ability)
 	var side: Button = _button("Switch side")
 	side.tooltip_text = "Debug: command the other side (F9)"
 	side.pressed.connect(_controller.switch_side)
-	groups.add_child(side)
-	groups.add_child(VSeparator.new())
-	_status = Label.new()
-	groups.add_child(_status)
-	rows.add_child(groups)
+	orders.add_child(side)
+	rows.add_child(orders)
 
 	set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE, Control.PRESET_MODE_MINSIZE)
 	grow_vertical = Control.GROW_DIRECTION_BEGIN
@@ -126,6 +140,7 @@ func _on_formation_changed(kind: Formations.Kind) -> void:
 func _on_armed_order_changed(order: SelectionController.ArmedOrder) -> void:
 	_move_toggle.set_pressed_no_signal(order == SelectionController.ArmedOrder.MOVE)
 	_attack_move_toggle.set_pressed_no_signal(order == SelectionController.ArmedOrder.ATTACK_MOVE)
+	_ground_attack_toggle.set_pressed_no_signal(order == SelectionController.ArmedOrder.GROUND_ATTACK)
 
 
 # A toggle that arms order while pressed. Pressing it again disarms. The

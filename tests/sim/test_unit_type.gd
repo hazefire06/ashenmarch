@@ -103,6 +103,46 @@ func test_validate_rejects_bad_water_table() -> void:
 	assert_eq(t.validate().size(), 2, str(t.validate()))
 
 
+func test_longbow_sapper_and_drifter_say_what_claude_md_says() -> void:
+	var longbow: UnitType = _catalog.find(&"longbow")
+	var sapper: UnitType = _catalog.find(&"sapper")
+	var drifter: UnitType = _catalog.find(&"drifter")
+	assert_eq(longbow.faction, UnitType.Faction.LIGHT)
+	assert_eq(longbow.special_ability, UnitType.Special.FIRE_ARROW)
+	assert_eq(longbow.special_charges, 1, "one fire arrow")
+	assert_gt(longbow.melee_damage, 0, "a dagger in melee")
+	assert_eq(sapper.special_ability, UnitType.Special.SATCHEL)
+	assert_eq(sapper.special_charges, 4, "four charges per mission")
+	assert_eq(sapper.ranged_ammo, -1, "unlimited bottle grenades")
+	assert_eq(sapper.ranged_aim, UnitType.AimStyle.LOB)
+	assert_lt(sapper.move_speed, longbow.move_speed, "slow")
+	assert_gt(sapper.uphill_spread_permille, 3 * longbow.uphill_spread_permille, "uphill hurts throws far more")
+	assert_eq(drifter.faction, UnitType.Faction.DARK)
+	assert_eq(drifter.nature, UnitType.Nature.UNDEAD)
+	assert_eq(drifter.mobility, Terrain.Mobility.FLOATING)
+	assert_gt(drifter.hover_height, 0)
+
+
+func test_every_shipped_ranged_unit_can_reach_its_max_range() -> void:
+	# The range in the data must be one the physics can deliver on level
+	# ground, by the unit's own aim style or its fallback.
+	for t: UnitType in _catalog.types:
+		if not t.has_ranged():
+			continue
+		var p: ProjectileType = _catalog.find_projectile(t.ranged_projectile)
+		var from: FlightState = FlightState.at_mm(0, t.ranged_launch_height, 0, 0, 0, 0)
+		var target_y: int = 0 if p.is_explosive() else 1000
+		var speed: int = FlightState.speed_from_mm_per_s(t.ranged_launch_speed)
+		var reached: bool = false
+		for style: UnitType.AimStyle in [UnitType.AimStyle.DIRECT, UnitType.AimStyle.LOB]:
+			var s: AimSolution = Ballistics.solve(
+				style, from, t.ranged_max_range * FlightState.SUB, target_y * FlightState.SUB, 0,
+				speed, t.ranged_lob_grade_permille, p.drag_ppm_per_m
+			)
+			reached = reached or s.ok
+		assert_true(reached, "%s reaches %d m" % [t.id, t.ranged_max_range / 1000])
+
+
 func test_validate_rejects_half_defined_melee() -> void:
 	var t: UnitType = _valid_type()
 	t.melee_damage = 5

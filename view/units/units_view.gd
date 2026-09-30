@@ -5,13 +5,27 @@ extends Node3D
 ## interpolation fraction, which keeps motion smooth at any frame rate. Reads
 ## the World; never writes it. MainView calls after_step() after each
 ## World.step(), so it sees every tick's combat events: hits and blocks flash
-## the target, and a kill lays the body down away from the blow, or bursts it
-## into gibs when the overkill is large enough.
+## the target, and a kill lays the body down away from where the blow came
+## from (an attacker, an arrow's approach, a blast's center), or bursts it into
+## gibs when the overkill is large enough. A ground attack a unit can't carry
+## out floats "Can't reach" over it and greys the marker.
+
+## What an order marker says, which sets its color.
+enum MarkerKind {
+	MOVE,
+	ATTACK_MOVE,
+	GROUND_ATTACK,
+	## A ground attack that can't be carried out.
+	BLOCKED,
+}
 
 ## Seconds the move-order marker takes to fade.
 const MARKER_LIFETIME: float = 0.7
 const MARKER_COLOR: Color = Color(0.45, 1.0, 0.45)
 const ATTACK_MARKER_COLOR: Color = Color(1.0, 0.3, 0.25)
+const GROUND_ATTACK_MARKER_COLOR: Color = Color(1.0, 0.6, 0.15)
+const BLOCKED_MARKER_COLOR: Color = Color(0.6, 0.6, 0.6)
+const CANT_REACH_TEXT: String = "Can't reach"
 
 var _world: World
 var _selection: UnitSelection
@@ -52,6 +66,7 @@ func after_step() -> void:
 		# lies down on this tick and never again.
 		if not unit.is_alive() and not sprite.is_dead():
 			sprite.set_dead(true, blows.get(unit.id, Vector2.ZERO), _ground_normal(unit))
+	_react_to_projectile_events()
 	for unit_id: int in _sprites.keys():
 		if not seen.has(unit_id):
 			_sprites[unit_id].queue_free()
@@ -70,8 +85,14 @@ func sprites() -> Array[UnitSprite]:
 ## Flashes a ring on the ground where an order was given: green for a move,
 ## red for an attack-move.
 func show_move_marker(point: Vector3, attack: bool = false) -> void:
+	show_marker(point, MarkerKind.ATTACK_MOVE if attack else MarkerKind.MOVE)
+
+
+## Flashes a ring on the ground, colored by what it marks. There is one
+## marker, so a new one replaces the one fading.
+func show_marker(point: Vector3, kind: MarkerKind) -> void:
 	_marker.position = point + Vector3(0.0, 0.05, 0.0)
-	_marker_color = ATTACK_MARKER_COLOR if attack else MARKER_COLOR
+	_marker_color = _marker_color_of(kind)
 	_marker_age = 0.0
 	_marker.visible = true
 
@@ -105,11 +126,24 @@ func _react_to_combat() -> Dictionary[int, Vector2]:
 			CombatEvent.Kind.HIT, CombatEvent.Kind.BLOCK:
 				_sprite_for(target).flash(event.kind)
 			CombatEvent.Kind.KILL:
-				var blow: Vector2 = _blow_direction(event.attacker_id, target)
+				var blow: Vector2 = _blow_direction(event, target)
 				blows[target.id] = blow
 				if _gibs != null and Gibs.should_gib(event.overkill, target.type.max_hp):
 					_burst(target, blow)
 	return blows
+
+
+# Ground orders a unit couldn't carry out: its notice, and a grey marker where
+# it was told to shoot.
+func _react_to_projectile_events() -> void:
+	for event: ProjectileEvent in _world.projectile_events:
+		if event.kind != ProjectileEvent.Kind.CANT_REACH:
+			continue
+		var unit: Unit = _world.get_unit(event.unit_id)
+		if unit == null:
+			continue
+		_sprite_for(unit).show_notice(CANT_REACH_TEXT)
+		show_marker(Vector3(event.x, event.y, event.z) / float(World.UNITS_PER_METER), MarkerKind.BLOCKED)
 
 
 # Replaces the body with gibs thrown along the blow, from chest height.
@@ -121,13 +155,12 @@ func _burst(target: Unit, blow: Vector2) -> void:
 	_sprite_for(target).set_gibbed()
 
 
-# Ground direction from the attacker to the target, or zero if the attacker
-# is gone or standing exactly on it.
-func _blow_direction(attacker_id: int, target: Unit) -> Vector2:
-	var attacker: Unit = _world.get_unit(attacker_id)
-	if attacker == null:
-		return Vector2.ZERO
-	return Vector2(target.x - attacker.x, target.z - attacker.z).normalized()
+# Ground direction from where the blow came from to the target, or zero if
+# the target is exactly there. The sim reports the source with the event (the
+# attacker, a blast's center, an arrow's approach), so it works when the
+# attacker is dead or was never a unit.
+static func _blow_direction(event: CombatEvent, target: Unit) -> Vector2:
+	return Vector2(target.x - event.source_x, target.z - event.source_z).normalized()
 
 
 # The unit's sprite, made on first use.
@@ -141,6 +174,17 @@ func _sprite_for(unit: Unit) -> UnitSprite:
 		_sprites[unit.id] = sprite
 		_current[unit.id] = _position_of(unit)
 	return sprite
+
+
+static func _marker_color_of(kind: MarkerKind) -> Color:
+	match kind:
+		MarkerKind.ATTACK_MOVE:
+			return ATTACK_MARKER_COLOR
+		MarkerKind.GROUND_ATTACK:
+			return GROUND_ATTACK_MARKER_COLOR
+		MarkerKind.BLOCKED:
+			return BLOCKED_MARKER_COLOR
+	return MARKER_COLOR
 
 
 static func _position_of(unit: Unit) -> Vector3:

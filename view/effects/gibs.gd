@@ -6,9 +6,9 @@ extends Node3D
 ## objects use Godot physics, which is allowed because nothing here touches
 ## the sim: chunks never affect a unit and the sim never reads them.
 ##
-## The ground is a StaticBody3D with a HeightMapShape3D built once from the
-## sim's heights. Chunks collide only with that and with each other, on their
-## own physics layers. A chunk freezes (becomes static) once it sleeps or
+## The ground is a StaticBody3D with a HeightMapShape3D built from the sim's
+## heights, and refreshed where explosions scar the terrain. Chunks collide
+## only with that and with each other, on their own physics layers. A chunk freezes (becomes static) once it sleeps or
 ## after SETTLE_SECONDS, and at most MAX_LIVE_CHUNKS simulate at once, so a
 ## long fight costs nothing per frame once the gore has settled.
 
@@ -54,6 +54,10 @@ const FLOOR_MARGIN: float = 20.0
 ## order, so the first key is the oldest.
 var _live: Dictionary[RigidBody3D, float] = {}
 var _ground: StaticBody3D
+var _shape: HeightMapShape3D
+## Sample heights in meters, the same array the shape holds, kept so a
+## refresh can patch part of it.
+var _map: PackedFloat32Array = PackedFloat32Array()
 var _floor_y: float = 0.0
 var _material: PhysicsMaterial
 var _materials: Dictionary[Color, StandardMaterial3D] = {}
@@ -70,13 +74,14 @@ func setup(terrain: Terrain) -> void:
 	if _ground != null:
 		_ground.queue_free()
 	var mm: float = float(World.UNITS_PER_METER)
-	var shape: HeightMapShape3D = HeightMapShape3D.new()
+	_shape = HeightMapShape3D.new()
 	# Width and depth first: setting them resizes map_data.
-	shape.map_width = terrain.size_x
-	shape.map_depth = terrain.size_z
-	shape.map_data = _height_data(terrain)
+	_shape.map_width = terrain.size_x
+	_shape.map_depth = terrain.size_z
+	_map = _height_data(terrain)
+	_shape.map_data = _map
 	var collider: CollisionShape3D = CollisionShape3D.new()
-	collider.shape = shape
+	collider.shape = _shape
 	# The shape's samples are always 1 unit apart, so scaling x and z by the
 	# cell size in meters spaces them like the terrain's. It is 1 for 1 m
 	# cells, which is Riverside.
@@ -98,6 +103,28 @@ func setup(terrain: Terrain) -> void:
 	_material = PhysicsMaterial.new()
 	_material.friction = FRICTION
 	_material.bounce = BOUNCE
+
+
+## Refreshes the whole ground collider from the terrain's current heights.
+func update_heights(terrain: Terrain) -> void:
+	if _shape == null:
+		return
+	_map = _height_data(terrain)
+	_shape.map_data = _map
+
+
+## Refreshes the collider only where cells, a rectangle of terrain samples
+## (what Terrain.scar() returns), changed. Much cheaper than update_heights()
+## on a big map.
+func update_heights_in(terrain: Terrain, cells: Rect2i) -> void:
+	if _shape == null or not cells.has_area():
+		return
+	var mm: float = float(World.UNITS_PER_METER)
+	for j: int in range(maxi(cells.position.y, 0), mini(cells.end.y, terrain.size_z)):
+		for i: int in range(maxi(cells.position.x, 0), mini(cells.end.x, terrain.size_x)):
+			var k: int = j * terrain.size_x + i
+			_map[k] = terrain.heights[k] / mm
+	_shape.map_data = _map
 
 
 ## Bursts a body at `at` into chunks thrown along blow_dir (horizontal or not;

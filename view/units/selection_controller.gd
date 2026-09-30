@@ -8,10 +8,14 @@ extends Control
 ##   current formation.
 ## - Cmd/Ctrl + right click attack-moves there instead: the selection fights
 ##   whatever it meets on the way.
-## - The control bar's Move and Attack-move buttons arm that order for the
-##   next left click on the ground, once, so a one-button mouse or a trackpad
-##   can give every order. Right click, Esc, pressing the button again, or
-##   losing the selection cancels it.
+## - Cmd/Ctrl + left click orders a ground attack: the selection's ranged
+##   units bombard that spot. It doesn't select anything. (On macOS Ctrl +
+##   click arrives as a right click, so Cmd is the Mac key.)
+## - The control bar's Move, Attack-move and Ground attack buttons arm that
+##   order for the next left click on the ground, once, so a one-button mouse
+##   or a trackpad can give every order. Right click, Esc, pressing the button
+##   again, or losing the selection cancels it.
+## - T uses the selection's special ability (the bar's Ability button too).
 ## - 1..0 pick the formation for the next move order. Cmd/Ctrl+1..0 save a
 ##   group; Option/Alt+1..0 recall it. H stops. F9 (debug) switches sides.
 ##
@@ -31,6 +35,7 @@ enum ArmedOrder {
 	NONE,
 	MOVE,
 	ATTACK_MOVE,
+	GROUND_ATTACK,
 }
 
 ## Pixels the mouse must move while held before a click becomes a drag.
@@ -104,6 +109,13 @@ func stop_selected() -> void:
 		_world.enqueue(StopUnitsCommand.new(_world.tick, selection.ids()))
 
 
+## Each selected unit uses its special: Sappers drop a charge, Longbows nock
+## their fire arrow. Units with nothing left ignore it.
+func use_special_selected() -> void:
+	if not selection.is_empty():
+		_world.enqueue(UseSpecialCommand.new(_world.tick, selection.ids()))
+
+
 ## Debug: hands the mouse to the other side. Clears the selection.
 func switch_side() -> void:
 	side = UnitType.Faction.DARK if side == UnitType.Faction.LIGHT else UnitType.Faction.LIGHT
@@ -125,10 +137,16 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	var button: InputEventMouseButton = event as InputEventMouseButton
 	if button != null and button.pressed:
-		if event.is_action(InputBindings.SELECT):
+		# Godot matches a mouse action even with extra modifiers held, so
+		# Cmd/Ctrl + left click is asked for exactly, before the plain select.
+		# It never starts a press, so it can't select or drag.
+		if event.is_action(InputBindings.GROUND_ATTACK, true):
+			_order_ground_attack(button.position)
+			get_viewport().set_input_as_handled()
+		elif event.is_action(InputBindings.SELECT):
 			if armed_order != ArmedOrder.NONE:
 				# This click places the order armed from the bar; it selects nothing.
-				_order_move(button.position, armed_order == ArmedOrder.ATTACK_MOVE)
+				_place_armed_order(button.position)
 			elif button.double_click:
 				_select_type_at(button.position, button.shift_pressed)
 			else:
@@ -137,8 +155,7 @@ func _unhandled_input(event: InputEvent) -> void:
 				_press_at = button.position
 				_drag_to = button.position
 			get_viewport().set_input_as_handled()
-		# Godot matches a mouse action even with extra modifiers held, so
-		# Cmd/Ctrl + right click is asked for exactly, before the plain one.
+		# Likewise Cmd/Ctrl + right click, before the plain one.
 		elif event.is_action(InputBindings.ATTACK_MOVE, true):
 			_order_move(button.position, true)
 			get_viewport().set_input_as_handled()
@@ -202,6 +219,11 @@ func _handle_keys(event: InputEvent) -> bool:
 	if event.is_action_pressed(InputBindings.STOP):
 		stop_selected()
 		return true
+	# Exact, so Cmd+T isn't T. Key repeat is ignored: holding T uses the
+	# special once.
+	if event.is_action_pressed(InputBindings.ABILITY, false, true):
+		use_special_selected()
+		return true
 	if event.is_action_pressed(InputBindings.SWITCH_SIDE):
 		switch_side()
 		return true
@@ -258,25 +280,61 @@ func _select_type_at(at: Vector2, additive: bool) -> void:
 		selection.select(ids)
 
 
+# Gives the armed order at the screen point. Only ever called while one is armed.
+func _place_armed_order(at: Vector2) -> void:
+	match armed_order:
+		ArmedOrder.MOVE:
+			_order_move(at, false)
+		ArmedOrder.ATTACK_MOVE:
+			_order_move(at, true)
+		ArmedOrder.GROUND_ATTACK:
+			_order_ground_attack(at)
+
+
 # Moves the selection to the ground under the screen point, or attack-moves it
 # there. Giving an order disarms any armed order; a click that gives none
 # (nothing selected, or off the map) leaves it armed.
 func _order_move(at: Vector2, attack: bool) -> void:
-	if selection.is_empty():
-		return
-	var hit: Vector3 = _picker.pick(_camera.project_ray_origin(at), _camera.project_ray_normal(at))
+	var hit: Vector3 = _pick_ground(at)
 	if hit == Vector3.INF:
 		return
-	var mm: float = float(World.UNITS_PER_METER)
-	var x: int = roundi(hit.x * mm)
-	var z: int = roundi(hit.z * mm)
+	var x: int = _to_milli(hit.x)
+	var z: int = _to_milli(hit.z)
 	if attack:
 		_world.enqueue(AttackMoveCommand.new(_world.tick, selection.ids(), x, z, formation))
 	else:
 		_world.enqueue(MoveUnitsCommand.new(_world.tick, selection.ids(), x, z, formation))
-	_units.show_move_marker(hit, attack)
+	_units.show_marker(
+		hit, UnitsView.MarkerKind.ATTACK_MOVE if attack else UnitsView.MarkerKind.MOVE
+	)
 	if armed_order != ArmedOrder.NONE:
 		arm(ArmedOrder.NONE)
+
+
+# Orders the selection's ranged units to bombard the ground under the screen
+# point. Disarms like _order_move.
+func _order_ground_attack(at: Vector2) -> void:
+	var hit: Vector3 = _pick_ground(at)
+	if hit == Vector3.INF:
+		return
+	_world.enqueue(GroundAttackCommand.new(
+		_world.tick, selection.ids(), _to_milli(hit.x), _to_milli(hit.z)
+	))
+	_units.show_marker(hit, UnitsView.MarkerKind.GROUND_ATTACK)
+	if armed_order != ArmedOrder.NONE:
+		arm(ArmedOrder.NONE)
+
+
+# The ground point under the screen point, or Vector3.INF if nothing is
+# selected to order or the ray misses the map.
+func _pick_ground(at: Vector2) -> Vector3:
+	if selection.is_empty():
+		return Vector3.INF
+	return _picker.pick(_camera.project_ray_origin(at), _camera.project_ray_normal(at))
+
+
+static func _to_milli(meters: float) -> int:
+	return roundi(meters * float(World.UNITS_PER_METER))
 
 
 ## The unit whose sprite is under the screen point, nearest the camera if
