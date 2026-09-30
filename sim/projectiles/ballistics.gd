@@ -184,9 +184,12 @@ static func perturb(
 ## before it reaches the target distance: no ground (beyond CLEAR_MARGIN
 ## short of the target, which is just the landing) and, if avoid is not
 ## empty, none of those units' bodies. `radius_mm` is the projectile's.
+## spread_permille is the aim cone the shot will be spread into: bodies to
+## avoid must be clear of all of it, not just its center line, so they are
+## tested against a projectile that grows by the cone's width as it flies.
 static func is_clear(
 	terrain: Terrain, from: FlightState, solution: AimSolution, tx: int, tz: int,
-	radius_mm: int, drag: int, avoid: Array[Unit]
+	radius_mm: int, drag: int, avoid: Array[Unit], spread_permille: int = 0
 ) -> bool:
 	var dx: int = tx - from.px
 	var dz: int = tz - from.pz
@@ -207,9 +210,11 @@ static func is_clear(
 		if frac != ProjectileCollision.NO_CONTACT:
 			var at: int = before_u + (u - before_u) * frac / ProjectileCollision.FRACTION_ONE
 			return at >= reach - CLEAR_MARGIN
-		for unit: Unit in avoid:
-			if _crosses(unit, ax, ay, az, f, radius_mm):
-				return false
+		if not avoid.is_empty():
+			var cone: int = radius_mm + spread_permille * (u / FlightState.SUB) / 1000
+			for unit: Unit in avoid:
+				if _crosses(unit, ax, ay, az, f, cone):
+					return false
 		before_u = u
 	return true
 

@@ -7,6 +7,10 @@ extends GutTest
 ##   win. Same units, same numbers; only the geometry changed. Numbers alone
 ##   would predict the Husks win both, so this is what shows flanking matters.
 ## - The same seed and orders give the same fight, tick for tick.
+## - Phase 4: 5 Longbows behind a line of 10 Shieldmen facing 15 Husks end
+##   the fight sooner, killing Husks before they reach the line, and few of
+##   their arrows hit friends (friendly fire exists; archers lob over their
+##   own line and don't shoot into a melee).
 
 const M: int = 1000
 const LIGHT: UnitType.Faction = UnitType.Faction.LIGHT
@@ -60,6 +64,38 @@ func test_surround_needs_flank_blows() -> void:
 	gut.p("blows on Shieldmen from flank or rear: line %d permille, surround %d permille" % [line_share, surround_share])
 	assert_lt(line_share, 250)
 	assert_gt(surround_share, 400)
+
+
+func test_longbows_behind_the_line_shorten_the_fight() -> void:
+	var alone_ticks: int = 0
+	var supported_ticks: int = 0
+	var arrow_hits: int = 0
+	var friendly_hits: int = 0
+	for s: int in SEEDS:
+		var alone: World = _outnumbered_line(s, false)
+		var ticks: int = _fight(alone)
+		alone_ticks += ticks
+		gut.p(_report("line vs 15, alone", s, alone, ticks))
+		var supported: World = _outnumbered_line(s, true)
+		var t: int = 0
+		while t < MAX_TICKS and _alive(supported, LIGHT) > 0 and _alive(supported, DARK) > 0:
+			supported.step()
+			t += 1
+			for e: ProjectileEvent in supported.projectile_events:
+				if e.kind != ProjectileEvent.Kind.HIT:
+					continue
+				arrow_hits += 1
+				if supported.get_unit(e.unit_id).faction == LIGHT:
+					friendly_hits += 1
+		supported_ticks += t
+		gut.p(_report("line vs 15, with 5 Longbows", s, supported, t))
+		assert_eq(_alive(supported, DARK), 0, "seed %d: every Husk dead" % s)
+		assert_eq(_alive(supported, LIGHT), 15, "seed %d: no losses" % s)
+	gut.p("5 seeds: %.1f s alone, %.1f s with Longbows; arrows hit %d, %d of them friends" % [
+		alone_ticks / 5.0 / World.TICK_RATE, supported_ticks / 5.0 / World.TICK_RATE, arrow_hits, friendly_hits
+	])
+	assert_lt(supported_ticks, alone_ticks, "archers end it sooner")
+	assert_lt(friendly_hits * 20, arrow_hits, "under 5% of arrow hits land on friends")
 
 
 func test_same_seed_same_fight() -> void:
@@ -120,6 +156,23 @@ func _line(world_seed: int) -> World:
 		world.spawn_unit(_shieldman, LIGHT, 33 * M + i * 1400, 30 * M, 0, 1)
 		husks.append(world.spawn_unit(_husk, DARK, 33 * M + i * 1400, 42 * M, 0, -1).id)
 	world.enqueue(AttackMoveCommand.new(0, husks, 39_300, 26 * M, Formations.Kind.SHORT_LINE))
+	return world
+
+
+# 10 Shieldmen hold a line; 15 Husks 25 m away attack-move through it. With
+# archers, 5 Longbows stand 4 m behind the line.
+func _outnumbered_line(world_seed: int, archers: bool) -> World:
+	var world: World = World.new(world_seed, TestTerrains.flat(80, 90), _catalog)
+	var longbow: int = _catalog.index_of(&"longbow")
+	for i: int in 10:
+		world.spawn_unit(_shieldman, LIGHT, 33 * M + i * 1400, 30 * M, 0, 1)
+	if archers:
+		for i: int in 5:
+			world.spawn_unit(longbow, LIGHT, 34 * M + i * 2800, 26 * M, 0, 1)
+	var husks: PackedInt32Array = PackedInt32Array()
+	for i: int in 15:
+		husks.append(world.spawn_unit(_husk, DARK, 31 * M + (i % 5) * 3000, (55 + (i / 5) * 2) * M, 0, -1).id)
+	world.enqueue(AttackMoveCommand.new(0, husks, 39_300, 20 * M, Formations.Kind.SHORT_LINE))
 	return world
 
 

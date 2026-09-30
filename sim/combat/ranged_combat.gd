@@ -24,8 +24,10 @@ extends RefCounted
 ##   id) or as soon as the target is gone. A target counts only if a launch
 ##   reaches it (Ballistics) along a path clear of the ground and of friendly
 ##   bodies. Throwers also skip a target with a friend (themselves included)
-##   within the blast of where it would land. An attack-mover stops to shoot
-##   and marches on when there is nothing left in range.
+##   within the blast of where it would land, and archers one locked in
+##   melee with a friend (within ARROW_FRIEND_MARGIN): an arrow a hand off
+##   target would hit the friend. An attack-mover stops to shoot and marches
+##   on when there is nothing left in range.
 ## - Order GROUND_ATTACK: the spot, again and again, until another order. Out
 ##   of reach, the unit walks toward it, looking again every
 ##   GROUND_RECHECK_TICKS. Friendly bodies in the way don't stop it: the
@@ -47,6 +49,9 @@ const GROUND_RECHECK_TICKS: int = 10
 const MAX_AIM_TRIES: int = 3
 ## Throwers keep friends at least this far (milli-units) beyond the blast.
 const FRIENDLY_BLAST_MARGIN: int = 1000
+## Archers don't pick an enemy with a friend's body this close (milli-units,
+## edge to edge): one locked in melee with it.
+const ARROW_FRIEND_MARGIN: int = 1000
 ## Friendly bodies this far (milli-units) beyond their own radius from the
 ## line to the target count as possibly in the way: the projectile's radius
 ## and rounding, with room to spare.
@@ -270,6 +275,10 @@ func _aim_at_unit(world: World, unit: Unit, target: Unit, x: int, z: int) -> Aim
 	var ground: int = world.terrain.height_at(x, z)
 	var y: int = ground
 	if p.behavior == ProjectileType.Behavior.STICKS:
+		# At the aim point, which is where a walker is led to: leading an enemy
+		# into our own line would put the arrow on the line.
+		if _friend_beside(world, unit, x, z, target.type.body_radius):
+			return AimSolution.failed()
 		y = ground + target.type.hover_height + target.type.body_height * CHEST_PERMILLE / PERMILLE
 	elif p.is_explosive() and _friend_in_blast(world, unit, p, x, ground, z):
 		return AimSolution.failed()
@@ -292,16 +301,20 @@ func _aim(
 	var ty: int = y * FlightState.SUB
 	var tz: int = z * FlightState.SUB
 	var speed: int = FlightState.speed_from_mm_per_s(t.ranged_launch_speed)
+	var dist: int = FixedMath.length(x - unit.x, z - unit.z)
+	var spread: int = spread_for(unit, y - FlightState.to_mm(from.py), dist)
 	var avoid: Array[Unit] = []
 	if avoid_friends:
-		avoid = Ballistics.bodies_near_path(world.units, unit.faction, unit, from, tx, tz, PATH_MARGIN)
+		# The corridor is as wide as the aim cone at the target.
+		var margin: int = PATH_MARGIN + spread * dist / PERMILLE
+		avoid = Ballistics.bodies_near_path(world.units, unit.faction, unit, from, tx, tz, margin)
 	var styles: Array[UnitType.AimStyle] = [t.ranged_aim]
 	styles.append(UnitType.AimStyle.LOB if t.ranged_aim == UnitType.AimStyle.DIRECT else UnitType.AimStyle.DIRECT)
 	for style: UnitType.AimStyle in styles:
 		var s: AimSolution = Ballistics.solve(
 			style, from, tx, ty, tz, speed, t.ranged_lob_grade_permille, p.drag_ppm_per_m
 		)
-		if s.ok and Ballistics.is_clear(world.terrain, from, s, tx, tz, p.radius, p.drag_ppm_per_m, avoid):
+		if s.ok and Ballistics.is_clear(world.terrain, from, s, tx, tz, p.radius, p.drag_ppm_per_m, avoid, spread):
 			return s
 	return AimSolution.failed()
 
@@ -321,6 +334,17 @@ func _flight_ticks(world: World, unit: Unit, target: Unit) -> int:
 		t.ranged_lob_grade_permille, p.drag_ppm_per_m
 	)
 	return s.ticks if s.ok else 0
+
+
+# True if a friend of unit has its body within ARROW_FRIEND_MARGIN of a body
+# of radius r at (x, z).
+func _friend_beside(world: World, unit: Unit, x: int, z: int, r: int) -> bool:
+	for other: Unit in world.units:
+		if other != unit and other.is_alive() and other.faction == unit.faction:
+			var gap: int = FixedMath.length(other.x - x, other.z - z) - other.type.body_radius - r
+			if gap <= ARROW_FRIEND_MARGIN:
+				return true
+	return false
 
 
 # True if a friend of unit (unit included) would be caught by p bursting at

@@ -221,6 +221,25 @@ func test_a_friend_in_front_blocks_the_flat_shot_but_not_the_lob() -> void:
 	assert_true(Ballistics.is_clear(world.terrain, from, lob, tx, tz, 20, ARROW_DRAG, friends))
 
 
+func test_a_friend_must_be_clear_of_the_whole_aim_cone() -> void:
+	# A flat 28 m shot that passes 4 m out, over a friend's head, by a few
+	# centimetres: clear on its center line, not once 25 permille of spread
+	# (up to 10 cm there) is counted.
+	var t: UnitType = TestUnits.melee(&"friend")
+	var world: World = World.new(1, TestTerrains.flat(60, 60), TestUnits.catalog([t]))
+	var shooter: Unit = world.spawn_unit(0, TestUnits.LIGHT, 20 * M, 10 * M, 0, 1)
+	world.spawn_unit(0, TestUnits.LIGHT, 20 * M, 14 * M, 0, 1)
+	var from: FlightState = FlightState.at_mm(shooter.x, 1500, shooter.z, 0, 0, 0)
+	var tx: int = 20 * UM
+	var tz: int = 38 * UM
+	var speed: int = FlightState.speed_from_mm_per_s(ARROW_SPEED)
+	var direct: AimSolution = Ballistics.solve_direct(from, tx, 1_080_000, tz, speed, ARROW_DRAG)
+	var friends: Array[Unit] = Ballistics.bodies_near_path(world.units, TestUnits.LIGHT, shooter, from, tx, tz, 1000)
+	assert_true(direct.ok)
+	assert_true(Ballistics.is_clear(world.terrain, from, direct, tx, tz, 20, ARROW_DRAG, friends, 0), "the center line clears")
+	assert_false(Ballistics.is_clear(world.terrain, from, direct, tx, tz, 20, ARROW_DRAG, friends, 25), "the cone doesn't")
+
+
 # Height (um) at which the solved launch passes the target's horizontal
 # distance, flown independently of the solver.
 func _height_passing(from: FlightState, s: AimSolution, tx: int, tz: int, drag: int) -> int:
