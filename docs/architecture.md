@@ -321,7 +321,8 @@ The Ripper prefers ranged and support units, so an attack-moving Ripper runs pas
   - The text comes from the pure `UnitTooltip.describe()`, which is tested.
 - **Attack-move input**
   - Cmd/Ctrl + right-click is the `ATTACK_MOVE` action, checked with `exact_match` before the plain move, because mouse actions also match with extra modifiers.
-  - The control bar's **Attack-move** toggle arms the next plain right-click, once, so the game stays playable with the mouse alone.
+  - The control bar's **Move** and **Attack-move** toggles arm that order for the next *left* click on the ground, once, with a crosshair cursor while armed. That way a one-button mouse or a trackpad can give every order.
+  - Right-click, Esc, pressing the toggle again, or losing the selection cancels. Nothing arms with nothing selected.
   - The order marker is red for an attack-move.
   - The status line shows living units per side.
 

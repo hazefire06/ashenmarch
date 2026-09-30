@@ -39,6 +39,8 @@ const SELECT: StringName = &"unit_select"
 const COMMAND: StringName = &"unit_command"
 const ATTACK_MOVE: StringName = &"unit_attack_move"
 const STOP: StringName = &"unit_stop"
+## Esc: cancel an order armed from the control bar.
+const CANCEL: StringName = &"cancel"
 ## Debug until the AI exists: switch which side the mouse commands.
 const SWITCH_SIDE: StringName = &"debug_switch_side"
 ## Index i is formation Formations.Kind i and group slot i; keys 1..9, 0.
@@ -93,6 +95,7 @@ static func _default_events() -> Dictionary[StringName, InputEvent]:
 	attack_move.command_or_control_autoremap = true
 	events[ATTACK_MOVE] = attack_move
 	events[STOP] = _key(KEY_H)
+	events[CANCEL] = _key(KEY_ESCAPE)
 	events[SWITCH_SIDE] = _key(KEY_F9)
 	for i: int in NUMBER_KEYS.size():
 		events[FORMATIONS[i]] = _key(NUMBER_KEYS[i])

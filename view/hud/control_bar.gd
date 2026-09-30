@@ -2,10 +2,11 @@ class_name ControlBar
 extends PanelContainer
 ## Bottom bar mirroring the keyboard controls so the game is playable with the
 ## mouse alone: formation buttons (1..0), control groups (click to recall;
-## toggle Set, then click a slot to save), Stop, Attack-move (arms the next
-## right click as an attack-move, once), a selection summary, how many units
-## are alive on each side, and the side being controlled. All actions go
-## through the SelectionController, so keys and buttons can't drift apart.
+## toggle Set, then click a slot to save), Stop, Move and Attack-move (each
+## arms that order for the next left click on the ground, once), a selection
+## summary, how many units are alive on each side, and the side being
+## controlled. All actions go through the SelectionController, so keys and
+## buttons can't drift apart.
 
 const GROUP_LABELS: Array[String] = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"]
 
@@ -14,6 +15,7 @@ var _world: World
 var _formation_buttons: Array[Button] = []
 var _group_buttons: Array[Button] = []
 var _set_toggle: Button
+var _move_toggle: Button
 var _attack_move_toggle: Button
 var _status: Label
 ## Living units per side, recounted when the tick changes.
@@ -28,8 +30,8 @@ func setup(controller: SelectionController, world: World) -> void:
 	_build()
 	_controller.formation_changed.connect(_on_formation_changed)
 	_on_formation_changed(_controller.formation)
-	_controller.attack_move_armed_changed.connect(_on_attack_move_armed_changed)
-	_on_attack_move_armed_changed(_controller.attack_move_armed)
+	_controller.armed_order_changed.connect(_on_armed_order_changed)
+	_on_armed_order_changed(_controller.armed_order)
 
 
 func _build() -> void:
@@ -70,10 +72,15 @@ func _build() -> void:
 	stop.tooltip_text = "Halt the selection (H)"
 	stop.pressed.connect(_controller.stop_selected)
 	groups.add_child(stop)
-	_attack_move_toggle = _button("Attack-move")
-	_attack_move_toggle.toggle_mode = true
-	_attack_move_toggle.tooltip_text = "Next right-click attack-moves (or Cmd/Ctrl + right-click)"
-	_attack_move_toggle.toggled.connect(_controller.set_attack_move_armed)
+	_move_toggle = _arm_button(
+		"Move", SelectionController.ArmedOrder.MOVE,
+		"Then left-click the ground to move there (or just right-click)"
+	)
+	groups.add_child(_move_toggle)
+	_attack_move_toggle = _arm_button(
+		"Attack-move", SelectionController.ArmedOrder.ATTACK_MOVE,
+		"Then left-click the ground to attack-move there (or Cmd/Ctrl + right-click)"
+	)
 	groups.add_child(_attack_move_toggle)
 	var side: Button = _button("Switch side")
 	side.tooltip_text = "Debug: command the other side (F9)"
@@ -116,8 +123,21 @@ func _on_formation_changed(kind: Formations.Kind) -> void:
 	_formation_buttons[kind].set_pressed_no_signal(true)
 
 
-func _on_attack_move_armed_changed(armed: bool) -> void:
-	_attack_move_toggle.set_pressed_no_signal(armed)
+func _on_armed_order_changed(order: SelectionController.ArmedOrder) -> void:
+	_move_toggle.set_pressed_no_signal(order == SelectionController.ArmedOrder.MOVE)
+	_attack_move_toggle.set_pressed_no_signal(order == SelectionController.ArmedOrder.ATTACK_MOVE)
+
+
+# A toggle that arms order while pressed. Pressing it again disarms. The
+# controller's signal keeps both toggles in step with each other and with Esc
+# or right-click cancels.
+func _arm_button(text: String, order: SelectionController.ArmedOrder, tip: String) -> Button:
+	var b: Button = _button(text)
+	b.toggle_mode = true
+	b.tooltip_text = tip
+	b.toggled.connect(func(pressed: bool) -> void:
+		_controller.arm(order if pressed else SelectionController.ArmedOrder.NONE))
+	return b
 
 
 # Counts each side's living units, once per tick rather than every frame.

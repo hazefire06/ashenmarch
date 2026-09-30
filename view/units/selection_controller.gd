@@ -7,8 +7,11 @@ extends Control
 ## - Right click moves the selection to the ground under the cursor, in the
 ##   current formation.
 ## - Cmd/Ctrl + right click attack-moves there instead: the selection fights
-##   whatever it meets on the way. The control bar's Attack-move button arms
-##   the same order for the next plain right click, once.
+##   whatever it meets on the way.
+## - The control bar's Move and Attack-move buttons arm that order for the
+##   next left click on the ground, once, so a one-button mouse or a trackpad
+##   can give every order. Right click, Esc, pressing the button again, or
+##   losing the selection cancels it.
 ## - 1..0 pick the formation for the next move order. Cmd/Ctrl+1..0 save a
 ##   group; Option/Alt+1..0 recall it. H stops. F9 (debug) switches sides.
 ##
@@ -21,7 +24,14 @@ extends Control
 
 signal formation_changed(kind: Formations.Kind)
 signal side_changed(side: UnitType.Faction)
-signal attack_move_armed_changed(armed: bool)
+signal armed_order_changed(order: ArmedOrder)
+
+## An order from the control bar waiting for a left click on the ground.
+enum ArmedOrder {
+	NONE,
+	MOVE,
+	ATTACK_MOVE,
+}
 
 ## Pixels the mouse must move while held before a click becomes a drag.
 const DRAG_THRESHOLD: float = 6.0
@@ -33,9 +43,9 @@ const BOX_EDGE: Color = Color(1.0, 0.92, 0.35, 0.9)
 var selection: UnitSelection = UnitSelection.new()
 var formation: Formations.Kind = Formations.Kind.SHORT_LINE
 var side: UnitType.Faction = UnitType.Faction.LIGHT
-## True when the next plain right click attack-moves. It clears itself once an
-## order is given. Change it with set_attack_move_armed().
-var attack_move_armed: bool = false
+## The order the next left click places, if any. It clears itself once the
+## order is given. Change it with arm().
+var armed_order: ArmedOrder = ArmedOrder.NONE
 
 var _world: World
 var _units: UnitsView
@@ -52,6 +62,7 @@ func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	focus_mode = Control.FOCUS_NONE
+	selection.changed.connect(_on_selection_changed)
 
 
 func setup(world: World, units: UnitsView, camera: Camera3D, picker: TerrainPicker) -> void:
@@ -66,11 +77,18 @@ func set_formation(kind: Formations.Kind) -> void:
 	formation_changed.emit(kind)
 
 
-func set_attack_move_armed(armed: bool) -> void:
-	if armed == attack_move_armed:
-		return
-	attack_move_armed = armed
-	attack_move_armed_changed.emit(armed)
+## Arms an order for the next left click on the ground, or disarms with
+## NONE. With nothing selected there is nothing to order, so it stays
+## disarmed. Always emits armed_order_changed, so a bar button pressed with
+## nothing selected pops back up. The cursor is a crosshair while armed.
+func arm(order: ArmedOrder) -> void:
+	if selection.is_empty():
+		order = ArmedOrder.NONE
+	armed_order = order
+	Input.set_default_cursor_shape(
+		Input.CURSOR_ARROW if order == ArmedOrder.NONE else Input.CURSOR_CROSS
+	)
+	armed_order_changed.emit(order)
 
 
 func save_group(slot: int) -> void:
@@ -108,7 +126,10 @@ func _unhandled_input(event: InputEvent) -> void:
 	var button: InputEventMouseButton = event as InputEventMouseButton
 	if button != null and button.pressed:
 		if event.is_action(InputBindings.SELECT):
-			if button.double_click:
+			if armed_order != ArmedOrder.NONE:
+				# This click places the order armed from the bar; it selects nothing.
+				_order_move(button.position, armed_order == ArmedOrder.ATTACK_MOVE)
+			elif button.double_click:
 				_select_type_at(button.position, button.shift_pressed)
 			else:
 				_pressing = true
@@ -122,7 +143,10 @@ func _unhandled_input(event: InputEvent) -> void:
 			_order_move(button.position, true)
 			get_viewport().set_input_as_handled()
 		elif event.is_action(InputBindings.COMMAND):
-			_order_move(button.position, attack_move_armed)
+			if armed_order != ArmedOrder.NONE:
+				arm(ArmedOrder.NONE)
+			else:
+				_order_move(button.position, false)
 			get_viewport().set_input_as_handled()
 		return
 	if _handle_keys(event):
@@ -172,6 +196,9 @@ func _handle_keys(event: InputEvent) -> bool:
 		if event.is_action_pressed(InputBindings.FORMATIONS[i], false, true):
 			set_formation(i as Formations.Kind)
 			return true
+	if event.is_action_pressed(InputBindings.CANCEL) and armed_order != ArmedOrder.NONE:
+		arm(ArmedOrder.NONE)
+		return true
 	if event.is_action_pressed(InputBindings.STOP):
 		stop_selected()
 		return true
@@ -179,6 +206,12 @@ func _handle_keys(event: InputEvent) -> bool:
 		switch_side()
 		return true
 	return false
+
+
+# Nothing selected means nothing to order, so an armed order lapses.
+func _on_selection_changed() -> void:
+	if selection.is_empty() and armed_order != ArmedOrder.NONE:
+		arm(ArmedOrder.NONE)
 
 
 func _click_select(at: Vector2, additive: bool) -> void:
@@ -226,7 +259,7 @@ func _select_type_at(at: Vector2, additive: bool) -> void:
 
 
 # Moves the selection to the ground under the screen point, or attack-moves it
-# there. Giving an order clears the one-shot armed flag; a click that gives none
+# there. Giving an order disarms any armed order; a click that gives none
 # (nothing selected, or off the map) leaves it armed.
 func _order_move(at: Vector2, attack: bool) -> void:
 	if selection.is_empty():
@@ -242,7 +275,8 @@ func _order_move(at: Vector2, attack: bool) -> void:
 	else:
 		_world.enqueue(MoveUnitsCommand.new(_world.tick, selection.ids(), x, z, formation))
 	_units.show_move_marker(hit, attack)
-	set_attack_move_armed(false)
+	if armed_order != ArmedOrder.NONE:
+		arm(ArmedOrder.NONE)
 
 
 ## The unit whose sprite is under the screen point, nearest the camera if
