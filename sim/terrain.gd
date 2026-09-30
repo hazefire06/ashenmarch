@@ -42,14 +42,17 @@ var size_z: int
 var cell_size: int
 ## Permille. Walking mobilities can't stand on a steeper sample.
 var max_walkable_slope: int
-## Milli-units, non-negative, row-major (index j * size_x + i).
+## Milli-units, row-major (index j * size_x + i). May go negative once
+## explosions scar the ground; height_at rounds correctly either way.
 var heights: PackedInt32Array
 ## Water depth level 0..MAX_WATER_DEPTH per sample.
 var water: PackedByteArray
 ## 1 where impassable to every mobility, else 0.
 var blocked: PackedByteArray
-## Per-sample slope in permille from central differences (one-sided at the
-## edges). Used for passability, which is decided per sample.
+## Per-sample slope in permille: along each axis, the steeper of the edges to
+## the two neighbors, combined into a magnitude. Taking the steeper edge
+## (not a central difference) keeps a one-cell cliff from averaging down to
+## walkable. Used for passability, which is decided per sample.
 var sample_slopes: PackedInt32Array
 
 
@@ -174,7 +177,8 @@ func contains(x: int, z: int) -> bool:
 
 
 ## Terrain height at (x, z), bilinear between the four surrounding samples,
-## rounded to the nearest milli-unit. Points off the map clamp to the edge.
+## rounded to the nearest milli-unit (halves round up, negative heights
+## included). Points off the map clamp to the edge.
 func height_at(x: int, z: int) -> int:
 	var cs: int = cell_size
 	var cx: int = clampi(x, 0, extent_x())
@@ -191,14 +195,14 @@ func height_at(x: int, z: int) -> int:
 		+ heights[k + size_x + 1] * fx * fz
 	)
 	var area: int = cs * cs
-	return (weighted + area / 2) / area
+	return FixedMath.div_floor(weighted + area / 2, area)
 
 
 ## Uphill direction and steepness at (x, z): the exact derivative of the
 ## bilinear surface, (dh/dx, dh/dz) in permille. Uses the cell containing the
 ## point (cells are half-open, so a point on a cell edge uses the cell on its
-## +x/+z side). Points off the map clamp to the edge. Division truncates
-## toward zero.
+## +x/+z side). Division truncates toward zero. Off the map, height_at is
+## constant along any clamped axis, so that component is 0 there.
 func gradient_at(x: int, z: int) -> Vector2i:
 	var cs: int = cell_size
 	var cx: int = clampi(x, 0, extent_x())
@@ -213,8 +217,12 @@ func gradient_at(x: int, z: int) -> Vector2i:
 	var h01: int = heights[k + size_x]
 	var h11: int = heights[k + size_x + 1]
 	var area: int = cs * cs
-	var dx: int = ((h10 - h00) * (cs - fz) + (h11 - h01) * fz) * PERMILLE / area
-	var dz: int = ((h01 - h00) * (cs - fx) + (h11 - h10) * fx) * PERMILLE / area
+	var dx: int = 0
+	var dz: int = 0
+	if x == cx:
+		dx = ((h10 - h00) * (cs - fz) + (h11 - h01) * fz) * PERMILLE / area
+	if z == cz:
+		dz = ((h01 - h00) * (cs - fx) + (h11 - h10) * fx) * PERMILLE / area
 	return Vector2i(dx, dz)
 
 
@@ -282,15 +290,13 @@ func _compute_sample_slopes() -> PackedInt32Array:
 		for i: int in size_x:
 			var i0: int = maxi(i - 1, 0)
 			var i1: int = mini(i + 1, size_x - 1)
-			var gx: int = (
-				(heights[j * size_x + i1] - heights[j * size_x + i0])
-				* PERMILLE / ((i1 - i0) * cell_size)
-			)
-			var gz: int = (
-				(heights[j1 * size_x + i] - heights[j0 * size_x + i])
-				* PERMILLE / ((j1 - j0) * cell_size)
-			)
-			slopes[j * size_x + i] = FixedMath.isqrt(gx * gx + gz * gz)
+			var k: int = j * size_x + i
+			var h: int = heights[k]
+			var rise_x: int = maxi(absi(heights[j * size_x + i1] - h), absi(h - heights[j * size_x + i0]))
+			var rise_z: int = maxi(absi(heights[j1 * size_x + i] - h), absi(h - heights[j0 * size_x + i]))
+			var gx: int = rise_x * PERMILLE / cell_size
+			var gz: int = rise_z * PERMILLE / cell_size
+			slopes[k] = FixedMath.isqrt(gx * gx + gz * gz)
 	return slopes
 
 

@@ -50,6 +50,13 @@ func test_living_units_cannot_cross_away_from_the_ford() -> void:
 	assert_false(reached, "deep water must block living units everywhere but the ford")
 
 
+func test_only_the_ford_is_shallow_enough_to_wade() -> void:
+	var t: Terrain = _terrain
+	var reached: bool = _flood(func(i: int, j: int) -> bool:
+		return absi(i - FORD_X) > FORD_ZONE_HALF and t.sample_water_depth(i, j) <= 2)
+	assert_false(reached, "no crossing at depth 2 or shallower away from the ford")
+
+
 ## True if the bottom row is reachable from the top row through samples with
 ## water depth <= max_depth.
 func _reaches_south(max_depth: int) -> bool:

@@ -31,6 +31,34 @@ func test_chunks_cover_every_cell_once() -> void:
 	assert_eq(cells, 149 * 69)
 
 
+func test_each_chunk_spans_exactly_its_cells() -> void:
+	# 150 x 70 samples at 2 m: chunks must tile [0, 298] x [0, 138] m with no
+	# overlap or gap.
+	var t: Terrain = _terrain(150, 70, PackedInt32Array(Array(range(150 * 70))), 2000)
+	var counts: Vector2i = TerrainMeshBuilder.chunk_counts(t)
+	var failures: Array[String] = []
+	for cz: int in counts.y:
+		for cx: int in counts.x:
+			var cells: Vector2i = TerrainMeshBuilder.chunk_cells(t, cx, cz)
+			var expected: AABB = AABB(
+				Vector3(cx * CHUNK * 2.0, 0.0, cz * CHUNK * 2.0),
+				Vector3(cells.x * 2.0, 0.0, cells.y * 2.0)
+			)
+			var vertices: PackedVector3Array = (
+				TerrainMeshBuilder.build_chunk(t, cx, cz).surface_get_arrays(0)[Mesh.ARRAY_VERTEX]
+			)
+			var lo: Vector2 = Vector2(INF, INF)
+			var hi: Vector2 = Vector2(-INF, -INF)
+			for v: Vector3 in vertices:
+				lo = lo.min(Vector2(v.x, v.z))
+				hi = hi.max(Vector2(v.x, v.z))
+			var want_lo: Vector2 = Vector2(expected.position.x, expected.position.z)
+			var want_hi: Vector2 = want_lo + Vector2(expected.size.x, expected.size.z)
+			if not (lo.is_equal_approx(want_lo) and hi.is_equal_approx(want_hi)):
+				failures.append("chunk (%d, %d): %s..%s, want %s..%s" % [cx, cz, lo, hi, want_lo, want_hi])
+	assert_eq(failures.size(), 0, str(failures))
+
+
 func test_vertices_match_sim_sample_heights() -> void:
 	var size: int = CHUNK + 6
 	var heights: PackedInt32Array = PackedInt32Array()

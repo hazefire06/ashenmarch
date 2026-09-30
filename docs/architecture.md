@@ -51,17 +51,20 @@ Decisions made in Phase 0 that later phases build on. CLAUDE.md has the rules; t
 - Samples sit at grid vertices. Sample `(i, j)` is at `x = i * cell_size`, `z = j * cell_size`, in milli-units.
 - A map of `size_x × size_z` samples spans `(size_x - 1) × (size_z - 1)` cells. Riverside is 512² samples at 1 m, so it covers 511 m.
 - `i` is the image column (+x). `j` is the image row (+z), and the top image row is `z = 0`.
-- Heights are milli-units, stored as `PackedInt32Array`.
+- Heights are milli-units, stored as `PackedInt32Array`. They may go negative once explosions scar the ground. `height_at` rounds with `FixedMath.div_floor`, so negative values round the same way as positive ones.
 
 ### Queries (all integer)
 - **`height_at(x, z)`**: bilinear between the four surrounding samples, rounded half up. Off-map points clamp to the edge.
 - **`gradient_at(x, z)`**: the exact derivative of that bilinear surface, `(dh/dx, dh/dz)`, as a `Vector2i`.
   - Units are permille: millimetres of rise per metre of run, so 1000 = 45°.
   - It uses the cell containing the point. Cells are half-open.
+  - Off the map, `height_at` is constant along any clamped axis, so that gradient component is 0 there.
 - **`slope_at(x, z)`**: the magnitude of the gradient, via `FixedMath.isqrt`.
   - `isqrt` takes a float starting guess and corrects it to the exact floor, so the result never depends on float rounding.
 - **`water_depth_at(x, z)`** and **`is_passable(x, z, mobility)`**: use the nearest sample, so a point query always agrees with the sample grid that pathing will run on. `is_sample_passable(i, j, mobility)` is the grid form.
-- **Passability slope**: uses a per-sample central-difference slope (`sample_slopes`, precomputed at load), not the bilinear gradient.
+- **Passability slope**: uses a per-sample slope (`sample_slopes`, precomputed at load), not the bilinear gradient.
+  - Along each axis it takes the steeper of the two edges to the neighboring samples.
+  - A central difference would halve a one-cell cliff and let walkers climb it.
 
 ### Mobility
 `UnitType` arrives in Phase 2, so passability takes `Terrain.Mobility` instead. Phase 2's `UnitType` gets a `mobility` field.
@@ -99,6 +102,8 @@ A map is a folder `maps/<name>/` holding three files.
 - `sim/png_codec.gd` parses PNGs itself:
   - It supports 8- and 16-bit gray, gray+alpha, RGB, and RGBA, non-interlaced, all five row filters.
   - It rejects palette images, sub-8-bit depths, and Adam7 with a clear error.
+  - It rejects images over 64 MiB unfiltered, IDAT data too small to inflate to the stated size, and data that isn't a zlib stream, all before allocating pixel buffers.
+  - A well-formed zlib stream that inflates to the wrong size still returns a clean error, but `decompress()` also prints an engine error that can't be suppressed from GDScript.
   - IDAT is inflated with `PackedByteArray.decompress(..., COMPRESSION_DEFLATE)`, which is a zlib stream (window bits 15) as PNG requires.
 - It's tested three ways:
   - against fixtures from a separate Python encoder (`tests/fixtures/png/make_png_fixtures.py`, `make fixtures`)

@@ -16,3 +16,12 @@ static func isqrt(n: int) -> int:
 	while (r + 1) * (r + 1) <= n:
 		r += 1
 	return r
+
+
+## a / b rounded toward negative infinity, for b > 0. GDScript's / truncates
+## toward zero, which rounds negative values the wrong way.
+static func div_floor(a: int, b: int) -> int:
+	var q: int = a / b
+	if a % b != 0 and a < 0:
+		q -= 1
+	return q

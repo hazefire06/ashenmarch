@@ -117,6 +117,40 @@ func test_rejects_truncated_chunk() -> void:
 	assert_string_contains(PngCodec.decode(bytes).error, "truncated")
 
 
+func test_rejects_invalid_filter_type() -> void:
+	var filtered: PackedByteArray = PackedByteArray([0, 1, 2, 5, 3, 4])
+	var bytes: PackedByteArray = _raw_png(2, 2, 8, 0, filtered.compress(FileAccess.COMPRESSION_DEFLATE))
+	assert_string_contains(PngCodec.decode(bytes).error, "invalid filter type 5")
+
+
+func test_rejects_image_data_of_wrong_size() -> void:
+	var one_row: PackedByteArray = PackedByteArray([0, 1, 2])
+	var bytes: PackedByteArray = _raw_png(2, 2, 8, 0, one_row.compress(FileAccess.COMPRESSION_DEFLATE))
+	assert_string_contains(PngCodec.decode(bytes).error, "inflated to 3 bytes, expected 6")
+
+
+func test_rejects_oversized_header_without_allocating() -> void:
+	var tiny_idat: PackedByteArray = PackedByteArray([0x78, 0x9C, 3, 0])
+	assert_string_contains(
+		PngCodec.decode(_raw_png(16384, 16384, 16, 6, tiny_idat)).error, "larger than the supported"
+	)
+	assert_string_contains(
+		PngCodec.decode(_raw_png(0xFFFFFFFF, 0xFFFFFFFF, 16, 6, tiny_idat)).error,
+		"larger than the supported"
+	)
+
+
+func test_rejects_idat_too_small_for_header() -> void:
+	# 4000x4000 16-bit gray is within the size cap, but 4 bytes can't inflate to 32 MB.
+	var tiny_idat: PackedByteArray = PackedByteArray([0x78, 0x9C, 3, 0])
+	assert_string_contains(PngCodec.decode(_raw_png(4000, 4000, 16, 0, tiny_idat)).error, "too small")
+
+
+func test_rejects_non_zlib_image_data() -> void:
+	var garbage: PackedByteArray = PackedByteArray([1, 2, 3, 4, 5, 6, 7, 8])
+	assert_string_contains(PngCodec.decode(_raw_png(2, 2, 8, 0, garbage)).error, "not a zlib stream")
+
+
 func test_crc32_known_value() -> void:
 	# Standard CRC-32 check value for the ASCII string "123456789".
 	var bytes: PackedByteArray = "123456789".to_ascii_buffer()
@@ -176,3 +210,27 @@ func _patched_ihdr(offset: int, value: int) -> PackedByteArray:
 	for i: int in 4:
 		bytes[IHDR_DATA + 13 + i] = (crc >> (24 - 8 * i)) & 0xFF
 	return bytes
+
+
+## A PNG with the given header fields and raw IDAT bytes, correctly framed
+## and checksummed, so decode() reaches the pixel-data checks.
+func _raw_png(w: int, h: int, depth: int, color_type: int, idat: PackedByteArray) -> PackedByteArray:
+	var ihdr: PackedByteArray = PackedByteArray()
+	for value: int in [w, h]:
+		ihdr.append_array(PackedByteArray([(value >> 24) & 0xFF, (value >> 16) & 0xFF, (value >> 8) & 0xFF, value & 0xFF]))
+	ihdr.append_array(PackedByteArray([depth, color_type, 0, 0, 0]))
+	var out: PackedByteArray = PackedByteArray([137, 80, 78, 71, 13, 10, 26, 10])
+	_append_chunk(out, "IHDR", ihdr)
+	_append_chunk(out, "IDAT", idat)
+	_append_chunk(out, "IEND", PackedByteArray())
+	return out
+
+
+func _append_chunk(out: PackedByteArray, type: String, data: PackedByteArray) -> void:
+	var size: int = data.size()
+	out.append_array(PackedByteArray([(size >> 24) & 0xFF, (size >> 16) & 0xFF, (size >> 8) & 0xFF, size & 0xFF]))
+	var body: PackedByteArray = type.to_ascii_buffer()
+	body.append_array(data)
+	out.append_array(body)
+	var crc: int = PngCodec.crc32(body, 0, body.size())
+	out.append_array(PackedByteArray([(crc >> 24) & 0xFF, (crc >> 16) & 0xFF, (crc >> 8) & 0xFF, crc & 0xFF]))

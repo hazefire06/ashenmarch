@@ -33,6 +33,15 @@ func test_height_rounds_half_up() -> void:
 	assert_eq(t.height_at(500, 500), 0, "0.25 rounds down")
 
 
+func test_height_rounds_negative_heights_correctly() -> void:
+	var t: Terrain = _terrain(2, 2, [0, -3400, 0, 0])
+	assert_eq(t.height_at(500, 0), -1700, "exact midpoint")
+	assert_eq(t.height_at(1000, 0), -3400)
+	var u: Terrain = _terrain(2, 2, [0, -1, 0, 0])
+	assert_eq(u.height_at(500, 0), 0, "-0.5 rounds half up, to 0")
+	assert_eq(u.height_at(750, 0), -1, "-0.75 rounds to -1")
+
+
 func test_height_clamps_off_map() -> void:
 	var t: Terrain = _terrain(2, 2, [5, 6, 7, 8])
 	assert_eq(t.height_at(-5000, -5000), 5)
@@ -81,6 +90,26 @@ func test_gradient_is_exact_bilinear_derivative() -> void:
 	assert_eq(t.gradient_at(0, 0).x, 1000)
 	assert_eq(t.gradient_at(0, 500).x, 2000)
 	assert_eq(t.gradient_at(0, 1000).x, 3000)
+
+
+func test_gradient_is_zero_along_clamped_axes_off_map() -> void:
+	# h = x. Off the map height_at is flat along a clamped axis.
+	var t: Terrain = _terrain(3, 2, [0, 1000, 2000, 0, 1000, 2000])
+	assert_eq(t.height_at(5000, 300), t.height_at(6000, 300))
+	assert_eq(t.gradient_at(5500, 300), Vector2i.ZERO)
+	assert_eq(t.gradient_at(-10, 300), Vector2i.ZERO)
+	assert_eq(t.gradient_at(700, -5), Vector2i(1000, 0), "only the clamped axis is zeroed")
+
+
+func test_one_cell_cliff_blocks_walkers_on_both_sides() -> void:
+	# A 2 m step between samples 1 and 2 at 1 m spacing is 63 degrees.
+	var t: Terrain = _terrain(4, 2, [0, 0, 2000, 2000, 0, 0, 2000, 2000])
+	assert_eq(t.sample_slope(1, 0), 2000)
+	assert_eq(t.sample_slope(2, 0), 2000)
+	assert_false(t.is_sample_passable(1, 0, LIVING))
+	assert_false(t.is_sample_passable(2, 0, UNDEAD))
+	assert_true(t.is_sample_passable(0, 0, LIVING), "flat ground next to the cliff")
+	assert_true(t.is_sample_passable(2, 0, FLOATING))
 
 
 func test_water_depth_uses_nearest_sample() -> void:

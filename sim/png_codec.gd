@@ -15,8 +15,12 @@ enum Filter { NONE = 0, SUB = 1, UP = 2, AVERAGE = 3, PAETH = 4 }
 ## Encoder option: use filter (row % 5) on each row, so every decode path is
 ## exercised. For tests.
 const FILTER_CYCLE: int = -1
-## Guards against allocating absurd buffers for a corrupt header.
-const MAX_DIMENSION: int = 16384
+## Largest image accepted, in unfiltered bytes (4096x4096 RGB8 fits). A
+## corrupt header must not be able to make the decoder allocate gigabytes.
+const MAX_IMAGE_BYTES: int = 64 * 1024 * 1024
+## deflate can't expand data by more than about 1032:1, so an IDAT smaller
+## than expected / this ratio can't be a real image of the stated size.
+const MAX_DEFLATE_RATIO: int = 1032
 const SIGNATURE: Array[int] = [137, 80, 78, 71, 13, 10, 26, 10]
 const CHANNELS_BY_COLOR_TYPE: Dictionary[int, int] = {0: 1, 2: 3, 4: 2, 6: 4}
 const COLOR_TYPE_BY_CHANNELS: Dictionary[int, int] = {1: 0, 2: 4, 3: 2, 4: 6}
@@ -130,8 +134,8 @@ static func _parse_ihdr(data: PackedByteArray) -> PngRaster:
 	var h: int = _read_u32(data, 4)
 	var depth: int = data[8]
 	var color_type: int = data[9]
-	if w <= 0 or h <= 0 or w > MAX_DIMENSION or h > MAX_DIMENSION:
-		return PngRaster.failed("unsupported size %dx%d" % [w, h])
+	if w <= 0 or h <= 0:
+		return PngRaster.failed("invalid size %dx%d" % [w, h])
 	if color_type == COLOR_TYPE_PALETTE:
 		return PngRaster.failed("palette PNGs are not supported; save as grayscale or RGB")
 	if not CHANNELS_BY_COLOR_TYPE.has(color_type):
@@ -142,7 +146,17 @@ static func _parse_ihdr(data: PackedByteArray) -> PngRaster:
 		return PngRaster.failed("unknown compression or filter method")
 	if data[12] != 0:
 		return PngRaster.failed("interlaced PNGs are not supported")
-	return PngRaster.create(w, h, CHANNELS_BY_COLOR_TYPE[color_type], depth)
+	var channels: int = CHANNELS_BY_COLOR_TYPE[color_type]
+	# Bound each side first so the product below can't overflow.
+	if w > MAX_IMAGE_BYTES or h > MAX_IMAGE_BYTES or w * h * channels * depth / 8 > MAX_IMAGE_BYTES:
+		return PngRaster.failed("image %dx%d is larger than the supported maximum" % [w, h])
+	# Header only: samples are allocated once the pixel data checks out.
+	var raster: PngRaster = PngRaster.new()
+	raster.width = w
+	raster.height = h
+	raster.channels = channels
+	raster.bit_depth = depth
+	return raster
 
 
 ## Inflates IDAT, reverses the per-row filters, and unpacks samples. The
@@ -152,6 +166,17 @@ static func _decode_pixels(raster: PngRaster, idat: PackedByteArray) -> PngRaste
 	var bpp: int = raster.channels * raster.bit_depth / 8
 	var stride: int = raster.width * bpp
 	var expected: int = raster.height * (stride + 1)
+	if idat.size() * MAX_DEFLATE_RATIO < expected:
+		return PngRaster.failed(
+			"image data is %d bytes, too small for a %dx%d image"
+			% [idat.size(), raster.width, raster.height]
+		)
+	# zlib header check (RFC 1950): deflate method, and CMF/FLG divisible by
+	# 31. Catches garbage before decompress(), which reports failures as
+	# engine errors. A well-formed stream that inflates to the wrong size
+	# still gets a clean error below, plus an engine error from decompress().
+	if idat.size() < 2 or (idat[0] & 0x0F) != 8 or ((idat[0] << 8) | idat[1]) % 31 != 0:
+		return PngRaster.failed("image data is not a zlib stream")
 	var filtered: PackedByteArray = idat.decompress(expected, FileAccess.COMPRESSION_DEFLATE)
 	if filtered.size() != expected:
 		return PngRaster.failed(

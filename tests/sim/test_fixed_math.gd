@@ -40,3 +40,11 @@ func test_isqrt_is_floor_for_many_values() -> void:
 		if not (r * r <= n and (r + 1) * (r + 1) > n):
 			failures.append(n)
 	assert_eq(failures.size(), 0, "inputs with a wrong root: %s" % [failures])
+
+
+func test_div_floor_rounds_toward_negative_infinity() -> void:
+	assert_eq(FixedMath.div_floor(7, 2), 3)
+	assert_eq(FixedMath.div_floor(-7, 2), -4)
+	assert_eq(FixedMath.div_floor(-8, 2), -4)
+	assert_eq(FixedMath.div_floor(0, 5), 0)
+	assert_eq(FixedMath.div_floor(-1, 1_000_000), -1)
