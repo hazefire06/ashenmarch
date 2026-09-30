@@ -16,7 +16,9 @@ extends RefCounted
 ## Right click carries two actions the same way: bare COMMAND moves, and
 ## Cmd/Ctrl + right click (ATTACK_MOVE) attack-moves. A mouse action also
 ## matches with extra modifiers held, so check ATTACK_MOVE with exact_match =
-## true before COMMAND.
+## true before COMMAND. Left click is the same: bare SELECT selects, and
+## Cmd/Ctrl + left click (GROUND_ATTACK) bombards the ground, so check
+## GROUND_ATTACK with exact_match = true before SELECT.
 
 const CAM_FORWARD: StringName = &"cam_forward"
 const CAM_BACK: StringName = &"cam_back"
@@ -34,10 +36,14 @@ const CAM_ZOOM_IN_STEP: StringName = &"cam_zoom_in_step"
 const CAM_ZOOM_OUT_STEP: StringName = &"cam_zoom_out_step"
 const TOGGLE_OVERHEAD_MAP: StringName = &"toggle_overhead_map"
 ## Left click / drag: select. Right click: move the selection. Cmd/Ctrl +
-## right click: attack-move it.
+## right click: attack-move it. Cmd/Ctrl + left click: ground attack.
 const SELECT: StringName = &"unit_select"
 const COMMAND: StringName = &"unit_command"
 const ATTACK_MOVE: StringName = &"unit_attack_move"
+const GROUND_ATTACK: StringName = &"unit_ground_attack"
+## T: the selection's special ability (a Sapper drops a charge, a Longbow
+## nocks its fire arrow).
+const ABILITY: StringName = &"unit_ability"
 const STOP: StringName = &"unit_stop"
 ## Esc: cancel an order armed from the control bar.
 const CANCEL: StringName = &"cancel"
@@ -94,6 +100,13 @@ static func _default_events() -> Dictionary[StringName, InputEvent]:
 	# Cmd on macOS, Ctrl elsewhere.
 	attack_move.command_or_control_autoremap = true
 	events[ATTACK_MOVE] = attack_move
+	var ground_attack: InputEventMouseButton = _mouse(MOUSE_BUTTON_LEFT)
+	# Cmd on macOS, Ctrl elsewhere. Cmd is the Mac binding because Godot's
+	# macOS layer delivers Ctrl + left click as a right click
+	# (platform/macos/godot_content_view.mm, mouseDown).
+	ground_attack.command_or_control_autoremap = true
+	events[GROUND_ATTACK] = ground_attack
+	events[ABILITY] = _key(KEY_T)
 	events[STOP] = _key(KEY_H)
 	events[CANCEL] = _key(KEY_ESCAPE)
 	events[SWITCH_SIDE] = _key(KEY_F9)

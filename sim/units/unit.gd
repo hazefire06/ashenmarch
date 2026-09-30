@@ -16,6 +16,9 @@ enum State {
 	## Terminal. Dead units ignore orders, don't move, and don't push. The
 	## body stays in the world for the rest of the mission.
 	DEAD,
+	## Ranged: stands facing shot_target_id (or its ground target), drawing
+	## or recovering between shots. Appended so earlier values keep theirs.
+	SHOOTING,
 }
 
 ## The standing order, as opposed to the current activity (state).
@@ -28,15 +31,29 @@ enum Order {
 	## Walk to the goal, fighting enemies met on the way and resuming after
 	## each fight. Becomes NONE on arrival.
 	ATTACK_MOVE,
+	## Ranged units: bombard (ground_x, ground_z), walking into range first if
+	## needed, until given another order.
+	GROUND_ATTACK,
 }
 
-## Bitmask of states each state may change to, indexed by State.
+## Bitmask of states each state may change to, indexed by State. Every live
+## state can reach DEAD; kill() relies on it.
 const _ALLOWED: Array[int] = [
-	(1 << State.MOVING) | (1 << State.ATTACKING) | (1 << State.DEAD),
-	(1 << State.IDLE) | (1 << State.ATTACKING) | (1 << State.DEAD),
-	(1 << State.IDLE) | (1 << State.MOVING) | (1 << State.DEAD),
+	# IDLE
+	(1 << State.MOVING) | (1 << State.ATTACKING) | (1 << State.SHOOTING) | (1 << State.DEAD),
+	# MOVING
+	(1 << State.IDLE) | (1 << State.ATTACKING) | (1 << State.SHOOTING) | (1 << State.DEAD),
+	# ATTACKING
+	(1 << State.IDLE) | (1 << State.MOVING) | (1 << State.SHOOTING) | (1 << State.DEAD),
+	# DEAD
 	0,
+	# SHOOTING
+	(1 << State.IDLE) | (1 << State.MOVING) | (1 << State.ATTACKING) | (1 << State.DEAD),
 ]
+
+## Milli-units per tick of knockback (1 m/s) at or above which the unit is
+## reeling.
+const KNOCKED_SPEED: int = 1000 / 30
 
 var type: UnitType
 ## Index of type in the world's UnitCatalog; hashed instead of the resource.
@@ -91,6 +108,31 @@ var cooldown_left: int = 0
 ## missions with the unit.
 var kills: int = 0
 
+## GROUND_ATTACK: the spot being bombarded.
+var ground_x: int = 0
+var ground_z: int = 0
+## GROUND_ATTACK: the unit has already walked toward the spot to get in
+## range, so finding itself stopped and still unable to reach it means it
+## never will.
+var ground_walked: bool = false
+## Entity id of the unit being shot at; 0 for none.
+var shot_target_id: int = 0
+## Ticks until the shot being drawn leaves; 0 when not drawing.
+var aim_left: int = 0
+## Ticks until the next draw may start.
+var shot_cooldown_left: int = 0
+## Shots left this mission; -1 is unlimited.
+var ammo_left: int = 0
+## Special uses left this mission (satchels, the fire arrow).
+var special_left: int = 0
+## FIRE_ARROW special: the next shot is the fire arrow.
+var fire_nocked: bool = false
+## Knockback from blasts, milli-units per tick. UnitMovement adds it to the
+## unit's velocity and bleeds it off; while it is fast the unit is reeling
+## and can't steer, swing, or shoot.
+var knock_vx: int = 0
+var knock_vz: int = 0
+
 
 func _init(
 	entity_id: int, pos_x: int, pos_y: int, pos_z: int,
@@ -101,6 +143,8 @@ func _init(
 	type_index = catalog_index
 	faction = side
 	hp = unit_type.max_hp
+	ammo_left = unit_type.ranged_ammo
+	special_left = unit_type.special_charges
 
 
 func is_alive() -> bool:
@@ -118,15 +162,19 @@ func transition_to(new_state: State) -> bool:
 
 
 ## Kills the unit outright: hp 0, state DEAD, orders and fighting cleared.
+## A body lies on the ground, so UnitMovement drops a floating one.
 func kill() -> void:
 	hp = 0
 	transition_to(State.DEAD)
 	clear_order()
 	clear_engagement()
+	clear_shot()
 	order = Order.NONE
 	vx = 0
 	vy = 0
 	vz = 0
+	knock_vx = 0
+	knock_vz = 0
 
 
 ## Forgets the target and abandons any swing in progress. The cooldown keeps
@@ -134,6 +182,19 @@ func kill() -> void:
 func clear_engagement() -> void:
 	target_id = 0
 	windup_left = 0
+
+
+## Forgets the ranged target and abandons any draw in progress. The shot
+## cooldown keeps running.
+func clear_shot() -> void:
+	shot_target_id = 0
+	aim_left = 0
+
+
+## True while a blast's knockback is still throwing the unit: it can't
+## steer, swing, or shoot until it slows below KNOCKED_SPEED.
+func is_reeling() -> bool:
+	return knock_vx * knock_vx + knock_vz * knock_vz >= KNOCKED_SPEED * KNOCKED_SPEED
 
 
 ## Drops the current path and goal bookkeeping. Does not change state.
@@ -172,6 +233,8 @@ func hash_fields() -> PackedInt64Array:
 		best_waypoint_distance, stuck_ticks,
 		order, order_x, order_z, order_facing_x, order_facing_z, order_speed_cap,
 		target_id, windup_left, cooldown_left, kills, path.size(),
+		ground_x, ground_z, 1 if ground_walked else 0, shot_target_id, aim_left, shot_cooldown_left,
+		ammo_left, special_left, 1 if fire_nocked else 0, knock_vx, knock_vz,
 	]))
 	fields.append_array(path)
 	return fields

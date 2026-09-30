@@ -1,29 +1,72 @@
 class_name TerrainView
 extends Node3D
 ## Draws a Terrain as chunked, flat-shaded placeholder meshes colored by
-## height and water depth. Reads the terrain once in build(); never writes it.
+## height and water depth. build() reads the whole terrain; rebuild_region()
+## re-reads the heights in part of it, after explosions scar the ground. Never
+## writes the terrain.
 
 const TERRAIN_SHADER: Shader = preload("res://view/terrain/terrain.gdshader")
+
+## Index array shared by every full-size chunk, made by build().
+var _shared_indices: PackedInt32Array = PackedInt32Array()
 
 
 ## Replaces any existing chunks with meshes for this terrain.
 func build(terrain: Terrain) -> void:
 	for child: Node in get_children():
+		# Out of the tree now, so a rebuild in the same frame can reuse the names.
+		remove_child(child)
 		child.queue_free()
 	var material: ShaderMaterial = _make_material(terrain)
-	var full: Vector2i = Vector2i(TerrainMeshBuilder.CHUNK_CELLS, TerrainMeshBuilder.CHUNK_CELLS)
-	var shared_indices: PackedInt32Array = TerrainMeshBuilder.grid_indices(full.x, full.y)
+	_shared_indices = TerrainMeshBuilder.grid_indices(
+		TerrainMeshBuilder.CHUNK_CELLS, TerrainMeshBuilder.CHUNK_CELLS
+	)
 	var counts: Vector2i = TerrainMeshBuilder.chunk_counts(terrain)
 	for cz: int in counts.y:
 		for cx: int in counts.x:
-			var is_full: bool = TerrainMeshBuilder.chunk_cells(terrain, cx, cz) == full
 			var chunk: MeshInstance3D = MeshInstance3D.new()
-			chunk.name = "Chunk_%d_%d" % [cx, cz]
-			chunk.mesh = TerrainMeshBuilder.build_chunk(
-				terrain, cx, cz, shared_indices if is_full else PackedInt32Array()
-			)
+			chunk.name = _chunk_name(cx, cz)
+			chunk.mesh = _chunk_mesh(terrain, cx, cz)
 			chunk.material_override = material
 			add_child(chunk)
+
+
+## Rebuilds the meshes of the chunks that touch cells, a rectangle of terrain
+## samples (what Terrain.scar() returns), plus a margin of one sample, and
+## leaves every other chunk alone. Each keeps its node and material. Does
+## nothing for an empty rectangle.
+func rebuild_region(terrain: Terrain, cells: Rect2i) -> void:
+	if not cells.has_area():
+		return
+	var dirty: Rect2i = cells.grow(1)
+	var counts: Vector2i = TerrainMeshBuilder.chunk_counts(terrain)
+	for cz: int in counts.y:
+		for cx: int in counts.x:
+			var size: Vector2i = TerrainMeshBuilder.chunk_cells(terrain, cx, cz)
+			# A chunk's samples include the edge it shares with the next chunk.
+			var samples: Rect2i = Rect2i(
+				cx * TerrainMeshBuilder.CHUNK_CELLS, cz * TerrainMeshBuilder.CHUNK_CELLS,
+				size.x + 1, size.y + 1
+			)
+			if not samples.intersects(dirty):
+				continue
+			var chunk: MeshInstance3D = get_node_or_null(_chunk_name(cx, cz)) as MeshInstance3D
+			if chunk != null:
+				chunk.mesh = _chunk_mesh(terrain, cx, cz)
+
+
+static func _chunk_name(chunk_x: int, chunk_z: int) -> String:
+	return "Chunk_%d_%d" % [chunk_x, chunk_z]
+
+
+# Full chunks reuse one index array; the smaller ones at the far edges make
+# their own.
+func _chunk_mesh(terrain: Terrain, chunk_x: int, chunk_z: int) -> ArrayMesh:
+	var full: Vector2i = Vector2i(TerrainMeshBuilder.CHUNK_CELLS, TerrainMeshBuilder.CHUNK_CELLS)
+	var is_full: bool = TerrainMeshBuilder.chunk_cells(terrain, chunk_x, chunk_z) == full
+	return TerrainMeshBuilder.build_chunk(
+		terrain, chunk_x, chunk_z, _shared_indices if is_full else PackedInt32Array()
+	)
 
 
 func _make_material(terrain: Terrain) -> ShaderMaterial:

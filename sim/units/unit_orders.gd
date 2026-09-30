@@ -55,6 +55,8 @@ static func move(
 		var component: int = world.pathing.component_at(unit.x, unit.z, mobility)
 		var goal: Vector2i = world.pathing.snap_to_component(slot.x, slot.z, mobility, component)
 		unit.clear_engagement()
+		unit.clear_shot()
+		unit.ground_walked = false
 		unit.order = Unit.Order.ATTACK_MOVE if attack else Unit.Order.MOVE
 		unit.order_x = goal.x
 		unit.order_z = goal.y
@@ -72,9 +74,40 @@ static func stop(world: World, unit_ids: PackedInt32Array) -> void:
 		world.movement.order_stop(unit)
 
 
+## Orders the living ranged units among unit_ids to bombard the ground at
+## (x, z) until told otherwise, walking into range first if they must.
+## Units without a ranged attack ignore it. RangedCombat carries it out.
+static func ground_attack(world: World, unit_ids: PackedInt32Array, x: int, z: int) -> void:
+	for unit: Unit in _living_units(world, unit_ids):
+		if not unit.type.has_ranged():
+			continue
+		hold(unit)
+		unit.order = Unit.Order.GROUND_ATTACK
+		unit.ground_x = x
+		unit.ground_z = z
+		world.movement.order_stop(unit)
+
+
+## T: each living unit among unit_ids uses its special if it has one left.
+## A Sapper drops a charge at its feet; a Longbow nocks its fire arrow (the
+## charge is spent when the arrow leaves).
+static func use_special(world: World, unit_ids: PackedInt32Array) -> void:
+	for unit: Unit in _living_units(world, unit_ids):
+		if unit.special_left <= 0:
+			continue
+		match unit.type.special_ability:
+			UnitType.Special.SATCHEL:
+				unit.special_left -= 1
+				world.drop_charge(unit, unit.x, unit.z)
+			UnitType.Special.FIRE_ARROW:
+				unit.fire_nocked = true
+
+
 ## Gives the unit order NONE, holding where it stands now. Drops any fight.
 static func hold(unit: Unit) -> void:
 	unit.clear_engagement()
+	unit.clear_shot()
+	unit.ground_walked = false
 	unit.order = Unit.Order.NONE
 	unit.order_x = unit.x
 	unit.order_z = unit.z

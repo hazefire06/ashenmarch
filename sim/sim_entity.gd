@@ -19,6 +19,15 @@ func _init(entity_id: int, pos_x: int, pos_y: int, pos_z: int) -> void:
 	z = pos_z
 
 
+## Moves the entity by its velocity; World calls this once per tick after
+## steering. Projectiles override it: ProjectileSystem moves them with
+## collision instead.
+func integrate() -> void:
+	x += vx
+	y += vy
+	z += vz
+
+
 ## Every field that defines this entity's state, for World.state_hash().
 ## Subclasses append their own fields.
 func hash_fields() -> PackedInt64Array:

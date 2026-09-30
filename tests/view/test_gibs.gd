@@ -86,6 +86,64 @@ func test_chunks_land_on_the_ground_under_them_and_stay() -> void:
 			assert_between(y, heights[k] - 0.05, heights[k] + 1.0, "quadrant %d" % k)
 
 
+func test_update_heights_refreshes_the_whole_ground_shape() -> void:
+	var terrain: Terrain = TestTerrains.flat(16, 16)
+	var gibs: Gibs = _gibs_over(terrain)
+	terrain.scar(8000, 8000, 4000, 600)
+	assert_eq(_ground_heights(gibs)[8 * 16 + 8], 0.0, "the shape is a copy: it doesn't know yet")
+	gibs.update_heights(terrain)
+	var data: PackedFloat32Array = _ground_heights(gibs)
+	assert_eq(data.size(), 16 * 16)
+	for k: int in data.size():
+		assert_almost_eq(data[k], terrain.heights[k] / 1000.0, 0.0001, "sample %d" % k)
+	assert_almost_eq(data[8 * 16 + 8], -0.6, 0.0001, "the crater's bottom")
+
+
+func test_update_heights_in_refreshes_only_the_region() -> void:
+	var terrain: Terrain = TestTerrains.flat(16, 16)
+	var gibs: Gibs = _gibs_over(terrain)
+	var cells: Rect2i = terrain.scar(8000, 8000, 3000, 600)
+	# Scar something else too, which the region update must not pick up.
+	terrain.scar(2000, 2000, 1500, 600)
+	gibs.update_heights_in(terrain, cells)
+	var data: PackedFloat32Array = _ground_heights(gibs)
+	assert_almost_eq(data[8 * 16 + 8], -0.6, 0.0001, "inside the region")
+	assert_eq(data[2 * 16 + 2], 0.0, "outside it: still the old ground")
+	for j: int in range(cells.position.y, cells.end.y):
+		for i: int in range(cells.position.x, cells.end.x):
+			assert_almost_eq(data[j * 16 + i], terrain.heights[j * 16 + i] / 1000.0, 0.0001)
+
+
+func test_update_heights_in_an_empty_region_changes_nothing() -> void:
+	var terrain: Terrain = TestTerrains.flat(16, 16)
+	var gibs: Gibs = _gibs_over(terrain)
+	terrain.scar(8000, 8000, 3000, 600)
+	gibs.update_heights_in(terrain, Rect2i())
+	assert_eq(_ground_heights(gibs)[8 * 16 + 8], 0.0)
+
+
+func test_chunks_land_in_a_crater_once_the_ground_is_updated() -> void:
+	var terrain: Terrain = TestTerrains.flat(16, 16)
+	var gibs: Gibs = _gibs_over(terrain)
+	var cells: Rect2i = terrain.scar(8000, 8000, 6000, Terrain.MAX_SCAR_DEPTH)
+	gibs.update_heights_in(terrain, cells)
+	gibs.spawn(Vector3(8.0, 1.5, 8.0), Vector3.ZERO, Color.RED)
+	var settled: bool = await wait_until(
+		func() -> bool: return gibs.live_chunk_count() == 0, Gibs.SETTLE_SECONDS + 3.0
+	)
+	assert_true(settled)
+	var lowest: float = INF
+	for chunk: RigidBody3D in _chunks(gibs):
+		lowest = minf(lowest, chunk.global_position.y)
+	# The bowl is a meter deep at its center; flat ground would hold them at 0.
+	assert_lt(lowest, -0.3, "some came to rest down in the crater")
+
+
+func _ground_heights(gibs: Gibs) -> PackedFloat32Array:
+	var collider: CollisionShape3D = gibs.get_node("Ground").get_child(0) as CollisionShape3D
+	return (collider.shape as HeightMapShape3D).map_data
+
+
 func _gibs_over(terrain: Terrain) -> Gibs:
 	var gibs: Gibs = Gibs.new()
 	add_child_autofree(gibs)

@@ -30,6 +30,11 @@ extends RefCounted
 ## - Enemies hidden in deep water can't be picked until they surface to
 ##   fight, and an enemy the unit can't walk to (another pathing component)
 ##   is only fought if in reach.
+## - Units with a ranged attack only fight in melee what comes adjacent
+##   (reach + ADJACENT_SLACK), whatever their order, and never chase: their
+##   fight is at range (RangedCombat). Taking up a melee fight abandons a
+##   draw in progress.
+## - A unit reeling from a blast's knockback does nothing but recover.
 
 enum Aspect {
 	FRONT,
@@ -122,12 +127,17 @@ static func is_hidden(terrain: Terrain, unit: Unit) -> bool:
 func _decide(world: World, unit: Unit, grid: UnitGrid) -> bool:
 	if unit.cooldown_left > 0:
 		unit.cooldown_left -= 1
+	if unit.is_reeling():
+		return false
 	if unit.order == Unit.Order.MOVE:
 		if unit.state != Unit.State.IDLE:
 			return false
 		# Arrived: hold here from now on.
 		UnitOrders.hold(unit)
 	if unit.type.melee_damage <= 0:
+		if unit.order == Unit.Order.ATTACK_MOVE and unit.state == Unit.State.IDLE:
+			# No melee to fight with, but the march still ends on arrival.
+			UnitOrders.hold(unit)
 		return false
 	var was_fighting: bool = unit.target_id != 0
 	if unit.windup_left > 0:
@@ -193,7 +203,7 @@ func _acquire(world: World, unit: Unit, grid: UnitGrid, current: Unit) -> Unit:
 
 # Edge distance within which the unit picks up new enemies.
 func _acquire_radius(unit: Unit) -> int:
-	if unit.order == Unit.Order.ATTACK_MOVE:
+	if unit.order == Unit.Order.ATTACK_MOVE and not unit.type.has_ranged():
 		return unit.type.acquire_radius
 	return unit.type.melee_reach + ADJACENT_SLACK
 
@@ -205,7 +215,7 @@ func _in_leash(world: World, unit: Unit, target: Unit) -> bool:
 	if is_hidden(world.terrain, target):
 		return false
 	var limit: int = unit.type.melee_reach + ADJACENT_SLACK
-	if unit.order == Unit.Order.ATTACK_MOVE:
+	if unit.order == Unit.Order.ATTACK_MOVE and not unit.type.has_ranged():
 		limit = unit.type.acquire_radius * ATTACK_MOVE_LEASH_PERMILLE / PERMILLE
 	if Targeting.edge_distance(unit, target) > limit or not _within_hold(unit, target):
 		return false
@@ -229,6 +239,7 @@ func _can_walk_to(world: World, unit: Unit, component: int, other: Unit) -> bool
 
 # Target in reach: stand and face it.
 func _engage(unit: Unit, target: Unit) -> void:
+	unit.clear_shot()
 	unit.target_id = target.id
 	if unit.state == Unit.State.MOVING:
 		unit.clear_order()
@@ -241,6 +252,7 @@ func _engage(unit: Unit, target: Unit) -> void:
 # Target out of reach: walk at it, re-pathing only when it has moved away
 # from where the chase was headed.
 func _chase(world: World, unit: Unit, target: Unit) -> void:
+	unit.clear_shot()
 	var new_target: bool = unit.target_id != target.id
 	unit.target_id = target.id
 	var drift: int = FixedMath.length(target.x - unit.goal_x, target.z - unit.goal_z)
@@ -250,9 +262,11 @@ func _chase(world: World, unit: Unit, target: Unit) -> void:
 		)
 
 
-# The fight is over (or the target got away): march on, or stand.
+# The fight is over (or the target got away): march on, or stand. A ground
+# attacker the fight interrupted gets to walk into range again.
 func _resume(world: World, unit: Unit) -> void:
 	unit.clear_engagement()
+	unit.ground_walked = false
 	if unit.order == Unit.Order.ATTACK_MOVE:
 		world.movement.order_move(
 			world, unit, unit.order_x, unit.order_z,
@@ -283,17 +297,7 @@ func _strike(world: World, attacker: Unit) -> void:
 	var damage: int = maxi(1, FixedMath.div_round(
 		attacker.type.melee_damage * (PERMILLE + variance) * damage_multiplier(aspect), PERMILLE * PERMILLE
 	))
-	var hp_before: int = target.hp
-	target.hp -= damage
-	if target.hp > 0:
-		world.combat_events.append(CombatEvent.new(CombatEvent.Kind.HIT, attacker.id, target.id, aspect, damage))
-		return
-	target.kill()
-	if target.faction != attacker.faction:
-		attacker.kills += 1
-	world.combat_events.append(CombatEvent.new(
-		CombatEvent.Kind.KILL, attacker.id, target.id, aspect, damage, damage - hp_before
-	))
+	Damage.apply(world, target, damage, attacker.x, attacker.z, attacker.id, aspect)
 
 
 static func _face(unit: Unit, target: Unit) -> void:

@@ -14,9 +14,16 @@ extends RefCounted
 ## Steering is a walk toward the next waypoint at the unit's effective speed,
 ## with any component heading into a nearby body removed (so units slide
 ## around each other instead of through), plus a separation push that
-## resolves overlap that happened anyway. The result is clipped so the unit
-## never steps onto a sample its mobility can't stand on. That clip is what
-## keeps living units out of depth 3+ water.
+## resolves overlap that happened anyway, plus any knockback from a blast. The
+## result is clipped so the unit never steps onto a sample its mobility can't
+## stand on. That clip is what keeps living units out of depth 3+ water, and
+## blasts can't throw anyone in either.
+##
+## Knockback keeps KNOCK_RETAIN_PERMILLE of itself each tick. While it is
+## fast (Unit.is_reeling) the unit doesn't walk.
+##
+## A unit's y is the ground under it plus its type's hover_height; a body
+## lies on the ground, so a floating unit that dies drops.
 
 const MAX_PATH_SOLVES_PER_TICK: int = 6
 ## Milli-units within which an intermediate waypoint counts as reached.
@@ -44,6 +51,11 @@ const IDLE_YIELD_PERMILLE: int = 250
 const MAX_PUSH_PER_TICK: int = 60
 ## Climbing never slows a unit below this, in permille.
 const MIN_UPHILL_PERMILLE: int = 250
+## Knockback kept from one tick to the next, in permille: a throw of 6 m/s
+## slides a unit about a metre.
+const KNOCK_RETAIN_PERMILLE: int = 800
+## Knockback slower than this (milli-units per tick) stops.
+const KNOCK_STOP: int = 3
 ## Speed (mm/s) x water (permille) x slope (permille) per milli-unit per tick.
 const STEP_DIVISOR: int = 1000 * 1000 * World.TICK_RATE
 
@@ -182,14 +194,17 @@ func _settle(unit: Unit, face_goal: bool) -> void:
 func _steer(world: World, unit: Unit, grid: UnitGrid) -> void:
 	if not unit.is_alive():
 		unit.vx = 0
-		unit.vy = 0
 		unit.vz = 0
+		# Bodies lie on the ground: a floating unit falls, and a body follows
+		# a crater dug under it.
+		unit.vy = world.terrain.height_at(unit.x, unit.z) - unit.y
 		return
 	# Every living body that could touch this one this tick, in a fixed order.
 	var near: Array[Unit] = grid.near(unit.x, unit.z, BUCKET_SIZE, unit)
 	var vx: int = 0
 	var vz: int = 0
-	if unit.state == Unit.State.MOVING and not unit.path_pending and unit.has_path():
+	var reeling: bool = unit.is_reeling()
+	if unit.state == Unit.State.MOVING and not unit.path_pending and unit.has_path() and not reeling:
 		var dx: int = unit.waypoint_x() - unit.x
 		var dz: int = unit.waypoint_z() - unit.z
 		var d: int = FixedMath.length(dx, dz)
@@ -205,8 +220,9 @@ func _steer(world: World, unit: Unit, grid: UnitGrid) -> void:
 			unit.facing_x = dir.x
 			unit.facing_z = dir.y
 	var push: Vector2i = _separation(unit, near)
-	vx += push.x
-	vz += push.y
+	vx += push.x + unit.knock_vx
+	vz += push.y + unit.knock_vz
+	_decay_knock(unit)
 	var terrain: Terrain = world.terrain
 	var mobility: Terrain.Mobility = unit.type.mobility
 	if (vx != 0 or vz != 0) and not terrain.is_passable(unit.x + vx, unit.z + vz, mobility):
@@ -220,7 +236,17 @@ func _steer(world: World, unit: Unit, grid: UnitGrid) -> void:
 			vz = 0
 	unit.vx = vx
 	unit.vz = vz
-	unit.vy = terrain.height_at(unit.x + vx, unit.z + vz) - unit.y
+	unit.vy = terrain.height_at(unit.x + vx, unit.z + vz) + unit.type.hover_height - unit.y
+
+
+static func _decay_knock(unit: Unit) -> void:
+	if unit.knock_vx == 0 and unit.knock_vz == 0:
+		return
+	unit.knock_vx = unit.knock_vx * KNOCK_RETAIN_PERMILLE / 1000
+	unit.knock_vz = unit.knock_vz * KNOCK_RETAIN_PERMILLE / 1000
+	if absi(unit.knock_vx) < KNOCK_STOP and absi(unit.knock_vz) < KNOCK_STOP:
+		unit.knock_vx = 0
+		unit.knock_vz = 0
 
 
 # Milli-units this unit walks this tick heading along dir: its speed with

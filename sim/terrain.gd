@@ -32,6 +32,11 @@ enum Mobility {
 
 const MAX_WATER_DEPTH: int = 4
 const LIVING_IMPASSABLE_DEPTH: int = 3
+## Milli-units: the deepest explosions can dig any sample below the map's
+## own height, however many land on it.
+const MAX_SCAR_DEPTH: int = 1000
+## Cells per side of a tile_max tile.
+const TILE: int = 8
 const MASK_DEPTH_STEP: int = 60
 const MASK_BLOCKED_THRESHOLD: int = 128
 const PERMILLE: int = 1000
@@ -52,10 +57,23 @@ var blocked: PackedByteArray
 ## Per-sample slope in permille: along each axis, the steeper of the edges to
 ## the two neighbors, combined into a magnitude. Taking the steeper edge
 ## (not a central difference) keeps a one-cell cliff from averaging down to
-## walkable. Used for passability, which is decided per sample.
+## walkable. Used for passability, which is decided per sample. Computed
+## from the map as loaded and never updated: craters change heights but not
+## where anyone can walk, so pathing never has to be rebuilt mid-mission.
 var sample_slopes: PackedInt32Array
+## Crater scars: sample index -> milli-units dug below the map's own height,
+## at most MAX_SCAR_DEPTH. Sparse; part of World.state_hash().
+var scars: Dictionary[int, int] = {}
+## Highest sample in each TILE x TILE-cell tile (row-major, tiles_x across),
+## for skipping ground tests on anything flying above it all. Built from the
+## map as loaded; craters only lower the ground, so it stays an upper bound.
+var tile_max: PackedInt32Array
+var tiles_x: int
+var tiles_z: int
 
 
+## precomputed_slopes and precomputed_tile_max skip those passes;
+## copy_for_world() passes its own.
 func _init(
 	samples_x: int,
 	samples_z: int,
@@ -63,7 +81,9 @@ func _init(
 	sample_heights: PackedInt32Array,
 	sample_water: PackedByteArray,
 	sample_blocked: PackedByteArray,
-	walkable_slope: int
+	walkable_slope: int,
+	precomputed_slopes: PackedInt32Array = PackedInt32Array(),
+	precomputed_tile_max: PackedInt32Array = PackedInt32Array()
 ) -> void:
 	assert(samples_x >= 2 and samples_z >= 2, "terrain needs at least 2x2 samples")
 	assert(spacing > 0, "cell_size must be positive")
@@ -77,7 +97,10 @@ func _init(
 	heights = sample_heights
 	water = sample_water
 	blocked = sample_blocked
-	sample_slopes = _compute_sample_slopes()
+	sample_slopes = precomputed_slopes if precomputed_slopes.size() == count else _compute_sample_slopes()
+	tiles_x = (size_x - 2) / TILE + 1
+	tiles_z = (size_z - 2) / TILE + 1
+	tile_max = precomputed_tile_max if precomputed_tile_max.size() == tiles_x * tiles_z else _compute_tile_max()
 
 
 ## Reads the heightmap and mask named by a MapInfo. Returns null (after
@@ -151,6 +174,80 @@ static func from_png(
 		sample_water[k] = depth_from_mask(mask[k * stride])
 		sample_blocked[k] = 1 if mask[k * stride + 2] >= MASK_BLOCKED_THRESHOLD else 0
 	return Terrain.new(w, h, spacing, sample_heights, sample_water, sample_blocked, walkable_slope)
+
+
+## A terrain for one World to own: the same map with its own heights, so two
+## worlds built from one loaded map (lockstep tests, replays) can't scar each
+## other. Packed arrays are shared by reference in Godot 4, so the heights
+## are duplicated (one native copy); water, blocked, and slopes are never
+## written after loading and stay shared.
+func copy_for_world() -> Terrain:
+	var copy: Terrain = Terrain.new(
+		size_x, size_z, cell_size, heights.duplicate(), water, blocked, max_walkable_slope,
+		sample_slopes, tile_max
+	)
+	copy.scars = scars.duplicate()
+	return copy
+
+
+## Digs a bowl-shaped crater centered on (x, z): depth at the center, easing
+## to nothing at radius. A sample's total scar never exceeds MAX_SCAR_DEPTH.
+## Returns the grid rectangle of samples that changed (empty if none), for
+## the view to re-mesh.
+func scar(x: int, z: int, radius: int, depth: int) -> Rect2i:
+	if radius <= 0 or depth <= 0:
+		return Rect2i()
+	var r2: int = radius * radius
+	var i0: int = maxi(0, FixedMath.div_floor(x - radius, cell_size) + 1)
+	var i1: int = mini(size_x - 1, FixedMath.div_floor(x + radius, cell_size))
+	var j0: int = maxi(0, FixedMath.div_floor(z - radius, cell_size) + 1)
+	var j1: int = mini(size_z - 1, FixedMath.div_floor(z + radius, cell_size))
+	var changed: Rect2i = Rect2i()
+	for j: int in range(j0, j1 + 1):
+		for i: int in range(i0, i1 + 1):
+			var dx: int = i * cell_size - x
+			var dz: int = j * cell_size - z
+			var d2: int = dx * dx + dz * dz
+			if d2 >= r2:
+				continue
+			var k: int = j * size_x + i
+			var before: int = scars.get(k, 0)
+			var after: int = mini(MAX_SCAR_DEPTH, before + depth * (r2 - d2) / r2)
+			if after == before:
+				continue
+			scars[k] = after
+			heights[k] -= after - before
+			var cell: Rect2i = Rect2i(i, j, 1, 1)
+			changed = cell if changed.size == Vector2i.ZERO else changed.merge(cell)
+	return changed
+
+
+## An upper bound on the ground height anywhere in the rectangle from (x0,
+## z0) to (x1, z1), milli-units, corners in any order. Off the map counts as
+## the nearest edge, the same as height_at.
+func max_height_in(x0: int, z0: int, x1: int, z1: int) -> int:
+	var span: int = TILE * cell_size
+	var ti0: int = clampi(FixedMath.div_floor(mini(x0, x1), span), 0, tiles_x - 1)
+	var ti1: int = clampi(FixedMath.div_floor(maxi(x0, x1), span), 0, tiles_x - 1)
+	var tj0: int = clampi(FixedMath.div_floor(mini(z0, z1), span), 0, tiles_z - 1)
+	var tj1: int = clampi(FixedMath.div_floor(maxi(z0, z1), span), 0, tiles_z - 1)
+	var top: int = tile_max[tj0 * tiles_x + ti0]
+	for tj: int in range(tj0, tj1 + 1):
+		for ti: int in range(ti0, ti1 + 1):
+			top = maxi(top, tile_max[tj * tiles_x + ti])
+	return top
+
+
+## The scars in sample order, for World.state_hash().
+func scar_hash_fields() -> PackedInt64Array:
+	var keys: Array[int] = []
+	keys.assign(scars.keys())
+	keys.sort()
+	var fields: PackedInt64Array = PackedInt64Array([keys.size()])
+	for k: int in keys:
+		fields.append(k)
+		fields.append(scars[k])
+	return fields
 
 
 ## Mask R value for a water depth level.
@@ -305,6 +402,27 @@ func _compute_sample_slopes() -> PackedInt32Array:
 			var gz: int = rise_z * PERMILLE / cell_size
 			slopes[k] = FixedMath.isqrt(gx * gx + gz * gz)
 	return slopes
+
+
+# Tile (ti, tj) covers cells ti*TILE .. ti*TILE + TILE - 1, so the samples
+# at both ends of those cells: every sample bilinear heights inside it use.
+func _compute_tile_max() -> PackedInt32Array:
+	var tiles: PackedInt32Array = PackedInt32Array()
+	tiles.resize(tiles_x * tiles_z)
+	tiles.fill(-2147483648)
+	for j: int in size_z:
+		var tj_lo: int = mini(maxi(j - 1, 0) / TILE, tiles_z - 1)
+		var tj_hi: int = mini(j / TILE, tiles_z - 1)
+		for i: int in size_x:
+			var h: int = heights[j * size_x + i]
+			var ti_lo: int = mini(maxi(i - 1, 0) / TILE, tiles_x - 1)
+			var ti_hi: int = mini(i / TILE, tiles_x - 1)
+			for tj: int in range(tj_lo, tj_hi + 1):
+				for ti: int in range(ti_lo, ti_hi + 1):
+					var k: int = tj * tiles_x + ti
+					if h > tiles[k]:
+						tiles[k] = h
+	return tiles
 
 
 static func _read_file(path: String) -> PackedByteArray:

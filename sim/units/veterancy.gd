@@ -1,8 +1,9 @@
 class_name Veterancy
 extends RefCounted
-## Kill-based improvement. Every kill raises a unit's melee accuracy, attack
-## rate, and (for types with a speed cap) move speed, each kill by less than
-## the one before, toward a per-type cap it never quite reaches:
+## Kill-based improvement. Every kill raises a unit's accuracy (melee hit
+## chance, and a narrower ranged aim cone), attack rate (melee and ranged),
+## and (for types with a speed cap) move speed, each kill by less than the
+## one before, toward a per-type cap it never quite reaches:
 ##
 ##     bonus(kills) = cap * kills / (kills + HALF_CAP_KILLS)
 ##
@@ -51,3 +52,17 @@ static func melee_cooldown(unit: Unit) -> int:
 ## Milli-units per second on flat, dry ground.
 static func move_speed(unit: Unit) -> int:
 	return FixedMath.div_round(unit.type.move_speed * (1000 + speed_bonus(unit)), 1000)
+
+
+## Half-width of the ranged aim cone (tan x 1000) before uphill: the type's
+## spread narrowed by the accuracy bonus, 300 permille of bonus making it
+## 30% narrower.
+static func ranged_spread(unit: Unit) -> int:
+	return unit.type.ranged_spread_permille * (1000 - accuracy_bonus(unit)) / 1000
+
+
+## Ticks from a shot leaving to the next draw starting; at least 1.
+static func ranged_cooldown(unit: Unit) -> int:
+	return maxi(1, FixedMath.div_round(
+		unit.type.ranged_cooldown_ticks * 1000, 1000 + attack_rate_bonus(unit)
+	))
