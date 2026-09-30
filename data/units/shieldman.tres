@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="UnitType" format=3]
+
+[ext_resource type="Script" path="res://sim/units/unit_type.gd" id="1_00rmy"]
+
+[resource]
+script = ExtResource("1_00rmy")
+id = &"shieldman"
+display_name = "Shieldman"
+max_hp = 100
+body_radius = 400
+body_height = 1800
+move_speed = 2600
+water_speed_permille = PackedInt32Array(1000, 700, 450, 0, 0)
+uphill_slowdown_permille = 500
+melee_damage = 12
+melee_reach = 1500
+melee_windup_ticks = 6
+melee_cooldown_ticks = 27
+placeholder_color = Color(0.2, 0.45, 0.95, 1)

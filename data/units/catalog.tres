@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="UnitCatalog" format=3]
+
+[ext_resource type="Script" path="res://sim/units/unit_catalog.gd" id="1_netvh"]
+[ext_resource type="Script" path="res://sim/units/unit_type.gd" id="2_k6cb4"]
+[ext_resource type="Resource" path="res://data/units/shieldman.tres" id="3_rw1vc"]
+[ext_resource type="Resource" path="res://data/units/husk.tres" id="4_nbt4h"]
+
+[resource]
+script = ExtResource("1_netvh")
+types = Array[ExtResource("2_k6cb4")]([ExtResource("3_rw1vc"), ExtResource("4_nbt4h")])
