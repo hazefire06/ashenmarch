@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="UnitType" format=3]
+
+[ext_resource type="Script" path="res://sim/units/unit_type.gd" id="1_rvr01"]
+
+[resource]
+script = ExtResource("1_rvr01")
+id = &"reaver"
+display_name = "Reaver"
+max_hp = 80
+body_radius = 400
+body_height = 1850
+move_speed = 3200
+water_speed_permille = PackedInt32Array(1000, 750, 500, 0, 0)
+uphill_slowdown_permille = 500
+melee_damage = 24
+melee_accuracy_permille = 750
+melee_reach = 1000
+melee_windup_ticks = 10
+melee_cooldown_ticks = 26
+acquire_radius = 10000
+veterancy_accuracy_permille = 100
+veterancy_attack_rate_permille = 250
+veterancy_speed_permille = 150
+placeholder_color = Color(0.95, 0.5, 0.15, 1)

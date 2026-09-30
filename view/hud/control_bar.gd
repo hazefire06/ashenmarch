@@ -2,9 +2,11 @@ class_name ControlBar
 extends PanelContainer
 ## Bottom bar mirroring the keyboard controls so the game is playable with the
 ## mouse alone: formation buttons (1..0), control groups (click to recall;
-## toggle Set, then click a slot to save), Stop, a selection summary, and the
-## side being controlled. All actions go through the SelectionController, so
-## keys and buttons can't drift apart.
+## toggle Set, then click a slot to save), Stop, Move and Attack-move (each
+## arms that order for the next left click on the ground, once), a selection
+## summary, how many units are alive on each side, and the side being
+## controlled. All actions go through the SelectionController, so keys and
+## buttons can't drift apart.
 
 const GROUP_LABELS: Array[String] = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"]
 
@@ -13,7 +15,13 @@ var _world: World
 var _formation_buttons: Array[Button] = []
 var _group_buttons: Array[Button] = []
 var _set_toggle: Button
+var _move_toggle: Button
+var _attack_move_toggle: Button
 var _status: Label
+## Living units per side, recounted when the tick changes.
+var _light_alive: int = 0
+var _dark_alive: int = 0
+var _counted_tick: int = -1
 
 
 func setup(controller: SelectionController, world: World) -> void:
@@ -22,6 +30,8 @@ func setup(controller: SelectionController, world: World) -> void:
 	_build()
 	_controller.formation_changed.connect(_on_formation_changed)
 	_on_formation_changed(_controller.formation)
+	_controller.armed_order_changed.connect(_on_armed_order_changed)
+	_on_armed_order_changed(_controller.armed_order)
 
 
 func _build() -> void:
@@ -62,6 +72,16 @@ func _build() -> void:
 	stop.tooltip_text = "Halt the selection (H)"
 	stop.pressed.connect(_controller.stop_selected)
 	groups.add_child(stop)
+	_move_toggle = _arm_button(
+		"Move", SelectionController.ArmedOrder.MOVE,
+		"Then left-click the ground to move there (or just right-click)"
+	)
+	groups.add_child(_move_toggle)
+	_attack_move_toggle = _arm_button(
+		"Attack-move", SelectionController.ArmedOrder.ATTACK_MOVE,
+		"Then left-click the ground to attack-move there (or Cmd/Ctrl + right-click)"
+	)
+	groups.add_child(_attack_move_toggle)
 	var side: Button = _button("Switch side")
 	side.tooltip_text = "Debug: command the other side (F9)"
 	side.pressed.connect(_controller.switch_side)
@@ -82,8 +102,11 @@ func _process(_delta: float) -> void:
 	for slot: int in _group_buttons.size():
 		var count: int = selection.group(slot).size()
 		_group_buttons[slot].text = GROUP_LABELS[slot] if count == 0 else "%s·%d" % [GROUP_LABELS[slot], count]
-	_status.text = "%s   |   Controlling: %s" % [
+	_recount_alive()
+	_status.text = "%s   |   Light %d · Dark %d alive   |   Controlling: %s" % [
 		_selection_summary(selection),
+		_light_alive,
+		_dark_alive,
 		"Light" if _controller.side == UnitType.Faction.LIGHT else "Dark (debug)",
 	]
 
@@ -98,6 +121,39 @@ func _on_group_pressed(slot: int) -> void:
 
 func _on_formation_changed(kind: Formations.Kind) -> void:
 	_formation_buttons[kind].set_pressed_no_signal(true)
+
+
+func _on_armed_order_changed(order: SelectionController.ArmedOrder) -> void:
+	_move_toggle.set_pressed_no_signal(order == SelectionController.ArmedOrder.MOVE)
+	_attack_move_toggle.set_pressed_no_signal(order == SelectionController.ArmedOrder.ATTACK_MOVE)
+
+
+# A toggle that arms order while pressed. Pressing it again disarms. The
+# controller's signal keeps both toggles in step with each other and with Esc
+# or right-click cancels.
+func _arm_button(text: String, order: SelectionController.ArmedOrder, tip: String) -> Button:
+	var b: Button = _button(text)
+	b.toggle_mode = true
+	b.tooltip_text = tip
+	b.toggled.connect(func(pressed: bool) -> void:
+		_controller.arm(order if pressed else SelectionController.ArmedOrder.NONE))
+	return b
+
+
+# Counts each side's living units, once per tick rather than every frame.
+func _recount_alive() -> void:
+	if _world.tick == _counted_tick:
+		return
+	_counted_tick = _world.tick
+	_light_alive = 0
+	_dark_alive = 0
+	for unit: Unit in _world.units:
+		if not unit.is_alive():
+			continue
+		if unit.faction == UnitType.Faction.LIGHT:
+			_light_alive += 1
+		else:
+			_dark_alive += 1
 
 
 # "12 selected: 12 Shieldman", or "Nothing selected".

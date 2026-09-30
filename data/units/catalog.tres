@@ -4,7 +4,9 @@
 [ext_resource type="Script" path="res://sim/units/unit_type.gd" id="2_k6cb4"]
 [ext_resource type="Resource" path="res://data/units/shieldman.tres" id="3_rw1vc"]
 [ext_resource type="Resource" path="res://data/units/husk.tres" id="4_nbt4h"]
+[ext_resource type="Resource" path="res://data/units/reaver.tres" id="5_rvr01"]
+[ext_resource type="Resource" path="res://data/units/ripper.tres" id="6_rpr01"]
 
 [resource]
 script = ExtResource("1_netvh")
-types = Array[ExtResource("2_k6cb4")]([ExtResource("3_rw1vc"), ExtResource("4_nbt4h")])
+types = Array[ExtResource("2_k6cb4")]([ExtResource("3_rw1vc"), ExtResource("4_nbt4h"), ExtResource("5_rvr01"), ExtResource("6_rpr01")])

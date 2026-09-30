@@ -1,4 +1,4 @@
-[gd_scene load_steps=9 format=3]
+[gd_scene load_steps=11 format=3]
 
 [ext_resource type="Script" path="res://view/main.gd" id="1_main"]
 [ext_resource type="Script" path="res://view/terrain/terrain_view.gd" id="2_terrain"]
@@ -7,6 +7,8 @@
 [ext_resource type="Script" path="res://view/units/units_view.gd" id="5_units"]
 [ext_resource type="Script" path="res://view/units/selection_controller.gd" id="6_selection"]
 [ext_resource type="Script" path="res://view/hud/control_bar.gd" id="7_bar"]
+[ext_resource type="Script" path="res://view/effects/gibs.gd" id="8_gibs"]
+[ext_resource type="Script" path="res://view/hud/unit_tooltip.gd" id="9_tooltip"]
 
 [sub_resource type="Environment" id="Environment_sky"]
 background_mode = 1
@@ -30,6 +32,9 @@ script = ExtResource("2_terrain")
 [node name="Units" type="Node3D" parent="."]
 script = ExtResource("5_units")
 
+[node name="Gibs" type="Node3D" parent="."]
+script = ExtResource("8_gibs")
+
 [node name="CameraRig" type="Node3D" parent="."]
 script = ExtResource("3_camera")
 
@@ -50,3 +55,6 @@ text = "tick 0"
 
 [node name="OverheadMap" type="Control" parent="Hud"]
 script = ExtResource("4_overhead")
+
+[node name="UnitTooltip" type="PanelContainer" parent="Hud"]
+script = ExtResource("9_tooltip")

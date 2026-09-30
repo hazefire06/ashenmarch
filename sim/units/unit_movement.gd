@@ -90,9 +90,9 @@ func update(world: World) -> void:
 	for unit: Unit in world.units:
 		if unit.state == Unit.State.MOVING:
 			_advance(unit)
-	var buckets: Dictionary[int, Array] = _bucket(world.units)
+	var grid: UnitGrid = UnitGrid.new(world.units, BUCKET_SIZE)
 	for unit: Unit in world.units:
-		_steer(world, unit, buckets)
+		_steer(world, unit, grid)
 
 
 ## The path queue, for World.state_hash().
@@ -179,13 +179,14 @@ func _settle(unit: Unit, face_goal: bool) -> void:
 		unit.facing_z = unit.goal_facing_z
 
 
-func _steer(world: World, unit: Unit, buckets: Dictionary[int, Array]) -> void:
+func _steer(world: World, unit: Unit, grid: UnitGrid) -> void:
 	if not unit.is_alive():
 		unit.vx = 0
 		unit.vy = 0
 		unit.vz = 0
 		return
-	var near: Array[Unit] = _neighbors(world.units, unit, buckets)
+	# Every living body that could touch this one this tick, in a fixed order.
+	var near: Array[Unit] = grid.near(unit.x, unit.z, BUCKET_SIZE, unit)
 	var vx: int = 0
 	var vz: int = 0
 	if unit.state == Unit.State.MOVING and not unit.path_pending and unit.has_path():
@@ -222,11 +223,12 @@ func _steer(world: World, unit: Unit, buckets: Dictionary[int, Array]) -> void:
 	unit.vy = terrain.height_at(unit.x + vx, unit.z + vz) - unit.y
 
 
-# Milli-units this unit walks this tick heading along dir: base speed (capped
-# by the order), times the water-depth multiplier, times the uphill factor.
-# The integer remainder carries to the next tick in move_carry.
+# Milli-units this unit walks this tick heading along dir: its speed with
+# veterancy (capped by the order), times the water-depth multiplier, times
+# the uphill factor. The integer remainder carries to the next tick in
+# move_carry.
 func _step_length(terrain: Terrain, unit: Unit, dir: Vector2i) -> int:
-	var speed: int = unit.type.move_speed
+	var speed: int = Veterancy.move_speed(unit)
 	if unit.speed_cap > 0:
 		speed = mini(speed, unit.speed_cap)
 	var water: int = unit.type.water_speed_permille[terrain.water_depth_at(unit.x, unit.z)]
@@ -239,24 +241,6 @@ func _step_length(terrain: Terrain, unit: Unit, dir: Vector2i) -> int:
 	var total: int = speed * water * slope + unit.move_carry
 	unit.move_carry = total % STEP_DIVISOR
 	return total / STEP_DIVISOR
-
-
-# Living units other than this one whose bodies could touch it this tick,
-# in a fixed order (bucket scan order, then id order within a bucket).
-func _neighbors(units: Array[Unit], unit: Unit, buckets: Dictionary[int, Array]) -> Array[Unit]:
-	var near: Array[Unit] = []
-	var bi: int = FixedMath.div_floor(unit.x, BUCKET_SIZE)
-	var bj: int = FixedMath.div_floor(unit.z, BUCKET_SIZE)
-	for dj: int in range(-1, 2):
-		for di: int in range(-1, 2):
-			var key: int = _bucket_key(bi + di, bj + dj)
-			if not buckets.has(key):
-				continue
-			for index: int in buckets[key]:
-				var other: Unit = units[index]
-				if other != unit and other.is_alive():
-					near.append(other)
-	return near
 
 
 # Removes the part of velocity v that heads into a body it would touch this
@@ -331,25 +315,6 @@ static func _tie_break_direction(unit_id: int, other_id: int) -> Vector2i:
 		FixedMath.cos_b(angle) * FixedMath.DIR_ONE / FixedMath.TRIG_ONE
 	)
 	return dir if unit_id < other_id else -dir
-
-
-func _bucket(units: Array[Unit]) -> Dictionary[int, Array]:
-	var buckets: Dictionary[int, Array] = {}
-	for index: int in units.size():
-		var unit: Unit = units[index]
-		if not unit.is_alive():
-			continue
-		var key: int = _bucket_key(
-			FixedMath.div_floor(unit.x, BUCKET_SIZE), FixedMath.div_floor(unit.z, BUCKET_SIZE)
-		)
-		if not buckets.has(key):
-			buckets[key] = []
-		buckets[key].append(index)
-	return buckets
-
-
-static func _bucket_key(bi: int, bj: int) -> int:
-	return bi * 65536 + bj
 
 
 static func _waypoint_distance(unit: Unit) -> int:
