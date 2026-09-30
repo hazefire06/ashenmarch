@@ -124,3 +124,34 @@ func _snapshot(world: World) -> Array[PackedInt64Array]:
 	for e: SimEntity in world.entities.values():
 		rows.append(PackedInt64Array([e.id, e.x, e.y, e.z, e.vx, e.vy, e.vz]))
 	return rows
+
+
+func test_state_hash_covers_unit_fields() -> void:
+	var world: World = World.new(WORLD_SEED, TestTerrains.flat(20, 20), TestTerrains.catalog())
+	var unit: Unit = world.spawn_unit(0, UnitType.Faction.LIGHT, 5000, 5000, 0, -1)
+	var before: String = world.state_hash()
+	unit.hp -= 1
+	assert_ne(world.state_hash(), before, "hp")
+	unit.hp += 1
+	assert_eq(world.state_hash(), before)
+	unit.facing_x = 600
+	assert_ne(world.state_hash(), before, "facing")
+
+
+func test_despawn_removes_units_from_the_unit_list() -> void:
+	var world: World = World.new(WORLD_SEED, TestTerrains.flat(20, 20), TestTerrains.catalog())
+	var a: Unit = world.spawn_unit(0, UnitType.Faction.LIGHT, 5000, 5000, 0, -1)
+	var b: Unit = world.spawn_unit(0, UnitType.Faction.LIGHT, 8000, 5000, 0, -1)
+	world.despawn_entity(a.id)
+	assert_eq(world.units, [b])
+	assert_null(world.get_unit(a.id))
+
+
+func test_units_spawn_on_ground_they_can_stand_on() -> void:
+	var rows: Array[String] = ["..333..", "..333..", "..333.."]
+	var world: World = World.new(WORLD_SEED, TestTerrains.from_ascii(rows), TestTerrains.catalog())
+	var living: Unit = world.spawn_unit(0, UnitType.Faction.LIGHT, 3000, 1000, 0, -1)
+	assert_true(world.terrain.is_passable(living.x, living.z, Terrain.Mobility.LIVING))
+	var undead: Unit = world.spawn_unit(1, UnitType.Faction.DARK, 3000, 1000, 0, -1)
+	assert_eq([undead.x, undead.z], [3000, 1000], "undead may stand in deep water")
+	assert_null(world.spawn_unit(99, UnitType.Faction.LIGHT, 0, 0, 0, -1), "bad type index")
