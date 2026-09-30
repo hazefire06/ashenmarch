@@ -343,3 +343,234 @@ Each scenario runs on five seeds, with the shipped data.
 
 - **Where blows land**: blows on Shieldmen come from the flank or rear about 67% of the time in the surround, and 0% in the line.
 - **Lockstep**: a 40-unit attack-move battle across the Riverside ford stays hash-identical between two worlds, at about 1.2 ms per tick per world (M4 Max, headless).
+
+## Projectiles (Phase 4)
+Arrows, grenades, and satchel charges are sim entities with their own physics. There is no Godot physics.
+
+**Files** (all in `sim/projectiles/` except where noted)
+
+| File | Role |
+|---|---|
+| `FlightState` | The integrator |
+| `Ballistics` | Aiming |
+| `ProjectileCollision` | Swept contact tests |
+| `ProjectileSystem` | Motion |
+| `Explosions` | Blasts |
+| `sim/combat/ranged_combat.gd` | Who shoots at what |
+| `sim/combat/damage.gd` | The one path hit points leave a unit |
+
+### Units and the integrator
+- **Micrometres.** Projectiles keep position in µm and velocity in µm/tick (`FlightState.SUB` = 1000 per milli-unit).
+  - Milli-units are too coarse for drag: a grenade loses well under 1 mm/tick per tick to the air.
+  - `SimEntity.x/y/z` mirror the flight in milli-units (floored). `vx/vy/vz` are the last tick's displacement, for the view.
+- **One integrator:** `FlightState.advance(drag)`, semi-implicit Euler.
+  1. `vy -= 10_900` (exactly 9.81 m/s² at 30 Hz).
+  2. Quadratic drag: `v -= v·|v|·drag_ppm_per_m / 10¹²`, with `|v|` from `isqrt`.
+  3. `p += v`.
+- The live flight, the aiming solver, and the clear-path check all call this one function. A solved aim is therefore exactly the flight that happens.
+- `SimEntity.integrate()` is virtual. `World._integrate()` calls it for every entity; `Projectile` overrides it with a no-op, because `ProjectileSystem` moves projectiles with collision.
+- **Overflow.** The largest products are drag (`v·|v|·ppm`, under 10¹⁸) and dot products with 65536-long normals (about 10¹¹).
+  - Body and blast tests run in milli-units, where the swept-cylinder quadratic stays under 10¹⁶.
+  - µm → mm always uses `div_floor`, because positions under craters and off the map edge can be negative.
+
+### Data
+- **`ProjectileType`** (`data/projectiles/*.tres`) follows the same conventions as `UnitType`.
+  - Behavior: `STICKS` (arrows) or `BOUNCES` (grenades, charges).
+  - Radius and drag.
+  - Contact: restitution, friction, roll acceleration, rolling resistance, rest speed, steepest resting slope.
+  - Impact damage and `marks_fire`.
+  - Fuse, fuse variance, and fizzle chance.
+  - Blast: radius, inner radius, damage, knockback radius and speed, crater radius and depth, `chain_detonates`.
+- The types live in **`UnitCatalog.projectile_types`**:
+  - a unit type is only usable with the projectiles it names;
+  - one resource validates the cross-references;
+  - `World.new`'s signature stays unchanged.
+- **`UnitType` ranged fields:**
+  - `ranged_projectile` (empty means no ranged attack)
+  - `ranged_aim` (DIRECT or LOB), launch speed (the maximum), lob grade, launch height
+  - min and max range, draw (windup) and cooldown ticks
+  - spread, uphill spread, uphill range
+  - ammo (−1 is unlimited)
+- **`UnitType` special fields:** `special_ability` (NONE, FIRE_ARROW or SATCHEL; Phase 6 appends), charges, and the special projectile.
+- **`UnitType` body:** `hover_height`.
+- Veterancy's accuracy cap also narrows the aim cone.
+- The unused Phase 2 placeholders `ranged_damage`, `ammo`, and `abilities` are gone.
+
+**Shipped projectiles:**
+
+| Type | Numbers |
+|---|---|
+| Arrow | 18 damage, drag 0.5 %/m |
+| Fire arrow | 30 damage, marks fire |
+| Grenade (bottle) | Fuse 3.5 s ±10 %, fizzle 5 %, restitution 0.35, friction 0.7, blast 3.5 m / 60 (full within 0.75 m), knockback 5 m at 6 m/s, crater 1.2 m × 15 cm |
+| Satchel | No fuse, blast 5 m / 150 (full within 1.5 m), knockback 7 m at 9 m/s, rests on up to 24°, crater 2 m × 40 cm |
+
+**Shipped units** are appended to the catalog, so earlier indices and hashes don't move:
+
+| Unit | Side | Stats |
+|---|---|---|
+| Longbow | Light, living | 70 hp, 2.8 m/s, dagger. Arrows direct at 34 m/s, lob fallback 31°, 2–50 m, 0.4 s draw, 1.5 s cooldown, spread 25 ‰. One fire arrow |
+| Sapper | Light, living | 80 hp, 2.0 m/s, weak melee. Grenades lobbed at 45° up to 17.5 m/s, 5–28 m, spread 60 ‰, uphill spread ×4. Four satchels |
+| Drifter | Dark, undead, floating | 50 hp, 2.2 m/s, hovers 0.6 m. Arrows direct at 28 m/s, 3–40 m, no melee, never improves |
+
+### Tick order
+`World.step()` runs, in order:
+1. commands
+2. `MeleeCombat`
+3. `RangedCombat`
+4. `UnitMovement` (now with knockback and hover)
+5. integrate units
+6. `ProjectileSystem`
+7. `Explosions`
+8. drop removed projectiles
+
+- Projectiles are tested against the units' positions after this tick's movement.
+- **Iteration rules:**
+  - Projectile loops run by index up to the size at the start of the pass. Charges dropped mid-pass first move next tick.
+  - Removal only sets `removed`; the array is compacted at the end of the tick.
+  - The explosion queue is FIFO within the tick.
+  - A projectile launched in the loose pass advances once in the same tick. The solver counts its first step the same way.
+
+### Flight and contact (`ProjectileSystem`)
+- **FLYING.** Each tick is one `advance()`. The swept segment is tested against:
+  - **the ground:** sub-steps of at most 250 mm, then 8 bisections to about 1 mm. The whole test is skipped when the segment flies above `Terrain.max_height_in`, the per-8×8-cell tile maximum.
+  - **living, visible bodies:** upright cylinders from `y` to `y + body_height`, where `y` already includes hover.
+
+  The earliest contact wins. A body wins a tie with the ground, and the lower id wins among bodies. A projectile passes through its launcher for 8 ticks after release. A unit killed earlier in the same pass no longer stops later arrows.
+- **Arrows (STICKS).**
+  - **In a body:** a frontal shield rolls to block it (the same `shield_block_permille` and 60° arc as melee), otherwise ±10 % damage through `Damage.apply`. A fire arrow also leaves a fire mark there.
+  - **In the ground:** the sim emits STICK and forgets the arrow. Stuck arrows are cosmetic and live in the view, which keeps sim state bounded (thousands of arrows per mission would otherwise sit in the hash).
+- **Bounces (BOUNCES).** The normal comes from `gradient_at` (permille truncation is under 0.1° of error).
+  - Formula: `v' = v_tangent·friction − v_normal·restitution`.
+  - A rebound under 1.5 m/s starts ROLLING.
+  - The rest of that tick's travel is dropped: at most 33 ms per bounce, and only one contact per tick.
+  - Bodies deflect grenades and charges the same way, with no harm, so a grenade thrown at a unit drops at its feet.
+- **ROLLING.**
+  - The velocity is kept tangent to the ground: any component into it is removed every tick.
+  - Gravity's pull along the slope (`G·ny·n − ŷG`, i.e. g·sin θ) is scaled by `roll_accel`.
+  - Rolling resistance is scaled by cos θ.
+  - It lifts off (FLYING) where the ground drops more than 2 cm below it, and rests when slower than `rest_speed` on ground no steeper than `static_slope`.
+  - The draft version integrated horizontal velocity only and gained energy on uphill transitions. The test "never gains energy" now pins this.
+- **RESTING:** skipped until a blast moves it.
+- **Fuses.** A burning fuse ends in a fizzle roll (`ProjectileSystem.fizzle_permille`, the hook Phase 5 extends for rain, snow and water) or a burst.
+  - A fizzled grenade is a **dud**: it lies inert for the mission, but a blast still sets it off.
+- **Off the map:** flying projectiles more than 50 m outside the map are removed. Rolling ones stop at the edge.
+
+### Aiming (`Ballistics`)
+- **Parametrization.** A launch is a bearing and a speed.
+  - The bearing is `(h, t)`: `h` is the horizontal unit vector, 65536 long (1000 would put 5 cm of sideways error on a 50 m shot), and `t` is the grade `tan(elevation)` in 1/65536.
+  - Velocity is `speed · (h, t) / √(1 + t²)`. No trig anywhere.
+- **`solve_direct`** (archers): full speed, find the grade on the low arc.
+- **`solve_lob`** (throwers): fixed grade, find the speed, up to the unit's maximum. Tim chose this over the literal "max speed, solve the angle": a full-speed 8 m throw leaves at about 9° and skips far past its target.
+- **How both solve.**
+  - Each is a bracketed Illinois root-find on how far above the target the real integrator's flight passes.
+  - It is seeded by the exact no-drag answer, computed in milli-units with g = 109/10 mm/tick². The scaled µm form overflowed inside Longbow range.
+  - Drag and the discrete step only ever shorten a flight, so no no-drag solution means none at all: a free early out.
+  - It stops within 5 mm, allows at most 16 flights, and rejects a best miss over 10 cm (only shots at the very edge of reach fall between the two).
+- **Fallback.** Each unit tries its own style first, then the other, taking the first launch whose path `is_clear()`:
+  - no ground more than 1 m short of the target;
+  - for auto-picked targets, no friendly body anywhere in the aim cone. Bodies are tested against a projectile that grows by spread × distance flown.
+
+  The cone rule came from a battle test in which 14 % of arrow hits landed on friends: the center line cleared their heads by centimetres. Friendly bodies are pre-filtered to the corridor around the line to the target, because with no wind a flight stays in one vertical plane.
+- **Lead.** A walker is led by the flight time of an unchecked solve at its current position.
+- **Aim points:** arrows aim at the chest (60 % of body height), explosives at the ground under the feet.
+- **Spread.** `perturb()` spreads the launch into a cone of half-width `spread` (tan × 1000), uniform over the cross-section (r = spread·√u), keeping the speed.
+  - It always makes exactly two RNG draws.
+  - `spread = base × (1000 − veterancy accuracy bonus)/1000 × (1000 + uphill grade × uphill_spread/1000)/1000`.
+- **Uphill range:** effective max range = `max_range × 1000/(1000 + uphill grade × uphill_range/1000)`. Slow throws need none, because physics already shortens them.
+- **Measured reach, flat vs 8 m up** (`test_ballistics`):
+  - arrow at 34 m/s: 82 → 75 m (−9 %)
+  - throw at 17.5 m/s: 29 → 20 m (−31 %)
+
+  So thrown explosives suffer far more uphill, from physics alone.
+
+### Ranged combat (`RangedCombat`)
+- **Two passes:** decide in ascending id, where each unit updates only itself; then loose in ascending id, where RNG draws and spawns happen.
+- **Doesn't shoot:**
+  - a unit melee owns (`target_id` set)
+  - one reeling from knockback
+  - one on a MOVE order
+  - one out of ammo
+- **Holding (NONE) or ATTACK_MOVE:**
+  - **Candidates:** visible enemies within `[min, effective max]`, ranked by `Targeting`.
+  - **Re-picks** happen on the unit's staggered tick, every 6 ticks, or at once when its target goes. A unit with nothing it can hit also waits for its tick instead of retrying every tick.
+  - **Kept target:** it stays while no other is worth switching to, without re-solving; the shot re-aims anyway.
+  - **New targets:** up to 3 are tried with the solver and the clear-path check.
+  - **Throwers** skip a target with a friend, themselves included, within blast radius + 1 m of the aim point.
+  - **Archers** skip one whose aim point (after lead) is within 1 m of a friend's body. An arrow a hand off target would hit the friend.
+  - An attack-mover halts to shoot (state SHOOTING) and marches on when nothing is left in range.
+- **GROUND_ATTACK** (Cmd/Ctrl + left click, `GroundAttackCommand`):
+  - fires at the spot until another order;
+  - walks toward it if it's out of reach, checking again every 10 ticks;
+  - gives up with a CANT_REACH event and holds if, once stopped, it still can't reach it, or if the spot is inside its minimum range;
+  - ignores friendly bodies: the player chose the spot.
+- **Melee interplay.**
+  - A ranged unit only takes melee targets within reach + 1 m, whatever its order, and never chases. Its fight is at range.
+  - Taking up melee abandons a draw. After the fight a ground attacker gets to walk into range again.
+  - A unit without melee now ends an attack-move on arrival. Before, the no-melee early return skipped the arrival hold, and a Drifter would have attack-moved forever.
+- **T** (`UseSpecialCommand`):
+  - a Sapper drops a resting satchel at its feet (4 per mission);
+  - a Longbow nocks its fire arrow, which its next shot fires (auto-picked or ground attack), spending the charge.
+- Kills by arrow count toward veterancy, like melee kills.
+
+### Explosions (`Explosions`) and damage (`Damage`)
+- **`Damage.apply`** is shared by melee, arrows, and blasts. It handles hp, the kill, credit (enemies only), the CombatEvent (now with `source_x/z`, where the blow came from), and death drops.
+  - It rolls no dice. Each source rolls its own dice first, in its own order, which is why the Phase 3 melee fingerprints are bit-identical after the refactor.
+  - A dying Sapper's unused satchels fall in a fixed ring around its feet. There's no RNG, so it can't disturb the draw order of the blows that killed it.
+- **One burst:**
+  1. **Units** within blast radius, measured as the 3D distance to the nearest point of the body cylinder, friend and foe, in ascending id. Damage is full within the inner radius and falls off linearly to 0; there's no roll.
+  2. **Knockback** within its radius: horizontal, outward, fastest at the center, into `Unit.knock_v`.
+     - `UnitMovement` adds it before the terrain clip, so no blast can throw anyone into water or onto ground they can't stand on.
+     - It keeps 80 % per tick. While faster than 1 m/s the unit is reeling: no walking, swinging, or shooting, and a swing or draw in progress is lost.
+  3. **Death drops** land now, so a Sapper killed by a blast cooks off its own satchels.
+  4. **Loose objects:** anything `chain_detonates` inside the blast that isn't already `detonating` is caught. It goes off 4 ticks later (a visible ripple), credited to this burst's instigator. Others inside the knockback radius are thrown out and up.
+  5. **A crater**, if the burst is within `crater_radius` of the ground.
+- **Craters.**
+  - `Terrain.scar()` digs a bowl, capping each sample's total at 1 m, stored as sparse scars and hashed.
+  - **Craters never change passability:** `sample_slopes` and the path layers stay as loaded, so pathing never rebuilds mid-mission. Units and objects do sit in the crater, because heights change.
+  - `crater_radius ≤ blast_radius` is validated, so anything a crater could unsettle has already been set off or thrown. That's why craters don't wake objects.
+- **Kill credit** goes to the instigator: the thrower of a grenade, or whoever set off the blast that caught a charge.
+- **Terrain ownership.** Each `World` owns its own heights (`Terrain.copy_for_world`).
+  - Packed arrays are shared by reference in Godot 4, so without the copy two lockstep worlds built from one loaded map scarred each other. A test pins that.
+  - Water, blocked samples, slopes and the tile maxima stay shared and read-only. Craters only lower ground, so the shared tile maxima stay valid upper bounds.
+
+### RNG draw order
+| When | Draws, in order |
+|---|---|
+| A shot leaves (loose pass, shooter id order) | spread bearing, spread radius; then fuse variance for a fused projectile |
+| An arrow strikes a body (projectile id order) | shield block (front arc, shielded target only), then damage variance |
+| A fuse burns down (projectile id order) | fizzle |
+| A melee blow (unchanged) | hit, block (front, shielded), variance |
+
+### Hash
+`state_hash()` adds:
+- the projectiles, as entities with every field;
+- the terrain scars;
+- `fire_marks`;
+- the explosion queue length (always 0 between ticks);
+- the new `Unit` fields.
+
+`projectile_events` is output only, like `combat_events`.
+
+### Decisions
+- **Ground attack is Cmd/Ctrl + left click** (Tim). Attack-move keeps Cmd/Ctrl + right click. On macOS it's Cmd, because Godot turns Ctrl + left click into a right click there (checked in `platform/macos/godot_content_view.mm`, `mouseDown`).
+- **Throwers lob; archers shoot flat** (Tim). Each falls back to the other style when its own path isn't clear.
+- **Shields block arrows from the front** (Tim), with the same chance and arc as melee.
+- **T is instant** (Tim): a Sapper drops a charge, a Longbow nocks. It works on a mixed selection.
+- **Auto-fire avoids friends; ordered fire doesn't.** Archers and throwers won't auto-pick a shot that endangers a friend (the aim cone, the blast, a target locked in melee with one). A ground attack fires where it's told. Friendly fire is real either way: spread, leading, bounces, and rolling grenades still hit friends.
+- **The terrain stays bilinear.** The mesh's triangles differ from it by a few cm on banks, which is invisible at RTS distance for 6 cm grenades. Switching `height_at`/`gradient_at` to triangles would also re-pin Phase 1–3 tests.
+
+### Battle and performance (M4 Max, headless)
+| Measurement | Result |
+|---|---|
+| 10 Shieldmen hold a line vs 15 Husks, alone (5 seeds) | Light wins with no losses, 26.3 s average |
+| The same with 5 Longbows behind | Light wins with no losses, 22.1 s; 1 of 172 arrow hits on a friend (14 % before the aim-cone rule) |
+| Riverside ford battle, 34 units, Longbows, Sappers and Drifters, satchels, 900 ticks | 2.0 ms/tick per world, hash-identical across worlds. Most of it is aiming: about 90 µs for a direct solve, 180 µs for a lob, 90–450 µs for the clear-path check |
+
+Peaks reach about 6 ms on ticks where several units re-pick and every candidate is blocked. Phase 10's performance pass has a count-based aim budget per tick (round-robin, deterministic) ready to cap that if 100 units need it.
+
+### Not yet
+- Phase 5: water putting out burning projectiles, weather fizzle, and fire from `fire_marks`.
+- Indoor maps: walls stopping projectiles. Blocked samples don't stop them; there is no wall height data yet.
+- Terrain shielding units from a blast.
+- Orders to attack a specific unit.
