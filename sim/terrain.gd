@@ -32,6 +32,9 @@ enum Mobility {
 
 const MAX_WATER_DEPTH: int = 4
 const LIVING_IMPASSABLE_DEPTH: int = 3
+## Milli-units: the deepest explosions can dig any sample below the map's
+## own height, however many land on it.
+const MAX_SCAR_DEPTH: int = 1000
 const MASK_DEPTH_STEP: int = 60
 const MASK_BLOCKED_THRESHOLD: int = 128
 const PERMILLE: int = 1000
@@ -52,10 +55,16 @@ var blocked: PackedByteArray
 ## Per-sample slope in permille: along each axis, the steeper of the edges to
 ## the two neighbors, combined into a magnitude. Taking the steeper edge
 ## (not a central difference) keeps a one-cell cliff from averaging down to
-## walkable. Used for passability, which is decided per sample.
+## walkable. Used for passability, which is decided per sample. Computed
+## from the map as loaded and never updated: craters change heights but not
+## where anyone can walk, so pathing never has to be rebuilt mid-mission.
 var sample_slopes: PackedInt32Array
+## Crater scars: sample index -> milli-units dug below the map's own height,
+## at most MAX_SCAR_DEPTH. Sparse; part of World.state_hash().
+var scars: Dictionary[int, int] = {}
 
 
+## precomputed_slopes skips the slope pass; copy_for_world() passes its own.
 func _init(
 	samples_x: int,
 	samples_z: int,
@@ -63,7 +72,8 @@ func _init(
 	sample_heights: PackedInt32Array,
 	sample_water: PackedByteArray,
 	sample_blocked: PackedByteArray,
-	walkable_slope: int
+	walkable_slope: int,
+	precomputed_slopes: PackedInt32Array = PackedInt32Array()
 ) -> void:
 	assert(samples_x >= 2 and samples_z >= 2, "terrain needs at least 2x2 samples")
 	assert(spacing > 0, "cell_size must be positive")
@@ -77,7 +87,7 @@ func _init(
 	heights = sample_heights
 	water = sample_water
 	blocked = sample_blocked
-	sample_slopes = _compute_sample_slopes()
+	sample_slopes = precomputed_slopes if precomputed_slopes.size() == count else _compute_sample_slopes()
 
 
 ## Reads the heightmap and mask named by a MapInfo. Returns null (after
@@ -151,6 +161,63 @@ static func from_png(
 		sample_water[k] = depth_from_mask(mask[k * stride])
 		sample_blocked[k] = 1 if mask[k * stride + 2] >= MASK_BLOCKED_THRESHOLD else 0
 	return Terrain.new(w, h, spacing, sample_heights, sample_water, sample_blocked, walkable_slope)
+
+
+## A terrain for one World to own: the same map with its own heights, so two
+## worlds built from one loaded map (lockstep tests, replays) can't scar each
+## other. Packed arrays are shared by reference in Godot 4, so the heights
+## are duplicated (one native copy); water, blocked, and slopes are never
+## written after loading and stay shared.
+func copy_for_world() -> Terrain:
+	var copy: Terrain = Terrain.new(
+		size_x, size_z, cell_size, heights.duplicate(), water, blocked, max_walkable_slope, sample_slopes
+	)
+	copy.scars = scars.duplicate()
+	return copy
+
+
+## Digs a bowl-shaped crater centered on (x, z): depth at the center, easing
+## to nothing at radius. A sample's total scar never exceeds MAX_SCAR_DEPTH.
+## Returns the grid rectangle of samples that changed (empty if none), for
+## the view to re-mesh.
+func scar(x: int, z: int, radius: int, depth: int) -> Rect2i:
+	if radius <= 0 or depth <= 0:
+		return Rect2i()
+	var r2: int = radius * radius
+	var i0: int = maxi(0, FixedMath.div_floor(x - radius, cell_size) + 1)
+	var i1: int = mini(size_x - 1, FixedMath.div_floor(x + radius, cell_size))
+	var j0: int = maxi(0, FixedMath.div_floor(z - radius, cell_size) + 1)
+	var j1: int = mini(size_z - 1, FixedMath.div_floor(z + radius, cell_size))
+	var changed: Rect2i = Rect2i()
+	for j: int in range(j0, j1 + 1):
+		for i: int in range(i0, i1 + 1):
+			var dx: int = i * cell_size - x
+			var dz: int = j * cell_size - z
+			var d2: int = dx * dx + dz * dz
+			if d2 >= r2:
+				continue
+			var k: int = j * size_x + i
+			var before: int = scars.get(k, 0)
+			var after: int = mini(MAX_SCAR_DEPTH, before + depth * (r2 - d2) / r2)
+			if after == before:
+				continue
+			scars[k] = after
+			heights[k] -= after - before
+			var cell: Rect2i = Rect2i(i, j, 1, 1)
+			changed = cell if changed.size == Vector2i.ZERO else changed.merge(cell)
+	return changed
+
+
+## The scars in sample order, for World.state_hash().
+func scar_hash_fields() -> PackedInt64Array:
+	var keys: Array[int] = []
+	keys.assign(scars.keys())
+	keys.sort()
+	var fields: PackedInt64Array = PackedInt64Array([keys.size()])
+	for k: int in keys:
+		fields.append(k)
+		fields.append(scars[k])
+	return fields
 
 
 ## Mask R value for a water depth level.

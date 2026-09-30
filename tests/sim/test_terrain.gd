@@ -245,10 +245,49 @@ func test_load_map_reports_missing_file() -> void:
 	assert_push_error("cannot read res://maps/does_not_exist/mask.png")
 
 
-func test_world_holds_terrain() -> void:
+func test_world_holds_its_own_copy_of_the_terrain() -> void:
 	var t: Terrain = _terrain(2, 2, [0, 0, 0, 0])
-	assert_same(World.new(1, t).terrain, t)
+	var world: World = World.new(1, t)
+	assert_not_same(world.terrain, t, "a copy, so craters stay in this world")
+	assert_eq(world.terrain.heights, t.heights)
 	assert_null(World.new(1).terrain)
+
+
+func test_scarring_one_worlds_terrain_leaves_the_map_and_other_worlds_alone() -> void:
+	var t: Terrain = _terrain(5, 5, [
+		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	])
+	var a: World = World.new(1, t)
+	var b: World = World.new(1, t)
+	var changed: Rect2i = a.terrain.scar(2000, 2000, 1500, 400)
+	assert_eq(changed, Rect2i(1, 1, 3, 3))
+	assert_eq(a.terrain.sample_height(2, 2), -400, "the center sinks the full depth")
+	assert_eq(t.sample_height(2, 2), 0, "the loaded map is untouched")
+	assert_eq(b.terrain.sample_height(2, 2), 0, "and so is the other world")
+
+
+func test_scars_ease_out_and_stop_at_the_cap() -> void:
+	var heights: Array[int] = []
+	heights.resize(81)
+	heights.fill(5000)
+	var t: Terrain = _terrain(9, 9, heights)
+	t.scar(4000, 4000, 2000, 400)
+	assert_eq(t.sample_height(4, 4), 4600)
+	assert_eq(t.sample_height(5, 4), 4700, "1 m out of 2: three quarters of the depth")
+	assert_eq(t.sample_height(6, 4), 5000, "the rim is untouched")
+	for _i: int in 10:
+		t.scar(4000, 4000, 2000, 400)
+	assert_eq(t.sample_height(4, 4), 5000 - Terrain.MAX_SCAR_DEPTH, "never deeper than the cap")
+	assert_eq(t.scars[4 * 9 + 4], Terrain.MAX_SCAR_DEPTH)
+
+
+func test_scars_do_not_change_passability() -> void:
+	var t: Terrain = TestTerrains.flat(9, 9)
+	var slopes: PackedInt32Array = t.sample_slopes.duplicate()
+	for _i: int in 5:
+		t.scar(4000, 4000, 2000, 400)
+	assert_eq(t.sample_slopes, slopes, "slopes stay as loaded")
+	assert_true(t.is_passable(4000, 4000, Terrain.Mobility.LIVING))
 
 
 ## Builds a terrain from plain arrays. Missing water/blocked default to 0.

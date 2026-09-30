@@ -1,0 +1,31 @@
+[gd_resource type="Resource" script_class="UnitType" format=3]
+
+[ext_resource type="Script" path="res://sim/units/unit_type.gd" id="1_dft01"]
+
+[resource]
+script = ExtResource("1_dft01")
+id = &"drifter"
+display_name = "Drifter"
+faction = 1
+nature = 1
+mobility = 2
+role = 1
+max_hp = 50
+body_radius = 400
+body_height = 1700
+hover_height = 600
+move_speed = 2200
+water_speed_permille = PackedInt32Array(1000, 1000, 1000, 1000, 1000)
+ranged_projectile = &"arrow"
+ranged_launch_speed = 28000
+ranged_lob_grade_permille = 700
+ranged_launch_height = 1300
+ranged_min_range = 3000
+ranged_max_range = 40000
+ranged_windup_ticks = 15
+ranged_cooldown_ticks = 60
+ranged_spread_permille = 45
+uphill_spread_permille = 800
+uphill_range_permille = 400
+ranged_ammo = -1
+placeholder_color = Color(0.55, 0.85, 0.9, 1)

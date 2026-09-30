@@ -44,7 +44,66 @@ static func dummy(type_id: StringName, overrides: Dictionary = {}) -> UnitType:
 	return melee(type_id, base)
 
 
-static func catalog(types: Array[UnitType]) -> UnitCatalog:
+## A valid living archer built on melee(): arrows at 34 m/s, 2-50 m, a
+## 10-tick draw and 30-tick cooldown, no spread (so a test is about physics,
+## not dice), unlimited ammo. overrides sets any property by name.
+static func ranged(type_id: StringName, overrides: Dictionary = {}) -> UnitType:
+	var base: Dictionary = {
+		"role": UnitType.Role.RANGED,
+		"ranged_projectile": &"arrow",
+		"ranged_launch_speed": 34_000,
+		"ranged_lob_grade_permille": 600,
+		"ranged_launch_height": 1500,
+		"ranged_min_range": 2000,
+		"ranged_max_range": 50_000,
+		"ranged_windup_ticks": 10,
+		"ranged_cooldown_ticks": 30,
+		"ranged_ammo": -1,
+	}
+	base.merge(overrides, true)
+	return melee(type_id, base)
+
+
+## A thrower built on ranged(): grenades lobbed at 45 degrees, up to 17.5
+## m/s, 5-28 m, no spread, four satchels.
+static func thrower(type_id: StringName, overrides: Dictionary = {}) -> UnitType:
+	var base: Dictionary = {
+		"ranged_projectile": &"grenade",
+		"ranged_aim": UnitType.AimStyle.LOB,
+		"ranged_launch_speed": 17_500,
+		"ranged_lob_grade_permille": 1000,
+		"ranged_launch_height": 1700,
+		"ranged_min_range": 5000,
+		"ranged_max_range": 28_000,
+		"special_ability": UnitType.Special.SATCHEL,
+		"special_charges": 4,
+		"special_projectile": &"satchel",
+	}
+	base.merge(overrides, true)
+	return ranged(type_id, base)
+
+
+## The shipped projectile types, in catalog order.
+static func shipped_projectiles() -> Array[ProjectileType]:
+	var c: UnitCatalog = load("res://data/units/catalog.tres") as UnitCatalog
+	return c.projectile_types.duplicate()
+
+
+## A private copy of a shipped projectile type, safe to tweak in a test.
+static func projectile(projectile_id: StringName, overrides: Dictionary = {}) -> ProjectileType:
+	var c: UnitCatalog = load("res://data/units/catalog.tres") as UnitCatalog
+	var p: ProjectileType = c.find_projectile(projectile_id).duplicate()
+	for key: String in overrides:
+		p.set(key, overrides[key])
+	var errors: PackedStringArray = p.validate()
+	assert(errors.is_empty(), "invalid test projectile: %s" % [errors])
+	return p
+
+
+## A catalog of these unit types and projectile types (the shipped ones
+## unless given).
+static func catalog(types: Array[UnitType], projectiles: Array[ProjectileType] = []) -> UnitCatalog:
 	var c: UnitCatalog = UnitCatalog.new()
 	c.types = types
+	c.projectile_types = projectiles if not projectiles.is_empty() else shipped_projectiles()
 	return c

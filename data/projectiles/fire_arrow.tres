@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="ProjectileType" format=3]
+
+[ext_resource type="Script" path="res://sim/projectiles/projectile_type.gd" id="1_far01"]
+
+[resource]
+script = ExtResource("1_far01")
+id = &"fire_arrow"
+display_name = "Fire arrow"
+radius = 20
+drag_ppm_per_m = 5000
+impact_damage = 30
+marks_fire = true
+placeholder_color = Color(1, 0.45, 0.1, 1)
+length = 800

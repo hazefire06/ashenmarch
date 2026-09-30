@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="ProjectileType" format=3]
+
+[ext_resource type="Script" path="res://sim/projectiles/projectile_type.gd" id="1_grn01"]
+
+[resource]
+script = ExtResource("1_grn01")
+id = &"grenade"
+display_name = "Bottle grenade"
+behavior = 1
+radius = 60
+drag_ppm_per_m = 2000
+restitution_permille = 350
+friction_permille = 700
+roll_accel_permille = 700
+rolling_resistance = 1000
+rest_speed = 300
+static_slope_permille = 60
+fuse_ticks = 105
+fuse_variance_permille = 100
+fizzle_permille = 50
+blast_radius = 3500
+blast_inner_radius = 750
+blast_damage = 60
+knock_radius = 5000
+knock_speed = 6000
+crater_radius = 1200
+crater_depth = 150
+chain_detonates = true
+placeholder_color = Color(0.3, 0.45, 0.25, 1)
+length = 120

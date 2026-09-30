@@ -120,10 +120,53 @@ func test_validate_rejects_half_defined_melee() -> void:
 
 func test_validate_rejects_half_defined_ranged() -> void:
 	var t: UnitType = _valid_type()
-	t.ranged_damage = 5
+	t.ranged_projectile = &"arrow"
+	# launch speed, lob grade, launch height, max range, cooldown, the
+	# min < max rule, and ammo are all missing.
+	assert_eq(t.validate().size(), 7, str(t.validate()))
+	t.ranged_launch_speed = 30_000
+	t.ranged_lob_grade_permille = 600
+	t.ranged_launch_height = 1500
 	t.ranged_min_range = 10_000
 	t.ranged_max_range = 5_000
+	t.ranged_cooldown_ticks = 30
+	t.ranged_ammo = -1
+	assert_eq(t.validate().size(), 1, "min range beyond max: %s" % [t.validate()])
+	t.ranged_max_range = 40_000
+	t.ranged_spread_permille = 1001
+	t.uphill_spread_permille = -1
 	assert_eq(t.validate().size(), 2, str(t.validate()))
+	t.ranged_spread_permille = 30
+	t.uphill_spread_permille = 800
+	assert_eq(t.validate(), PackedStringArray())
+
+
+func test_validate_rejects_half_defined_specials() -> void:
+	var t: UnitType = _valid_type()
+	t.special_ability = UnitType.Special.SATCHEL
+	assert_eq(t.validate().size(), 2, "charges and projectile: %s" % [t.validate()])
+	t.special_charges = 4
+	t.special_projectile = &"satchel"
+	assert_eq(t.validate(), PackedStringArray())
+	t.special_ability = UnitType.Special.FIRE_ARROW
+	assert_eq(t.validate().size(), 1, "a fire arrow needs a bow: %s" % [t.validate()])
+
+
+func test_catalog_rejects_unknown_and_unsuitable_projectiles() -> void:
+	var catalog: UnitCatalog = UnitCatalog.new()
+	var t: UnitType = _valid_type()
+	t.special_ability = UnitType.Special.SATCHEL
+	t.special_charges = 4
+	t.special_projectile = &"satchel"
+	catalog.types.append(t)
+	assert_eq(catalog.validate().size(), 1, "unknown projectile: %s" % [catalog.validate()])
+	var arrow: ProjectileType = ProjectileType.new()
+	arrow.id = &"satchel"
+	arrow.display_name = "Not a satchel"
+	arrow.radius = 20
+	arrow.impact_damage = 10
+	catalog.projectile_types.append(arrow)
+	assert_eq(catalog.validate().size(), 1, "a sticking charge: %s" % [catalog.validate()])
 
 
 func test_validate_rejects_out_of_range_permille_and_role_bits() -> void:

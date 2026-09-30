@@ -1,0 +1,39 @@
+[gd_resource type="Resource" script_class="UnitType" format=3]
+
+[ext_resource type="Script" path="res://sim/units/unit_type.gd" id="1_lbw01"]
+
+[resource]
+script = ExtResource("1_lbw01")
+id = &"longbow"
+display_name = "Longbow"
+role = 1
+max_hp = 70
+body_radius = 400
+body_height = 1800
+move_speed = 2800
+water_speed_permille = PackedInt32Array(1000, 700, 450, 0, 0)
+uphill_slowdown_permille = 500
+melee_damage = 6
+melee_accuracy_permille = 700
+melee_reach = 500
+melee_windup_ticks = 6
+melee_cooldown_ticks = 24
+acquire_radius = 8000
+ranged_projectile = &"arrow"
+ranged_launch_speed = 34000
+ranged_lob_grade_permille = 600
+ranged_launch_height = 1500
+ranged_min_range = 2000
+ranged_max_range = 50000
+ranged_windup_ticks = 12
+ranged_cooldown_ticks = 45
+ranged_spread_permille = 25
+uphill_spread_permille = 800
+uphill_range_permille = 400
+ranged_ammo = -1
+special_ability = 1
+special_charges = 1
+special_projectile = &"fire_arrow"
+veterancy_accuracy_permille = 300
+veterancy_attack_rate_permille = 250
+placeholder_color = Color(0.3, 0.75, 0.3, 1)

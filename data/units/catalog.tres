@@ -6,7 +6,16 @@
 [ext_resource type="Resource" path="res://data/units/husk.tres" id="4_nbt4h"]
 [ext_resource type="Resource" path="res://data/units/reaver.tres" id="5_rvr01"]
 [ext_resource type="Resource" path="res://data/units/ripper.tres" id="6_rpr01"]
+[ext_resource type="Resource" path="res://data/units/longbow.tres" id="7_lbw01"]
+[ext_resource type="Resource" path="res://data/units/sapper.tres" id="8_spr01"]
+[ext_resource type="Resource" path="res://data/units/drifter.tres" id="9_dft01"]
+[ext_resource type="Script" path="res://sim/projectiles/projectile_type.gd" id="10_ptp01"]
+[ext_resource type="Resource" path="res://data/projectiles/arrow.tres" id="11_arw01"]
+[ext_resource type="Resource" path="res://data/projectiles/fire_arrow.tres" id="12_far01"]
+[ext_resource type="Resource" path="res://data/projectiles/grenade.tres" id="13_grn01"]
+[ext_resource type="Resource" path="res://data/projectiles/satchel.tres" id="14_stc01"]
 
 [resource]
 script = ExtResource("1_netvh")
-types = Array[ExtResource("2_k6cb4")]([ExtResource("3_rw1vc"), ExtResource("4_nbt4h"), ExtResource("5_rvr01"), ExtResource("6_rpr01")])
+types = Array[ExtResource("2_k6cb4")]([ExtResource("3_rw1vc"), ExtResource("4_nbt4h"), ExtResource("5_rvr01"), ExtResource("6_rpr01"), ExtResource("7_lbw01"), ExtResource("8_spr01"), ExtResource("9_dft01")])
+projectile_types = Array[ExtResource("10_ptp01")]([ExtResource("11_arw01"), ExtResource("12_far01"), ExtResource("13_grn01"), ExtResource("14_stc01")])
