@@ -215,21 +215,35 @@ static func is_clear(
 
 
 ## Units in `units` whose bodies could stand in the path from the launch
-## point to (tx, tz): every living one on `side` other than `except`, inside
-## the box around the two points grown by `margin` milli-units.
+## point to (tx, tz): every living one on `side` other than `except` whose
+## body comes within `margin` milli-units of the straight line between them.
+## A solved flight stays in the vertical plane through that line (there is
+## no wind), so nothing farther to the side can be in the way.
 static func bodies_near_path(
 	units: Array[Unit], side: UnitType.Faction, except: Unit,
 	from: FlightState, tx: int, tz: int, margin: int
 ) -> Array[Unit]:
-	var x0: int = mini(FlightState.to_mm(from.px), FlightState.to_mm(tx)) - margin
-	var x1: int = maxi(FlightState.to_mm(from.px), FlightState.to_mm(tx)) + margin
-	var z0: int = mini(FlightState.to_mm(from.pz), FlightState.to_mm(tz)) - margin
-	var z1: int = maxi(FlightState.to_mm(from.pz), FlightState.to_mm(tz)) + margin
+	var ax: int = FlightState.to_mm(from.px)
+	var az: int = FlightState.to_mm(from.pz)
+	var dx: int = FlightState.to_mm(tx) - ax
+	var dz: int = FlightState.to_mm(tz) - az
+	var length: int = FixedMath.length(dx, dz)
 	var out: Array[Unit] = []
 	for unit: Unit in units:
 		if unit == except or not unit.is_alive() or unit.faction != side:
 			continue
-		if unit.x >= x0 and unit.x <= x1 and unit.z >= z0 and unit.z <= z1:
+		var ux: int = unit.x - ax
+		var uz: int = unit.z - az
+		var reach: int = unit.type.body_radius + margin
+		if length == 0:
+			if FixedMath.length(ux, uz) <= reach:
+				out.append(unit)
+			continue
+		# Along the line (before the start or past the end is out), and off to
+		# the side of it, both in milli-units.
+		var along: int = (ux * dx + uz * dz) / length
+		var aside: int = absi(ux * dz - uz * dx) / length
+		if along >= -reach and along <= length + reach and aside <= reach:
 			out.append(unit)
 	return out
 

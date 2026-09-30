@@ -47,9 +47,10 @@ const GROUND_RECHECK_TICKS: int = 10
 const MAX_AIM_TRIES: int = 3
 ## Throwers keep friends at least this far (milli-units) beyond the blast.
 const FRIENDLY_BLAST_MARGIN: int = 1000
-## Friendly bodies this far (milli-units) from the line to the target count
-## as possibly in the way.
-const PATH_MARGIN: int = 3000
+## Friendly bodies this far (milli-units) beyond their own radius from the
+## line to the target count as possibly in the way: the projectile's radius
+## and rounding, with room to spare.
+const PATH_MARGIN: int = 200
 ## Arrows aim this far up the target's body, permille.
 const CHEST_PERMILLE: int = 600
 ## Ticks a launched projectile passes through its launcher.
@@ -124,10 +125,14 @@ func _hold_or_march(world: World, unit: Unit) -> bool:
 		# A holding unit only moves to step aside; it shoots when it stops.
 		return false
 	var target: Unit = world.get_unit(unit.shot_target_id) if unit.shot_target_id != 0 else null
-	if target != null and not _may_target(world, unit, target):
+	var lost: bool = target != null and not _may_target(world, unit, target)
+	if lost:
 		target = null
-	var drawing: bool = unit.aim_left > 0
-	if not drawing and (target == null or (world.tick + unit.id) % RETARGET_TICKS == 0):
+	# Look again on this unit's own re-pick tick, or at once when the target
+	# just went (died, out of range). A unit with nothing it can hit waits for
+	# its re-pick tick rather than trying every tick.
+	var due: bool = lost or (world.tick + unit.id) % RETARGET_TICKS == 0
+	if unit.aim_left == 0 and due:
 		target = _pick(world, unit, target)
 	if target == null:
 		_stand_down(world, unit)
@@ -216,8 +221,10 @@ func _cant_reach(world: World, unit: Unit) -> void:
 	world.movement.order_stop(unit)
 
 
-# The best target the unit can actually hit, trying the current one and the
-# nearest few candidates; null if none.
+# The best target the unit can actually hit: the current one while no other
+# is worth switching to (the shot itself re-aims, so it isn't re-checked
+# here), else the first of the nearest few candidates a clear launch
+# reaches; null if none.
 func _pick(world: World, unit: Unit, current: Unit) -> Unit:
 	var candidates: Array[Unit] = []
 	for other: Unit in world.units:
@@ -226,7 +233,7 @@ func _pick(world: World, unit: Unit, current: Unit) -> Unit:
 	candidates.sort_custom(func(a: Unit, b: Unit) -> bool: return Targeting.ranks_before(unit, a, b))
 	var best: Unit = candidates[0] if not candidates.is_empty() else null
 	if current != null and (best == null or not Targeting.worth_switching(unit, current, best)):
-		candidates.push_front(current)
+		return current
 	for i: int in mini(MAX_AIM_TRIES, candidates.size()):
 		if _aim_at_unit(world, unit, candidates[i], candidates[i].x, candidates[i].z).ok:
 			return candidates[i]
@@ -299,6 +306,23 @@ func _aim(
 	return AimSolution.failed()
 
 
+# Ticks a shot from unit at target's chest (or feet, for a throw) takes to
+# get there, from the unit's own aim style without the clear-path check;
+# 0 if it can't reach.
+func _flight_ticks(world: World, unit: Unit, target: Unit) -> int:
+	var t: UnitType = unit.type
+	var p: ProjectileType = world.catalog.projectile_types[next_projectile(world, unit)]
+	var y: int = world.terrain.height_at(target.x, target.z)
+	if p.behavior == ProjectileType.Behavior.STICKS:
+		y += target.type.hover_height + target.type.body_height * CHEST_PERMILLE / PERMILLE
+	var s: AimSolution = Ballistics.solve(
+		t.ranged_aim, launch_point(unit), target.x * FlightState.SUB, y * FlightState.SUB,
+		target.z * FlightState.SUB, FlightState.speed_from_mm_per_s(t.ranged_launch_speed),
+		t.ranged_lob_grade_permille, p.drag_ppm_per_m
+	)
+	return s.ticks if s.ok else 0
+
+
 # True if a friend of unit (unit included) would be caught by p bursting at
 # (x, y, z).
 func _friend_in_blast(world: World, unit: Unit, p: ProjectileType, x: int, y: int, z: int) -> bool:
@@ -326,16 +350,13 @@ func _loose(world: World, unit: Unit) -> void:
 			return
 		aim_x = target.x
 		aim_z = target.z
+		if target.vx != 0 or target.vz != 0:
+			# Lead a walker by the flight time: aim where it will be. The
+			# flight time comes from an unchecked solve at where it is now.
+			var ticks: int = _flight_ticks(world, unit, target)
+			aim_x += target.vx * ticks
+			aim_z += target.vz * ticks
 		solution = _aim_at_unit(world, unit, target, aim_x, aim_z)
-		if solution.ok and (target.vx != 0 or target.vz != 0):
-			# Lead a walker by the flight time: aim where it will be.
-			var lead_x: int = target.x + target.vx * solution.ticks
-			var lead_z: int = target.z + target.vz * solution.ticks
-			var led: AimSolution = _aim_at_unit(world, unit, target, lead_x, lead_z)
-			if led.ok:
-				solution = led
-				aim_x = lead_x
-				aim_z = lead_z
 	if not solution.ok:
 		# Lost the shot (the target moved out of reach, a friend stepped in
 		# the way): pick again next tick.

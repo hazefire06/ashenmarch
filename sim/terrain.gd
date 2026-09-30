@@ -35,6 +35,8 @@ const LIVING_IMPASSABLE_DEPTH: int = 3
 ## Milli-units: the deepest explosions can dig any sample below the map's
 ## own height, however many land on it.
 const MAX_SCAR_DEPTH: int = 1000
+## Cells per side of a tile_max tile.
+const TILE: int = 8
 const MASK_DEPTH_STEP: int = 60
 const MASK_BLOCKED_THRESHOLD: int = 128
 const PERMILLE: int = 1000
@@ -62,9 +64,16 @@ var sample_slopes: PackedInt32Array
 ## Crater scars: sample index -> milli-units dug below the map's own height,
 ## at most MAX_SCAR_DEPTH. Sparse; part of World.state_hash().
 var scars: Dictionary[int, int] = {}
+## Highest sample in each TILE x TILE-cell tile (row-major, tiles_x across),
+## for skipping ground tests on anything flying above it all. Built from the
+## map as loaded; craters only lower the ground, so it stays an upper bound.
+var tile_max: PackedInt32Array
+var tiles_x: int
+var tiles_z: int
 
 
-## precomputed_slopes skips the slope pass; copy_for_world() passes its own.
+## precomputed_slopes and precomputed_tile_max skip those passes;
+## copy_for_world() passes its own.
 func _init(
 	samples_x: int,
 	samples_z: int,
@@ -73,7 +82,8 @@ func _init(
 	sample_water: PackedByteArray,
 	sample_blocked: PackedByteArray,
 	walkable_slope: int,
-	precomputed_slopes: PackedInt32Array = PackedInt32Array()
+	precomputed_slopes: PackedInt32Array = PackedInt32Array(),
+	precomputed_tile_max: PackedInt32Array = PackedInt32Array()
 ) -> void:
 	assert(samples_x >= 2 and samples_z >= 2, "terrain needs at least 2x2 samples")
 	assert(spacing > 0, "cell_size must be positive")
@@ -88,6 +98,9 @@ func _init(
 	water = sample_water
 	blocked = sample_blocked
 	sample_slopes = precomputed_slopes if precomputed_slopes.size() == count else _compute_sample_slopes()
+	tiles_x = (size_x - 2) / TILE + 1
+	tiles_z = (size_z - 2) / TILE + 1
+	tile_max = precomputed_tile_max if precomputed_tile_max.size() == tiles_x * tiles_z else _compute_tile_max()
 
 
 ## Reads the heightmap and mask named by a MapInfo. Returns null (after
@@ -170,7 +183,8 @@ static func from_png(
 ## written after loading and stay shared.
 func copy_for_world() -> Terrain:
 	var copy: Terrain = Terrain.new(
-		size_x, size_z, cell_size, heights.duplicate(), water, blocked, max_walkable_slope, sample_slopes
+		size_x, size_z, cell_size, heights.duplicate(), water, blocked, max_walkable_slope,
+		sample_slopes, tile_max
 	)
 	copy.scars = scars.duplicate()
 	return copy
@@ -206,6 +220,22 @@ func scar(x: int, z: int, radius: int, depth: int) -> Rect2i:
 			var cell: Rect2i = Rect2i(i, j, 1, 1)
 			changed = cell if changed.size == Vector2i.ZERO else changed.merge(cell)
 	return changed
+
+
+## An upper bound on the ground height anywhere in the rectangle from (x0,
+## z0) to (x1, z1), milli-units, corners in any order. Off the map counts as
+## the nearest edge, the same as height_at.
+func max_height_in(x0: int, z0: int, x1: int, z1: int) -> int:
+	var span: int = TILE * cell_size
+	var ti0: int = clampi(FixedMath.div_floor(mini(x0, x1), span), 0, tiles_x - 1)
+	var ti1: int = clampi(FixedMath.div_floor(maxi(x0, x1), span), 0, tiles_x - 1)
+	var tj0: int = clampi(FixedMath.div_floor(mini(z0, z1), span), 0, tiles_z - 1)
+	var tj1: int = clampi(FixedMath.div_floor(maxi(z0, z1), span), 0, tiles_z - 1)
+	var top: int = tile_max[tj0 * tiles_x + ti0]
+	for tj: int in range(tj0, tj1 + 1):
+		for ti: int in range(ti0, ti1 + 1):
+			top = maxi(top, tile_max[tj * tiles_x + ti])
+	return top
 
 
 ## The scars in sample order, for World.state_hash().
@@ -372,6 +402,27 @@ func _compute_sample_slopes() -> PackedInt32Array:
 			var gz: int = rise_z * PERMILLE / cell_size
 			slopes[k] = FixedMath.isqrt(gx * gx + gz * gz)
 	return slopes
+
+
+# Tile (ti, tj) covers cells ti*TILE .. ti*TILE + TILE - 1, so the samples
+# at both ends of those cells: every sample bilinear heights inside it use.
+func _compute_tile_max() -> PackedInt32Array:
+	var tiles: PackedInt32Array = PackedInt32Array()
+	tiles.resize(tiles_x * tiles_z)
+	tiles.fill(-2147483648)
+	for j: int in size_z:
+		var tj_lo: int = mini(maxi(j - 1, 0) / TILE, tiles_z - 1)
+		var tj_hi: int = mini(j / TILE, tiles_z - 1)
+		for i: int in size_x:
+			var h: int = heights[j * size_x + i]
+			var ti_lo: int = mini(maxi(i - 1, 0) / TILE, tiles_x - 1)
+			var ti_hi: int = mini(i / TILE, tiles_x - 1)
+			for tj: int in range(tj_lo, tj_hi + 1):
+				for ti: int in range(ti_lo, ti_hi + 1):
+					var k: int = tj * tiles_x + ti
+					if h > tiles[k]:
+						tiles[k] = h
+	return tiles
 
 
 static func _read_file(path: String) -> PackedByteArray:

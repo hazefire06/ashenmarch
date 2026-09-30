@@ -307,3 +307,21 @@ func _terrain(
 	return Terrain.new(
 		samples_x, samples_z, CS, PackedInt32Array(sample_heights), water, blocked, walkable_slope
 	)
+
+
+func test_max_height_in_bounds_every_height_in_the_rectangle() -> void:
+	var t: Terrain = TestTerrains.riverside()
+	var rng: RandomNumberGenerator = RandomNumberGenerator.new()
+	rng.seed = 5
+	for _k: int in 200:
+		var x0: int = rng.randi_range(-5000, t.extent_x() + 5000)
+		var z0: int = rng.randi_range(-5000, t.extent_z() + 5000)
+		var x1: int = x0 + rng.randi_range(0, 3000)
+		var z1: int = z0 + rng.randi_range(0, 3000)
+		var bound: int = t.max_height_in(x0, z0, x1, z1)
+		for x: int in range(x0, x1 + 1, 250):
+			for z: int in range(z0, z1 + 1, 250):
+				assert_lte(t.height_at(x, z), bound)
+	# It is tight enough to be useful: flat ground reads as flat.
+	var flat: Terrain = TestTerrains.flat(40, 40)
+	assert_eq(flat.max_height_in(5000, 5000, 9000, 9000), 0)

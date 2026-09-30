@@ -26,6 +26,12 @@ const NO_CONTACT: int = -1
 static func ground_contact(
 	terrain: Terrain, ax: int, ay: int, az: int, bx: int, by: int, bz: int, radius_mm: int
 ) -> int:
+	# Anything flying above the highest ground around it can't touch it.
+	var lowest: int = FlightState.to_mm(mini(ay, by)) - radius_mm
+	if lowest > terrain.max_height_in(
+		FlightState.to_mm(ax), FlightState.to_mm(az), FlightState.to_mm(bx), FlightState.to_mm(bz)
+	):
+		return NO_CONTACT
 	if _below_ground(terrain, ax, ay, az, radius_mm):
 		return 0
 	var length_mm: int = FixedMath.isqrt(
