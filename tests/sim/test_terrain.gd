@@ -196,8 +196,19 @@ func test_from_png_rejects_garbage() -> void:
 	assert_push_error("heightmap: not a PNG")
 
 
+func test_load_map_rejects_unset_scale() -> void:
+	var info: MapInfo = MapInfo.new()
+	info.heightmap_path = "res://maps/riverside/height.png"
+	info.mask_path = "res://maps/riverside/mask.png"
+	assert_null(Terrain.load_map(info))
+	assert_push_error("needs positive cell_size")
+
+
 func test_load_map_reports_missing_file() -> void:
 	var info: MapInfo = MapInfo.new()
+	info.cell_size = CS
+	info.max_height = 1000
+	info.max_walkable_slope = 1000
 	info.heightmap_path = "res://maps/does_not_exist/height.png"
 	info.mask_path = "res://maps/does_not_exist/mask.png"
 	assert_null(Terrain.load_map(info))

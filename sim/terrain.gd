@@ -80,6 +80,12 @@ func _init(
 ## Reads the heightmap and mask named by a MapInfo. Returns null (after
 ## push_error) if either file is missing or invalid.
 static func load_map(info: MapInfo) -> Terrain:
+	if info.cell_size <= 0 or info.max_height <= 0 or info.max_walkable_slope <= 0:
+		push_error(
+			"Terrain: map %s needs positive cell_size, max_height, and max_walkable_slope"
+			% info.resource_path
+		)
+		return null
 	var height_bytes: PackedByteArray = _read_file(info.heightmap_path)
 	var mask_bytes: PackedByteArray = _read_file(info.mask_path)
 	if height_bytes.is_empty() or mask_bytes.is_empty():
