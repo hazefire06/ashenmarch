@@ -262,6 +262,13 @@ func is_sample_passable(i: int, j: int, mobility: Mobility) -> bool:
 	return mobility != Mobility.LIVING or water[k] < LIVING_IMPASSABLE_DEPTH
 
 
+## Grid coordinates (i, j) of the sample nearest (x, z), clamped to the map.
+## Every nearest-sample query (water, passability, pathing) uses this.
+func nearest_sample(x: int, z: int) -> Vector2i:
+	var k: int = _nearest_index(x, z)
+	return Vector2i(k % size_x, k / size_x)
+
+
 func sample_height(i: int, j: int) -> int:
 	return heights[j * size_x + i]
 
