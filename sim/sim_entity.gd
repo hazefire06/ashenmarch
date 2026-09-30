@@ -17,3 +17,9 @@ func _init(entity_id: int, pos_x: int, pos_y: int, pos_z: int) -> void:
 	x = pos_x
 	y = pos_y
 	z = pos_z
+
+
+## Every field that defines this entity's state, for World.state_hash().
+## Subclasses append their own fields.
+func hash_fields() -> PackedInt64Array:
+	return PackedInt64Array([id, x, y, z, vx, vy, vz])

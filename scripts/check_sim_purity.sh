@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # Fails if sim/ breaks the determinism or sim/view separation rules in
 # CLAUDE.md: no Nodes, no frame callbacks, no wall clock, no unseeded
-# randomness, no Godot physics. Comment lines are ignored.
+# randomness, no Godot physics, no transcendental float math (libm differs in
+# the last bit between platforms; use FixedMath), and no float vectors (use
+# ints or Vector2i). Comment lines are ignored.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -12,6 +14,8 @@ patterns=(
 	'Time\.|OS\.get_ticks|OS\.get_unix_time'
 	'(^|[^.[:alnum:]_])(randf|randi|randf_range|randi_range|randfn|randomize|seed)\('
 	'PhysicsServer[23]D|RigidBody[23]D|CharacterBody[23]D|Area[23]D'
+	'(^|[^.[:alnum:]_])(sin|cos|tan|asin|acos|atan|atan2|sinh|cosh|tanh|exp|log|pow)\('
+	'(^|[^[:alnum:]_])Vector[234]([^i[:alnum:]]|$)'
 )
 
 status=0

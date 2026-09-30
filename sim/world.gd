@@ -6,6 +6,9 @@ extends RefCounted
 ## no Nodes and never reads the wall clock, so the same seed plus the same
 ## command stream always produces the same state. The view advances it by
 ## calling step() once per physics frame.
+##
+## Units need a terrain and a unit catalog; a world without them still runs
+## plain entities (the Phase 0 determinism tests).
 
 const TICK_RATE: int = 30
 ## Fixed-point scale: positions are integer milli-units, velocities are
@@ -23,15 +26,25 @@ var entities: Dictionary[int, SimEntity] = {}
 ## The map's ground. Null for terrain-less tests. Static for now, so it is not
 ## part of state_hash(); add it there once explosions scar the terrain.
 var terrain: Terrain
+## Unit types by id and index. Null in worlds without units.
+var catalog: UnitCatalog
+## Null without a terrain.
+var pathing: Pathing
+## Every unit, alive or dead, in ascending id order (a subset of entities).
+var units: Array[Unit] = []
+var movement: UnitMovement = UnitMovement.new()
 
 var _next_entity_id: int = 1
 var _pending: Array[SimCommand] = []
 
 
-func _init(world_seed: int, world_terrain: Terrain = null) -> void:
+func _init(world_seed: int, world_terrain: Terrain = null, unit_catalog: UnitCatalog = null) -> void:
 	rng_seed = world_seed
 	rng.seed = world_seed
 	terrain = world_terrain
+	catalog = unit_catalog
+	if terrain != null:
+		pathing = Pathing.new(terrain)
 
 
 ## Queues a command to apply at the start of command.tick. Returns false if
@@ -44,22 +57,52 @@ func enqueue(command: SimCommand) -> bool:
 	return true
 
 
-## Simulates one tick: apply this tick's commands in enqueue order, then
-## integrate every entity.
+## Simulates one tick: apply this tick's commands in enqueue order, steer
+## the units (which sets their velocities), then integrate every entity.
 func step() -> void:
 	_apply_commands()
+	if terrain != null:
+		movement.update(self)
 	_integrate()
 	tick += 1
 
 
 func spawn_entity(x: int, y: int, z: int) -> SimEntity:
 	var entity: SimEntity = SimEntity.new(_next_entity_id, x, y, z)
-	entities[entity.id] = entity
-	_next_entity_id += 1
+	_register(entity)
 	return entity
 
 
+## Creates a unit standing on the ground at (x, z), moved to the nearest
+## sample it can stand on if (x, z) isn't one. Facing is a direction; zero
+## means north. Returns null without a terrain or for a bad catalog index.
+func spawn_unit(
+	type_index: int, side: UnitType.Faction, x: int, z: int, face_x: int, face_z: int
+) -> Unit:
+	if terrain == null or catalog == null or type_index < 0 or type_index >= catalog.types.size():
+		return null
+	var unit_type: UnitType = catalog.types[type_index]
+	var at: Vector2i = pathing.snap_to_component(x, z, unit_type.mobility, PathLayer.NO_COMPONENT)
+	var unit: Unit = Unit.new(
+		_next_entity_id, at.x, terrain.height_at(at.x, at.y), at.y, unit_type, type_index, side
+	)
+	var facing: Vector2i = FixedMath.normalize(face_x, face_z, FixedMath.DIR_ONE)
+	if facing != Vector2i.ZERO:
+		unit.facing_x = facing.x
+		unit.facing_z = facing.y
+	unit.goal_x = unit.x
+	unit.goal_z = unit.z
+	unit.goal_facing_x = unit.facing_x
+	unit.goal_facing_z = unit.facing_z
+	_register(unit)
+	units.append(unit)
+	return unit
+
+
 func despawn_entity(entity_id: int) -> void:
+	var entity: SimEntity = get_entity(entity_id)
+	if entity is Unit:
+		units.erase(entity)
 	entities.erase(entity_id)
 
 
@@ -67,6 +110,11 @@ func get_entity(entity_id: int) -> SimEntity:
 	if entities.has(entity_id):
 		return entities[entity_id]
 	return null
+
+
+## The unit with this id, or null if there is none (or it isn't a unit).
+func get_unit(unit_id: int) -> Unit:
+	return get_entity(unit_id) as Unit
 
 
 ## SHA-256 over everything that defines the simulation state. Two worlds with
@@ -78,13 +126,12 @@ func state_hash() -> String:
 		[tick, rng_seed, rng.state, _next_entity_id, _pending.size()]
 	)
 	ctx.update(header.to_byte_array())
+	ctx.update(movement.hash_fields().to_byte_array())
 	var ids: Array[int] = []
 	ids.assign(entities.keys())
 	ids.sort()
 	for entity_id: int in ids:
-		var e: SimEntity = entities[entity_id]
-		var fields: PackedInt64Array = PackedInt64Array([e.id, e.x, e.y, e.z, e.vx, e.vy, e.vz])
-		ctx.update(fields.to_byte_array())
+		ctx.update(entities[entity_id].hash_fields().to_byte_array())
 	return ctx.finish().hex_encode()
 
 
@@ -96,6 +143,11 @@ func _apply_commands() -> void:
 			command.apply(self)
 		else:
 			_pending.append(command)
+
+
+func _register(entity: SimEntity) -> void:
+	entities[entity.id] = entity
+	_next_entity_id += 1
 
 
 func _integrate() -> void:

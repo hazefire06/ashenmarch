@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="UnitType" format=3]
+
+[ext_resource type="Script" path="res://sim/units/unit_type.gd" id="1_jgm6t"]
+
+[resource]
+script = ExtResource("1_jgm6t")
+id = &"husk"
+display_name = "Husk"
+faction = 1
+nature = 1
+mobility = 1
+max_hp = 70
+body_radius = 400
+body_height = 1800
+move_speed = 1600
+water_speed_permille = PackedInt32Array(1000, 1000, 1000, 1000, 1000)
+uphill_slowdown_permille = 500
+hidden_in_deep_water = true
+melee_damage = 9
+melee_reach = 1300
+melee_windup_ticks = 9
+melee_cooldown_ticks = 36
+placeholder_color = Color(0.55, 0.3, 0.65, 1)
