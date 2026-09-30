@@ -14,7 +14,7 @@ Decisions made in Phase 0 that later phases build on. CLAUDE.md has the rules; t
 
 ## Commands
 - Every outside change to the sim is a `SimCommand` subclass in `sim/commands/`. Each carries the `tick` it applies at.
-- Unit commands (Phase 2): `SpawnUnitCommand` (type id, side, position, facing), `MoveUnitsCommand` (unit ids, target, formation), `StopUnitsCommand` (unit ids). Group commands sort and dedupe their ids and skip missing or dead units, so the order the player selected in doesn't matter.
+- Unit commands (Phase 2): `SpawnUnitCommand` (type id, side, position, facing), `MoveUnitsCommand` (unit ids, target, formation), `StopUnitsCommand` (unit ids). Phase 3 adds `AttackMoveCommand` (same fields as a move). Group commands sort and dedupe their ids and skip missing or dead units, so the order the player selected in doesn't matter.
 - `World.enqueue()` rejects ticks already simulated. At the start of each tick, that tick's commands apply in enqueue order.
 - Commands are immutable data. A command targeting a missing entity is a no-op.
 - This is the stream that lockstep multiplayer and replays will serialize. Serialization is not built yet.
@@ -134,7 +134,9 @@ A map is a folder `maps/<name>/` holding three files.
   - Identity: side, nature (LIVING/UNDEAD, for heal and conversion), mobility.
   - Body: hp, radius, height.
   - Movement: speed in mm/s, a 5-entry water speed table in permille by depth, and `uphill_slowdown_permille`.
-  - Combat: melee and ranged stats, abilities.
+  - Combat: melee stats (damage, accuracy, reach, wind-up, cooldown, shield block) and ranged stats, abilities.
+  - Targeting (Phase 3): role (melee/ranged/support), preferred target roles, attack-move acquire radius.
+  - Veterancy (Phase 3): per-stat caps for accuracy, attack rate, and speed.
   - View only: placeholder color and sprite.
 - Gameplay fields are integers. Required ones default to 0 and `validate()` rejects 0, for the same `.tres` reason as `MapInfo`.
   - Validation also rejects a water table with 0 speed at a depth the mobility can enter, which would strand the unit there.
@@ -143,9 +145,9 @@ A map is a folder `maps/<name>/` holding three files.
 ### Unit entity
 - **`Unit extends SimEntity`**: type, side, hp, facing, state, current order, and path.
   - Facing is a direction vector of length `FixedMath.DIR_ONE`.
-  - State is IDLE, MOVING, ATTACKING or DEAD. ATTACKING is reserved for Phase 3; DEAD is terminal.
+  - State is IDLE, MOVING, ATTACKING or DEAD. DEAD is terminal. Phase 3 adds a standing order next to the state; see Combat.
 - `SimEntity.hash_fields()` feeds `World.state_hash()`. `Unit` appends every field, path included, and the path queue is hashed too.
-- **World step order:** commands → `UnitMovement.update()` → integrate.
+- **World step order:** commands → `MeleeCombat.update()` (Phase 3) → `UnitMovement.update()` → integrate.
   - Steering sets `vx`/`vz`, plus `vy = ground height at the next position − y`. Integration therefore puts units exactly on the ground, and velocity equals the real displacement, which the view uses for interpolation.
   - Units need a terrain and a catalog. Worlds without them still run plain entities.
 
@@ -177,7 +179,7 @@ A map is a folder `maps/<name>/` holding three files.
 - **Measured:** 40 units with random orders on Riverside average about 1.2 ms per tick (M4 Max, headless). Building the LIVING layer plus one creek detour takes about 125 ms, once per map.
 
 ### Movement and avoidance (`sim/units/unit_movement.gd`)
-- **Speed per tick** = type speed (capped at the group's slowest member) × water table[depth] × uphill factor.
+- **Speed per tick** = type speed with veterancy (capped at the group's slowest member) × water table[depth] × uphill factor.
   - The uphill factor is the grade along the heading × `uphill_slowdown_permille`, with a floor of 25%. Crossing a slope isn't slowed.
   - The integer remainder carries to the next tick, so long-run speed is exact.
 - **Avoidance:**
@@ -218,4 +220,125 @@ A map is a folder `maps/<name>/` holding three files.
   - F9 (debug, until the AI exists) switches the side the mouse commands.
   - Godot key actions match events with extra modifiers, so the number-key actions are checked with `exact_match`.
 - **`ControlBar`** mirrors every command for mouse-only play: formation buttons, group slots (click to recall; Set, then a slot, to save), Stop, and Switch side.
-- **Spawns:** `MainView` spawns the test squads as tick-0 commands (20 Shieldmen north of the ford, 20 Husks south of the creek). Phase 8 replaces this with mission data.
+- **Spawns:** `MainView` spawns the test squads as tick-0 commands (20 Shieldmen north of the ford, 20 Husks south of the creek; Phase 3 adds a row of 5 Reavers behind the Shieldmen and 5 Rippers behind the Husks). Phase 8 replaces this with mission data.
+
+## Combat (Phase 3)
+`sim/combat/melee_combat.gd` (`MeleeCombat`) resolves melee each tick. `Targeting` ranks enemies, `Veterancy` (`sim/units/veterancy.gd`) turns kills into bonuses, and `CombatEvent` reports what happened to the view.
+
+### Orders vs. state
+`Unit.order` is the standing order. `Unit.state` is what the unit is doing right now.
+
+| Order | Fights | Ends |
+|---|---|---|
+| `NONE` (idle, stopped, arrived) | Enemies within reach + 1 m, and only those within 3 m of the spot it holds (`order_x/z`) | Never; the default |
+| `MOVE` | Nothing | On arrival, becomes `NONE` holding that spot |
+| `ATTACK_MOVE` | Enemies within the type's `acquire_radius`; chases up to 1.5× that | On arrival at its slot, becomes `NONE` |
+
+- **ATTACKING**: the target is in reach. The unit stands, faces the target, and winds up or recovers.
+- **Chasing**: the unit is `MOVING` with a `target_id`, using the normal movement path, A*, stuck handling and avoidance. It re-paths only when the target has moved more than 1 m from the chase goal.
+- **Resuming**: after a fight, an attack-mover resumes toward its slot with its group's speed cap (`order_x/z`, `order_facing`, `order_speed_cap`). A holding unit stands where the fight ended.
+
+### Tick
+- **Order**: `MeleeCombat` runs after commands and before `UnitMovement`. Chases it starts are steered in the same tick, and units it kills get zero velocity.
+- **Decide pass**, in ascending id order:
+  - Each unit updates only itself: its target, chase path, facing, wind-up and cooldown.
+  - It reads other units' positions, which nothing changes before movement, so iteration order can't matter.
+  - Its candidate search uses a fresh `UnitGrid` with 8 m buckets.
+- **Strike pass**: every blow due this tick lands in attacker-id order.
+  - Blows are simultaneous. A unit killed this tick still lands its own blow, so two units can kill each other.
+  - A blow at a target already killed this tick is wasted.
+
+### Engagement
+- **Reach** is measured edge to edge: center distance − both body radii ≤ `melee_reach`.
+- **One target at a time.** Once the target is in reach, or a swing is under way, the unit keeps that target until it dies or gets away.
+  - It doesn't turn to face other attackers, so enemies on its flank or rear get free blows.
+  - While still approaching, it switches only to a preferred role, or to an enemy at least 1 m nearer. That stops chases flip-flopping between near-equal targets.
+- **Wind-ups are committed.** A swing lands `melee_windup_ticks` after it starts, even if the target has moved.
+  - If the target is then beyond reach + 0.25 m, it's a miss, and the cooldown is still paid.
+  - A new order abandons the swing. The cooldown keeps running.
+- **Timing**: the cooldown (`melee_cooldown_ticks`, shortened by veterancy) runs from the blow to the next swing, so one attack cycle is wind-up + cooldown.
+- **Who can't be picked**:
+  - An enemy hidden in deep water (`hidden_in_deep_water` at depth 3+), until it surfaces to fight (state ATTACKING).
+  - An enemy the unit can't walk to (a different pathing component for its mobility), unless it is already in reach. A Shieldman on the bank can hit a Husk in the shallows next to it, but won't chase one into deep water.
+
+### Blows
+- **RNG draws** from `World.rng`, in this order:
+  1. The hit roll, against `Veterancy.melee_accuracy`.
+  2. A block roll, only if the blow comes from the front and the target has `shield_block_permille > 0`.
+  3. The damage variance roll.
+- **Aspect** is the cosine between the target's facing and the direction to the attacker, in integer permille:
+
+| Aspect | Arc | Damage | Shield |
+|---|---|---|---|
+| Front | within 60° of facing | ×1.0 | blocks |
+| Flank | 60°–120° | ×1.2 | no |
+| Rear | beyond 120° | ×1.4 | no |
+
+- **Damage** = `div_round(melee_damage × (1000 ± up to 100) × aspect multiplier, 10⁶)`, minimum 1.
+- **Death**: hp ≤ 0 calls `Unit.kill()`.
+  - The unit is DEAD, stays in `world.units` and the entity registry as a body, and is still hashed.
+  - Movement already skips dead units, so bodies never block or push.
+  - The killer gets `kills += 1`, but only for a unit of the other side.
+
+### Targeting
+`Targeting.pick` ranks candidates in this order:
+1. A role the unit's type prefers (`preferred_target_roles`, bits of `UnitType.Role`).
+2. Nearest body edge.
+3. Lower id.
+
+The Ripper prefers ranged and support units, so an attack-moving Ripper runs past a nearer Shieldman to reach an archer. Every other v1 type takes the nearest enemy.
+
+### Veterancy
+- **Curve**: `bonus = cap × kills / (kills + 4)`, in integer permille per stat, with the caps set per type.
+  - Every early kill helps, each helps less than the last, half the cap arrives at 4 kills, and the cap is never reached.
+- **Accuracy** adds hit-chance points, capped at 100%.
+- **Attack rate**: cooldown × 1000 / (1000 + bonus), minimum 1 tick.
+- **Speed** scales `move_speed`, including a group's march cap.
+- Nothing is cached. The bonuses are pure functions of type and `kills`, and `kills` is hashed and carries over with the unit (Phase 8).
+
+### Events
+- `World.combat_events` lists this tick's SWING, HIT, BLOCK, MISS and KILL events. Each has the attacker, target, damage, overkill (KILL only) and aspect.
+- The list is cleared at the start of each step and is not part of `state_hash()`. It is output for the view.
+- The view reads it after every step, which `MainView` guarantees by calling `after_step()` once per `step()`.
+
+### View
+- **Reading combat**: `UnitsView.after_step()` reads `World.combat_events`.
+  - HIT and BLOCK flash the target's quad (white, and steel blue for a block).
+  - A KILL records the blow direction, and bursts the body into gibs when the overkill is large enough.
+  - A unit seen dead for the first time lies down exactly once.
+- **Sprites**
+  - The HP bar is two billboarded quads, fill and empty side by side so they can't z-fight. It shows only while the unit is hurt or selected.
+  - A dead body stops billboarding and lies flat, head along the killing blow and tilted to the ground normal from the sim's `gradient_at`. It is dimmed and stays for the mission.
+  - Picking a body uses the quad's projected corners, and a standing unit wins over a body under it.
+- **Gibs** (`view/effects/gibs.gd`) are the only Godot physics in the game, and cosmetic only.
+  - **Trigger**: overkill ≥ 25% of the victim's max hp, so mostly Reaver blows today; explosions later.
+  - **Ground**: a `StaticBody3D` with a `HeightMapShape3D` built from the sim heights, offset by half the map extent because the shape is centered on its origin.
+  - **Layers**: chunks sit on physics layers 9 (ground) and 10 (gibs) and collide only with those.
+  - **Settling**: physics runs at the 30 Hz tick rate, so chunks use continuous collision detection. A chunk freezes once it sleeps, or after 4 s, and stays for the mission. At most 150 simulate at once; the oldest freeze first.
+- **Tooltip** (`view/hud/unit_tooltip.gd`)
+  - Hovering over any unit, either side, alive or dead, shows its name and side, HP and activity, kills, and its veterancy-adjusted accuracy, attack rate and speed.
+  - It is hidden over HUD controls and never takes mouse input.
+  - The text comes from the pure `UnitTooltip.describe()`, which is tested.
+- **Attack-move input**
+  - Cmd/Ctrl + right-click is the `ATTACK_MOVE` action, checked with `exact_match` before the plain move, because mouse actions also match with extra modifiers.
+  - The control bar's **Attack-move** toggle arms the next plain right-click, once, so the game stays playable with the mouse alone.
+  - The order marker is red for an attack-move.
+  - The status line shows living units per side.
+
+### Design decisions
+- **Frontal shields** (decided with Tim). A flank multiplier alone would make a surround matter mostly through numbers, and 10 Husks beat 5 Shieldmen on numbers with or without it. The Shieldman's 35% frontal block means a Shieldman line is strong from the front and collapses when surrounded. The Reaver has no shield and hits harder.
+- **Ripper is LIVING** (decided with Tim). Deep water stops it, so it has to path around (e.g. flanking at The Ford), and it isn't killed by healing.
+- **Husks never improve** (all veterancy caps 0): they are mindless.
+- **Reach cut from 1.3–1.5 m to 0.5–1.0 m edge to edge.** At the old reach a second rank could strike through the first, which made holding a gap pointless.
+
+### Battle tests (`tests/sim/test_battles.gd`)
+Each scenario runs on five seeds, with the shipped data.
+
+| Scenario | Result (seeds 1–5) |
+|---|---|
+| 10 Shieldmen holding a line vs 10 Husks attack-moving through it | Shieldmen win 10–0 every seed, in about 14 s |
+| 10 Husks on a ring closing on 5 Shieldmen | Husks win with 4–8 left |
+| Control: the same 5 Shieldmen in a 7 m gap vs the same 10 Husks | Shieldmen win with 3–4 left |
+
+- **Where blows land**: blows on Shieldmen come from the flank or rear about 67% of the time in the surround, and 0% in the line.
+- **Lockstep**: a 40-unit attack-move battle across the Riverside ford stays hash-identical between two worlds, at about 1.2 ms per tick per world (M4 Max, headless).
