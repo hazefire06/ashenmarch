@@ -20,14 +20,18 @@ var rng: RandomNumberGenerator = RandomNumberGenerator.new()
 ## Keyed by entity id. Ids are assigned in increasing order and never reused,
 ## so insertion order is ascending id order.
 var entities: Dictionary[int, SimEntity] = {}
+## The map's ground. Null for terrain-less tests. Static for now, so it is not
+## part of state_hash(); add it there once explosions scar the terrain.
+var terrain: Terrain
 
 var _next_entity_id: int = 1
 var _pending: Array[SimCommand] = []
 
 
-func _init(world_seed: int) -> void:
+func _init(world_seed: int, world_terrain: Terrain = null) -> void:
 	rng_seed = world_seed
 	rng.seed = world_seed
+	terrain = world_terrain
 
 
 ## Queues a command to apply at the start of command.tick. Returns false if
