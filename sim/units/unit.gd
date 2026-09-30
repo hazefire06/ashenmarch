@@ -1,16 +1,33 @@
 class_name Unit
 extends SimEntity
 ## A soldier or monster: a SimEntity with a type, a side, hit points, a
-## facing, and a movement order. UnitMovement drives it each tick; commands
-## give it orders. Velocity is set by steering, so World._integrate moves it.
+## facing, a standing order, and what it is fighting. Commands give orders;
+## MeleeCombat and UnitMovement carry them out each tick. Velocity is set by
+## steering, so World._integrate moves it.
 
+## What the unit is doing right now.
 enum State {
 	IDLE,
+	## Walking an order's path, or chasing target_id when that is set.
 	MOVING,
-	## Entered by combat in Phase 3; nothing enters it yet.
+	## Engaged: its target is in reach and it stands, facing the target,
+	## winding up or recovering between blows.
 	ATTACKING,
-	## Terminal. Dead units ignore orders, don't move, and don't push.
+	## Terminal. Dead units ignore orders, don't move, and don't push. The
+	## body stays in the world for the rest of the mission.
 	DEAD,
+}
+
+## The standing order, as opposed to the current activity (state).
+enum Order {
+	## Hold here and fight enemies that come adjacent, without straying far
+	## from order_x/order_z.
+	NONE,
+	## Walk to the goal, ignoring enemies. Becomes NONE on arrival.
+	MOVE,
+	## Walk to the goal, fighting enemies met on the way and resuming after
+	## each fight. Becomes NONE on arrival.
+	ATTACK_MOVE,
 }
 
 ## Bitmask of states each state may change to, indexed by State.
@@ -55,6 +72,25 @@ var move_carry: int = 0
 var best_waypoint_distance: int = 0
 var stuck_ticks: int = 0
 
+var order: Order = Order.NONE
+## ATTACK_MOVE: where the order ends, the facing there, and the group's speed
+## cap, kept so the unit can resume after each fight. NONE: the spot the unit
+## holds, which bounds how far it steps out to meet an enemy.
+var order_x: int = 0
+var order_z: int = 0
+var order_facing_x: int = 0
+var order_facing_z: int = -FixedMath.DIR_ONE
+var order_speed_cap: int = 0
+## Entity id of the unit being fought or chased; 0 for none (ids start at 1).
+var target_id: int = 0
+## Ticks until the swing in progress lands; 0 when not swinging.
+var windup_left: int = 0
+## Ticks until the next swing may start.
+var cooldown_left: int = 0
+## Enemies this unit has killed. Drives Veterancy; carries over between
+## missions with the unit.
+var kills: int = 0
+
 
 func _init(
 	entity_id: int, pos_x: int, pos_y: int, pos_z: int,
@@ -81,14 +117,23 @@ func transition_to(new_state: State) -> bool:
 	return true
 
 
-## Kills the unit outright: hp 0, state DEAD, order cleared.
+## Kills the unit outright: hp 0, state DEAD, orders and fighting cleared.
 func kill() -> void:
 	hp = 0
 	transition_to(State.DEAD)
 	clear_order()
+	clear_engagement()
+	order = Order.NONE
 	vx = 0
 	vy = 0
 	vz = 0
+
+
+## Forgets the target and abandons any swing in progress. The cooldown keeps
+## running, so a new order can't make the unit swing sooner.
+func clear_engagement() -> void:
+	target_id = 0
+	windup_left = 0
 
 
 ## Drops the current path and goal bookkeeping. Does not change state.
@@ -124,7 +169,9 @@ func hash_fields() -> PackedInt64Array:
 		type_index, faction, state, hp, facing_x, facing_z,
 		goal_x, goal_z, goal_facing_x, goal_facing_z, speed_cap,
 		path_index, 1 if path_pending else 0, move_carry,
-		best_waypoint_distance, stuck_ticks, path.size(),
+		best_waypoint_distance, stuck_ticks,
+		order, order_x, order_z, order_facing_x, order_facing_z, order_speed_cap,
+		target_id, windup_left, cooldown_left, kills, path.size(),
 	]))
 	fields.append_array(path)
 	return fields

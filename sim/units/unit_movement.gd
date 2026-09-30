@@ -223,11 +223,12 @@ func _steer(world: World, unit: Unit, grid: UnitGrid) -> void:
 	unit.vy = terrain.height_at(unit.x + vx, unit.z + vz) - unit.y
 
 
-# Milli-units this unit walks this tick heading along dir: base speed (capped
-# by the order), times the water-depth multiplier, times the uphill factor.
-# The integer remainder carries to the next tick in move_carry.
+# Milli-units this unit walks this tick heading along dir: its speed with
+# veterancy (capped by the order), times the water-depth multiplier, times
+# the uphill factor. The integer remainder carries to the next tick in
+# move_carry.
 func _step_length(terrain: Terrain, unit: Unit, dir: Vector2i) -> int:
-	var speed: int = unit.type.move_speed
+	var speed: int = Veterancy.move_speed(unit)
 	if unit.speed_cap > 0:
 		speed = mini(speed, unit.speed_cap)
 	var water: int = unit.type.water_speed_permille[terrain.water_depth_at(unit.x, unit.z)]

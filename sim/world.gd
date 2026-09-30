@@ -32,7 +32,11 @@ var catalog: UnitCatalog
 var pathing: Pathing
 ## Every unit, alive or dead, in ascending id order (a subset of entities).
 var units: Array[Unit] = []
+var combat: MeleeCombat = MeleeCombat.new()
 var movement: UnitMovement = UnitMovement.new()
+## What happened in fights during the last step, for the view. Output only:
+## cleared at the start of each step and not part of state_hash().
+var combat_events: Array[CombatEvent] = []
 
 var _next_entity_id: int = 1
 var _pending: Array[SimCommand] = []
@@ -57,11 +61,14 @@ func enqueue(command: SimCommand) -> bool:
 	return true
 
 
-## Simulates one tick: apply this tick's commands in enqueue order, steer
-## the units (which sets their velocities), then integrate every entity.
+## Simulates one tick: apply this tick's commands in enqueue order, resolve
+## melee (targets, chases, blows, deaths), steer the units (which sets their
+## velocities), then integrate every entity.
 func step() -> void:
+	combat_events.clear()
 	_apply_commands()
 	if terrain != null:
+		combat.update(self)
 		movement.update(self)
 	_integrate()
 	tick += 1
@@ -94,6 +101,10 @@ func spawn_unit(
 	unit.goal_z = unit.z
 	unit.goal_facing_x = unit.facing_x
 	unit.goal_facing_z = unit.facing_z
+	unit.order_x = unit.x
+	unit.order_z = unit.z
+	unit.order_facing_x = unit.facing_x
+	unit.order_facing_z = unit.facing_z
 	_register(unit)
 	units.append(unit)
 	return unit

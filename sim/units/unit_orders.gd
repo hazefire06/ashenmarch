@@ -13,7 +13,12 @@ const KEEP_FACING_RADIUS: int = 2000
 ## Orders the living units among unit_ids to (x, z) in a formation
 ## (Formations.Kind; out-of-range values mean SHORT_LINE). Duplicate, missing,
 ## and dead ids are ignored. The group marches at its slowest member's speed.
-static func move(world: World, unit_ids: PackedInt32Array, x: int, z: int, formation: int) -> void:
+## A plain move ignores enemies on the way; with attack set, units fight
+## what they meet (MeleeCombat) and resume toward their slot after each
+## fight. Either way the new order drops the current fight.
+static func move(
+	world: World, unit_ids: PackedInt32Array, x: int, z: int, formation: int, attack: bool = false
+) -> void:
 	var group: Array[Unit] = _living_units(world, unit_ids)
 	if group.is_empty() or world.terrain == null:
 		return
@@ -21,13 +26,13 @@ static func move(world: World, unit_ids: PackedInt32Array, x: int, z: int, forma
 	var sum_x: int = 0
 	var sum_z: int = 0
 	var max_radius: int = 0
-	var min_speed: int = group[0].type.move_speed
+	var min_speed: int = Veterancy.move_speed(group[0])
 	var unit_positions: Array[Vector2i] = []
 	for unit: Unit in group:
 		sum_x += unit.x
 		sum_z += unit.z
 		max_radius = maxi(max_radius, unit.type.body_radius)
-		min_speed = mini(min_speed, unit.type.move_speed)
+		min_speed = mini(min_speed, Veterancy.move_speed(unit))
 		unit_positions.append(Vector2i(unit.x, unit.z))
 	var facing: Vector2i = _order_facing(
 		group, FixedMath.div_round(sum_x, n), FixedMath.div_round(sum_z, n), x, z
@@ -49,13 +54,33 @@ static func move(world: World, unit_ids: PackedInt32Array, x: int, z: int, forma
 		var mobility: Terrain.Mobility = unit.type.mobility
 		var component: int = world.pathing.component_at(unit.x, unit.z, mobility)
 		var goal: Vector2i = world.pathing.snap_to_component(slot.x, slot.z, mobility, component)
+		unit.clear_engagement()
+		unit.order = Unit.Order.ATTACK_MOVE if attack else Unit.Order.MOVE
+		unit.order_x = goal.x
+		unit.order_z = goal.y
+		unit.order_facing_x = slot.facing_x
+		unit.order_facing_z = slot.facing_z
+		unit.order_speed_cap = cap
 		world.movement.order_move(world, unit, goal.x, goal.y, slot.facing_x, slot.facing_z, cap)
 
 
-## Halts the living units among unit_ids where they stand.
+## Halts the living units among unit_ids where they stand. They hold that
+## spot and fight enemies that come adjacent.
 static func stop(world: World, unit_ids: PackedInt32Array) -> void:
 	for unit: Unit in _living_units(world, unit_ids):
+		hold(unit)
 		world.movement.order_stop(unit)
+
+
+## Gives the unit order NONE, holding where it stands now. Drops any fight.
+static func hold(unit: Unit) -> void:
+	unit.clear_engagement()
+	unit.order = Unit.Order.NONE
+	unit.order_x = unit.x
+	unit.order_z = unit.z
+	unit.order_facing_x = unit.facing_x
+	unit.order_facing_z = unit.facing_z
+	unit.order_speed_cap = 0
 
 
 ## The living units named by unit_ids, deduplicated, in ascending id order, so
