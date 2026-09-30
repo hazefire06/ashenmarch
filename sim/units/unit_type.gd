@@ -24,7 +24,17 @@ enum Nature {
 	UNDEAD,
 }
 
+## What a unit does in a fight. Target preferences (a Ripper hunts RANGED
+## and SUPPORT units) and, later, the AI read it.
+enum Role {
+	MELEE,
+	RANGED,
+	SUPPORT,
+}
+
 const WATER_DEPTH_LEVELS: int = Terrain.MAX_WATER_DEPTH + 1
+## preferred_target_roles holds bit (1 << Role) per role.
+const ALL_ROLES_MASK: int = (1 << Role.MELEE) | (1 << Role.RANGED) | (1 << Role.SUPPORT)
 
 ## Stable key used by commands and saves, e.g. &"shieldman".
 @export var id: StringName = &""
@@ -33,6 +43,7 @@ const WATER_DEPTH_LEVELS: int = Terrain.MAX_WATER_DEPTH + 1
 @export var nature: Nature = Nature.LIVING
 ## Which terrain the unit can stand on (water depth, slope).
 @export var mobility: Terrain.Mobility = Terrain.Mobility.LIVING
+@export var role: Role = Role.MELEE
 
 @export_group("Body")
 @export var max_hp: int = 0
@@ -55,10 +66,25 @@ const WATER_DEPTH_LEVELS: int = Terrain.MAX_WATER_DEPTH + 1
 
 @export_group("Melee")
 @export var melee_damage: int = 0
+## Chance in permille that a swing which lands in reach hits.
+@export var melee_accuracy_permille: int = 0
 ## Milli-units from body edge to body edge.
 @export var melee_reach: int = 0
+## Ticks from starting a swing to the blow landing. The swing is committed:
+## a target that steps out of reach meanwhile is missed.
 @export var melee_windup_ticks: int = 0
+## Ticks from a blow landing to the next swing starting.
 @export var melee_cooldown_ticks: int = 0
+## Chance in permille to block a melee hit from the front arc. 0: no shield.
+@export var shield_block_permille: int = 0
+
+@export_group("Targeting")
+## Milli-units, body edge to body edge: how far an attack-moving unit looks
+## for enemies to fight.
+@export var acquire_radius: int = 0
+## Roles this unit attacks first when choosing a target, as bits
+## (1 << Role): 1 melee, 2 ranged, 4 support. 0: nearest enemy.
+@export_flags("Melee", "Ranged", "Support") var preferred_target_roles: int = 0
 
 @export_group("Ranged")
 ## 0 means the unit has no ranged attack.
@@ -69,6 +95,13 @@ const WATER_DEPTH_LEVELS: int = Terrain.MAX_WATER_DEPTH + 1
 @export var ranged_cooldown_ticks: int = 0
 ## Shots carried; -1 is unlimited.
 @export var ammo: int = 0
+
+@export_group("Veterancy")
+## The most each kill-based bonus can reach, in permille. See Veterancy for
+## the curve; 0 means the unit never improves at that.
+@export var veterancy_accuracy_permille: int = 0
+@export var veterancy_attack_rate_permille: int = 0
+@export var veterancy_speed_permille: int = 0
 
 @export_group("Abilities")
 ## Ability keys the sim understands, e.g. &"fire_arrow", &"satchel".
@@ -95,8 +128,21 @@ func validate() -> PackedStringArray:
 	if uphill_slowdown_permille < 0 or uphill_slowdown_permille > 1000:
 		errors.append("%s: uphill_slowdown_permille must be 0..1000" % who)
 	errors.append_array(_validate_water(who))
-	if melee_damage > 0 and (melee_reach <= 0 or melee_cooldown_ticks <= 0):
-		errors.append("%s: melee needs positive reach and cooldown" % who)
+	if melee_damage > 0:
+		for field: String in ["melee_reach", "melee_windup_ticks", "melee_cooldown_ticks", "acquire_radius"]:
+			if int(get(field)) <= 0:
+				errors.append("%s: melee needs a positive %s" % [who, field])
+		if melee_accuracy_permille <= 0 or melee_accuracy_permille > 1000:
+			errors.append("%s: melee_accuracy_permille must be 1..1000" % who)
+	for field: String in [
+		"shield_block_permille", "veterancy_accuracy_permille",
+		"veterancy_attack_rate_permille", "veterancy_speed_permille",
+	]:
+		var value: int = int(get(field))
+		if value < 0 or value > 1000:
+			errors.append("%s: %s must be 0..1000" % [who, field])
+	if preferred_target_roles & ~ALL_ROLES_MASK != 0:
+		errors.append("%s: preferred_target_roles has unknown role bits" % who)
 	if ranged_damage > 0:
 		if ranged_max_range <= ranged_min_range or ranged_min_range < 0:
 			errors.append("%s: ranged needs 0 <= min_range < max_range" % who)

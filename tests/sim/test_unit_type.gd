@@ -36,9 +36,51 @@ func test_husk_is_undead_dark_and_hides_in_deep_water() -> void:
 	assert_lt(t.move_speed, _catalog.find(&"shieldman").move_speed, "husks are slow")
 
 
+func test_shieldman_has_a_shield_and_the_others_do_not() -> void:
+	assert_gt(_catalog.find(&"shieldman").shield_block_permille, 0)
+	for type_id: StringName in [&"reaver", &"husk", &"ripper"]:
+		assert_eq(_catalog.find(type_id).shield_block_permille, 0, String(type_id))
+
+
+func test_reaver_is_fast_hard_hitting_light_melee() -> void:
+	var t: UnitType = _catalog.find(&"reaver")
+	var shieldman: UnitType = _catalog.find(&"shieldman")
+	assert_not_null(t)
+	assert_eq(t.faction, UnitType.Faction.LIGHT)
+	assert_eq(t.nature, UnitType.Nature.LIVING)
+	assert_gt(t.move_speed, shieldman.move_speed, "fast")
+	assert_gt(t.melee_damage, shieldman.melee_damage, "high damage")
+	assert_lt(t.max_hp, shieldman.max_hp, "less sturdy")
+	assert_gt(t.veterancy_speed_permille, 0, "gains speed with kills")
+
+
+func test_ripper_is_a_fast_living_raider_that_hunts_ranged_and_support() -> void:
+	var t: UnitType = _catalog.find(&"ripper")
+	assert_not_null(t)
+	assert_eq(t.faction, UnitType.Faction.DARK)
+	assert_eq(t.nature, UnitType.Nature.LIVING)
+	assert_eq(t.mobility, Terrain.Mobility.LIVING)
+	for other: UnitType in _catalog.types:
+		if other != t:
+			assert_gt(t.move_speed, other.move_speed, "faster than %s" % other.id)
+	assert_eq(
+		t.preferred_target_roles,
+		(1 << UnitType.Role.RANGED) | (1 << UnitType.Role.SUPPORT)
+	)
+
+
+func test_husks_do_not_learn() -> void:
+	var t: UnitType = _catalog.find(&"husk")
+	assert_eq(t.veterancy_accuracy_permille, 0)
+	assert_eq(t.veterancy_attack_rate_permille, 0)
+	assert_eq(t.veterancy_speed_permille, 0)
+
+
 func test_catalog_lookup() -> void:
 	assert_eq(_catalog.index_of(&"shieldman"), 0)
 	assert_eq(_catalog.index_of(&"husk"), 1)
+	assert_eq(_catalog.index_of(&"reaver"), 2)
+	assert_eq(_catalog.index_of(&"ripper"), 3)
 	assert_eq(_catalog.index_of(&"nobody"), -1)
 	assert_null(_catalog.find(&"nobody"))
 
@@ -61,13 +103,37 @@ func test_validate_rejects_bad_water_table() -> void:
 	assert_eq(t.validate().size(), 2, str(t.validate()))
 
 
-func test_validate_rejects_half_defined_attacks() -> void:
+func test_validate_rejects_half_defined_melee() -> void:
 	var t: UnitType = _valid_type()
 	t.melee_damage = 5
+	# reach, windup, cooldown, acquire_radius, and accuracy are all missing.
+	assert_eq(t.validate().size(), 5, str(t.validate()))
+	t.melee_reach = 700
+	t.melee_windup_ticks = 6
+	t.melee_cooldown_ticks = 24
+	t.acquire_radius = 8000
+	t.melee_accuracy_permille = 1001
+	assert_eq(t.validate().size(), 1, str(t.validate()))
+	t.melee_accuracy_permille = 1000
+	assert_eq(t.validate(), PackedStringArray())
+
+
+func test_validate_rejects_half_defined_ranged() -> void:
+	var t: UnitType = _valid_type()
 	t.ranged_damage = 5
 	t.ranged_min_range = 10_000
 	t.ranged_max_range = 5_000
-	assert_eq(t.validate().size(), 3, str(t.validate()))
+	assert_eq(t.validate().size(), 2, str(t.validate()))
+
+
+func test_validate_rejects_out_of_range_permille_and_role_bits() -> void:
+	var t: UnitType = _valid_type()
+	t.shield_block_permille = 1001
+	t.veterancy_accuracy_permille = -1
+	t.veterancy_attack_rate_permille = 2000
+	t.veterancy_speed_permille = -5
+	t.preferred_target_roles = 8
+	assert_eq(t.validate().size(), 5, str(t.validate()))
 
 
 func test_catalog_rejects_duplicate_ids() -> void:
