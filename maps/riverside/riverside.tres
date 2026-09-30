@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="MapInfo" format=3]
+
+[ext_resource type="Script" path="res://sim/map_info.gd" id="1_ovjwb"]
+
+[resource]
+script = ExtResource("1_ovjwb")
+display_name = "Riverside"
+heightmap_path = "res://maps/riverside/height.png"
+mask_path = "res://maps/riverside/mask.png"
+cell_size = 1000
+max_height = 40000
+max_walkable_slope = 1000

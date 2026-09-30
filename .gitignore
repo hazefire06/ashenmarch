@@ -16,3 +16,6 @@ export_credentials.cfg
 
 # macOS
 .DS_Store
+
+# Python (fixture scripts)
+__pycache__/

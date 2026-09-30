@@ -1,7 +1,7 @@
 GODOT ?= godot
 MAC_APP := build/mac/Ashenmarch.app
 
-.PHONY: import run test check-sim export-mac
+.PHONY: import run test check-sim export-mac maps fixtures
 
 # Builds the .godot/ import and class_name cache. A fresh clone has none, and
 # GUT can't resolve class_name types without it.
@@ -16,6 +16,15 @@ test: import check-sim
 
 check-sim:
 	scripts/check_sim_purity.sh
+
+# Regenerates maps/riverside from scripts/gen_riverside.gd. The output is
+# committed; rerun only when the generator changes.
+maps: import
+	$(GODOT) --headless --path . -s scripts/gen_riverside.gd
+
+# Regenerates the PNG test fixtures with an independent Python encoder.
+fixtures:
+	python3 tests/fixtures/png/make_png_fixtures.py
 
 export-mac: import
 	mkdir -p $(dir $(MAC_APP))
