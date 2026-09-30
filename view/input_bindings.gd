@@ -12,6 +12,11 @@ extends RefCounted
 ## formations, Cmd/Ctrl to save a group, Option/Alt to recall one. Godot
 ## matches a key action even when extra modifiers are held, so these must be
 ## checked with exact_match = true.
+##
+## Right click carries two actions the same way: bare COMMAND moves, and
+## Cmd/Ctrl + right click (ATTACK_MOVE) attack-moves. A mouse action also
+## matches with extra modifiers held, so check ATTACK_MOVE with exact_match =
+## true before COMMAND.
 
 const CAM_FORWARD: StringName = &"cam_forward"
 const CAM_BACK: StringName = &"cam_back"
@@ -28,9 +33,11 @@ const CAM_ZOOM_OUT: StringName = &"cam_zoom_out"
 const CAM_ZOOM_IN_STEP: StringName = &"cam_zoom_in_step"
 const CAM_ZOOM_OUT_STEP: StringName = &"cam_zoom_out_step"
 const TOGGLE_OVERHEAD_MAP: StringName = &"toggle_overhead_map"
-## Left click / drag: select. Right click: move the selection.
+## Left click / drag: select. Right click: move the selection. Cmd/Ctrl +
+## right click: attack-move it.
 const SELECT: StringName = &"unit_select"
 const COMMAND: StringName = &"unit_command"
+const ATTACK_MOVE: StringName = &"unit_attack_move"
 const STOP: StringName = &"unit_stop"
 ## Debug until the AI exists: switch which side the mouse commands.
 const SWITCH_SIDE: StringName = &"debug_switch_side"
@@ -81,6 +88,10 @@ static func _default_events() -> Dictionary[StringName, InputEvent]:
 	events[TOGGLE_OVERHEAD_MAP] = _key(KEY_TAB)
 	events[SELECT] = _mouse(MOUSE_BUTTON_LEFT)
 	events[COMMAND] = _mouse(MOUSE_BUTTON_RIGHT)
+	var attack_move: InputEventMouseButton = _mouse(MOUSE_BUTTON_RIGHT)
+	# Cmd on macOS, Ctrl elsewhere.
+	attack_move.command_or_control_autoremap = true
+	events[ATTACK_MOVE] = attack_move
 	events[STOP] = _key(KEY_H)
 	events[SWITCH_SIDE] = _key(KEY_F9)
 	for i: int in NUMBER_KEYS.size():

@@ -2,9 +2,10 @@ class_name ControlBar
 extends PanelContainer
 ## Bottom bar mirroring the keyboard controls so the game is playable with the
 ## mouse alone: formation buttons (1..0), control groups (click to recall;
-## toggle Set, then click a slot to save), Stop, a selection summary, and the
-## side being controlled. All actions go through the SelectionController, so
-## keys and buttons can't drift apart.
+## toggle Set, then click a slot to save), Stop, Attack-move (arms the next
+## right click as an attack-move, once), a selection summary, how many units
+## are alive on each side, and the side being controlled. All actions go
+## through the SelectionController, so keys and buttons can't drift apart.
 
 const GROUP_LABELS: Array[String] = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"]
 
@@ -13,7 +14,12 @@ var _world: World
 var _formation_buttons: Array[Button] = []
 var _group_buttons: Array[Button] = []
 var _set_toggle: Button
+var _attack_move_toggle: Button
 var _status: Label
+## Living units per side, recounted when the tick changes.
+var _light_alive: int = 0
+var _dark_alive: int = 0
+var _counted_tick: int = -1
 
 
 func setup(controller: SelectionController, world: World) -> void:
@@ -22,6 +28,8 @@ func setup(controller: SelectionController, world: World) -> void:
 	_build()
 	_controller.formation_changed.connect(_on_formation_changed)
 	_on_formation_changed(_controller.formation)
+	_controller.attack_move_armed_changed.connect(_on_attack_move_armed_changed)
+	_on_attack_move_armed_changed(_controller.attack_move_armed)
 
 
 func _build() -> void:
@@ -62,6 +70,11 @@ func _build() -> void:
 	stop.tooltip_text = "Halt the selection (H)"
 	stop.pressed.connect(_controller.stop_selected)
 	groups.add_child(stop)
+	_attack_move_toggle = _button("Attack-move")
+	_attack_move_toggle.toggle_mode = true
+	_attack_move_toggle.tooltip_text = "Next right-click attack-moves (or Cmd/Ctrl + right-click)"
+	_attack_move_toggle.toggled.connect(_controller.set_attack_move_armed)
+	groups.add_child(_attack_move_toggle)
 	var side: Button = _button("Switch side")
 	side.tooltip_text = "Debug: command the other side (F9)"
 	side.pressed.connect(_controller.switch_side)
@@ -82,8 +95,11 @@ func _process(_delta: float) -> void:
 	for slot: int in _group_buttons.size():
 		var count: int = selection.group(slot).size()
 		_group_buttons[slot].text = GROUP_LABELS[slot] if count == 0 else "%s·%d" % [GROUP_LABELS[slot], count]
-	_status.text = "%s   |   Controlling: %s" % [
+	_recount_alive()
+	_status.text = "%s   |   Light %d · Dark %d alive   |   Controlling: %s" % [
 		_selection_summary(selection),
+		_light_alive,
+		_dark_alive,
 		"Light" if _controller.side == UnitType.Faction.LIGHT else "Dark (debug)",
 	]
 
@@ -98,6 +114,26 @@ func _on_group_pressed(slot: int) -> void:
 
 func _on_formation_changed(kind: Formations.Kind) -> void:
 	_formation_buttons[kind].set_pressed_no_signal(true)
+
+
+func _on_attack_move_armed_changed(armed: bool) -> void:
+	_attack_move_toggle.set_pressed_no_signal(armed)
+
+
+# Counts each side's living units, once per tick rather than every frame.
+func _recount_alive() -> void:
+	if _world.tick == _counted_tick:
+		return
+	_counted_tick = _world.tick
+	_light_alive = 0
+	_dark_alive = 0
+	for unit: Unit in _world.units:
+		if not unit.is_alive():
+			continue
+		if unit.faction == UnitType.Faction.LIGHT:
+			_light_alive += 1
+		else:
+			_dark_alive += 1
 
 
 # "12 selected: 12 Shieldman", or "Nothing selected".

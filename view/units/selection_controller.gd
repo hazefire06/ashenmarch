@@ -6,16 +6,22 @@ extends Control
 ## - Double-click selects every unit of that type on screen; shift adds.
 ## - Right click moves the selection to the ground under the cursor, in the
 ##   current formation.
+## - Cmd/Ctrl + right click attack-moves there instead: the selection fights
+##   whatever it meets on the way. The control bar's Attack-move button arms
+##   the same order for the next plain right click, once.
 ## - 1..0 pick the formation for the next move order. Cmd/Ctrl+1..0 save a
 ##   group; Option/Alt+1..0 recall it. H stops. F9 (debug) switches sides.
 ##
 ## Only living units of the controlled side can be selected. Selection is view
 ## state; orders go to the sim as commands for the next tick, the same stream
-## multiplayer will send. This node covers the screen to draw the drag box but
-## ignores the mouse, so HUD controls above it get clicks first.
+## multiplayer will send. unit_at() also picks units that can't be selected
+## (either side, dead or alive), for the hover tooltip. This node covers the
+## screen to draw the drag box but ignores the mouse, so HUD controls above it
+## get clicks first.
 
 signal formation_changed(kind: Formations.Kind)
 signal side_changed(side: UnitType.Faction)
+signal attack_move_armed_changed(armed: bool)
 
 ## Pixels the mouse must move while held before a click becomes a drag.
 const DRAG_THRESHOLD: float = 6.0
@@ -27,6 +33,9 @@ const BOX_EDGE: Color = Color(1.0, 0.92, 0.35, 0.9)
 var selection: UnitSelection = UnitSelection.new()
 var formation: Formations.Kind = Formations.Kind.SHORT_LINE
 var side: UnitType.Faction = UnitType.Faction.LIGHT
+## True when the next plain right click attack-moves. It clears itself once an
+## order is given. Change it with set_attack_move_armed().
+var attack_move_armed: bool = false
 
 var _world: World
 var _units: UnitsView
@@ -55,6 +64,13 @@ func setup(world: World, units: UnitsView, camera: Camera3D, picker: TerrainPick
 func set_formation(kind: Formations.Kind) -> void:
 	formation = kind
 	formation_changed.emit(kind)
+
+
+func set_attack_move_armed(armed: bool) -> void:
+	if armed == attack_move_armed:
+		return
+	attack_move_armed = armed
+	attack_move_armed_changed.emit(armed)
 
 
 func save_group(slot: int) -> void:
@@ -100,8 +116,13 @@ func _unhandled_input(event: InputEvent) -> void:
 				_press_at = button.position
 				_drag_to = button.position
 			get_viewport().set_input_as_handled()
+		# Godot matches a mouse action even with extra modifiers held, so
+		# Cmd/Ctrl + right click is asked for exactly, before the plain one.
+		elif event.is_action(InputBindings.ATTACK_MOVE, true):
+			_order_move(button.position, true)
+			get_viewport().set_input_as_handled()
 		elif event.is_action(InputBindings.COMMAND):
-			_order_move(button.position)
+			_order_move(button.position, attack_move_armed)
 			get_viewport().set_input_as_handled()
 		return
 	if _handle_keys(event):
@@ -161,7 +182,7 @@ func _handle_keys(event: InputEvent) -> bool:
 
 
 func _click_select(at: Vector2, additive: bool) -> void:
-	var unit_id: int = _unit_at(at)
+	var unit_id: int = unit_at(at)
 	if unit_id < 0:
 		if not additive:
 			selection.clear()
@@ -185,7 +206,7 @@ func _box_select(rect: Rect2, additive: bool) -> void:
 
 
 func _select_type_at(at: Vector2, additive: bool) -> void:
-	var clicked: int = _unit_at(at)
+	var clicked: int = unit_at(at)
 	if clicked < 0:
 		return
 	var type_index: int = _world.get_unit(clicked).type_index
@@ -204,39 +225,63 @@ func _select_type_at(at: Vector2, additive: bool) -> void:
 		selection.select(ids)
 
 
-func _order_move(at: Vector2) -> void:
+# Moves the selection to the ground under the screen point, or attack-moves it
+# there. Giving an order clears the one-shot armed flag; a click that gives none
+# (nothing selected, or off the map) leaves it armed.
+func _order_move(at: Vector2, attack: bool) -> void:
 	if selection.is_empty():
 		return
 	var hit: Vector3 = _picker.pick(_camera.project_ray_origin(at), _camera.project_ray_normal(at))
 	if hit == Vector3.INF:
 		return
 	var mm: float = float(World.UNITS_PER_METER)
-	_world.enqueue(MoveUnitsCommand.new(
-		_world.tick, selection.ids(), roundi(hit.x * mm), roundi(hit.z * mm), formation
-	))
-	_units.show_move_marker(hit)
+	var x: int = roundi(hit.x * mm)
+	var z: int = roundi(hit.z * mm)
+	if attack:
+		_world.enqueue(AttackMoveCommand.new(_world.tick, selection.ids(), x, z, formation))
+	else:
+		_world.enqueue(MoveUnitsCommand.new(_world.tick, selection.ids(), x, z, formation))
+	_units.show_move_marker(hit, attack)
+	set_attack_move_armed(false)
 
 
-# The selectable unit whose sprite is under the screen point, nearest the
-# camera if several overlap; -1 if none.
-func _unit_at(at: Vector2) -> int:
+## The unit whose sprite is under the screen point, nearest the camera if
+## several overlap; -1 if none. With selectable_only, only living units of
+## the controlled side count. Without it, any unit does, either side and dead
+## or alive, except gibbed ones, which have nothing left to point at. A body
+## is picked by the ground it covers, and a standing unit wins over a body
+## under it.
+func unit_at(at: Vector2, selectable_only: bool = true) -> int:
 	var best: int = -1
 	var best_distance: float = INF
+	var best_is_body: bool = true
 	for sprite: UnitSprite in _units.sprites():
-		if not _selectable(sprite.unit_id) or _camera.is_position_behind(sprite.global_position):
+		var unit: Unit = _world.get_unit(sprite.unit_id)
+		if unit == null or not sprite.is_pickable() or _camera.is_position_behind(sprite.global_position):
+			continue
+		if selectable_only and not _selectable(sprite.unit_id):
 			continue
 		if not _screen_rect(sprite).grow(PICK_SLOP).has_point(at):
 			continue
+		var is_body: bool = not unit.is_alive()
 		var d: float = _camera.global_position.distance_to(sprite.global_position)
-		if d < best_distance:
+		if best < 0 or (best_is_body and not is_body) or (is_body == best_is_body and d < best_distance):
 			best_distance = d
 			best = sprite.unit_id
+			best_is_body = is_body
 	return best
 
 
-# Screen rectangle the sprite's quad covers. The quad is a billboard standing
-# along the camera's up axis, not world up.
+# Screen rectangle the sprite's quad covers. A standing quad is a billboard
+# along the camera's up axis, not world up. A dead one lies on the ground, so
+# the rectangle is the box around its projected corners.
 func _screen_rect(sprite: UnitSprite) -> Rect2:
+	if sprite.is_dead():
+		var corners: PackedVector3Array = sprite.lying_corners()
+		var rect: Rect2 = Rect2(_camera.unproject_position(corners[0]), Vector2.ZERO)
+		for i: int in range(1, corners.size()):
+			rect = rect.expand(_camera.unproject_position(corners[i]))
+		return rect
 	var up: Vector3 = _camera.global_transform.basis.y
 	var feet: Vector2 = _camera.unproject_position(sprite.global_position)
 	var head: Vector2 = _camera.unproject_position(sprite.global_position + up * sprite.height)
