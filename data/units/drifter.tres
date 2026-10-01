@@ -28,4 +28,6 @@ ranged_spread_permille = 45
 uphill_spread_permille = 800
 uphill_range_permille = 400
 ranged_ammo = -1
+ai_tactic = 1
+ai_standoff_permille = 850
 placeholder_color = Color(0.55, 0.85, 0.9, 1)
