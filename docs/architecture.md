@@ -770,6 +770,281 @@ The environment changes tactics:
 
 ### Not yet
 - Units don't path around fire (Phase 7 AI).
-- No Burning status on units (Phase 6).
+- No Burning status on units (done in Phase 6).
 - Blasts and lightning don't light grass.
 - Wind doesn't push fire.
+
+## Special units and status effects (Phase 6)
+The v1 roster is complete:
+- **Warden:** heals with herbs.
+- **Blightbag:** a walking bomb that leaves paralyzing gas.
+- **Stormcaller:** casts lightning down a line.
+- **Ripper:** now carries and throws whatever lies about.
+
+Units have status effects, and a HUD panel shows the selection.
+
+**Files**
+
+| File | Role |
+|---|---|
+| `sim/combat/status_effects.gd` | `StatusEffects`: paralysis, confusion, burning, and gas clouds paralyzing |
+| `sim/combat/gas_cloud.gd` | `GasCloud`: an entity that paralyzes what is in it |
+| `sim/units/interactions.gd` | `Interactions`: errands (heal, pick up, strike a plant, tear a part off a body), herb gathering, scavenging |
+| `sim/projectiles/lightning.gd` | `Lightning`: the bolt as a line |
+| `sim/herb_plant.gd` | `HerbPlant`: struck once for two herbs |
+| `sim/commands/` | `HealCommand`, `InteractCommand`, `ApplyStatusCommand`, `SpawnHerbPlantCommand` |
+| `view/hud/unit_info.gd`, `unit_info_panel.gd` | The HUD's words for units and things, and the selection panel |
+| `view/effects/gas_clouds_view.gd`, `view/units/herb_plants_view.gd` | Clouds and plants |
+| `scripts/demo_abilities.gd` | `make demo-abilities` |
+
+### Tick order
+`World.step()` now runs:
+1. commands
+2. `Weather`
+3. **`StatusEffects`**
+4. `MeleeCombat`
+5. **`Interactions`**
+6. `RangedCombat`: bolts strike at the end of it
+7. `UnitMovement`
+8. integrate
+9. `ProjectileSystem`: carried objects follow their carriers
+10. `Explosions`: clouds and scattered packets
+11. `Fire`: sets units alight
+12. drop removed projectiles and spent clouds
+
+### Status effects (`StatusEffects`)
+- **State.** Each unit keeps the last tick it is affected per kind (`Unit.status_until`, `NONE` = −1) and `burn_credit_id`. Both are hashed.
+  - `apply(kind, ticks)` sets `max(until, tick + ticks − 1)`, so an effect refreshes and never stacks.
+  - An effect applied during commands lasts exactly `ticks` ticks, counting the current one.
+  - `cure()` clears every effect (a herb). `kill()` clears them too, and a body takes no new ones.
+- **Paralysis.**
+  - The unit doesn't walk, turn, swing, shoot, cast, or work on an errand, and a wind-up in progress is lost.
+  - `UnitMovement._advance` skips it, so it isn't counted as stuck and its order is still there afterwards.
+  - Blasts and separation still push it.
+  - Its shield doesn't block (`MeleeCombat.can_block`, for melee and arrows). That skips the block roll, which shifts the RNG stream only when paralysis is present.
+- **Confusion.**
+  - Melee picks the nearest unit of either side within `acquire_radius`, whatever the order (MOVE included). It ignores role preference (`Targeting` with `nearest_only`) and the hold leash.
+  - Ranged shoots the nearest anyone in range, ground attack included, with no friend checks.
+  - A kill of a friend earns no veterancy, as before.
+  - The tick after it wears off, `UnitOrders.resume()` drops the fight and the shot. MOVE and ATTACK_MOVE re-march to `order_x/z`, GROUND_ATTACK stands, INTERACT restarts its walk, and anything else holds where it stands.
+  - `_kept_target` now also drops a friend for a unit in its right mind.
+  - No v1 unit causes confusion; F8 does, and so will the later confusion caster.
+- **Burning.**
+  - `BURN_DAMAGE` (3) every `BURN_INTERVAL_TICKS` (10) on the world's tick, credited to the latest source.
+  - Water of depth 1+ puts it out.
+  - **Fire now works through it:** a burning cell sets units on it alight for `FIRE_BURN_TICKS` (2 s), every tick, so they burn on after stepping off. It used to damage them directly.
+  - A fire arrow whose flame holds also sets the unit it strikes alight for 5 s.
+  - The rate is unchanged at 9 hp/s, but the first hurt lands at the next 10-tick boundary after the cell sets the unit alight.
+- **Paralyzing touch:** `UnitType.melee_status` and `melee_status_ticks` are applied on every melee HIT. No v1 unit uses them; the later paralyzing zombie will.
+- **A melee blow that lands spoils the target's draw, cast, or errand wind-up**, for every unit. This is how sustained melee shuts a Stormcaller down. It also means Drifters stop shooting while they are stabbed.
+- **Debug:** F8 cycles paralysis, confusion, and burning (5 s each) on the selection through `ApplyStatusCommand`, so it is part of the command stream.
+
+### Errands (`Interactions`)
+- **The order.** `Order.INTERACT` (appended) uses `interact_id` (any entity), `resume_order`, and `act_left`. All are hashed.
+- **The action** follows from the pair (`action_for`):
+
+| Who | On what | Does |
+|---|---|---|
+| A HEAL unit with herbs | A living friend that is hurt or affected | Heals `heal_hp`, cures |
+| A HEAL unit with herbs | Anything undead, either side | Kills it (credited) |
+| A HEAL unit with room | A resting herb | Takes it |
+| A `throws_carried` unit, empty-handed | A resting CARRY object | Picks it up |
+| The same | A body with `parts_taken < 2` (not a Blightbag) | Tears off its `scavenged_projectile`, straight into its hand |
+| A unit with melee damage | An unspent herb plant | Strikes it: two herbs drop, it is spent |
+
+  A living enemy, or a friend with nothing to heal, is refused.
+- **The walk and the act.**
+  - The unit walks at the target, re-pathing after 1 m of drift. Within `REACH` (0.6 m, edge to edge) it stops, faces the target, and winds up: `heal_windup_ticks`, `melee_windup_ticks` for a plant, 9 ticks to pick up.
+  - The act lands if the target is still within reach + 0.25 m. Otherwise the wind-up is lost and nothing is spent, the same rule as a melee whiff.
+  - Then it goes back to `resume_order`: an attack-move marches on, anything else holds where it stands.
+- **Giving up.**
+  - Commands refuse a target outside the unit's pathing component, unless it is already in reach.
+  - A unit that has walked to its target, stopped, and still can't reach it gives up (`ground_walked` doubles as the "has walked" flag).
+  - A target that stops being actionable (taken by someone else, healed to full, dead) ends the errand.
+- **What skips it:** melee and ranged skip INTERACT units unless confused, and never run the MOVE arrival `hold()` on them. A paralyzed or reeling unit makes no progress.
+- **Commands.**
+  - `HealCommand` sends only healers; `InteractCommand` sends anyone who can.
+  - Either way the nearest qualifying unit goes (ties to the lower id), and the rest keep their orders.
+- **Herbs on contact:** a healer with room picks up any resting or rolling herb within 0.3 m of its body edge, errand or not.
+- **Scavenging** (`scavenge_radius`, Rippers 8 m) runs on the unit's staggered 6-tick slot.
+  - It applies to a unit that is holding or attack-moving, empty-handed, and not fighting, shooting, reeling, paralyzed, or confused.
+  - The unit takes the nearest resting CARRY object or tearable body in range (ties to the lower id). It skips things inside a live gas cloud, things another unit is already going for (claims are taken in id order, so a lower id claims first), and things it can't walk to.
+  - The errand resumes the order the unit had.
+
+### Warden and herbs
+- **`Special.HEAL`** (appended): the stack is `special_charges`, and `special_projectile` must be a HERB pickup (checked by the catalog).
+- **Death drops:** `Damage.drop_on_death` drops a HEAL unit's remaining herbs in the same fixed ring as a Sapper's satchels.
+- **Herbs** are BOUNCES projectiles (`pickup = HERB`), so blasts toss them like anything else.
+- **Herb plants** are map data: `MapInfo.herb_plants` is x, z pairs in milli-units.
+  - MainView plants them with tick-0 `SpawnHerbPlantCommand`s, like the spawns.
+  - Riverside has four, two on each bank, tested dry and walkable; `gen_riverside.gd` writes them.
+  - A plant is never touched by blasts, fire, or bodies.
+
+### Blightbag and gas
+- **The unit.** UNDEAD nature and mobility.
+  - `melee_detonates`: it chases and winds up (20 ticks) like a melee unit, and the blow is `Damage.self_destruct`. There is no roll; a target that slipped out of reach is a miss.
+  - `UnitType.has_melee()` (damage or detonating) replaces `melee_damage > 0` where it matters.
+  - T (`Special.DETONATE`, 1 charge) is the same self-kill.
+- **Death bursts it, every time:**
+  - `drop_on_death` drops its `special_projectile` (`blight_burst`) and `Explosions.catch`es it, credited to the killer (a self-kill to itself).
+  - **Chain delays are now exact:** `catch` adds a tick when it runs before `ProjectileSystem` this tick (`World.projectile_pass_begun`), so a charge caught by melee, lightning, burning, or a herb goes off exactly 4 ticks later, like one caught by a blast or a fire. Before, an early catch would have gone off a tick sooner, because the pass counts down what was there when it began.
+  - `Damage.apply` now ignores dead targets. Without that, a Blightbag killed earlier in a strike pass would have burst again on its own landing blow, and two blows meeting in one tick would credit two kills.
+- **The burst** (`blight_burst`): blast 4 m / 50 (full damage within 1 m), knockback 5 m at 5 m/s, no crater.
+  - It leaves a **GasCloud**: 5 m, 10 s, paralysis lasting 2 s past leaving.
+  - It **scatters** two `gas_packet`s, resting, 4.5 m out. They are placed after the burst's object-catch step, so it doesn't set them off.
+- **`GasCloud`** is an entity (hashed). From the tick after it appears, it paralyzes every living unit whose body edge is within its radius and whose feet are within 3 m of its height: both sides, undead, Blightbags. Then it counts down, and is dropped at the end of its last tick. It neither drifts nor spreads.
+- **Gas packets** (`pickup = CARRY`, `chain_detonates`, `bursts_on_impact`, gas only: 3.5 m, 6 s, 2 s).
+  - A blast, fire, or lightning sets them off.
+  - One a unit threw (`Projectile.thrown`) bursts on its first contact, ground or body, in the same tick.
+  - One knocked by a blast just lands.
+- **Gas alone sets nothing off:** the catch radius is the blast's, which is 0. `ProjectileType.bursts()` (blast or gas) and `effect_radius()` replace `is_explosive()` where gas counts: validation, and throwers' friend checks.
+
+### Stormcaller and lightning
+- **The lightning.** A `BOLT` projectile (appended behavior) is never spawned.
+  - `radius` is the line's half-width (0.35 m), and `impact_damage` is 45.
+  - The Stormcaller is LIVING (`ranged_projectile = lightning`): 75 hp, no melee, 8–40 m (the 8 m minimum range is the dead zone), a 1 s cast, a 4 s cooldown, spread 30 ‰.
+- **Aiming** (`RangedCombat`):
+  - Bolts aim at the chest with no lead.
+  - `Lightning.is_clear` needs the ground clear up to 1 m short of the aim point.
+  - For auto-picked targets, it also needs no friend anywhere on the whole line out to its reach, within half-width + `PATH_MARGIN` + spread × distance.
+  - **A Stormcaller behind its own line therefore won't cast;** Phase 7's AI positions it. The lockstep battle puts the Stormcallers on a flank for that reason.
+  - Ground attack, and confusion, skip the friend check.
+- **Casting:**
+  - The loose pass makes one lateral spread draw (uniform within ± spread × distance) and queues the bolt.
+  - After every shot has left, the queued bolts strike in caster id order. Like melee blows, they are simultaneous: a caster killed by an earlier bolt that tick still casts.
+- **`Lightning.strike`:**
+  - The line runs from the launch point through the aim point to the full reach, cut where it meets the ground.
+  - Every living, non-submerged body it touches (caster excepted) takes 45 ± 10 % in ascending id. Shields don't stop it.
+  - Every non-detonating `chain_detonates` projectile within reach of the line is caught, wherever it is.
+  - It emits `ProjectileEvent.BOLT` with the end point.
+- **The overflow lesson.**
+  - `ProjectileCollision.cylinder_contact`'s quadratic overflows 64 bits for a body hundreds of metres to the side of a 40 m line. The true discriminant (about −5·10¹⁹) doesn't fit, and the wrapped value can read as a hit.
+  - The demo's first bolt struck the whole Light army at the ford, 180 m off.
+  - ProjectileSystem never hit this, because it asks only about bodies its grid found near the segment. `Lightning` now rules out bodies outside the segment's box first.
+  - `test_a_bolt_never_strikes_anything_far_off_its_line` pins it. Any new caller of `cylinder_contact` must pre-filter the same way.
+- **Validation:** launch speed and lob grade moved from `UnitType` to `UnitCatalog._validate_references`, which knows the projectile: a bolt needs neither.
+
+### Ripper: carry and throw
+- **Carrying.** `Projectile.Motion.CARRIED` (appended) and `carrier_id` link to `Unit.carried_id`.
+  - `ProjectileSystem` puts a carried object at the carrier's hand (`Interactions.hand_y`, 75 % of body height) after movement. It does no collision checks.
+  - A blast doesn't knock it out of the hand, but does catch it. Fire under the carrier catches it too, since the rule only excludes flying objects. Either way it goes off in the hand.
+  - `World.remove_projectile` and `despawn_entity` clear the link, and `World.carried_by()` treats a link to a removed object as empty-handed.
+  - A dying carrier drops what it holds, resting, at its feet.
+- **Throwing.** `throws_carried` reuses the `ranged_*` fields as the throw: Ripper lobs at 0.8 grade, up to 15 m/s, 3–20 m, a 0.4 s wind-up, a 1 s cooldown, spread 80 ‰. It ships `ranged_ammo = −1`, and `ranged_projectile` stays empty.
+  - `Unit.fights_at_range()` (shoots, or holds something) replaces `has_ranged()` for melee's adjacent-only rule and for who runs in `RangedCombat`.
+  - `next_projectile` returns the carried type.
+  - The throw launches the object itself: owner, instigator, ignore window, and `thrown` are set, and nothing new is spawned.
+  - Aiming is as for any thrower: role preference (Rippers hunt ranged and support), and friend checks over the object's `effect_radius`. Things with impact damage aim at the chest.
+- **Thrown impacts:**
+  - A body part (`impact_damage` 8) hurts the first body it flies into, with no roll, credited to the thrower.
+  - A gas packet bursts on contact.
+  - Either way the first contact ends `thrown`.
+- **CARRY pickups** are satchels, gas packets, and body parts. Herbs are for healers only.
+
+### Data (appended; earlier catalog indices and hashes don't move)
+
+| Unit | Numbers |
+|---|---|
+| Warden | Light, living, support. 85 hp, 2.6 m/s, melee 9 at 75 %. 6 herbs, 60 hp each, 0.5 s to apply |
+| Blightbag | Dark, undead. 40 hp, 1.1 m/s, acquires at 10 m, bursts on contact after 20 ticks |
+| Stormcaller | Dark, living, ranged. 75 hp, 2.0 m/s, lightning 8–40 m |
+| Ripper (changed) | Carries and throws; scavenges within 8 m |
+
+| Projectile | Numbers |
+|---|---|
+| `herb` | BOUNCES, HERB |
+| `gas_packet` | BOUNCES, CARRY, gas 3.5 m / 6 s / 2 s, bursts on impact |
+| `blight_burst` | Blast 4 m / 50, gas 5 m / 10 s / 2 s, scatters 2 packets at 4.5 m |
+| `lightning` | BOLT, 45, half-width 0.35 m |
+| `body_part` | BOUNCES, CARRY, impact 8 |
+| `satchel` (changed) | Now a CARRY pickup |
+
+**Catalog checks added:**
+- A HEAL herb must be a HERB pickup.
+- A DETONATE special must burst.
+- Scavenged parts must be CARRY.
+- Scatter projectiles must exist.
+
+### RNG draw order (additions)
+
+| When | Draws |
+|---|---|
+| A bolt is loosed (loose pass, caster id order) | lateral spread |
+| Bolts strike (after the loose pass, caster id order) | per bolt, one damage roll per body struck, ascending id |
+| A carrier's throw | the two spread draws, as any throw; no fuse draw |
+| Status effects, gas, errands, scavenging, herbs, impacts of thrown objects | none |
+| A blow or arrow at a paralyzed shielded target | the block roll is skipped |
+
+### Hash
+`state_hash()` gains:
+- **on `Unit`:** status timers, `burn_credit_id`, `interact_id`, `resume_order`, `act_left`, `carried_id`, `parts_taken`;
+- **on `Projectile`:** `carrier_id`, `thrown`;
+- **new entities:** gas clouds and herb plants.
+
+The bolt queue and `projectile_pass_begun` are always empty or false between ticks.
+
+### View and HUD
+- **Sprites:**
+  - A status tints the body (paralysis pale blue, confusion magenta, burning a flickering orange) and names itself in a tag over it.
+  - A heal flashes the target green (`CombatEvent.HEAL`).
+- **Effects:**
+  - **Gas clouds:** translucent hemispheres that fade in and fade out over their last 2 s.
+  - **Bolts:** jagged chains of thin boxes with a flash where they ended, gone in 0.2 s.
+  - **A gas-only burst:** a green puff instead of a flash.
+  - **Herb plants:** green bushes that shrink and brown once spent.
+  - **Loose objects:** labeled "Charge" for anything with a blast, else by name.
+- **Input:**
+  - T with a Warden that has herbs also arms Heal (`ArmedOrder.HEAL`): the next left click on a living unit sends a `HealCommand`. A click on nothing leaves it armed; right click and Esc cancel, as before.
+  - Right-click on a herb plant, a loose object, or a body sends an `InteractCommand`, but only if a selected unit could act on it (`Interactions.action_for`). Otherwise it is a plain move.
+  - Picking: `ProjectilesView.object_at` and `HerbPlantsView.plant_at` are screen-space radius picks.
+- **`UnitInfo`** has the HUD's words, shared by the tooltip and the panel:
+  - status effects with seconds left;
+  - "Herbs 4/6", "Bursts when it dies", "Lightning: unlimited · dead zone 8 m", "Carrying: Satchel charge";
+  - errands named Healing, Fetching, Gathering herbs, or Scavenging.
+
+  The tooltip also names the herb plant or loose object under the cursor.
+- **`UnitInfoPanel`** is docked above the control bar's left end and hidden with nothing selected.
+  - One unit: its name, a health bar, and its details.
+  - Several: the counts by type, and a cell per unit (up to 24) in its type's color, with a health bar and a frame tinted by status. Click a cell to select just that unit; shift-click to drop it.
+- **MainView** adds 3 Wardens, 3 Blightbags, and 2 Stormcallers to the test squads, and plants Riverside's herbs.
+
+### Decisions
+- **Tim chose** (plan approval):
+  - each Blightbag burst scatters two gas packets;
+  - body parts are torn from bodies (two per body), not spawned by gibbing, so gibs stay cosmetic;
+  - Rippers scavenge on their own before Phase 7's AI;
+  - T arms Heal and a click picks the patient.
+- **Defaults in the approved plan:**
+  - The Stormcaller is living, so a herb doesn't kill it and only sustained melee or missiles do.
+  - The Blightbag is undead, so a herb kills it and it bursts on the Warden.
+  - A herb cures every status.
+  - A paralyzed unit can't block.
+  - Burning replaces direct fire damage, with a 2 s afterburn.
+  - A blow that lands spoils any draw.
+- **Gibbed bodies still give up parts in the sim:** the pieces are lying there, and gibbing is view-only.
+
+### Behavior changes to earlier phases
+- **Fire hurts through Burning.** The first hurt comes at the next 10-tick boundary after a cell sets a unit alight, and it burns on for 2 s. `test_fire` re-pins four tests: the hit schedule, the last-tick test (now an afterburn test), a burning Sapper's satchels, and the fire kill credit.
+- **A melee blow that lands spoils a draw:** Drifters too.
+- **No block roll on a paralyzed target.**
+- **Validation:** launch speed and lob grade are checked by the catalog (`test_validate_rejects_half_defined_ranged` expects 5 errors, not 7). `chain_detonates` and fuses accept gas-only bursts.
+- **Satchels can be picked up and thrown by Rippers.**
+
+### Measured (M4 Max, headless)
+
+| Scenario | Result |
+|---|---|
+| Full-roster ford battle, 42 units with herbs, a plant, heals, confusion, gas, lightning, and scavenging; 1500 ticks, two worlds (`test_roster_lockstep`) | Hash-identical. 1.40 ms/tick per world, worst 5.4 ms after tick 0 (tick 0 builds three pathing layers) |
+| `make demo-abilities` at 3× (windowed) | Every event plays out; the finale ends Light 9/37, Dark 0/36 |
+| Test suite | 598 tests, about 45 s |
+
+### Not yet
+- AI that uses the new units well. Phase 7 should cover:
+  - Stormcallers that hold where their lines are clear;
+  - Blightbags walking at clusters;
+  - Wardens healing on their own;
+  - Rippers choosing what to fetch.
+- Lightning doesn't light grass, and rain doesn't affect it.
+- A burning unit doesn't spread fire to the ground it walks on.
+- Gas doesn't drift with the wind, and rain doesn't thin it.
+- Conversion (a later caster).

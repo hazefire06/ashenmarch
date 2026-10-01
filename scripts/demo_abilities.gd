@@ -171,7 +171,7 @@ func _lightning() -> void:
 	var started: int = _world.tick
 	while _alive(caller) > 0 and _world.tick - started < roundi(FIGHT_TIMEOUT * World.TICK_RATE):
 		await physics_frame
-	_result("%d bolts struck %d bodies and set off %d satchels. The Reavers cut the Stormcaller down in %.0f s; it cast %d bolts while they were on it." % [
+	_result("%d bolts struck %d bodies and set off %d satchels. The Reavers cut the Stormcaller down %.0f s after they charged; it cast %d more bolts in that time." % [
 		_n("bolt"), struck, _n("satchel blast"), float(_world.tick - started) / World.TICK_RATE,
 		_n("bolt") - _bolts_before_reavers
 	])
