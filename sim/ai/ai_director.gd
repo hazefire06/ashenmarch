@@ -1,11 +1,12 @@
 class_name AiDirector
 extends RefCounted
 ## Owns every AiGroup in a world: spawns them from specs, switches their
-## behavior, and each tick keeps their member lists honest. Like MeleeCombat,
-## it is stateless apart from what it hashes, and it draws no random numbers.
+## behavior, and each tick keeps their member lists honest and lets them think
+## (AiBehaviors). Like MeleeCombat, it is stateless apart from what it hashes,
+## and it draws no random numbers.
 ##
-## Today a group only exists: update() drops members that died or changed
-## side, and no group issues orders yet.
+## A group thinks every THINK_TICKS, staggered by its id so groups don't all
+## plan on the same tick, and at once when think_now is set (a new behavior).
 
 ## Ticks between one plan and the next for a group, so the AI isn't re-ordering
 ## units 30 times a second. A group with think_now set plans at once instead.
@@ -76,11 +77,18 @@ func groups_of(spec_index: int) -> Array[AiGroup]:
 	return out
 
 
-## Runs once a tick, after the mission's triggers: drops members that died or
-## changed side.
+## Runs once a tick, after the mission's triggers, group by group in creation
+## order: drops members that died or changed side, then a group that still has
+## members thinks if it is its turn or think_now is set. The think spends the
+## request: think_now is cleared before it.
 func update(world: World) -> void:
 	for group: AiGroup in groups:
 		group.prune(world)
+		if group.members.is_empty():
+			continue
+		if group.think_now or (world.tick + group.id) % THINK_TICKS == 0:
+			group.think_now = false
+			AiBehaviors.think(world, group)
 
 
 ## Everything the AI keeps: the next group id, then each group's fields.

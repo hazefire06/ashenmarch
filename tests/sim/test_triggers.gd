@@ -572,6 +572,8 @@ func test_set_behavior_changes_every_group_of_the_spec_and_emits_events() -> voi
 	a.behavior = AiGroupSpec.Behavior.HUNT
 	turn.actions.append(a)
 	var world: World = _world(_script([pack], [again, turn]))
+	# Something to hunt, so planning under HUNT shows as an ORDER.
+	_light(world, 40, 40)
 	_run(world, 5)
 	assert_eq(world.ai.groups.size(), 2, "two instances of the spec")
 	for g: AiGroup in world.ai.groups:
@@ -580,14 +582,18 @@ func test_set_behavior_changes_every_group_of_the_spec_and_emits_events() -> voi
 	var ids: Array[int] = []
 	for g: AiGroup in world.ai.groups:
 		assert_eq(g.behavior, AiGroupSpec.Behavior.HUNT)
-		assert_true(g.think_now, "so it plans at once")
+		assert_false(g.think_now, "the director planned under the new behavior in the same step")
 		ids.append(g.id)
 	var seen: Array[int] = []
+	var planned: Array[int] = []
 	for e: AiEvent in world.ai_events:
 		if e.kind == AiEvent.Kind.BEHAVIOR:
 			assert_eq(e.value, AiGroupSpec.Behavior.HUNT)
 			seen.append(e.group_id)
+		elif e.kind == AiEvent.Kind.ORDER:
+			planned.append(e.group_id)
 	assert_eq(seen, ids)
+	assert_eq(planned, ids, "each group sent its members hunting on the tick it switched")
 
 
 func test_set_behavior_on_a_group_that_never_spawned_does_nothing() -> void:
