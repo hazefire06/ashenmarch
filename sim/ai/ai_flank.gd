@@ -7,10 +7,12 @@ extends RefCounted
 ## like AiBehaviors; the progress is AiGroup's focus_id, route, route_index,
 ## plan_x/plan_z and phase:
 ##
-## - 0, fresh: plans (FlankRoute). Nothing in the way: strike. Otherwise the
-##   route round the screen's nearer end, or round the other end if the
-##   nearer one leaves the map or the group's pathing component: approach.
-##   Neither works: strike.
+## - 0, fresh: plans (FlankRoute). Already found out (as in 1): strike, so
+##   a group fighting when its focus dies keeps fighting instead of walking
+##   off round a screen it stands next to. Nothing in the way: strike.
+##   Otherwise the route round the screen's nearer end, or round the other
+##   end if the nearer one leaves the map or the group's pathing component:
+##   approach. Neither works: strike.
 ## - 1, approach: walks the route one leg per waypoint with plain moves, so
 ##   nothing on the way stops it to fight. It strikes at once when found out:
 ##   a member lost hit points since the last think, or an enemy is within
@@ -48,11 +50,14 @@ static func think(world: World, group: AiGroup, units: Array[Unit]) -> void:
 	if focus.id != group.focus_id:
 		group.focus_id = focus.id
 		group.phase = 0
-	if group.phase == 1:
-		if _found_out(group, units, enemies):
-			group.phase = 2
-		elif FixedMath.length(focus.x - group.plan_x, focus.z - group.plan_z) > REPLAN_DRIFT:
-			group.phase = 0
+	if group.phase != 2 and _found_out(group, units, enemies):
+		if group.phase == 0:
+			# The route on record was for another focus.
+			group.route = PackedInt64Array()
+			group.route_index = 0
+		group.phase = 2
+	if group.phase == 1 and FixedMath.length(focus.x - group.plan_x, focus.z - group.plan_z) > REPLAN_DRIFT:
+		group.phase = 0
 	if group.phase == 0:
 		_plan(world, group, units, focus, enemies)
 	if group.phase == 1:

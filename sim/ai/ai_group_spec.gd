@@ -22,7 +22,8 @@ enum Behavior {
 	GUARD,
 	## Marches at the nearest enemy.
 	HUNT,
-	## Goes after the roles in flank_roles, circling to their rear.
+	## Goes after the roles in flank_roles: walks round the end of any enemy
+	## melee screening them, then strikes from the side (AiFlank).
 	FLANK,
 	## Waits hidden until an enemy comes within alert_radius, a member is
 	## hurt, or one is fought, then springs into on_alert.

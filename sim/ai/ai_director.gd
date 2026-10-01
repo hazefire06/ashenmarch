@@ -70,6 +70,9 @@ func set_behavior(world: World, group: AiGroup, behavior: AiGroupSpec.Behavior) 
 	group.leg_retried = false
 	group.focus_id = 0
 	group.route = PackedInt64Array()
+	group.route_index = 0
+	group.plan_x = 0
+	group.plan_z = 0
 	group.think_now = true
 	world.ai_events.append(AiEvent.new(AiEvent.Kind.BEHAVIOR, group.id, 0, 0, behavior))
 

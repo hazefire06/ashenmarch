@@ -322,6 +322,104 @@ func test_a_flank_that_is_hurt_strikes_at_once() -> void:
 	assert_eq(order.value, 1, "attack-moving")
 
 
+func test_an_enemy_in_contact_on_the_approach_strikes_at_once() -> void:
+	var world: World = _world()
+	_spawn_screen(world)
+	var archers: Array[Unit] = _spawn_archers(world)
+	var group: AiGroup = _flankers(world)
+	assert_false(_next_route(world, group).is_empty(), "a route was planned")
+	assert_eq(group.phase, 1, "approaching")
+	var hp: int = AiOrders.hp_sum(group.living(world))
+	# A dummy that never hits back, 2 m center to center (1.2 m edge to edge)
+	# from a member: well inside CONTACT.
+	var member: Unit = world.get_unit(group.members[0])
+	world.spawn_unit(SCREEN, LIGHT, member.x - 2 * M, member.z, 1, 0)
+	var order: AiEvent = null
+	for _t: int in AiDirector.THINK_TICKS:
+		world.step()
+		for e: AiEvent in world.ai_events:
+			if e.kind == AiEvent.Kind.ORDER and order == null:
+				order = e
+		if order != null:
+			break
+	assert_eq(AiOrders.hp_sum(group.living(world)), hp, "nobody was hurt: contact alone")
+	assert_eq(group.phase, 2, "found out at the next think: strike")
+	assert_not_null(order)
+	if order == null:
+		return
+	assert_eq(Vector2i(order.x, order.z), Vector2i(archers[0].x, archers[0].z), "at the focus")
+	assert_eq(order.value, 1, "attack-moving")
+
+
+func test_a_focus_killed_mid_route_gets_a_route_to_the_next_one() -> void:
+	var world: World = _world()
+	_spawn_screen(world)
+	var archers: Array[Unit] = _spawn_archers(world)
+	var group: AiGroup = _flankers(world)
+	assert_false(_next_route(world, group).is_empty(), "a route was planned")
+	assert_eq(group.focus_id, archers[0].id)
+	archers[0].kill()
+	var replanned: Array[AiEvent] = _next_route(world, group)
+	assert_eq(replanned.size(), 2, "a new route, two waypoints")
+	assert_eq(group.focus_id, archers[1].id, "the other archer")
+	assert_eq(Vector2i(group.plan_x, group.plan_z), Vector2i(archers[1].x, archers[1].z))
+	assert_eq(group.phase, 1, "approaching again")
+	for e: AiEvent in replanned:
+		assert_gt(e.x, 44 * M, "round the east end, the nearer one to (41, 34)")
+
+
+func test_a_flank_fighting_by_the_screen_keeps_fighting_when_its_focus_dies() -> void:
+	var world: World = _world()
+	var screen: Array[Unit] = _spawn_screen(world)
+	var archers: Array[Unit] = _spawn_archers(world)
+	var group: AiGroup = _flankers(world)
+	_run_until_swing(world, group, screen)
+	assert_not_null(_swing, "the flank struck")
+	# Let every member close in on the focus.
+	var engaged: bool = false
+	while world.tick < SWING_TICKS and not engaged:
+		world.step()
+		engaged = true
+		for unit: Unit in group.living(world):
+			engaged = engaged and unit.target_id == archers[0].id
+	assert_true(engaged, "all three are on the focus")
+	assert_eq(group.phase, 2)
+	archers[0].kill()
+	# Through the next think: the new focus is planned for while the members
+	# stand by the screen and the other archer, so they must not walk off.
+	for _t: int in AiDirector.THINK_TICKS + 1:
+		world.step()
+		for e: AiEvent in world.ai_events:
+			if e.group_id != group.id:
+				continue
+			assert_ne(e.kind, AiEvent.Kind.FLANK_WAYPOINT, "no route away from a fight")
+			if e.kind == AiEvent.Kind.ORDER:
+				assert_eq(e.value, 1, "attack-moves only, no plain move away")
+	assert_eq(group.focus_id, archers[1].id, "the other archer")
+	assert_eq(group.phase, 2, "still striking")
+	for _t: int in 30:
+		world.step()
+	for unit: Unit in group.living(world):
+		assert_eq(unit.target_id, archers[1].id, "unit %d took up the new focus" % unit.id)
+
+
+func test_set_behavior_wipes_the_flank_plan() -> void:
+	var world: World = _world()
+	var group: AiGroup = _flankers(world)
+	group.phase = 1
+	group.focus_id = 3
+	group.route = PackedInt64Array([1, 2, 3, 4])
+	group.route_index = 1
+	group.plan_x = 5
+	group.plan_z = 6
+	world.ai.set_behavior(world, group, AiGroupSpec.Behavior.HUNT)
+	assert_eq(group.phase, 0)
+	assert_eq(group.focus_id, 0)
+	assert_true(group.route.is_empty())
+	assert_eq(group.route_index, 0)
+	assert_eq(Vector2i(group.plan_x, group.plan_z), Vector2i.ZERO)
+
+
 func test_a_focus_that_moves_far_gets_a_new_route() -> void:
 	var world: World = _world()
 	_spawn_screen(world)
