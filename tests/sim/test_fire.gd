@@ -1,7 +1,8 @@
 extends GutTest
 ## Fire: a cell (terrain sample) of grass, brush, or wood that a fire arrow
-## lights burns for its ground's time, may spread to each unburnt flammable
-## neighbor every tick, then lies scorched for good. Sand, rock, and water
+## lights burns for its ground's time (to the end of tick lit + BURN_TICKS),
+## may spread to each unburnt flammable neighbor every tick, then lies
+## scorched for good. Sand, rock, and water
 ## never burn. Rain puts burning cells out and, with wet or snowy ground,
 ## slows the spread. Fire hurts whoever stands in it, credited to whoever lit
 ## it, and sets off charges and duds. Spread is seeded, so the same seed
@@ -16,13 +17,13 @@ const GRASS_TICKS: int = Fire.BURN_TICKS[Terrain.Ground.GRASS]
 
 func test_a_lone_grass_cell_burns_for_its_time_then_is_scorched() -> void:
 	var world: World = _world(_ringed("."))
-	assert_true(world.fire.ignite(5 * M, 5 * M, 0))
+	assert_true(world.ignite(5 * M, 5 * M, 0))
 	assert_eq(world.fire.cell_at(5 * M, 5 * M), Fire.Cell.BURNING)
-	_run(world, GRASS_TICKS - 1)
-	assert_eq(world.fire.cell_at(5 * M, 5 * M), Fire.Cell.BURNING, "still burning a tick before its time")
+	_run(world, GRASS_TICKS)
+	assert_eq(world.fire.cell_at(5 * M, 5 * M), Fire.Cell.BURNING, "lit in tick 0, burning through tick BURN_TICKS")
 	_run(world, 1)
 	assert_eq(world.fire.cell_at(5 * M, 5 * M), Fire.Cell.SCORCHED)
-	assert_true(world.fire.burning.is_empty())
+	assert_false(world.fire.is_burning())
 	assert_eq(world.fire.cell_at(4 * M, 5 * M), Fire.Cell.UNBURNT, "the sand around it never caught")
 
 
@@ -30,8 +31,8 @@ func test_brush_and_wood_burn_longer_than_grass() -> void:
 	assert_gt(Fire.BURN_TICKS[Terrain.Ground.BRUSH], GRASS_TICKS)
 	assert_gt(Fire.BURN_TICKS[Terrain.Ground.WOOD], Fire.BURN_TICKS[Terrain.Ground.BRUSH])
 	var world: World = _world(_ringed("w"))
-	world.fire.ignite(5 * M, 5 * M, 0)
-	_run(world, Fire.BURN_TICKS[Terrain.Ground.WOOD] - 1)
+	world.ignite(5 * M, 5 * M, 0)
+	_run(world, Fire.BURN_TICKS[Terrain.Ground.WOOD])
 	assert_eq(world.fire.cell_at(5 * M, 5 * M), Fire.Cell.BURNING)
 	_run(world, 1)
 	assert_eq(world.fire.cell_at(5 * M, 5 * M), Fire.Cell.SCORCHED)
@@ -41,23 +42,23 @@ func test_only_grass_brush_and_wood_catch() -> void:
 	var world: World = _world(TestTerrains.from_ascii([".bwsr1#", "sssssss"] as Array[String]))
 	var lit: Array[bool] = []
 	for i: int in 7:
-		lit.append(world.fire.ignite(i * M, 0, 0))
+		lit.append(world.ignite(i * M, 0, 0))
 	assert_eq(lit, [true, true, true, false, false, false, true], "a blocked sample is still its ground")
 
 
 func test_a_burning_or_scorched_cell_cant_be_lit_again() -> void:
 	var world: World = _world(_ringed("."))
-	assert_true(world.fire.ignite(5 * M, 5 * M, 0))
-	assert_false(world.fire.ignite(5 * M, 5 * M, 0), "already burning")
-	_run(world, GRASS_TICKS)
-	assert_false(world.fire.ignite(5 * M, 5 * M, 0), "nothing left to burn")
+	assert_true(world.ignite(5 * M, 5 * M, 0))
+	assert_false(world.ignite(5 * M, 5 * M, 0), "already burning")
+	_run(world, GRASS_TICKS + 1)
+	assert_false(world.ignite(5 * M, 5 * M, 0), "nothing left to burn")
 
 
 func test_fire_spreads_through_grass() -> void:
 	var world: World = _world(TestTerrains.flat(30, 30))
-	world.fire.ignite(15 * M, 15 * M, 0)
+	world.ignite(15 * M, 15 * M, 0)
 	_run(world, 30 * World.TICK_RATE)
-	var burnt: int = _count_cells(world, Fire.Cell.SCORCHED) + world.fire.burning.size()
+	var burnt: int = _count_cells(world, Fire.Cell.SCORCHED) + world.fire.burn_end.size()
 	gut.p("%d cells burnt or burning after 30 s" % burnt)
 	assert_gt(burnt, 300, "a grass fire runs")
 
@@ -68,7 +69,7 @@ func test_fire_never_crosses_sand_rock_or_water() -> void:
 		for j: int in 20:
 			rows.append(".".repeat(9) + strip + ".".repeat(10))
 		var world: World = _world(TestTerrains.from_ascii(rows))
-		world.fire.ignite(2 * M, 10 * M, 0)
+		world.ignite(2 * M, 10 * M, 0)
 		_run_until_out(world, 120 * World.TICK_RATE)
 		var left: int = 0
 		for j: int in 20:
@@ -86,7 +87,7 @@ func test_spread_is_deterministic_per_seed() -> void:
 	var b: World = _world(_mixed(), 7)
 	var c: World = _world(_mixed(), 8)
 	for w: World in [a, b, c]:
-		w.fire.ignite(20 * M, 20 * M, 0)
+		w.ignite(20 * M, 20 * M, 0)
 	var mismatches: Array[int] = []
 	for t: int in 40 * World.TICK_RATE:
 		a.step()
@@ -103,8 +104,8 @@ func test_heavy_rain_puts_a_fire_out_sooner() -> void:
 	var clear: World = _world(_brush(40), 3)
 	var rainy: World = _world(_brush(40), 3)
 	rainy.enqueue(SetWeatherCommand.new(0, FULL, 0, 0, 0, 0))
-	clear.fire.ignite(20 * M, 20 * M, 0)
-	rainy.fire.ignite(20 * M, 20 * M, 0)
+	clear.ignite(20 * M, 20 * M, 0)
+	rainy.ignite(20 * M, 20 * M, 0)
 	var clear_ticks: int = _run_until_out(clear, 300 * World.TICK_RATE)
 	var rainy_ticks: int = _run_until_out(rainy, 300 * World.TICK_RATE)
 	var clear_burnt: int = _count_cells(clear, Fire.Cell.SCORCHED)
@@ -120,12 +121,12 @@ func test_wet_ground_slows_the_spread_after_the_rain_stops() -> void:
 	var dry: World = _world(TestTerrains.flat(40, 40), 4)
 	var wet: World = _world(TestTerrains.flat(40, 40), 4)
 	wet.weather.wetness_ppm = Weather.PPM
-	dry.fire.ignite(20 * M, 20 * M, 0)
-	wet.fire.ignite(20 * M, 20 * M, 0)
+	dry.ignite(20 * M, 20 * M, 0)
+	wet.ignite(20 * M, 20 * M, 0)
 	_run(dry, 20 * World.TICK_RATE)
 	_run(wet, 20 * World.TICK_RATE)
-	var dry_burnt: int = _count_cells(dry, Fire.Cell.SCORCHED) + dry.fire.burning.size()
-	var wet_burnt: int = _count_cells(wet, Fire.Cell.SCORCHED) + wet.fire.burning.size()
+	var dry_burnt: int = _count_cells(dry, Fire.Cell.SCORCHED) + dry.fire.burn_end.size()
+	var wet_burnt: int = _count_cells(wet, Fire.Cell.SCORCHED) + wet.fire.burn_end.size()
 	gut.p("after 20 s: dry ground %d cells, soaked ground %d" % [dry_burnt, wet_burnt])
 	assert_gt(wet.weather.wetness(), 800, "still wet: it dries slowly")
 	assert_lt(wet_burnt, dry_burnt / 2)
@@ -142,7 +143,7 @@ func test_a_unit_standing_in_fire_is_hurt_every_10_ticks() -> void:
 	var world: World = _world(_ringed("."))
 	var unit: Unit = world.spawn_unit(0, DARK, 5 * M, 5 * M, 0, 1)
 	var by_sand: Unit = world.spawn_unit(0, DARK, 5 * M, 7 * M, 0, 1)
-	world.fire.ignite(5 * M, 5 * M, 0)
+	world.ignite(5 * M, 5 * M, 0)
 	var hits: Array[int] = []
 	for t: int in 30:
 		world.step()
@@ -159,7 +160,7 @@ func test_a_fire_kill_is_credited_to_whoever_lit_it() -> void:
 	var world: World = _world(_ringed("."), 1, [TestUnits.dummy(&"dummy", {"max_hp": Fire.DAMAGE})])
 	var archer: Unit = world.spawn_unit(0, LIGHT, 1 * M, 1 * M, 0, 1)
 	var enemy: Unit = world.spawn_unit(0, DARK, 5 * M, 5 * M, 0, 1)
-	world.fire.ignite(5 * M, 5 * M, archer.id)
+	world.ignite(5 * M, 5 * M, archer.id)
 	world.step()
 	assert_false(enemy.is_alive())
 	assert_eq(archer.kills, 1)
@@ -171,8 +172,8 @@ func test_fire_sets_off_a_charge_and_a_dud_lying_in_it() -> void:
 	var satchel: Projectile = _lay(world, &"satchel", 10 * M, 10 * M)
 	var dud: Projectile = _lay(world, &"grenade", 20 * M, 20 * M)
 	dud.dud = true
-	world.fire.ignite(10 * M, 10 * M, lighter.id)
-	world.fire.ignite(20 * M, 20 * M, lighter.id)
+	world.ignite(10 * M, 10 * M, lighter.id)
+	world.ignite(20 * M, 20 * M, lighter.id)
 	var bursts: Array[int] = []
 	for _t: int in Explosions.CHAIN_DELAY_TICKS + 1:
 		world.step()
@@ -188,7 +189,7 @@ func test_something_flying_over_fire_isnt_set_off() -> void:
 	var world: World = _world(TestTerrains.flat(30, 30))
 	var index: int = world.catalog.projectile_index_of(&"satchel")
 	var p: Projectile = world.spawn_projectile(index, FlightState.at_mm(10 * M, 20 * M, 10 * M, 0, 0, 0), 0)
-	world.fire.ignite(10 * M, 10 * M, 0)
+	world.ignite(10 * M, 10 * M, 0)
 	world.step()
 	assert_false(p.detonating)
 
@@ -206,7 +207,7 @@ func test_a_fire_arrow_lights_the_ground_where_it_lands() -> void:
 	assert_not_null(ignited)
 	assert_eq(world.fire.cell_at(ignited.x, ignited.z) != Fire.Cell.UNBURNT, true)
 	assert_eq(ignited.unit_id, 99, "lit by the archer")
-	assert_eq(world.fire.lit_by.values().count(99), world.fire.burning.size(), "the spread is credited to them too")
+	assert_eq(world.fire.lit_by.values().count(99), world.fire.burn_end.size(), "the spread is credited to them too")
 
 
 func test_a_fire_arrow_landing_in_water_lights_nothing() -> void:
@@ -219,7 +220,7 @@ func test_a_fire_arrow_landing_in_water_lights_nothing() -> void:
 		world.step()
 		for e: ProjectileEvent in world.projectile_events:
 			assert_ne(e.kind, ProjectileEvent.Kind.IGNITE)
-	assert_true(world.fire.burning.is_empty())
+	assert_true(not world.fire.is_burning())
 
 
 func test_a_world_without_fire_carries_no_fire_grid() -> void:
@@ -232,9 +233,9 @@ func test_fire_is_part_of_the_state_hash() -> void:
 	var a: World = _world(TestTerrains.flat(30, 30))
 	var b: World = _world(TestTerrains.flat(30, 30))
 	var c: World = _world(TestTerrains.flat(30, 30))
-	a.fire.ignite(10 * M, 10 * M, 0)
-	b.fire.ignite(10 * M, 10 * M, 0)
-	c.fire.ignite(11 * M, 10 * M, 0)
+	a.ignite(10 * M, 10 * M, 0)
+	b.ignite(10 * M, 10 * M, 0)
+	c.ignite(11 * M, 10 * M, 0)
 	_run(a, 60)
 	_run(b, 60)
 	_run(c, 60)
@@ -244,11 +245,11 @@ func test_fire_is_part_of_the_state_hash() -> void:
 
 func test_changed_lists_the_cells_that_changed_this_tick() -> void:
 	var world: World = _world(_ringed("."))
-	world.fire.ignite(5 * M, 5 * M, 0)
+	world.ignite(5 * M, 5 * M, 0)
 	world.step()
 	assert_true(world.fire.changed.is_empty(), "nothing changed on a tick it just burned")
-	world.fire.ignite(5 * M, 5 * M, 0)
-	_run(world, GRASS_TICKS - 1)
+	world.ignite(5 * M, 5 * M, 0)
+	_run(world, GRASS_TICKS)
 	assert_eq(world.fire.changed, PackedInt32Array([5 * 11 + 5]), "it burned out")
 
 
@@ -303,7 +304,7 @@ func _run(world: World, ticks: int) -> void:
 func _run_until_out(world: World, limit: int) -> int:
 	for t: int in limit:
 		world.step()
-		if world.fire.burning.is_empty():
+		if not world.fire.is_burning():
 			return t + 1
 	return limit
 

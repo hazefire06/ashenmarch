@@ -189,7 +189,7 @@ func remove_projectile(p: Projectile) -> void:
 ## instigator_id, and tells the view. False if it can't burn there: sand,
 ## rock, water, or already burning or burnt.
 func ignite(x: int, z: int, instigator_id: int) -> bool:
-	if not fire.ignite(x, z, instigator_id):
+	if not fire.ignite(x, z, instigator_id, tick):
 		return false
 	var e: ProjectileEvent = ProjectileEvent.new(ProjectileEvent.Kind.IGNITE, x, terrain.height_at(x, z), z)
 	e.unit_id = instigator_id
