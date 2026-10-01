@@ -71,6 +71,10 @@ var leg_retried: bool = false
 var focus_id: int = 0
 var route: PackedInt64Array = PackedInt64Array()
 var route_index: int = 0
+## FLANK: where the focus stood when the route was planned. A focus that
+## moves far from it gets a new route (AiFlank).
+var plan_x: int = 0
+var plan_z: int = 0
 
 ## Hit points of the members at spawn and when the AI last looked. The drop
 ## from one to the other is what makes a group retreat, or springs an ambush.
@@ -154,7 +158,7 @@ func hash_fields() -> PackedInt64Array:
 		id, spec_index, faction, behavior, phase, int(think_now),
 		spawn_x, spawn_z, anchor_x, anchor_z,
 		waypoint_index, waypoint_step, int(leg_active), leg_x, leg_z, int(leg_retried),
-		focus_id, route_index, start_hp, last_hp, int(retreated),
+		focus_id, route_index, plan_x, plan_z, start_hp, last_hp, int(retreated),
 	])
 	fields.append(spawned_ids.size())
 	for unit_id: int in spawned_ids:

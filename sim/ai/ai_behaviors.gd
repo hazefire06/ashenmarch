@@ -17,7 +17,9 @@ extends RefCounted
 ## - AMBUSH: lies still, held where it stands, until it is disturbed: an enemy
 ##   within alert_radius of any member, a member hurt, or a member fighting.
 ##   Then it springs into on_alert.
-## - FLANK, RETREAT: not built yet; a group given one stands as it is.
+## - FLANK: goes after a ranged or support unit (the spec's flank_roles),
+##   walking round the end of any enemy melee screening it first (AiFlank).
+## - RETREAT: not built yet; a group given one stands as it is.
 
 ## What a leg (one march to one goal) came to.
 enum LegResult {
@@ -230,9 +232,9 @@ static func _hunt(world: World, group: AiGroup, units: Array[Unit]) -> void:
 	AiOrders.engage(world, group, units, AiOrders.enemies(world, group.faction))
 
 
-# FLANK: does nothing yet; the group keeps whatever orders it has.
-static func _flank(_world: World, _group: AiGroup, _units: Array[Unit]) -> void:
-	pass
+# FLANK: see AiFlank.
+static func _flank(world: World, group: AiGroup, units: Array[Unit]) -> void:
+	AiFlank.think(world, group, units)
 
 
 # AMBUSH: a disturbed group switches to on_alert, which springs it

@@ -17,8 +17,8 @@ extends RefCounted
 ## engage fights each bucket by its type's UnitType.AiTactic. An ASSAULT
 ## bucket attack-moves at one objective here, going first for an enemy that
 ## threatens one of the group's STANDOFF members (AiTactics.threats, the
-## bodyguard rule); STANDOFF and CLUSTER members are handled one by one in
-## AiTactics.
+## bodyguard rule), then for the focus it is given (a FLANK's quarry);
+## STANDOFF and CLUSTER members are handled one by one in AiTactics.
 
 ## Least drift (milli-units) of an objective from where a member was sent
 ## before the member is re-sent after it. See drifted.
@@ -133,14 +133,17 @@ static func march(
 ## candidate the leader ranks best (Targeting.pick: preferred roles, then the
 ## nearest, then the lower id) among those it can walk to or already reach,
 ## unless one of those threatens a STANDOFF member of the group
-## (AiTactics.threats): then the threat it ranks best. Members not already
-## after that objective (_should_reorder) attack-move to it in one move.
+## (AiTactics.threats): then the threat it ranks best. Failing a threat, a
+## focus the leader can walk to or reach is the objective (a FLANK's quarry,
+## AiFlank), ahead of the ranking. Members not already after that objective
+## (_should_reorder) attack-move to it in one move.
 ## With threat_reach above 0, only threats within threat_reach of the group's
 ## anchor (center to center) count: a GUARD passes its leash, so its
 ## bodyguards aren't sent after a threat the leash would call them back from,
 ## to be sent again once home.
 static func engage(
-	world: World, group: AiGroup, units: Array[Unit], candidates: Array[Unit], threat_reach: int = 0
+	world: World, group: AiGroup, units: Array[Unit], candidates: Array[Unit], threat_reach: int = 0,
+	focus: Unit = null
 ) -> bool:
 	var picked: Array[Unit] = []
 	for unit: Unit in units:
@@ -162,17 +165,21 @@ static func engage(
 				for member: Unit in bucket:
 					any_objective = AiTactics.cluster(world, group, member, candidates) or any_objective
 			_:
-				any_objective = _assault(world, group, bucket, candidates, threats) or any_objective
+				any_objective = _assault(world, group, bucket, candidates, threats, focus) or any_objective
 	return any_objective
 
 
 # ASSAULT: one objective for the bucket (see engage). Returns true if it had
 # one.
 static func _assault(
-	world: World, group: AiGroup, bucket: Array[Unit], candidates: Array[Unit], threats: Array[Unit]
+	world: World, group: AiGroup, bucket: Array[Unit], candidates: Array[Unit], threats: Array[Unit],
+	focus: Unit
 ) -> bool:
 	var leader: Unit = bucket[0]
 	var objective: Unit = Targeting.pick(leader, reachable(world, leader, threats))
+	if objective == null and focus != null:
+		var focused: Array[Unit] = [focus]
+		objective = Targeting.pick(leader, reachable(world, leader, focused))
 	if objective == null:
 		objective = Targeting.pick(leader, reachable(world, leader, candidates))
 	if objective == null:
