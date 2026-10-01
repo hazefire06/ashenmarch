@@ -43,6 +43,8 @@ var ranged: RangedCombat = RangedCombat.new()
 var movement: UnitMovement = UnitMovement.new()
 var projectile_system: ProjectileSystem = ProjectileSystem.new()
 var explosions: Explosions = Explosions.new()
+## Rain, snow, wind, snow cover, and wetness; changed by SetWeatherCommand.
+var weather: Weather = Weather.new()
 ## Where fire arrows landed, as (tick, x, z) triples. Phase 5's fire starts
 ## from these.
 var fire_marks: PackedInt64Array = PackedInt64Array()
@@ -78,17 +80,19 @@ func enqueue(command: SimCommand) -> bool:
 
 ## Simulates one tick:
 ## 1. apply this tick's commands in enqueue order;
-## 2. melee (targets, chases, blows, deaths);
-## 3. ranged (targets, draws, shots leaving);
-## 4. steer the units, which sets their velocities (knockback included);
-## 5. integrate the units;
-## 6. move the projectiles against the units' new positions: hits, bounces,
+## 2. advance the weather (ramps, snow cover, wetness);
+## 3. melee (targets, chases, blows, deaths);
+## 4. ranged (targets, draws, shots leaving);
+## 5. steer the units, which sets their velocities (knockback included);
+## 6. integrate the units;
+## 7. move the projectiles against the units' new positions: hits, bounces,
 ##    fuses;
-## 7. resolve the explosions that brings, then drop removed projectiles.
+## 8. resolve the explosions that brings, then drop removed projectiles.
 func step() -> void:
 	combat_events.clear()
 	projectile_events.clear()
 	_apply_commands()
+	weather.update(tick)
 	if terrain != null:
 		combat.update(self)
 		ranged.update(self)
@@ -212,6 +216,7 @@ func state_hash() -> String:
 	)
 	ctx.update(header.to_byte_array())
 	ctx.update(movement.hash_fields().to_byte_array())
+	ctx.update(weather.hash_fields().to_byte_array())
 	if terrain != null:
 		ctx.update(terrain.scar_hash_fields().to_byte_array())
 	ctx.update(PackedInt64Array([fire_marks.size()]).to_byte_array())
