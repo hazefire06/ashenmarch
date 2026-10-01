@@ -9,6 +9,9 @@ extends Node3D
 const WORLD_SEED: int = 1
 const MAP_PATH: String = "res://maps/riverside/riverside.tres"
 const CATALOG_PATH: String = "res://data/units/catalog.tres"
+## Test weather until Phase 8's missions: showers from about 45 s, a downpour
+## at 2 min, clearing at 3 min. F6 overrides it (DebugWeather).
+const WEATHER_PATH: String = "res://data/weather/riverside_showers.tres"
 ## Test setup until Phase 8's mission data: two 5x4 blocks at 2 m spacing,
 ## Shieldmen on the north bank by the ford, Husks across the creek. A row of
 ## five Reavers stands behind the Shieldmen and a row of five Rippers behind
@@ -33,6 +36,8 @@ const SIM_TIME_SMOOTHING: float = 0.05
 var world: World
 
 var _sim_ms: float = 0.0
+## The DebugWeather preset F6 last picked.
+var _weather_preset: int = 0
 
 @onready var _terrain_view: TerrainView = $TerrainView
 @onready var _units_view: UnitsView = $Units
@@ -74,10 +79,12 @@ func _ready() -> void:
 	_overhead_map.setup(terrain, _camera)
 	_gibs.setup(terrain)
 	_spawn_test_squads()
+	_schedule_weather()
 	_units_view.setup(world, _selection.selection, _gibs)
 	_projectiles_view.setup(world)
 	_explosions_view.setup(world, _terrain_view, _gibs)
 	_selection.setup(world, _units_view, _camera.get_camera(), TerrainPicker.new(terrain))
+	_selection.side_changed.connect(_units_view.set_viewer)
 	_control_bar.setup(_selection, world)
 	_tooltip.setup(_selection, world)
 	print(
@@ -94,10 +101,21 @@ func _physics_process(_delta: float) -> void:
 	_units_view.after_step()
 	_projectiles_view.after_step()
 	_explosions_view.after_step()
+	_terrain_view.update_fire(world.fire)
+	_terrain_view.set_weather(world.weather)
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event.is_action_pressed(InputBindings.CYCLE_WEATHER):
+		_weather_preset = DebugWeather.next(_weather_preset)
+		world.enqueue(DebugWeather.command(_weather_preset, world.tick))
+		print("weather: %s" % DebugWeather.name_of(_weather_preset))
+		get_viewport().set_input_as_handled()
 
 
 func _process(_delta: float) -> void:
-	_stats_label.text = "tick %d   %d fps   %d draw calls   sim %.2f ms/tick   %d units   %d projectiles   %d paths queued" % [
+	var w: Weather = world.weather
+	_stats_label.text = "tick %d   %d fps   %d draw calls   sim %.2f ms/tick   %d units   %d projectiles   %d paths queued\nrain %d%%   snow %d%%   wet %d%%   snow cover %d%%   %d cells burning   (F6 weather)" % [
 		world.tick,
 		Performance.get_monitor(Performance.TIME_FPS),
 		Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME),
@@ -105,7 +123,21 @@ func _process(_delta: float) -> void:
 		world.units.size(),
 		world.projectiles.size(),
 		world.movement.queued_paths(),
+		w.rain / 10, w.snow / 10, w.wetness() / 10, w.snow_cover() / 10,
+		world.fire.burn_end.size(),
 	]
+
+
+# The schedule's changes go in as commands now, like the spawns, so the
+# weather is part of the command stream a replay records.
+func _schedule_weather() -> void:
+	var schedule: WeatherSchedule = load(WEATHER_PATH) as WeatherSchedule
+	var errors: PackedStringArray = schedule.validate()
+	if not errors.is_empty():
+		push_error("MainView: invalid weather schedule: %s" % [errors])
+		return
+	for command: SetWeatherCommand in schedule.commands():
+		world.enqueue(command)
 
 
 # Enqueued as tick-0 commands, not spawned directly, so the setup is part of

@@ -49,6 +49,9 @@ const STOP: StringName = &"unit_stop"
 const CANCEL: StringName = &"cancel"
 ## Debug until the AI exists: switch which side the mouse commands.
 const SWITCH_SIDE: StringName = &"debug_switch_side"
+## Debug until missions drive the weather: cycle clear, rain, heavy rain,
+## snow (DebugWeather).
+const CYCLE_WEATHER: StringName = &"debug_cycle_weather"
 ## Index i is formation Formations.Kind i and group slot i; keys 1..9, 0.
 const FORMATIONS: Array[StringName] = [
 	&"formation_1", &"formation_2", &"formation_3", &"formation_4", &"formation_5",
@@ -110,6 +113,7 @@ static func _default_events() -> Dictionary[StringName, InputEvent]:
 	events[STOP] = _key(KEY_H)
 	events[CANCEL] = _key(KEY_ESCAPE)
 	events[SWITCH_SIDE] = _key(KEY_F9)
+	events[CYCLE_WEATHER] = _key(KEY_F6)
 	for i: int in NUMBER_KEYS.size():
 		events[FORMATIONS[i]] = _key(NUMBER_KEYS[i])
 		var save: InputEventKey = _key(NUMBER_KEYS[i])
