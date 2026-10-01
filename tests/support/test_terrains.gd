@@ -6,17 +6,29 @@ const CELL: int = 1000
 const WALKABLE_SLOPE: int = 1000
 
 
+## Dry ground types by ASCII letter; '.' and anything else is grass.
+const GROUND_LETTERS: Dictionary[String, int] = {
+	"b": Terrain.Ground.BRUSH,
+	"w": Terrain.Ground.WOOD,
+	"s": Terrain.Ground.SAND,
+	"r": Terrain.Ground.ROCK,
+}
+
+
 ## Flat ground at height 0 from an ASCII map, one character per sample, row 0
-## at z = 0: '.' dry ground, '#' blocked, '1'..'4' water of that depth.
+## at z = 0: '.' dry grass, 'b' brush, 'w' wood, 's' sand, 'r' rock, '#'
+## blocked, '1'..'4' water of that depth.
 static func from_ascii(rows: Array[String]) -> Terrain:
 	var size_z: int = rows.size()
 	var size_x: int = rows[0].length()
 	var heights: PackedInt32Array = PackedInt32Array()
 	var water: PackedByteArray = PackedByteArray()
 	var blocked: PackedByteArray = PackedByteArray()
+	var ground: PackedByteArray = PackedByteArray()
 	heights.resize(size_x * size_z)
 	water.resize(size_x * size_z)
 	blocked.resize(size_x * size_z)
+	ground.resize(size_x * size_z)
 	for j: int in size_z:
 		assert(rows[j].length() == size_x, "row %d has the wrong width" % j)
 		for i: int in size_x:
@@ -26,7 +38,12 @@ static func from_ascii(rows: Array[String]) -> Terrain:
 				blocked[k] = 1
 			elif c >= "1" and c <= "4":
 				water[k] = int(c)
-	return Terrain.new(size_x, size_z, CELL, heights, water, blocked, WALKABLE_SLOPE)
+			else:
+				ground[k] = GROUND_LETTERS.get(c, Terrain.Ground.GRASS)
+	return Terrain.new(
+		size_x, size_z, CELL, heights, water, blocked, WALKABLE_SLOPE,
+		PackedInt32Array(), PackedInt32Array(), ground
+	)
 
 
 ## Flat, dry, open ground.

@@ -171,6 +171,62 @@ func test_mask_depth_encoding_round_trips() -> void:
 	assert_eq(Terrain.depth_from_mask(255), Terrain.MAX_WATER_DEPTH)
 
 
+func test_mask_ground_encoding_round_trips() -> void:
+	for ground: int in Terrain.GROUND_COUNT:
+		assert_eq(Terrain.ground_from_mask(Terrain.mask_from_ground(ground)), ground)
+	assert_eq(Terrain.mask_from_ground(Terrain.Ground.GRASS), 0, "0 is grass, the normal case")
+	assert_eq(Terrain.ground_from_mask(95), Terrain.Ground.WOOD, "tolerates editor rounding")
+	assert_eq(Terrain.ground_from_mask(255), Terrain.Ground.ROCK)
+
+
+func test_ground_uses_nearest_sample() -> void:
+	var t: Terrain = _terrain(3, 2, [0, 0, 0, 0, 0, 0], [], [], 1000, [
+		Terrain.Ground.GRASS, Terrain.Ground.SAND, Terrain.Ground.ROCK,
+		Terrain.Ground.BRUSH, Terrain.Ground.WOOD, Terrain.Ground.GRASS,
+	])
+	assert_eq(t.ground_at(499, 0), Terrain.Ground.GRASS)
+	assert_eq(t.ground_at(500, 0), Terrain.Ground.SAND, "exact half rounds to the higher sample")
+	assert_eq(t.ground_at(1600, 600), Terrain.Ground.GRASS)
+	assert_eq(t.ground_at(900, 900), Terrain.Ground.WOOD)
+	assert_eq(t.sample_ground(0, 1), Terrain.Ground.BRUSH)
+	assert_eq(t.ground_at(-10_000, 99_000), Terrain.Ground.BRUSH, "clamps off the map")
+
+
+func test_ground_defaults_to_grass() -> void:
+	var t: Terrain = _terrain(2, 2, [0, 0, 0, 0])
+	assert_eq(t.ground, PackedByteArray([0, 0, 0, 0]))
+	assert_eq(t.ground_at(500, 500), Terrain.Ground.GRASS)
+
+
+func test_world_copy_shares_the_ground() -> void:
+	var t: Terrain = _terrain(2, 2, [0, 0, 0, 0], [], [], 1000, [3, 3, 4, 4])
+	var world: World = World.new(1, t)
+	assert_eq(world.terrain.ground, t.ground)
+	assert_eq(world.terrain.ground_at(0, 1000), Terrain.Ground.ROCK)
+
+
+func test_ascii_terrain_letters_set_the_ground() -> void:
+	var t: Terrain = TestTerrains.from_ascii(["bws", "r.2"] as Array[String])
+	assert_eq(t.ground, PackedByteArray([
+		Terrain.Ground.BRUSH, Terrain.Ground.WOOD, Terrain.Ground.SAND,
+		Terrain.Ground.ROCK, Terrain.Ground.GRASS, Terrain.Ground.GRASS,
+	]))
+	assert_eq(t.sample_water_depth(2, 1), 2)
+
+
+func test_from_png_decodes_ground_from_green() -> void:
+	var height: PngRaster = PngRaster.create(3, 2, 1, 8)
+	var mask: PngRaster = PngRaster.create(3, 2, 3, 8)
+	mask.samples = PackedInt32Array([
+		0, 0, 0,   0, 50, 0,   0, 100, 0,
+		0, 150, 0,   0, 200, 0,   60, 48, 200,
+	])
+	var t: Terrain = Terrain.from_png(PngCodec.encode(height), PngCodec.encode(mask), CS, 1000, 1000)
+	assert_eq(t.ground, PackedByteArray([0, 1, 2, 3, 4, 1]))
+	assert_eq(t.water[5], 1, "the other channels still decode")
+	assert_eq(t.blocked[5], 1)
+
+
 func test_from_png_scales_heights_and_decodes_mask() -> void:
 	var height: PngRaster = PngRaster.create(3, 2, 1, 16)
 	height.samples = PackedInt32Array([0, 65535, 32768, 1, 100, 65534])
@@ -290,14 +346,16 @@ func test_scars_do_not_change_passability() -> void:
 	assert_true(t.is_passable(4000, 4000, Terrain.Mobility.LIVING))
 
 
-## Builds a terrain from plain arrays. Missing water/blocked default to 0.
+## Builds a terrain from plain arrays. Missing water/blocked default to 0,
+## and missing ground to grass.
 func _terrain(
 	samples_x: int,
 	samples_z: int,
 	sample_heights: Array,
 	sample_water: Array = [],
 	sample_blocked: Array = [],
-	walkable_slope: int = 1000
+	walkable_slope: int = 1000,
+	sample_ground: Array = []
 ) -> Terrain:
 	var count: int = samples_x * samples_z
 	var water: PackedByteArray = PackedByteArray(sample_water)
@@ -305,7 +363,8 @@ func _terrain(
 	water.resize(count)
 	blocked.resize(count)
 	return Terrain.new(
-		samples_x, samples_z, CS, PackedInt32Array(sample_heights), water, blocked, walkable_slope
+		samples_x, samples_z, CS, PackedInt32Array(sample_heights), water, blocked, walkable_slope,
+		PackedInt32Array(), PackedInt32Array(), PackedByteArray(sample_ground)
 	)
 
 
