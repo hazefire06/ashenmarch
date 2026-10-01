@@ -31,10 +31,12 @@ const _COMPONENT_BITS: int = 32
 
 
 ## True if the AI may give the unit a new order without spoiling what it is
-## doing: it is alive, not confused, not on an errand, not fighting or
-## chasing, not standing to fight or shoot, not drawing, swinging or acting,
-## and not waiting for a path. UnitOrders.move drops fights, casts, swings and
-## errands, and a path solve still in the queue would be thrown away.
+## doing: it is alive, not confused, not on an errand (act_left, the errand's
+## wind-up, only counts down while the order is INTERACT, so it is no test of
+## its own), not fighting or chasing, not standing to fight or shoot, not
+## drawing or swinging, and not waiting for a path. UnitOrders.move drops
+## fights, casts and swings and replaces an errand's order, and a path solve
+## still in the queue would be thrown away.
 static func is_free(world: World, unit: Unit) -> bool:
 	return (
 		unit.is_alive()
@@ -45,7 +47,6 @@ static func is_free(world: World, unit: Unit) -> bool:
 		and unit.state != Unit.State.SHOOTING
 		and unit.aim_left == 0
 		and unit.windup_left == 0
-		and unit.act_left == 0
 		and not unit.path_pending
 	)
 
@@ -198,13 +199,18 @@ static func _assault(
 ## (the group's goal, which a march's STANDOFF members stop short of), and
 ## reported as one event of kind at (x, z) naming the lowest id, with value 1
 ## for an attack-move: an ORDER, or a STANDOFF for a move to a firing spot.
-## Every order the AI gives goes through here.
+## Every order the AI gives goes through here, so it is also where a unit's
+## errand ends: UnitOrders.move drops the fight but leaves the errand's target
+## and wind-up on the unit, and a forced order (a retreat, a recall, a dead
+## zone escape) can reach a member mid-errand. Left there, that wind-up would
+## never count down.
 static func send(
 	world: World, group: AiGroup, units: Array[Unit], x: int, z: int, attack: bool, objective_id: int,
 	goal_x: int, goal_z: int, kind: AiEvent.Kind = AiEvent.Kind.ORDER
 ) -> void:
 	var ids: PackedInt32Array = PackedInt32Array()
 	for unit: Unit in units:
+		unit.clear_errand()
 		ids.append(unit.id)
 	UnitOrders.move(world, ids, x, z, group.spec.formation, attack)
 	for unit_id: int in ids:

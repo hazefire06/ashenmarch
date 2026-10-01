@@ -79,7 +79,6 @@ func test_anything_the_unit_is_in_the_middle_of_makes_it_not_free() -> void:
 		"shooting": func(_w: World, u: Unit) -> void: u.transition_to(Unit.State.SHOOTING),
 		"drawing": func(_w: World, u: Unit) -> void: u.aim_left = 3,
 		"swinging": func(_w: World, u: Unit) -> void: u.windup_left = 3,
-		"acting": func(_w: World, u: Unit) -> void: u.act_left = 3,
 		"waiting for a path": func(_w: World, u: Unit) -> void: u.path_pending = true,
 	}
 	for what: String in busy:
@@ -87,6 +86,15 @@ func test_anything_the_unit_is_in_the_middle_of_makes_it_not_free() -> void:
 		var unit: Unit = world.spawn_unit(GRUNT, DARK, 10 * M, 10 * M, 0, 1)
 		busy[what].call(world, unit)
 		assert_false(AiOrders.is_free(world, unit), what)
+
+
+func test_a_wind_up_left_over_from_an_errand_does_not_make_a_unit_busy() -> void:
+	var world: World = _world()
+	var unit: Unit = world.spawn_unit(GRUNT, DARK, 10 * M, 10 * M, 0, 1)
+	unit.act_left = 3
+	assert_true(AiOrders.is_free(world, unit), "act_left only counts down on an errand, so it means nothing off one")
+	unit.order = Unit.Order.INTERACT
+	assert_false(AiOrders.is_free(world, unit), "on one, the errand itself makes it busy")
 
 
 func test_is_done_once_the_order_has_run_out() -> void:
@@ -197,6 +205,34 @@ func test_march_skips_members_already_sent_there_and_busy_ones_unless_forced() -
 	assert_eq(orders[0].unit_id, units[0].id, "forced: every member, in one bucket")
 	assert_eq(units[1].target_id, 0, "the fight is dropped")
 	assert_eq(units[1].order, Unit.Order.MOVE)
+
+
+func test_a_forced_march_ends_the_errand_it_pulls_a_member_off() -> void:
+	var world: World = _world()
+	var group: AiGroup = _group(world, 2)
+	var units: Array[Unit] = group.living(world)
+	units[0].order = Unit.Order.INTERACT
+	units[0].interact_id = 77
+	units[0].resume_order = Unit.Order.ATTACK_MOVE
+	units[0].act_left = 4
+	AiOrders.march(world, group, units, 40 * M, 30 * M, false, true)
+	assert_eq(units[0].order, Unit.Order.MOVE)
+	assert_eq(units[0].interact_id, 0, "no errand target is left")
+	assert_eq(units[0].resume_order, Unit.Order.NONE, "nor an order to resume")
+	assert_eq(units[0].act_left, 0, "nor a wind-up")
+
+
+func test_any_order_the_ai_sends_ends_a_leftover_errand() -> void:
+	var world: World = _world()
+	var group: AiGroup = _group(world, 1)
+	var unit: Unit = group.living(world)[0]
+	unit.interact_id = 77
+	unit.resume_order = Unit.Order.ATTACK_MOVE
+	unit.act_left = 4
+	AiOrders.send(world, group, [unit], 40 * M, 30 * M, false, 0, 40 * M, 30 * M)
+	assert_eq(unit.interact_id, 0)
+	assert_eq(unit.resume_order, Unit.Order.NONE)
+	assert_eq(unit.act_left, 0)
 
 
 # --- engage -----------------------------------------------------------------

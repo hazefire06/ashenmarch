@@ -15,6 +15,7 @@ const GRUNT: int = 0
 const POST: int = 1
 const WEAKLING: int = 2
 const LURKER: int = 3
+const SCAVENGER: int = 4
 
 ## The spec's threshold and retreat point in most tests: half its health, and a
 ## point 25 m west of where the group stands.
@@ -39,6 +40,8 @@ func before_all() -> void:
 		TestUnits.dummy(&"weakling", {"max_hp": 100}),
 		# Lies out of sight in deep water.
 		TestUnits.undead(&"lurker", {"hidden_in_deep_water": true}),
+		# Tears parts off any body within 8 m, a 9-tick errand each.
+		TestUnits.scavenger(&"scavenger"),
 	]
 	_catalog = TestUnits.catalog(types)
 
@@ -50,16 +53,17 @@ func _world(terrain: Terrain = null) -> World:
 	return World.new(1, terrain if terrain != null else TestTerrains.flat(60, 40), _catalog)
 
 
-## A DARK group of six grunts at (30, 20) m, spawned as spec 0, with a
-## retreat threshold and retreat point. An empty point means the spawn point.
+## A DARK group of six units (grunts unless type_id says otherwise) at (30, 20)
+## m, spawned as spec 0, with a retreat threshold and retreat point. An empty
+## point means the spawn point.
 func _group(
 	world: World, behavior: AiGroupSpec.Behavior, permille: int = HALF,
-	point: PackedInt32Array = PackedInt32Array([POINT.x, POINT.y])
+	point: PackedInt32Array = PackedInt32Array([POINT.x, POINT.y]), type_id: StringName = &"grunt"
 ) -> AiGroup:
 	var g: AiGroupSpec = AiGroupSpec.new()
 	g.name = &"pack"
 	var e: AiUnitEntry = AiUnitEntry.new()
-	e.type_id = &"grunt"
+	e.type_id = type_id
 	e.counts = PackedInt32Array([6])
 	g.units.append(e)
 	g.spawns = PackedInt32Array([30 * M, 20 * M])
@@ -187,19 +191,24 @@ func test_a_retreat_pulls_members_out_of_the_fight_they_are_in() -> void:
 	# A post 1 m east of each survivor: in reach, so the fight starts at once.
 	for unit: Unit in survivors:
 		world.spawn_unit(POST, LIGHT, unit.x + M, unit.z, -1, 0)
-	for _t: int in 13:
+	var fought: bool = false
+	var event: AiEvent = null
+	for _t: int in CALL_TICKS:
+		for unit: Unit in survivors:
+			fought = fought or not AiOrders.is_free(world, unit)
 		world.step()
-	var busy: int = 0
-	for unit: Unit in survivors:
-		if not AiOrders.is_free(world, unit):
-			busy += 1
-	assert_gt(busy, 0, "the survivors are in the middle of a fight when the retreat comes")
-	var event: AiEvent = _step_to_event(world, AiEvent.Kind.RETREAT, CALL_TICKS)
-	assert_not_null(event)
+		var found: Array[AiEvent] = _events_of(world, AiEvent.Kind.RETREAT)
+		if not found.is_empty():
+			event = found[0]
+			break
+	assert_true(fought, "the survivors were in the middle of a fight before the retreat came")
+	assert_not_null(event, "and a retreat came")
 	for unit: Unit in survivors:
 		assert_eq(unit.target_id, 0, "unit %d dropped its fight" % unit.id)
+		assert_eq(unit.windup_left, 0, "and its swing")
 		assert_eq(unit.order, Unit.Order.MOVE, "and is walking away")
 		assert_lte(FixedMath.length(unit.goal_x - POINT.x, unit.goal_z - POINT.y), 3 * M, "toward the point")
+		assert_true(AiOrders.is_free(world, unit), "free to be ordered again")
 	for i: int in group.members.size():
 		assert_eq(group.ordered_attack[i], 0, "a plain move")
 
@@ -254,22 +263,71 @@ func test_a_retreat_that_cannot_reach_the_point_guards_the_point_all_the_same() 
 	assert_eq(group.behavior, AiGroupSpec.Behavior.GUARD)
 
 
+func test_a_member_mid_errand_is_pulled_off_it_and_the_retreat_completes() -> void:
+	var world: World = _world()
+	var group: AiGroup = _group(world, AiGroupSpec.Behavior.HUNT, HALF, PackedInt32Array([POINT.x, POINT.y]), &"scavenger")
+	_lose(world, group, 4)
+	# The survivors go for the bodies at their feet. With no enemy about yet
+	# the group has no reason to retreat; wait for one to be mid-wind-up.
+	var picker: Unit = null
+	for _t: int in 60:
+		world.step()
+		for unit: Unit in group.living(world):
+			if unit.order == Unit.Order.INTERACT and unit.act_left > 0:
+				picker = unit
+				break
+		if picker != null:
+			break
+	assert_not_null(picker, "a survivor is in the middle of tearing a part off a body")
+	if picker == null:
+		return
+	assert_false(group.retreated)
+	_posts(world, 34)
+	AiBehaviors.think(world, group)
+	assert_eq(group.behavior, AiGroupSpec.Behavior.RETREAT)
+	assert_eq(picker.order, Unit.Order.MOVE, "the retreat took it off the errand")
+	assert_eq(picker.act_left, 0, "and left no half-done wind-up behind")
+	assert_eq(picker.interact_id, 0)
+	assert_true(AiOrders.is_free(world, picker))
+	assert_true(_step_to_behavior(world, group, AiGroupSpec.Behavior.GUARD, WALK_TICKS), "the leg ends: it guards")
+	assert_eq(Vector2i(group.anchor_x, group.anchor_z), POINT)
+	for unit: Unit in group.living(world):
+		assert_lte(_distance(unit, POINT.x, POINT.y), 3 * M, "unit %d is at the retreat point" % unit.id)
+
+
 # --- once only --------------------------------------------------------------
 
 
-func test_a_further_loss_never_calls_a_second_retreat() -> void:
-	var world: World = _world()
+## A group that has retreated and is guarding the point, hurt again, with a
+## heavy enemy 17 m from it: well inside the threat radius, outside the 10 m
+## guard radius (so the guard doesn't go out to fight it). Only the retreated
+## flag could stop a second retreat here.
+func _guarding_and_hurt_again(world: World) -> AiGroup:
 	var group: AiGroup = _group(world, AiGroupSpec.Behavior.HUNT)
 	_posts(world, 34)
 	_lose(world, group, 4)
 	assert_eq(_count_retreats(world, WALK_TICKS), 1, "one retreat on the way")
 	assert_eq(group.behavior, AiGroupSpec.Behavior.GUARD)
+	world.spawn_unit(POST, LIGHT, 22 * M, 20 * M, -1, 0)
 	var left: Array[Unit] = group.living(world)
 	left[0].kill()
 	left[1].hp = 1
+	return group
+
+
+func test_a_further_loss_never_calls_a_second_retreat() -> void:
+	var world: World = _world()
+	var group: AiGroup = _guarding_and_hurt_again(world)
 	assert_eq(_count_retreats(world, 150), 0, "no second retreat after it is hurt again")
 	assert_true(group.retreated)
 	assert_eq(group.behavior, AiGroupSpec.Behavior.GUARD)
+
+
+func test_the_same_group_would_retreat_again_were_it_not_for_the_flag() -> void:
+	var world: World = _world()
+	var group: AiGroup = _guarding_and_hurt_again(world)
+	group.retreated = false
+	assert_eq(_count_retreats(world, CALL_TICKS), 1, "the scenario meets every other condition")
 
 
 func test_a_loss_that_arrives_while_retreating_does_not_restart_the_retreat() -> void:
@@ -319,6 +377,18 @@ func test_enemies_that_weigh_no_more_than_the_group_do_not_drive_it_off() -> voi
 	var group: AiGroup = _group(world, AiGroupSpec.Behavior.IDLE)
 	# 100 hp against the two survivors' 200.
 	world.spawn_unit(WEAKLING, LIGHT, 34 * M, 20 * M, -1, 0)
+	_lose(world, group, 4)
+	assert_eq(_count_retreats(world, 300), 0)
+	assert_false(group.retreated)
+	assert_eq(group.behavior, AiGroupSpec.Behavior.IDLE)
+
+
+func test_enemies_that_weigh_exactly_what_the_group_does_do_not_drive_it_off() -> void:
+	var world: World = _world()
+	var group: AiGroup = _group(world, AiGroupSpec.Behavior.IDLE)
+	# 100 + 100 hp against the two survivors' 200: the rule is strictly more.
+	world.spawn_unit(WEAKLING, LIGHT, 34 * M, 20 * M, -1, 0)
+	world.spawn_unit(WEAKLING, LIGHT, 34 * M, 22 * M, -1, 0)
 	_lose(world, group, 4)
 	assert_eq(_count_retreats(world, 300), 0)
 	assert_false(group.retreated)
