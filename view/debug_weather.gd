@@ -1,9 +1,9 @@
 class_name DebugWeather
 extends RefCounted
-## F6 (debug, like F9, until missions drive the weather): cycles clear, rain,
-## heavy rain, snow. The sim only changes through a SetWeatherCommand at the
-## current tick, ramped over RAMP_TICKS, like any other order, so the
-## mission's schedule takes over again at its next change.
+## F6 (debug, like F9): cycles clear, rain, heavy rain, snow. The sim only
+## changes through a SetWeatherCommand at the current tick, ramped over
+## RAMP_TICKS, like any other order, so the mission's own weather change (a
+## trigger's SET_WEATHER) takes over again when it fires.
 
 ## Ticks each change takes to ramp in.
 const RAMP_TICKS: int = 90
