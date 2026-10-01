@@ -54,12 +54,24 @@ var explosions: Explosions = Explosions.new()
 var weather: Weather = Weather.new()
 ## Brush fire on the terrain's samples. Null without a terrain.
 var fire: Fire
+## The mission in progress: its triggers, objective, and outcome. Null in a
+## world with no mission (start_mission).
+var mission: MissionRuntime
+## Every AI group in the world. Empty without a mission, or until one spawns.
+var ai: AiDirector = AiDirector.new()
 ## What happened in fights during the last step, for the view. Output only:
 ## cleared at the start of each step and not part of state_hash().
 var combat_events: Array[CombatEvent] = []
 ## What projectiles did during the last step, for the view. Output only,
 ## like combat_events.
 var projectile_events: Array[ProjectileEvent] = []
+## What the AI did during the last step (groups spawning, switching behavior),
+## for the view and tests. Output only, like combat_events, and nothing in the
+## sim may read it.
+var ai_events: Array[AiEvent] = []
+## What the mission did during the last step (triggers fired, objectives set,
+## the outcome). Output only, like ai_events.
+var mission_events: Array[MissionEvent] = []
 ## True from when ProjectileSystem starts in the current step to the end of
 ## it; false between ticks. Explosions.catch reads it to keep chain delays
 ## exact: the pass counts down what was there when it began, so a charge
@@ -93,27 +105,36 @@ func enqueue(command: SimCommand) -> bool:
 
 ## Simulates one tick:
 ## 1. apply this tick's commands in enqueue order;
-## 2. advance the weather (ramps, snow cover, wetness);
-## 3. status effects (wear-offs, water putting out the burning, burns);
-## 4. melee (targets, chases, blows, deaths);
-## 5. errands (heals, pick-ups, herb plants);
-## 6. ranged (targets, draws, shots leaving);
-## 7. steer the units, which sets their velocities (knockback included);
-## 8. integrate the units;
-## 9. move the projectiles against the units' new positions: hits, bounces,
-##    fuses, fire arrows lighting fires, carried things following their
-##    carriers;
-## 10. resolve the explosions that brings;
-## 11. burn: fires go out, spread, burn out, set units alight, and catch
+## 2. run the mission's triggers (which may spawn groups, start weather
+##    changes, or end the mission);
+## 3. update the AI groups;
+## 4. advance the weather (ramps, snow cover, wetness);
+## 5. status effects (wear-offs, water putting out the burning, burns);
+## 6. melee (targets, chases, blows, deaths);
+## 7. errands (heals, pick-ups, herb plants);
+## 8. ranged (targets, draws, shots leaving);
+## 9. steer the units, which sets their velocities (knockback included);
+## 10. integrate the units;
+## 11. move the projectiles against the units' new positions: hits, bounces,
+##     fuses, fire arrows lighting fires, carried things following their
+##     carriers;
+## 12. resolve the explosions that brings;
+## 13. burn: fires go out, spread, burn out, set units alight, and catch
 ##     explosives;
-## 12. drop removed projectiles and spent clouds.
+## 14. drop removed projectiles and spent clouds.
 func step() -> void:
 	combat_events.clear()
 	projectile_events.clear()
+	ai_events.clear()
+	mission_events.clear()
 	projectile_pass_begun = false
 	if fire != null:
 		fire.changed.clear()
 	_apply_commands()
+	if mission != null:
+		mission.update(self)
+	if not ai.groups.is_empty():
+		ai.update(self)
 	weather.update(tick)
 	if terrain != null:
 		statuses.update(self)
@@ -131,6 +152,33 @@ func step() -> void:
 		_drop_spent_clouds()
 	projectile_pass_begun = false
 	tick += 1
+
+
+## Starts a mission from mission_script at this tier (0..4, easiest to
+## hardest). Only a world that hasn't stepped yet can start one, and only one:
+## the starting groups spawn on the first step. Returns false and says why if
+## the world has no terrain or catalog, has already stepped or started a
+## mission, the tier is out of range, or the script doesn't validate against
+## the catalog.
+func start_mission(mission_script: MissionScript, tier: int) -> bool:
+	var problem: String = ""
+	if terrain == null or catalog == null:
+		problem = "the world has no terrain or unit catalog"
+	elif tick != 0:
+		problem = "the world has already stepped"
+	elif mission != null:
+		problem = "a mission has already started"
+	elif tier < 0 or tier >= Difficulty.TIERS:
+		problem = "tier %d is not 0..%d" % [tier, Difficulty.TIERS - 1]
+	else:
+		var errors: PackedStringArray = mission_script.validate(catalog)
+		if not errors.is_empty():
+			problem = "the script is invalid: %s" % "; ".join(errors)
+	if problem != "":
+		push_error("World.start_mission: " + problem)
+		return false
+	mission = MissionRuntime.new(mission_script, tier, tick)
+	return true
 
 
 func spawn_entity(x: int, y: int, z: int) -> SimEntity:
@@ -317,6 +365,9 @@ func state_hash() -> String:
 	ctx.update(header.to_byte_array())
 	ctx.update(movement.hash_fields().to_byte_array())
 	ctx.update(weather.hash_fields().to_byte_array())
+	ctx.update(ai.hash_fields().to_byte_array())
+	if mission != null:
+		ctx.update(mission.hash_fields().to_byte_array())
 	if terrain != null:
 		ctx.update(terrain.scar_hash_fields().to_byte_array())
 	if fire != null:
