@@ -259,7 +259,7 @@ func _catch_explosives(world: World) -> void:
 		var at: Vector2i = terrain.nearest_sample(p.x, p.z)
 		var k: int = at.y * terrain.size_x + at.x
 		if state[k] == Cell.BURNING:
-			world.explosions.catch(p, lit_by[k])
+			Explosions.catch(p, lit_by[k])
 
 
 static func _sorted(keys: Array) -> Array[int]:
