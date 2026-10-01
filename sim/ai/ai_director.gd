@@ -48,6 +48,7 @@ func spawn_group(world: World, spec: AiGroupSpec, spec_index: int, tier: int) ->
 		group.ordered_x.append(unit.x)
 		group.ordered_z.append(unit.z)
 		group.ordered_target.append(0)
+		group.ordered_attack.append(0)
 		group.start_hp += unit.hp
 	group.last_hp = group.start_hp
 	groups.append(group)

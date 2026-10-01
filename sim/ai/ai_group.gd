@@ -25,12 +25,15 @@ var spawned_ids: PackedInt32Array = PackedInt32Array()
 ## Members still alive and still on `faction`, ascending.
 var members: PackedInt32Array = PackedInt32Array()
 ## What the AI last sent each member to, parallel to `members` and pruned with
-## it: the group-level goal (not the member's formation slot) and the unit id
-## of the objective it was sent after (0 for none). The AI compares these with
-## its next plan so it only re-orders a member when the plan changed.
+## it: the group-level goal (not the member's formation slot, nor the spot a
+## march sends a STANDOFF member to behind it), the unit id of the objective
+## it was sent after (0 for none), and whether it was an attack-move (1) or a
+## plain move (0). The AI compares these with its next plan so it only
+## re-orders a member when the plan changed.
 var ordered_x: PackedInt64Array = PackedInt64Array()
 var ordered_z: PackedInt64Array = PackedInt64Array()
 var ordered_target: PackedInt32Array = PackedInt32Array()
+var ordered_attack: PackedByteArray = PackedByteArray()
 
 var behavior: AiGroupSpec.Behavior
 ## Sub-state of the behavior; 0 is fresh, so set_behavior restarts it.
@@ -97,6 +100,7 @@ func prune(world: World) -> void:
 	var kept_x: PackedInt64Array = PackedInt64Array()
 	var kept_z: PackedInt64Array = PackedInt64Array()
 	var kept_target: PackedInt32Array = PackedInt32Array()
+	var kept_attack: PackedByteArray = PackedByteArray()
 	for i: int in members.size():
 		if not _is_member(world.get_unit(members[i])):
 			continue
@@ -104,12 +108,14 @@ func prune(world: World) -> void:
 		kept_x.append(ordered_x[i])
 		kept_z.append(ordered_z[i])
 		kept_target.append(ordered_target[i])
+		kept_attack.append(ordered_attack[i])
 	if kept.size() == members.size():
 		return
 	members = kept
 	ordered_x = kept_x
 	ordered_z = kept_z
 	ordered_target = kept_target
+	ordered_attack = kept_attack
 
 
 ## The members as units, in ascending id order, skipping any that died or
@@ -124,14 +130,15 @@ func living(world: World) -> Array[Unit]:
 
 
 ## Notes that the AI sent unit_id to (x, z) after objective target_id (0 for
-## none). Ignores units that aren't members.
-func record_order(unit_id: int, x: int, z: int, target_id: int) -> void:
+## none), attack-moving if attack. Ignores units that aren't members.
+func record_order(unit_id: int, x: int, z: int, target_id: int, attack: bool = false) -> void:
 	var i: int = member_index(unit_id)
 	if i < 0:
 		return
 	ordered_x[i] = x
 	ordered_z[i] = z
 	ordered_target[i] = target_id
+	ordered_attack[i] = 1 if attack else 0
 
 
 ## Every hashed field. Packed arrays come after their sizes, so two groups
@@ -156,6 +163,9 @@ func hash_fields() -> PackedInt64Array:
 	fields.append(ordered_target.size())
 	for target_id: int in ordered_target:
 		fields.append(target_id)
+	fields.append(ordered_attack.size())
+	for attack: int in ordered_attack:
+		fields.append(attack)
 	fields.append(route.size())
 	fields.append_array(route)
 	return fields
