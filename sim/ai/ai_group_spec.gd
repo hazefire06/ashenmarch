@@ -28,8 +28,9 @@ enum Behavior {
 	## Waits hidden until an enemy comes within alert_radius, a member is
 	## hurt, or one is fought, then springs into on_alert.
 	AMBUSH,
-	## Falls back to the retreat point. The AI enters it when the group's
-	## health drops below retreat_below_permille; a script can't set it.
+	## Falls back to the retreat point, then guards it. The AI enters it,
+	## once, when the group's health drops below retreat_below_permille
+	## and the enemies near it outweigh it; a script can't set it.
 	RETREAT,
 }
 

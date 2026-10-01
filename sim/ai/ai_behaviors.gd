@@ -19,7 +19,9 @@ extends RefCounted
 ##   Then it springs into on_alert.
 ## - FLANK: goes after a ranged or support unit (the spec's flank_roles),
 ##   walking round the end of any enemy melee screening it first (AiFlank).
-## - RETREAT: not built yet; a group given one stands as it is.
+## - RETREAT: a group that is losing badly falls back, once, to its retreat
+##   point (or its spawn point) and then guards it. think() sends it: see
+##   _should_retreat.
 
 ## What a leg (one march to one goal) came to.
 enum LegResult {
@@ -41,14 +43,27 @@ const GUARD_LEASH_PERMILLE: int = 1500
 ## Guard radius for a GUARD group whose spec has none (a group sent to guard
 ## by the AI rather than by its spec).
 const DEFAULT_GUARD_RADIUS: int = 10000
+## How far from a group's centroid the enemies that count against it in a
+## retreat may stand, in milli-units: only a threat this close makes a group
+## with few hit points left fall back.
+const RETREAT_THREAT_RADIUS: int = 20000
 
 
 ## Plans the group's next step under its behavior and notes its members'
-## hit points (last_hp). A group with no living members does nothing.
+## hit points (last_hp). A group with no living members does nothing. A group
+## that should fall back (_should_retreat) is given RETREAT first, whatever it
+## was doing, and plans its retreat at once: the RETREAT event is reported
+## after the behavior change and before the march it orders.
 static func think(world: World, group: AiGroup) -> void:
 	var units: Array[Unit] = group.living(world)
 	if units.is_empty():
 		return
+	if _should_retreat(world, group, units):
+		group.retreated = true
+		world.ai.set_behavior(world, group, AiGroupSpec.Behavior.RETREAT)
+		var goal: Vector2i = _retreat_goal(group)
+		world.ai_events.append(AiEvent.new(AiEvent.Kind.RETREAT, group.id, goal.x, goal.y))
+		group.think_now = false
 	_run(world, group, units)
 	group.last_hp = AiOrders.hp_sum(units)
 
@@ -267,9 +282,52 @@ static func _disturbed(world: World, group: AiGroup, units: Array[Unit]) -> bool
 	return _enemy_within(world, group.faction, units, group.spec.alert_radius)
 
 
-# RETREAT: does nothing yet; the group keeps whatever orders it has.
-static func _retreat(_world: World, _group: AiGroup, _units: Array[Unit]) -> void:
-	pass
+# True if the group should fall back now: it has not retreated before, its
+# spec sets a threshold, its members' hit points are below that share of what
+# it spawned with, and the enemies it can see within RETREAT_THREAT_RADIUS of
+# its centroid have more hit points between them than it has left. A group
+# losing to nothing in particular stands.
+static func _should_retreat(world: World, group: AiGroup, units: Array[Unit]) -> bool:
+	if group.behavior == AiGroupSpec.Behavior.RETREAT or group.retreated:
+		return false
+	var permille: int = group.spec.retreat_below_permille
+	if permille <= 0:
+		return false
+	var own: int = AiOrders.hp_sum(units)
+	if own * 1000 >= group.start_hp * permille:
+		return false
+	var c: Vector2i = AiOrders.centroid(units)
+	var threat: int = 0
+	for enemy: Unit in AiOrders.enemies(world, group.faction):
+		if FixedMath.length(enemy.x - c.x, enemy.z - c.y) <= RETREAT_THREAT_RADIUS:
+			threat += enemy.hp
+	return threat > own
+
+
+# Where a retreat falls back to: the spec's retreat point, else where the
+# group spawned.
+static func _retreat_goal(group: AiGroup) -> Vector2i:
+	var point: PackedInt32Array = group.spec.retreat_point
+	if point.size() == 2:
+		return Vector2i(point[0], point[1])
+	return Vector2i(group.spawn_x, group.spawn_z)
+
+
+# RETREAT: the first think orders every member to the goal, busy or not (that
+# is the point of retreating: it drops the fights it is in), as a plain move,
+# since a retreat isn't looking for a fight on the way. After that it walks the
+# leg like any march. Whether it got there or not, it makes the goal its post
+# and guards it.
+static func _retreat(world: World, group: AiGroup, units: Array[Unit]) -> void:
+	var goal: Vector2i = _retreat_goal(group)
+	if group.phase == 0:
+		group.phase = 1
+		AiOrders.march(world, group, units, goal.x, goal.y, false, true)
+	if leg(world, group, units, goal.x, goal.y, false) == LegResult.RUNNING:
+		return
+	group.anchor_x = goal.x
+	group.anchor_z = goal.y
+	world.ai.set_behavior(world, group, AiGroupSpec.Behavior.GUARD)
 
 
 # True if an enemy of faction stands within radius (center to center) of
