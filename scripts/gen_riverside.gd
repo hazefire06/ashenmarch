@@ -17,6 +17,9 @@ const SIZE: int = 512
 const CELL_SIZE: int = 1000
 const MAX_HEIGHT_M: float = 40.0
 const MAX_WALKABLE_SLOPE: int = 1000
+## Herb plants (x, z milli-units): two up the north bank behind the ford, two
+## on the south side. Checked dry and walkable when placed.
+const HERB_PLANTS: PackedInt32Array = [300000, 178000, 282000, 174000, 240000, 286000, 268000, 292000]
 const NOISE_SEED: int = 1729
 const NOISE_FREQUENCY: float = 1.0 / 210.0
 
@@ -98,6 +101,7 @@ func _initialize() -> void:
 	info.cell_size = CELL_SIZE
 	info.max_height = roundi(MAX_HEIGHT_M * World.UNITS_PER_METER)
 	info.max_walkable_slope = MAX_WALKABLE_SLOPE
+	info.herb_plants = HERB_PLANTS
 	var err: Error = ResourceSaver.save(info, OUT_DIR + "riverside.tres")
 	if err != OK:
 		push_error("saving riverside.tres: %s" % error_string(err))

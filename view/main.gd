@@ -19,7 +19,9 @@ const WEATHER_PATH: String = "res://data/weather/riverside_showers.tres"
 ## five Reavers stands behind the Shieldmen and a row of five Rippers behind
 ## the Husks, on the side away from the enemy. Phase 4 adds a row of six
 ## Longbows and a row of three Sappers behind the Shieldmen and Reavers, and a
-## row of six Drifters behind the Husks and Rippers.
+## row of six Drifters behind the Husks and Rippers. Phase 6 adds three
+## Wardens behind the Sappers, three Blightbags in front of the Husks, and two
+## Stormcallers behind the Drifters, and plants the map's herb plants.
 const TEST_SQUAD_SIZE: int = 20
 const SHIELDMEN_ORIGIN: Vector2i = Vector2i(290_000, 185_000)
 const HUSKS_ORIGIN: Vector2i = Vector2i(250_000, 275_000)
@@ -29,6 +31,9 @@ const TEST_SHOCK_ROW_SIZE: int = 5
 const TEST_LONGBOW_COUNT: int = 6
 const TEST_SAPPER_COUNT: int = 3
 const TEST_DRIFTER_COUNT: int = 6
+const TEST_WARDEN_COUNT: int = 3
+const TEST_BLIGHTBAG_COUNT: int = 3
+const TEST_STORMCALLER_COUNT: int = 2
 ## Where the camera starts: between the two squads, looking north.
 const CAMERA_START: Vector2 = Vector2(285.0, 245.0)
 const CAMERA_START_DISTANCE: float = 75.0
@@ -86,6 +91,7 @@ func _ready() -> void:
 	_overhead_map.setup(terrain, _camera)
 	_gibs.setup(terrain)
 	_spawn_test_squads()
+	_plant_herbs(load(MAP_PATH) as MapInfo)
 	_schedule_weather()
 	_units_view.setup(world, _selection.selection, _gibs)
 	_projectiles_view.setup(world)
@@ -203,3 +209,26 @@ func _spawn_test_squads() -> void:
 		world.enqueue(SpawnUnitCommand.new(
 			world.tick, &"drifter", UnitType.Faction.DARK, drifter.x, drifter.y, 0, -1
 		))
+	# Phase 6: Wardens behind the Sappers; Blightbags in front of the Husks,
+	# toward the creek; Stormcallers behind the Drifters.
+	for i: int in TEST_WARDEN_COUNT:
+		var warden: Vector2i = SHIELDMEN_ORIGIN + Vector2i(i * 3 * TEST_SQUAD_SPACING / 2, -4 * TEST_SQUAD_SPACING)
+		world.enqueue(SpawnUnitCommand.new(
+			world.tick, &"warden", UnitType.Faction.LIGHT, warden.x, warden.y, 0, 1
+		))
+	for i: int in TEST_BLIGHTBAG_COUNT:
+		var bag: Vector2i = HUSKS_ORIGIN + Vector2i(i * 2 * TEST_SQUAD_SPACING, -TEST_SQUAD_SPACING)
+		world.enqueue(SpawnUnitCommand.new(
+			world.tick, &"blightbag", UnitType.Faction.DARK, bag.x, bag.y, 0, -1
+		))
+	for i: int in TEST_STORMCALLER_COUNT:
+		var caller: Vector2i = HUSKS_ORIGIN + Vector2i(i * 4 * TEST_SQUAD_SPACING, (block_rows + 2) * TEST_SQUAD_SPACING)
+		world.enqueue(SpawnUnitCommand.new(
+			world.tick, &"stormcaller", UnitType.Faction.DARK, caller.x, caller.y, 0, -1
+		))
+
+
+# The map's herb plants, as tick-0 commands like the spawns.
+func _plant_herbs(map: MapInfo) -> void:
+	for k: int in range(0, map.herb_plants.size() - 1, 2):
+		world.enqueue(SpawnHerbPlantCommand.new(world.tick, map.herb_plants[k], map.herb_plants[k + 1]))

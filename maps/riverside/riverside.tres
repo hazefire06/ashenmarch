@@ -10,3 +10,4 @@ mask_path = "res://maps/riverside/mask.png"
 cell_size = 1000
 max_height = 40000
 max_walkable_slope = 1000
+herb_plants = PackedInt32Array(300000, 178000, 282000, 174000, 240000, 286000, 268000, 292000)

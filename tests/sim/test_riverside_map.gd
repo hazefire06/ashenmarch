@@ -147,3 +147,15 @@ func _flood(is_open: Callable, diagonals: bool = false) -> bool:
 				seen[nk] = 1
 				queue.append(nk)
 	return false
+
+
+func test_herb_plants_stand_on_dry_walkable_ground() -> void:
+	var info: MapInfo = load(MAP_PATH) as MapInfo
+	var terrain: Terrain = TestTerrains.riverside()
+	assert_eq(info.herb_plants.size() % 2, 0, "x, z pairs")
+	assert_gt(info.herb_plants.size(), 0)
+	for k: int in range(0, info.herb_plants.size(), 2):
+		var x: int = info.herb_plants[k]
+		var z: int = info.herb_plants[k + 1]
+		assert_eq(terrain.water_depth_at(x, z), 0, "plant at (%d, %d) m is dry" % [x / 1000, z / 1000])
+		assert_true(terrain.is_passable(x, z, Terrain.Mobility.LIVING), "and walkable")
