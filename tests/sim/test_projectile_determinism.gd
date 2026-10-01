@@ -3,7 +3,9 @@ extends GutTest
 ## same commands land every arrow and grenade in the same place and end in
 ## the same state; a different seed lands them differently. Riverside, the
 ## shipped units, archers and throwers with their real spread, ground
-## attacks, satchels, fuses, fizzles, blasts, and craters.
+## attacks, satchels, fuses, fizzles, blasts, and craters; Phase 5 adds fire
+## arrows lighting the grass where the lines meet, and rain coming in
+## halfway.
 
 const M: int = 1000
 const LIGHT: UnitType.Faction = UnitType.Faction.LIGHT
@@ -34,11 +36,13 @@ func test_same_seed_same_landings_and_state() -> void:
 		if (t + 1) % 150 == 0 and a.state_hash() != b.state_hash():
 			mismatches.append(t + 1)
 	gut.p("%d landings, %d cells on fire or burnt, %d scarred samples; %.2f ms/tick per world" % [
-		landings_a.size() / 4, a.fire.burning.size() + a.fire.state.count(Fire.Cell.SCORCHED), a.terrain.scars.size(),
+		landings_a.size() / 4, a.fire.burn_end.size() + a.fire.state.count(Fire.Cell.SCORCHED), a.terrain.scars.size(),
 		(Time.get_ticks_usec() - started) / 1000.0 / (2 * TICKS),
 	])
 	assert_gt(landings_a.size() / 4, 50, "plenty landed")
 	assert_gt(a.terrain.scars.size(), 0, "and dug craters")
+	assert_gt(a.fire.state.count(Fire.Cell.SCORCHED), 0, "and burned grass")
+	assert_gt(a.weather.rain, 0, "in the rain by the end")
 	assert_eq(landings_a, landings_b, "every landing in the same place")
 	assert_eq(mismatches.size(), 0, "hashes differ at ticks %s" % [mismatches])
 
@@ -59,7 +63,9 @@ func test_a_different_seed_lands_differently() -> void:
 
 
 # The Phase 3 ford battle with ranged units on both sides: Longbows and
-# Sappers behind the Shieldmen, Drifters behind the Husks. Sappers mine their
+# Sappers behind the Shieldmen, Drifters behind the Husks. The Longbows nock
+# their fire arrows and loose them into the grass on their own bank, then
+# go back to the fight; rain sets in from tick 450. Sappers mine their
 # own bank and bombard the far bank of the ford, which the Husks cross
 # on their way (not the ford itself: water puts a lit fuse out); everyone
 # else attack-moves.
@@ -92,6 +98,9 @@ func _battle(world_seed: int) -> World:
 	world.enqueue(AttackMoveCommand.new(90, light, 295 * M, 215 * M, Formations.Kind.SHORT_LINE))
 	world.enqueue(GroundAttackCommand.new(60, sappers, 297 * M, 237 * M))
 	world.enqueue(UseSpecialCommand.new(120, archers))
+	world.enqueue(GroundAttackCommand.new(121, archers, 291 * M, 203 * M))
+	world.enqueue(AttackMoveCommand.new(200, archers, 295 * M, 205 * M, Formations.Kind.SHORT_LINE))
+	world.enqueue(SetWeatherCommand.new(450, 800, 0, 2000, 0, 150))
 	return world
 
 
