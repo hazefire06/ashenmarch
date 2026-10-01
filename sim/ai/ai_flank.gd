@@ -7,18 +7,19 @@ extends RefCounted
 ## like AiBehaviors; the progress is AiGroup's focus_id, route, route_index,
 ## plan_x/plan_z and phase:
 ##
-## - 0, fresh: plans (FlankRoute). Already found out (as in 1): strike, so
-##   a group fighting when its focus dies keeps fighting instead of walking
-##   off round a screen it stands next to. Nothing in the way: strike.
-##   Otherwise the route round the screen's nearer end, or round the other
+## - 0, fresh: plans (FlankRoute). Already found out (an enemy in contact, as
+##   in 1): strike, so a group fighting when its focus dies keeps fighting
+##   instead of walking off round a screen it stands next to. Nothing in the
+##   way: strike. Otherwise the route round the screen's nearer end, or round the other
 ##   end if the nearer one leaves the map or the group's pathing component:
 ##   approach. Neither works: strike.
 ## - 1, approach: walks the route one leg per waypoint with plain moves, so
 ##   nothing on the way stops it to fight. It strikes at once when found out:
-##   a member lost hit points since the last think, or an enemy is within
-##   CONTACT of a member. A focus that moves more than REPLAN_DRIFT from
-##   where it stood at planning gets a new plan. After the last waypoint:
-##   strike.
+##   an enemy is within CONTACT of a member. Being hurt does not count: archers
+##   always shoot at a flank on its way round, and a group that broke off at
+##   the first arrow would charge the screen it was rounding. A focus that
+##   moves more than REPLAN_DRIFT from where it stood at planning gets a new
+##   plan. After the last waypoint: strike.
 ## - 2, strike: engages every enemy it can see, its ASSAULT members going for
 ##   the focus first (AiOrders.engage).
 ##
@@ -50,7 +51,7 @@ static func think(world: World, group: AiGroup, units: Array[Unit]) -> void:
 	if focus.id != group.focus_id:
 		group.focus_id = focus.id
 		group.phase = 0
-	if group.phase != 2 and _found_out(group, units, enemies):
+	if group.phase != 2 and _found_out(units, enemies):
 		if group.phase == 0:
 			# The route on record was for another focus.
 			group.route = PackedInt64Array()
@@ -162,11 +163,9 @@ static func _on_map(terrain: Terrain, route: PackedInt64Array) -> PackedInt64Arr
 	return out
 
 
-# True if an approach is found out: a member lost hit points since the last
-# think, or a seen enemy is within CONTACT (edge to edge) of a member.
-static func _found_out(group: AiGroup, units: Array[Unit], enemies: Array[Unit]) -> bool:
-	if AiOrders.hp_sum(units) < group.last_hp:
-		return true
+# True if an approach is found out: a seen enemy is within CONTACT (edge to
+# edge) of a member. Hit points lost to fire from afar don't count.
+static func _found_out(units: Array[Unit], enemies: Array[Unit]) -> bool:
 	for enemy: Unit in enemies:
 		for unit: Unit in units:
 			if Targeting.edge_distance(unit, enemy) <= CONTACT:

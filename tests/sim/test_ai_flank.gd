@@ -297,29 +297,28 @@ func test_with_nothing_to_flank_the_group_hunts() -> void:
 	assert_eq(group.focus_id, 0, "melee isn't in flank_roles")
 
 
-func test_a_flank_that_is_hurt_strikes_at_once() -> void:
+func test_a_flank_that_is_hurt_on_the_approach_keeps_to_its_route() -> void:
 	var world: World = _world()
 	_spawn_screen(world)
-	var archers: Array[Unit] = _spawn_archers(world)
+	_spawn_archers(world)
 	var group: AiGroup = _flankers(world)
 	assert_false(_next_route(world, group).is_empty(), "a route was planned")
 	assert_eq(group.phase, 1, "approaching")
-	assert_eq(group.focus_id, archers[0].id, "the nearer archer, the lower id on a tie")
+	var route_index: int = group.route_index
+	var hp: int = AiOrders.hp_sum(group.living(world))
+	# Hit from afar: nothing within CONTACT of any member, as archers' fire
+	# leaves it.
 	world.get_unit(group.members[0]).hp -= 10
-	var order: AiEvent = null
-	for _t: int in AiDirector.THINK_TICKS:
+	var orders: Array[AiEvent] = []
+	for _t: int in 2 * AiDirector.THINK_TICKS:
 		world.step()
 		for e: AiEvent in world.ai_events:
-			if e.kind == AiEvent.Kind.ORDER and order == null:
-				order = e
-		if order != null:
-			break
-	assert_eq(group.phase, 2, "found out at the next think: strike")
-	assert_not_null(order)
-	if order == null:
-		return
-	assert_eq(Vector2i(order.x, order.z), Vector2i(archers[0].x, archers[0].z), "at the focus")
-	assert_eq(order.value, 1, "attack-moving")
+			if e.kind == AiEvent.Kind.ORDER and e.value == 1:
+				orders.append(e)
+	assert_lt(AiOrders.hp_sum(group.living(world)), hp, "a member lost hit points")
+	assert_eq(group.phase, 1, "still approaching: hit points are no reason to strike")
+	assert_gte(group.route_index, route_index, "still on its route")
+	assert_eq(orders.size(), 0, "no attack-move at the focus on any think")
 
 
 func test_an_enemy_in_contact_on_the_approach_strikes_at_once() -> void:
