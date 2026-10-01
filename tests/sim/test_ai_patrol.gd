@@ -12,6 +12,7 @@ const DARK: UnitType.Faction = UnitType.Faction.DARK
 ## Catalog indices of the synthetic types.
 const GRUNT: int = 0
 const FOE: int = 1
+const TARGET: int = 2
 
 ## The members' centroid is at least this close to a waypoint the group
 ## reports reached.
@@ -32,6 +33,8 @@ func before_all() -> void:
 		# Twice the stock pace, so five or six 40-57 m legs fit in RUN_TICKS.
 		TestUnits.melee(&"grunt", {"move_speed": 4000}),
 		TestUnits.melee(&"foe"),
+		# Never hits back and dies to three blows.
+		TestUnits.dummy(&"target", {"max_hp": 30}),
 	]
 	_catalog = TestUnits.catalog(types)
 
@@ -136,6 +139,15 @@ func test_a_ping_pong_patrol_turns_back_at_either_end() -> void:
 	_assert_all_near(seen)
 
 
+func test_a_two_waypoint_ping_pong_goes_back_and_forth() -> void:
+	var world: World = _world()
+	var spec: AiGroupSpec = _patrol_spec([50, 10, 50, 50], AiGroupSpec.PatrolMode.PING_PONG)
+	var group: AiGroup = world.ai.spawn_group(world, spec, 0, 0)
+	var seen: Array[PackedInt64Array] = _walk(world, group, 4)
+	assert_eq(_reached(seen), [0, 1, 0, 1])
+	_assert_all_near(seen)
+
+
 func test_reaching_a_waypoint_reports_it_and_starts_the_next_leg_at_once() -> void:
 	var world: World = _world()
 	var group: AiGroup = world.ai.spawn_group(world, _patrol_spec([50, 10, 50, 50]), 0, 0)
@@ -204,6 +216,37 @@ func test_a_leg_is_not_over_while_a_member_that_got_there_is_still_fighting() ->
 	units[1].target_id = 0
 	assert_eq(AiBehaviors.leg(world, group, units, 10 * M, 12 * M, true), AiBehaviors.LegResult.ARRIVED)
 	assert_false(group.leg_active)
+
+
+func test_a_member_mid_swing_keeps_its_fight_when_its_group_starts_a_leg() -> void:
+	var world: World = _world()
+	var spec: AiGroupSpec = _patrol_spec([50, 10, 50, 50])
+	spec.behavior = AiGroupSpec.Behavior.IDLE
+	var group: AiGroup = world.ai.spawn_group(world, spec, 0, 0)
+	var units: Array[Unit] = group.living(world)
+	var a: Unit = units[0]
+	# A target 1.2 m out from a, away from the rest: in a's reach only.
+	var c: Vector2i = AiOrders.centroid(units)
+	var out: Vector2i = FixedMath.normalize(a.x - c.x, a.z - c.y, 1200)
+	var target: Unit = world.spawn_unit(TARGET, LIGHT, a.x + out.x, a.z + out.y, 0, 1)
+	world.step()
+	assert_gt(a.windup_left, 0, "a is swinging")
+	world.ai_events.clear()
+	AiBehaviors.switch_to(world, group, AiGroupSpec.Behavior.PATROL)
+	assert_eq(a.target_id, target.id, "the leg doesn't take a out of its swing")
+	assert_gt(a.windup_left, 0)
+	assert_ne(Vector2i(group.ordered_x[0], group.ordered_z[0]), Vector2i(50 * M, 10 * M))
+	var sent: int = 0
+	for e: AiEvent in world.ai_events:
+		if e.kind == AiEvent.Kind.ORDER:
+			sent += 1
+			assert_ne(e.unit_id, a.id)
+	assert_eq(sent, 1, "the free members set off")
+	while world.tick < 300 and group.ordered_x[0] != 50 * M:
+		world.step()
+	assert_false(target.is_alive(), "a finished its fight")
+	assert_eq(Vector2i(group.ordered_x[0], group.ordered_z[0]), Vector2i(50 * M, 10 * M), "then joined the leg")
+	assert_eq(a.order, Unit.Order.ATTACK_MOVE)
 
 
 # --- meeting enemies --------------------------------------------------------

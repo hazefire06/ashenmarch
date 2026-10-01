@@ -40,8 +40,8 @@ func before_all() -> void:
 # --- fixtures ---------------------------------------------------------------
 
 
-func _world() -> World:
-	return World.new(1, TestTerrains.flat(60, 60), _catalog)
+func _world(terrain: Terrain = null) -> World:
+	return World.new(1, terrain if terrain != null else TestTerrains.flat(60, 60), _catalog)
 
 
 ## A DARK group of count units of type_id at (x, z) m, spawned as spec 0.
@@ -60,6 +60,24 @@ func _group(
 	g.guard_radius = guard_radius
 	assert_eq(g.validate(_catalog), PackedStringArray(), "the spec is valid")
 	return world.ai.spawn_group(world, g, 0, 0)
+
+
+## Flat 60 x 60 m with depth-3 water (impassable to the living) along
+## z = row m, end to end.
+func _river(row: int) -> Terrain:
+	var rows: Array[String] = []
+	for j: int in 60:
+		rows.append("3".repeat(60) if j == row else ".".repeat(60))
+	return TestTerrains.from_ascii(rows)
+
+
+## Puts unit at (x, z) m, standing and holding there, as if it had walked.
+func _place(unit: Unit, x: int, z: int) -> void:
+	unit.x = x * M
+	unit.z = z * M
+	unit.goal_x = unit.x
+	unit.goal_z = unit.z
+	UnitOrders.hold(unit)
 
 
 func _distance(unit: Unit, x: int, z: int) -> int:
@@ -180,6 +198,58 @@ func test_guard_members_out_of_the_radius_attack_move_back_to_the_post() -> void
 		assert_lte(_distance(unit, 40 * M, 30 * M), radius, "unit %d is at the post" % unit.id)
 
 
+func test_a_recalled_member_walks_all_the_way_home_before_it_is_sent_out_again() -> void:
+	var world: World = _world()
+	var radius: int = 10 * M
+	var group: AiGroup = _group(world, &"grunt", 1, 30, 20, AiGroupSpec.Behavior.GUARD, radius)
+	group.anchor_x = 30 * M
+	group.anchor_z = 30 * M
+	var member: Unit = world.get_unit(group.members[0])
+	# Both posts are tough. The inside one is the intruder; the outside one,
+	# just past the leash, is nearer the member and lures its attack-move out.
+	var inside: Unit = world.spawn_unit(POST, LIGHT, 30 * M, 38 * M, 0, -1)
+	world.spawn_unit(POST, LIGHT, 30 * M, 13 * M, 0, 1)
+	var orders: int = 0
+	for _t: int in 900:
+		world.step()
+		orders += _order_count(world)
+	assert_lte(orders, 4, "out, called back, then in to the intruder: no swinging at the leash")
+	assert_lte(_distance(member, 30 * M, 30 * M), radius, "it ends inside the radius")
+	assert_eq(member.target_id, inside.id, "fighting the intruder")
+
+
+func test_guard_with_an_unreachable_intruder_still_brings_strays_home() -> void:
+	var world: World = _world(_river(40))
+	var radius: int = 10 * M
+	var group: AiGroup = _group(world, &"grunt", 4, 10, 30, AiGroupSpec.Behavior.GUARD, radius)
+	group.anchor_x = 30 * M
+	group.anchor_z = 35 * M
+	# Inside the radius, but across water no living unit can wade.
+	world.spawn_unit(POST, LIGHT, 30 * M, 43 * M, 0, -1)
+	for _t: int in 600:
+		world.step()
+	for unit: Unit in group.living(world):
+		assert_lte(_distance(unit, 30 * M, 35 * M), radius, "unit %d came back to the post" % unit.id)
+
+
+func test_guard_without_a_radius_uses_the_default() -> void:
+	var world: World = _world()
+	var group: AiGroup = _group(world, &"grunt", 2, 30, 30, AiGroupSpec.Behavior.IDLE)
+	assert_eq(group.spec.guard_radius, 0)
+	var default_radius: int = AiBehaviors.DEFAULT_GUARD_RADIUS
+	world.spawn_unit(POST, LIGHT, 30 * M, 30 * M + default_radius + M, 0, -1)
+	world.ai.set_behavior(world, group, AiGroupSpec.Behavior.GUARD)
+	for _t: int in 30:
+		world.step()
+		assert_eq(_order_count(world), 0, "a post 1 m beyond the default radius is ignored")
+	var near: Unit = world.spawn_unit(POST, LIGHT, 30 * M, 30 * M - default_radius + M, 0, 1)
+	var order: AiEvent = _first_order(world, group)
+	assert_not_null(order, "one 1 m inside it is engaged")
+	if order == null:
+		return
+	assert_eq(Vector2i(order.x, order.z), Vector2i(near.x, near.z))
+
+
 # --- HUNT -------------------------------------------------------------------
 
 
@@ -199,7 +269,6 @@ func test_hunt_runs_down_two_enemies_far_apart_without_order_spam() -> void:
 			if e.kind == CombatEvent.Kind.KILL and group.spawned_ids.has(e.attacker_id):
 				killed.append(e.target_id)
 	assert_eq(killed, [near.id, far.id], "the nearer one first, then the other")
-	gut.p("hunt: %d ORDER events in the first 600 ticks" % orders)
 	assert_lt(orders, HUNT_ORDER_BOUND, "orders only when the plan changes")
 
 
@@ -233,7 +302,6 @@ func test_hunt_reorders_a_walking_quarry_only_once_it_has_drifted() -> void:
 				)
 			goals[i] = goal
 			targets[i] = group.ordered_target[i]
-	gut.p("walking quarry: %d ORDER events, %d member re-orders in 600 ticks" % [orders, reorders])
 	assert_gt(reorders, 0, "the hunters do follow it")
 	assert_lt(orders, 20, "far fewer than one per think (40)")
 
@@ -292,6 +360,22 @@ func test_a_member_mid_swing_is_not_reordered() -> void:
 		return
 	assert_eq(world.ai_events[0].kind, AiEvent.Kind.ORDER)
 	assert_eq(world.ai_events[0].unit_id, b.id)
+
+
+func test_hunt_leaves_alone_a_member_cut_off_by_water() -> void:
+	var world: World = _world(_river(30))
+	var group: AiGroup = _group(world, &"grunt", 2, 5, 25, AiGroupSpec.Behavior.HUNT)
+	# Across the water from the post, which the leader (the other member, the
+	# lower id) has 45 m to walk to: it stays free, and leads, all that time.
+	var cut_off: Unit = world.get_unit(group.members[1])
+	_place(cut_off, 50, 33)
+	world.spawn_unit(POST, LIGHT, 50 * M, 20 * M, -1, 0)
+	var orders: int = 0
+	for _t: int in 600:
+		world.step()
+		orders += _order_count(world)
+	assert_lte(orders, 2, "no re-order every think for the member that can't get there")
+	assert_eq(group.ordered_target[1], 0, "nothing on its side of the water to go after")
 
 
 # --- when a group thinks ----------------------------------------------------

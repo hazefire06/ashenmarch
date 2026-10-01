@@ -9,12 +9,17 @@ extends RefCounted
 ## a free member (is_free) unless a behavior overrides that on purpose, and
 ## only when its plan for that member changed: the recorded goal or objective
 ## differs from the new one. Members are ordered in buckets, one move per
-## bucket: a bucket is the members of one type, so a fast type isn't held to
-## a slow one's pace (UnitOrders.move caps a group at its slowest member).
+## bucket: a bucket is the members of one type standing in one pathing
+## component. Per type, so a fast type isn't held to a slow one's pace
+## (UnitOrders.move caps a group at its slowest member); per component, so a
+## bucket's leader can walk wherever the rest of it can.
 
 ## Least drift (milli-units) of an objective from where a member was sent
 ## before the member is re-sent after it. See _should_reorder.
 const REORDER_MIN: int = 4000
+## A bucket key holds the type index above this many bits and the pathing
+## component (offset so NO_COMPONENT is 0) below them.
+const _COMPONENT_BITS: int = 32
 
 
 ## True if the AI may give the unit a new order without spoiling what it is
@@ -97,8 +102,8 @@ static func march(
 			if not is_free(world, unit) or (group.ordered_x[i] == x and group.ordered_z[i] == z):
 				continue
 		picked.append(unit)
-	for key: int in _bucket_keys(picked):
-		_order(world, group, _bucket(picked, key), x, z, attack, 0)
+	for key: int in _bucket_keys(world, picked):
+		_order(world, group, _bucket(world, picked, key), x, z, attack, 0)
 
 
 ## Sends the free members among units after an objective picked from
@@ -107,23 +112,28 @@ static func march(
 ## nearest, then the lower id) among those it can walk to or already reach. A
 ## bucket with nothing to go after is left alone. Members the plan hasn't
 ## changed for keep their orders (_should_reorder); the rest attack-move to
-## the objective in one move.
-static func engage(world: World, group: AiGroup, units: Array[Unit], candidates: Array[Unit]) -> void:
+## the objective in one move. Returns true if any bucket had an objective,
+## whether or not anyone needed a new order; false if none could get at any
+## candidate (or no member was free).
+static func engage(world: World, group: AiGroup, units: Array[Unit], candidates: Array[Unit]) -> bool:
 	var free: Array[Unit] = []
 	for unit: Unit in units:
 		if is_free(world, unit):
 			free.append(unit)
-	for key: int in _bucket_keys(free):
-		var bucket: Array[Unit] = _bucket(free, key)
+	var any_objective: bool = false
+	for key: int in _bucket_keys(world, free):
+		var bucket: Array[Unit] = _bucket(world, free, key)
 		var objective: Unit = Targeting.pick(bucket[0], _reachable(world, bucket[0], candidates))
 		if objective == null:
 			continue
+		any_objective = true
 		var sent: Array[Unit] = []
 		for member: Unit in bucket:
 			if _should_reorder(member, objective, group):
 				sent.append(member)
 		if not sent.is_empty():
 			_order(world, group, sent, objective.x, objective.z, true, objective.id)
+	return any_objective
 
 
 # One UnitOrders.move for units (non-empty, ascending id) to (x, z) after
@@ -178,17 +188,22 @@ static func _reachable(world: World, leader: Unit, candidates: Array[Unit]) -> A
 	return out
 
 
-# Which bucket a member is ordered in: its type. Members of one bucket move
-# as one formation at the slowest one's pace.
-static func _bucket_key(unit: Unit) -> int:
-	return unit.type_index
+# Which bucket a member is ordered in: its type, then the pathing component
+# it stands in for its mobility. The one place buckets are defined. Members
+# of one bucket move as one formation at the slowest one's pace, and its
+# leader picks objectives every one of them can walk to: a member across a
+# river from its leader would otherwise be sent at something it can never
+# reach, stop on its own bank, and be sent again at every think.
+static func _bucket_key(world: World, unit: Unit) -> int:
+	var component: int = world.pathing.component_at(unit.x, unit.z, unit.type.mobility)
+	return (unit.type_index << _COMPONENT_BITS) | (component - PathLayer.NO_COMPONENT)
 
 
 # The bucket keys among units, ascending: the order buckets are ordered in.
-static func _bucket_keys(units: Array[Unit]) -> PackedInt32Array:
-	var keys: PackedInt32Array = PackedInt32Array()
+static func _bucket_keys(world: World, units: Array[Unit]) -> PackedInt64Array:
+	var keys: PackedInt64Array = PackedInt64Array()
 	for unit: Unit in units:
-		var key: int = _bucket_key(unit)
+		var key: int = _bucket_key(world, unit)
 		if not keys.has(key):
 			keys.append(key)
 	keys.sort()
@@ -196,9 +211,9 @@ static func _bucket_keys(units: Array[Unit]) -> PackedInt32Array:
 
 
 # The units in bucket key, in the order given (ascending id).
-static func _bucket(units: Array[Unit], key: int) -> Array[Unit]:
+static func _bucket(world: World, units: Array[Unit], key: int) -> Array[Unit]:
 	var out: Array[Unit] = []
 	for unit: Unit in units:
-		if _bucket_key(unit) == key:
+		if _bucket_key(world, unit) == key:
 			out.append(unit)
 	return out

@@ -60,13 +60,16 @@ static func switch_to(world: World, group: AiGroup, behavior: AiGroupSpec.Behavi
 
 
 ## Walks units (the group's living members) to (x, z), attack-moving if
-## attack, and reports how far it got. The first call for a goal starts the
-## leg: every member is sent, busy or not. Later calls send members that are
-## free and haven't been sent there yet, and once every member has finished,
-## is free, and was last sent to (x, z), check where they ended up: near the
-## goal, ARRIVED; far from it, one retry (a WAYPOINT_FAILED event with value
-## -1) and then FAILED. A finished leg is inactive, so calling again for the
-## same goal starts a new one.
+## attack, and reports how far it got. Every call sends the members that are
+## free and haven't been sent there yet; a busy member (mid-fight, mid-swing,
+## on an errand) keeps at it and is sent once it is free. A member already
+## sent there is there or on its way. The first call for a goal starts the
+## leg. Once every member has finished, is free, and was last sent to (x, z),
+## the leg looks at where they ended up: near the goal, ARRIVED; far from it,
+## one retry, sending everyone again (a WAYPOINT_FAILED event with value -1),
+## and then FAILED. A finished leg is inactive, so calling again for the same
+## goal starts a new one. A caller that must pull busy members away (a
+## retreat) forces its own march first.
 static func leg(
 	world: World, group: AiGroup, units: Array[Unit], x: int, z: int, attack: bool
 ) -> LegResult:
@@ -75,7 +78,7 @@ static func leg(
 		group.leg_x = x
 		group.leg_z = z
 		group.leg_retried = false
-		AiOrders.march(world, group, units, x, z, attack, true)
+		AiOrders.march(world, group, units, x, z, attack)
 		return LegResult.RUNNING
 	AiOrders.march(world, group, units, x, z, attack)
 	if not _leg_done(world, group, units, x, z):
@@ -86,6 +89,8 @@ static func leg(
 		return LegResult.ARRIVED
 	if not group.leg_retried:
 		group.leg_retried = true
+		# Everyone is done and free here, and was last sent to (x, z), so only
+		# a forced march sends them again.
 		AiOrders.march(world, group, units, x, z, attack, true)
 		world.ai_events.append(AiEvent.new(AiEvent.Kind.WAYPOINT_FAILED, group.id, x, z, -1))
 		return LegResult.RUNNING
@@ -158,11 +163,13 @@ static func _advance_waypoint(group: AiGroup) -> void:
 	group.waypoint_index = next
 
 
-# GUARD: first the leash: busy members farther from the anchor than
-# GUARD_LEASH_PERMILLE of the radius are called back with a plain move, busy
-# or not, unless already walking home. Then, if enemies are inside the
-# radius of the anchor (center to center), the others engage them;
-# otherwise free members outside the radius attack-move back to the anchor.
+# GUARD: members walking home from a recall are left alone until they get
+# there. The rest: busy members farther from the anchor than
+# GUARD_LEASH_PERMILLE of the radius are called back with a plain move,
+# busy or not. Then, if enemies are inside the radius of the anchor (center
+# to center), the others engage the ones they can get at; if there are none,
+# or none they can reach, free members outside the radius attack-move back
+# to the anchor.
 static func _guard(world: World, group: AiGroup, units: Array[Unit]) -> void:
 	var radius: int = group.spec.guard_radius if group.spec.guard_radius > 0 else DEFAULT_GUARD_RADIUS
 	var leash: int = radius * GUARD_LEASH_PERMILLE / 1000
@@ -171,10 +178,9 @@ static func _guard(world: World, group: AiGroup, units: Array[Unit]) -> void:
 	var recalled: Array[Unit] = []
 	var others: Array[Unit] = []
 	for unit: Unit in units:
-		if (
-			not AiOrders.is_free(world, unit) and _distance(unit, ax, az) > leash
-			and not _walking_home(group, unit)
-		):
+		if _walking_home(group, unit):
+			continue
+		if not AiOrders.is_free(world, unit) and _distance(unit, ax, az) > leash:
 			recalled.append(unit)
 		else:
 			others.append(unit)
@@ -184,8 +190,7 @@ static func _guard(world: World, group: AiGroup, units: Array[Unit]) -> void:
 	for enemy: Unit in AiOrders.enemies(world, group.faction):
 		if _distance(enemy, ax, az) <= radius:
 			intruders.append(enemy)
-	if not intruders.is_empty():
-		AiOrders.engage(world, group, others, intruders)
+	if not intruders.is_empty() and AiOrders.engage(world, group, others, intruders):
 		return
 	var strays: Array[Unit] = []
 	for unit: Unit in others:
@@ -194,8 +199,12 @@ static func _guard(world: World, group: AiGroup, units: Array[Unit]) -> void:
 	AiOrders.march(world, group, strays, ax, az, true)
 
 
-# True if the member is already on a plain move back to the anchor (a
-# recall whose path is still being solved, say), which nothing can lure off.
+# True if the member is on a recall: a plain move to the anchor that hasn't
+# ended yet (MeleeCombat turns it into NONE on arrival, and a give-up ends it
+# too). Such a member is left to finish the walk. Engaging it on the way
+# would let its attack-move pick up the nearest enemy again, often the one
+# outside the radius it was called back from, and it would swing at the
+# leash for as long as both enemies stood.
 static func _walking_home(group: AiGroup, unit: Unit) -> bool:
 	var i: int = group.member_index(unit.id)
 	return (
@@ -204,7 +213,8 @@ static func _walking_home(group: AiGroup, unit: Unit) -> bool:
 	)
 
 
-# HUNT: every enemy the group can see is a candidate.
+# HUNT: every enemy the group can see is a candidate. Members with nothing
+# they can get at stay as they are.
 static func _hunt(world: World, group: AiGroup, units: Array[Unit]) -> void:
 	AiOrders.engage(world, group, units, AiOrders.enemies(world, group.faction))
 
