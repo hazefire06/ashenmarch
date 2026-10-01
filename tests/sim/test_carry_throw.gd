@@ -97,9 +97,13 @@ func test_it_tears_a_part_off_a_body_and_the_part_wounds() -> void:
 	var body: Unit = world.spawn_unit(DUMMY, LIGHT, 12 * M, 20 * M, 1, 0)
 	Damage.apply(world, body, 1_000_000, 0, 0, 0)
 	var enemy: Unit = world.spawn_unit(ARCHER, LIGHT, 22 * M, 20 * M, -1, 0)
-	_run(world, 6 * World.TICK_RATE)
-	assert_eq(body.parts_taken, 1)
-	assert_eq(enemy.hp, enemy.type.max_hp - _catalog.find_projectile(&"body_part").impact_damage, "struck once")
+	for _t: int in 6 * World.TICK_RATE:
+		world.step()
+		if enemy.hp < enemy.type.max_hp:
+			break
+	# It may already have gone back for a second part while the first flew.
+	assert_gte(body.parts_taken, 1)
+	assert_eq(enemy.hp, enemy.type.max_hp - _catalog.find_projectile(&"body_part").impact_damage, "the part wounds")
 
 
 func test_a_body_gives_two_parts_at_most() -> void:
@@ -198,6 +202,43 @@ func test_an_attack_mover_picks_up_on_the_way_and_marches_on() -> void:
 	assert_eq(scav.carried_id, satchel.id, "picked up on the way")
 	assert_almost_eq(scav.x, 35 * M, 500, "and got where it was going")
 	assert_eq(scav.order, Unit.Order.NONE, "the march ended there")
+
+
+func test_after_its_throw_it_stands_down_and_scavenges_again() -> void:
+	# The throw empties its hands, so ranged combat stops looking at it: the
+	# Ripper used to stay SHOOTING for good and never pick anything up again.
+	var world: World = _world()
+	var scav: Unit = world.spawn_unit(SCAV, DARK, 10 * M, 20 * M, 1, 0)
+	world.spawn_unit(ARCHER, LIGHT, 24 * M, 20 * M, -1, 0)
+	var first: Projectile = _lay(world, &"satchel", 10 * M, 20 * M)
+	Interactions.take(world, scav, first)
+	var thrown_at: int = -1
+	for _t: int in 3 * World.TICK_RATE:
+		world.step()
+		if thrown_at < 0 and scav.carried_id == 0:
+			thrown_at = world.tick
+	assert_gte(thrown_at, 0, "it threw")
+	assert_ne(scav.state, Unit.State.SHOOTING, "and stood down")
+	assert_eq(scav.shot_cooldown_left, 0, "its cooldown ran out while empty-handed")
+	var second: Projectile = _lay(world, &"gas_packet", 6 * M, 20 * M)
+	var picked: bool = false
+	for _t: int in 3 * World.TICK_RATE:
+		world.step()
+		for e: ProjectileEvent in world.projectile_events:
+			picked = picked or (e.kind == ProjectileEvent.Kind.PICK_UP and e.projectile_id == second.id)
+	assert_true(picked, "and went for the next thing")
+
+
+func test_an_attack_mover_marches_on_after_its_throw() -> void:
+	var world: World = _world()
+	var scav: Unit = world.spawn_unit(SCAV, DARK, 5 * M, 20 * M, 1, 0)
+	world.spawn_unit(ARCHER, LIGHT, 18 * M, 35 * M, -1, 0)
+	var satchel: Projectile = _lay(world, &"satchel", 5 * M, 20 * M)
+	Interactions.take(world, scav, satchel)
+	world.enqueue(AttackMoveCommand.new(0, PackedInt32Array([scav.id]), 35 * M, 20 * M, 0))
+	_run(world, 25 * World.TICK_RATE)
+	assert_eq(scav.carried_id, 0, "it threw")
+	assert_almost_eq(scav.x, 35 * M, 1000, "and still got where it was going")
 
 
 func test_carrying_is_hashed() -> void:

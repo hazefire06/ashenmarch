@@ -28,10 +28,13 @@ const PERMILLE: int = 1000
 
 ## True if a bolt from unit aimed at (x, y, z) (milli-units) gets there: no
 ## ground in the way short of it. With careful, also no friend of unit's
-## body within the half-width plus margin of the whole line, out to reach.
+## anywhere along the whole line out to reach, within the half-width plus
+## margin plus how far the spread (tan x 1000) can swing the line at the
+## friend's distance: the spread turns the whole line about the caster, so
+## the farther out, the wider it may stray.
 static func is_clear(
 	world: World, unit: Unit, p: ProjectileType, x: int, y: int, z: int,
-	careful: bool, margin: int, reach: int
+	careful: bool, margin: int, spread: int, reach: int
 ) -> bool:
 	var from: PackedInt64Array = launch_point(unit)
 	var dist: int = FixedMath.length(x - from[0], z - from[2])
@@ -48,7 +51,8 @@ static func is_clear(
 	for other: Unit in world.units:
 		if other == unit or not other.is_alive() or other.faction != unit.faction:
 			continue
-		if _touches(other, from, end, p.radius + margin):
+		var out: int = mini(reach, FixedMath.length(other.x - from[0], other.z - from[2]))
+		if _touches(other, from, end, p.radius + margin + spread * out / PERMILLE):
 			return false
 	return true
 

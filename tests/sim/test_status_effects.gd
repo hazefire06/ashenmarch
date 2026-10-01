@@ -159,6 +159,21 @@ func test_a_confused_archer_shoots_a_friend() -> void:
 	assert_lt(friend.hp, friend.type.max_hp)
 
 
+func test_a_confused_ground_attacker_shoots_the_unit_not_the_spot() -> void:
+	var world: World = _world()
+	var archer: Unit = world.spawn_unit(ARCHER, LIGHT, 10 * M, 20 * M, 1, 0)
+	var friend: Unit = world.spawn_unit(DUMMY, LIGHT, 20 * M, 20 * M, -1, 0)
+	world.enqueue(GroundAttackCommand.new(0, PackedInt32Array([archer.id]), 10 * M, 35 * M))
+	world.enqueue(ApplyStatusCommand.new(0, PackedInt32Array([archer.id]), CONFUSION, 300))
+	var sticks: int = 0
+	for _t: int in 150:
+		world.step()
+		for e: ProjectileEvent in world.projectile_events:
+			sticks += 1 if e.kind == ProjectileEvent.Kind.STICK else 0
+	assert_lt(friend.hp, friend.type.max_hp, "it shot the friend it faced")
+	assert_eq(sticks, 0, "and nothing into the ground spot")
+
+
 # --- Burning
 
 func test_burning_hurts_every_interval_and_water_puts_it_out() -> void:

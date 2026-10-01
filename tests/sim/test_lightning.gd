@@ -109,6 +109,19 @@ func test_it_wont_cast_with_a_friend_on_the_line() -> void:
 	assert_gt(_bolts(world, 120).size(), 0)
 
 
+func test_a_friend_beyond_the_target_counts_with_the_spread_widening() -> void:
+	# The spread swings the whole line about the caster, so 25 m out it can
+	# stray 2.5 times as far as at a target 10 m out. A friend 1.3 m off the
+	# line there was once outside the check and got struck now and then.
+	var spread_caster: UnitType = TestUnits.caster(&"spread_caster", {"ranged_spread_permille": 30})
+	var world: World = World.new(1, TestTerrains.flat(40, 40), TestUnits.catalog([spread_caster, TestUnits.dummy(&"dummy")]))
+	world.spawn_unit(0, LIGHT, 5 * M, 20 * M, 1, 0)
+	world.spawn_unit(1, DARK, 15 * M, 20 * M, -1, 0)
+	var friend: Unit = world.spawn_unit(1, LIGHT, 30 * M, 21_300, -1, 0)
+	assert_eq(_bolts(world, 150).size(), 0, "it holds fire")
+	assert_eq(friend.hp, friend.type.max_hp)
+
+
 func test_sustained_melee_shuts_it_down_and_kills_it() -> void:
 	var world: World = _world()
 	var caster: Unit = world.spawn_unit(CASTER, LIGHT, 10 * M, 20 * M, 1, 0)
@@ -154,7 +167,7 @@ func test_a_bolt_never_strikes_anything_far_off_its_line() -> void:
 	for k: int in 6:
 		far.append(world.spawn_unit(DUMMY, LIGHT, (150 + 20 * k) * M, (15 + 6 * k) * M, 0, -1))
 		far_friends.append(world.spawn_unit(DUMMY, DARK, (160 + 20 * k) * M, (15 + 6 * k) * M, 0, -1))
-	assert_true(Lightning.is_clear(world, caster, _bolt, 10 * M, 1000, 25 * M, true, 200, 40 * M), "no far friend blocks it")
+	assert_true(Lightning.is_clear(world, caster, _bolt, 10 * M, 1000, 25 * M, true, 200, 0, 40 * M), "no far friend blocks it")
 	Lightning.strike(world, caster, _index(), 10 * M, 1000, 25 * M, 40 * M)
 	_assert_struck(near)
 	for unit: Unit in far + far_friends:

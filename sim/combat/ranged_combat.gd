@@ -89,8 +89,19 @@ func update(world: World) -> void:
 		return
 	var loosing: Array[Unit] = []
 	for unit: Unit in world.units:
-		if unit.is_alive() and unit.fights_at_range() and _decide(world, unit):
-			loosing.append(unit)
+		if not unit.is_alive():
+			continue
+		if unit.fights_at_range():
+			if _decide(world, unit):
+				loosing.append(unit)
+			continue
+		# A carrier with empty hands (it threw, or its load went off): its
+		# throw cooldown still runs, and it stops standing to shoot, so an
+		# attack-mover marches on and a holder can scavenge again.
+		if unit.shot_cooldown_left > 0:
+			unit.shot_cooldown_left -= 1
+		if unit.state == Unit.State.SHOOTING or unit.shot_target_id != 0:
+			_stand_down(world, unit)
 	for unit: Unit in loosing:
 		_loose(world, unit)
 	for bolt: PackedInt64Array in _bolts:
@@ -343,9 +354,7 @@ func _aim(
 	if p.behavior == ProjectileType.Behavior.BOLT:
 		var bolt: AimSolution = AimSolution.new()
 		var reach: int = effective_max_range(unit, world.terrain.height_at(x, z) - FlightState.to_mm(from.py), dist)
-		bolt.ok = Lightning.is_clear(
-			world, unit, p, x, y, z, avoid_friends, PATH_MARGIN + spread * dist / PERMILLE, reach
-		)
+		bolt.ok = Lightning.is_clear(world, unit, p, x, y, z, avoid_friends, PATH_MARGIN, spread, reach)
 		return bolt
 	var tx: int = x * FlightState.SUB
 	var ty: int = y * FlightState.SUB
@@ -422,7 +431,7 @@ func _loose(world: World, unit: Unit) -> void:
 	var solution: AimSolution
 	var aim_x: int
 	var aim_z: int
-	if unit.order == Unit.Order.GROUND_ATTACK:
+	if unit.order == Unit.Order.GROUND_ATTACK and not StatusEffects.confused(world, unit):
 		aim_x = unit.ground_x
 		aim_z = unit.ground_z
 		solution = _aim_at_ground(world, unit, aim_x, aim_z)
@@ -504,7 +513,7 @@ func _loose_bolt(world: World, unit: Unit) -> void:
 	var rise: int = world.terrain.height_at(x, z) - from_y
 	var spread: int = spread_for(unit, rise, dist)
 	var reach: int = effective_max_range(unit, rise, dist)
-	if not Lightning.is_clear(world, unit, p, x, y, z, careful, PATH_MARGIN + spread * dist / PERMILLE, reach):
+	if not Lightning.is_clear(world, unit, p, x, y, z, careful, PATH_MARGIN, spread, reach):
 		unit.clear_shot()
 		return
 	# Spread: a sideways miss of up to spread x distance, either way.

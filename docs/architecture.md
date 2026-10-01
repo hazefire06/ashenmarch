@@ -824,7 +824,7 @@ Units have status effects, and a HUD panel shows the selection.
   - Its shield doesn't block (`MeleeCombat.can_block`, for melee and arrows). That skips the block roll, which shifts the RNG stream only when paralysis is present.
 - **Confusion.**
   - Melee picks the nearest unit of either side within `acquire_radius`, whatever the order (MOVE included). It ignores role preference (`Targeting` with `nearest_only`) and the hold leash.
-  - Ranged shoots the nearest anyone in range, ground attack included, with no friend checks.
+  - Ranged shoots the nearest anyone in range, ground attack included, with no friend checks. A confused ground attacker aims at the unit, not its spot.
   - A kill of a friend earns no veterancy, as before.
   - The tick after it wears off, `UnitOrders.resume()` drops the fight and the shot. MOVE and ATTACK_MOVE re-march to `order_x/z`, GROUND_ATTACK stands, INTERACT restarts its walk, and anything else holds where it stands.
   - `_kept_target` now also drops a friend for a unit in its right mind.
@@ -906,7 +906,7 @@ Units have status effects, and a HUD panel shows the selection.
 - **Aiming** (`RangedCombat`):
   - Bolts aim at the chest with no lead.
   - `Lightning.is_clear` needs the ground clear up to 1 m short of the aim point.
-  - For auto-picked targets, it also needs no friend anywhere on the whole line out to its reach, within half-width + `PATH_MARGIN` + spread × distance.
+  - For auto-picked targets, it also needs no friend anywhere on the whole line out to its reach, within half-width + `PATH_MARGIN` + spread × the friend's own distance out. The spread swings the whole line about the caster, so the corridor widens along it; a corridor sized at the target's distance let a friend 25 m out be struck now and then.
   - **A Stormcaller behind its own line therefore won't cast;** Phase 7's AI positions it. The lockstep battle puts the Stormcallers on a flank for that reason.
   - Ground attack, and confusion, skip the friend check.
 - **Casting:**
@@ -934,6 +934,7 @@ Units have status effects, and a HUD panel shows the selection.
   - `Unit.fights_at_range()` (shoots, or holds something) replaces `has_ranged()` for melee's adjacent-only rule and for who runs in `RangedCombat`.
   - `next_projectile` returns the carried type.
   - The throw launches the object itself: owner, instigator, ignore window, and `thrown` are set, and nothing new is spawned.
+  - Once its hands are empty, `RangedCombat` still counts down its throw cooldown and stands it down out of SHOOTING. Without that, an attack-mover stopped for good after its throw, and a holder never scavenged again.
   - Aiming is as for any thrower: role preference (Rippers hunt ranged and support), and friend checks over the object's `effect_radius`. Things with impact damage aim at the chest.
 - **Thrown impacts:**
   - A body part (`impact_damage` 8) hurts the first body it flies into, with no roll, credited to the thrower.
