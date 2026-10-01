@@ -97,6 +97,23 @@ static func caster(type_id: StringName, overrides: Dictionary = {}) -> UnitType:
 	return ranged(type_id, base)
 
 
+## A scavenger built on melee(): it picks up loose objects and tears parts
+## off bodies within 8 m, and throws them like a thrower (a lob at 0.8 grade,
+## up to 15 m/s, 3-20 m, a 12-tick wind-up, no spread), hunting ranged and
+## support units first.
+static func scavenger(type_id: StringName, overrides: Dictionary = {}) -> UnitType:
+	var base: Dictionary = {
+		"preferred_target_roles": (1 << UnitType.Role.RANGED) | (1 << UnitType.Role.SUPPORT),
+		"throws_carried": true, "scavenge_radius": 8000, "scavenged_projectile": &"body_part",
+		"ranged_aim": UnitType.AimStyle.LOB, "ranged_launch_speed": 15_000,
+		"ranged_lob_grade_permille": 800, "ranged_launch_height": 1500,
+		"ranged_min_range": 3000, "ranged_max_range": 20_000,
+		"ranged_windup_ticks": 12, "ranged_cooldown_ticks": 30, "ranged_ammo": -1,
+	}
+	base.merge(overrides, true)
+	return melee(type_id, base)
+
+
 ## A healer built on melee(): a support unit carrying six herbs that heal
 ## 60 hp after a 15-tick wind-up.
 static func healer(type_id: StringName, overrides: Dictionary = {}) -> UnitType:

@@ -36,6 +36,12 @@ extends RefCounted
 ##   can't reach it, or the spot is inside its minimum range, it gives up
 ##   (CANT_REACH) and holds.
 ##
+## Carriers (UnitType.throws_carried: Rippers) fight at range while they
+## hold something (Interactions): the same rules, with their ranged_* numbers
+## as the throw and what they hold as the projectile. The throw launches the
+## object itself (thrown, so a gas packet bursts where it lands), and the
+## carrier is back to melee.
+##
 ## Lightning (a BOLT projectile) is a straight line rather than a flight
 ## (Lightning): it aims at the chest with no lead, needs the line clear of
 ## the ground and, for an auto-picked target, of friends all the way to the
@@ -83,7 +89,7 @@ func update(world: World) -> void:
 		return
 	var loosing: Array[Unit] = []
 	for unit: Unit in world.units:
-		if unit.is_alive() and unit.type.has_ranged() and _decide(world, unit):
+		if unit.is_alive() and unit.fights_at_range() and _decide(world, unit):
 			loosing.append(unit)
 	for unit: Unit in loosing:
 		_loose(world, unit)
@@ -118,8 +124,12 @@ static func launch_point(unit: Unit) -> FlightState:
 	return FlightState.at_mm(unit.x, unit.y + unit.type.ranged_launch_height, unit.z, 0, 0, 0)
 
 
-## The projectile type unit fires next: the fire arrow when nocked.
+## The projectile type unit fires next: what it carries, or the fire arrow
+## when nocked.
 static func next_projectile(world: World, unit: Unit) -> int:
+	var carried: Projectile = world.carried_by(unit)
+	if carried != null:
+		return carried.type_index
 	if unit.fire_nocked:
 		return world.catalog.projectile_index_of(unit.type.special_projectile)
 	return world.catalog.projectile_index_of(unit.type.ranged_projectile)
@@ -301,7 +311,7 @@ func _aim_at_unit(world: World, unit: Unit, target: Unit, x: int, z: int, carefu
 	var p: ProjectileType = world.catalog.projectile_types[type_index]
 	var ground: int = world.terrain.height_at(x, z)
 	var y: int = ground
-	if p.behavior != ProjectileType.Behavior.BOUNCES:
+	if p.behavior != ProjectileType.Behavior.BOUNCES or p.impact_damage > 0:
 		# At the aim point, which is where a walker is led to: leading an enemy
 		# into our own line would put the arrow on the line. (A bolt checks
 		# its whole line for friends instead.)
@@ -443,12 +453,22 @@ func _loose(world: World, unit: Unit) -> void:
 	var v: PackedInt64Array = Ballistics.perturb(
 		solution.vx, solution.vy, solution.vz, spread_for(unit, rise, dist), world.rng
 	)
-	var shot: Projectile = world.spawn_projectile(
-		type_index, FlightState.new(from.px, from.py, from.pz, v[0], v[1], v[2]), unit.id
-	)
+	var flight: FlightState = FlightState.new(from.px, from.py, from.pz, v[0], v[1], v[2])
+	var shot: Projectile = world.carried_by(unit)
+	if shot != null:
+		# Out of the hand and away: it is the thrower's now.
+		world.release(shot)
+		shot.flight = flight
+		shot.motion = Projectile.Motion.FLYING
+		shot.thrown = true
+		shot.owner_id = unit.id
+		shot.instigator_id = unit.id
+		shot.sync_position()
+	else:
+		shot = world.spawn_projectile(type_index, flight, unit.id)
 	shot.ignore_id = unit.id
 	shot.ignore_ticks = LAUNCH_IGNORE_TICKS
-	if p.fuse_ticks > 0:
+	if p.fuse_ticks > 0 and not shot.thrown:
 		var variance: int = world.rng.randi_range(-p.fuse_variance_permille, p.fuse_variance_permille)
 		shot.fuse_left = maxi(1, p.fuse_ticks + FixedMath.div_round(p.fuse_ticks * variance, PERMILLE))
 	var e: ProjectileEvent = ProjectileEvent.about(ProjectileEvent.Kind.LAUNCH, shot)

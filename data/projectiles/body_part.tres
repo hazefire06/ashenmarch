@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="ProjectileType" format=3]
+
+[ext_resource type="Script" path="res://sim/projectiles/projectile_type.gd" id="1_bpt01"]
+
+[resource]
+script = ExtResource("1_bpt01")
+id = &"body_part"
+display_name = "Body part"
+behavior = 1
+pickup = 1
+radius = 120
+drag_ppm_per_m = 4000
+restitution_permille = 150
+friction_permille = 400
+roll_accel_permille = 400
+rolling_resistance = 3000
+rest_speed = 400
+static_slope_permille = 450
+impact_damage = 8
+placeholder_color = Color(0.5, 0.12, 0.12, 1)
+length = 350

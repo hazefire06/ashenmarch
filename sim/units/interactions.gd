@@ -30,8 +30,17 @@ extends RefCounted
 ## Healers also pick up any herb they touch (within CONTACT_REACH of their
 ## body) while they have room for it, errand or not.
 ##
+## Scavengers (UnitType.scavenge_radius) find their own errands: on their
+## staggered tick (every SCAVENGE_TICKS), one that is holding or
+## attack-moving, empty-handed, and not fighting, paralyzed, confused, or
+## reeling goes for the nearest thing within scavenge_radius it could pick
+## up or tear a part off (ties to the lower id), leaving alone anything in a
+## live gas cloud, anything another unit is already going for, and anything
+## it can't walk to. It goes back to its order when it has it.
+##
 ## No randomness. Units act in ascending id, then herbs are gathered (units
-## in ascending id, herbs in ascending id).
+## in ascending id, herbs in ascending id), then scavengers look (ascending
+## id, so a lower id claims first).
 
 enum Action {
 	NONE,
@@ -57,6 +66,8 @@ const CONTACT_REACH: int = 300
 const PARTS_PER_BODY: int = 2
 ## How high up a carrier's body what it holds rides, permille of its height.
 const HAND_PERMILLE: int = 750
+## Ticks between a scavenger's looks around, staggered by id.
+const SCAVENGE_TICKS: int = 6
 const PERMILLE: int = 1000
 
 
@@ -65,6 +76,7 @@ func update(world: World) -> void:
 		if unit.is_alive() and unit.order == Unit.Order.INTERACT:
 			_errand(world, unit)
 	_gather_herbs(world)
+	_scavenge(world)
 
 
 ## The command side (InteractCommand, HealCommand): of the living units among
@@ -344,6 +356,79 @@ func _gather_herbs(world: World) -> void:
 			var dz: int = p.z - unit.z
 			if dx * dx + dz * dz <= reach * reach:
 				_take_herb(world, unit, p)
+
+
+# Scavengers with nothing better to do go for what lies near.
+func _scavenge(world: World) -> void:
+	var claimed: Dictionary[int, bool] = {}
+	var looking: Array[Unit] = []
+	for unit: Unit in world.units:
+		if not unit.is_alive():
+			continue
+		if unit.order == Unit.Order.INTERACT:
+			claimed[unit.interact_id] = true
+		elif unit.type.scavenge_radius > 0 and (world.tick + unit.id) % SCAVENGE_TICKS == 0:
+			looking.append(unit)
+	for unit: Unit in looking:
+		if not _free_to_scavenge(world, unit):
+			continue
+		var target: SimEntity = _nearest_find(world, unit, claimed)
+		if target != null:
+			claimed[target.id] = true
+			begin(world, unit, target, unit.order)
+
+
+static func _free_to_scavenge(world: World, unit: Unit) -> bool:
+	return (
+		(unit.order == Unit.Order.NONE or unit.order == Unit.Order.ATTACK_MOVE)
+		and world.carried_by(unit) == null and unit.target_id == 0
+		and unit.state != Unit.State.ATTACKING and unit.state != Unit.State.SHOOTING
+		and not unit.is_reeling() and not StatusEffects.paralyzed(world, unit)
+		and not StatusEffects.confused(world, unit)
+	)
+
+
+# The nearest loose object or body within the unit's scavenge radius that it
+# could take something from, isn't claimed, isn't in gas, and is reachable.
+static func _nearest_find(world: World, unit: Unit, claimed: Dictionary[int, bool]) -> SimEntity:
+	var radius: int = unit.type.scavenge_radius
+	var best: SimEntity = null
+	var best_d: int = 0
+	var candidates: Array[SimEntity] = []
+	for p: Projectile in world.projectiles:
+		candidates.append(p)
+	for other: Unit in world.units:
+		if not other.is_alive():
+			candidates.append(other)
+	for c: SimEntity in candidates:
+		if claimed.has(c.id):
+			continue
+		var dx: int = c.x - unit.x
+		var dz: int = c.z - unit.z
+		if absi(dx) > radius or absi(dz) > radius or dx * dx + dz * dz > radius * radius:
+			continue
+		var action: Action = action_for(world, unit, c)
+		if action != Action.TAKE_OBJECT and action != Action.TEAR_PART:
+			continue
+		var d: int = FixedMath.length(dx, dz)
+		if best != null and (d > best_d or (d == best_d and c.id > best.id)):
+			continue
+		if _in_gas(world, c) or not can_get_to(world, unit, c):
+			continue
+		best = c
+		best_d = d
+	return best
+
+
+static func _in_gas(world: World, at: SimEntity) -> bool:
+	for cloud: GasCloud in world.clouds:
+		if cloud.removed:
+			continue
+		var dx: int = at.x - cloud.x
+		var dz: int = at.z - cloud.z
+		if dx * dx + dz * dz <= cloud.radius * cloud.radius:
+			return true
+	return false
 
 
 # Milli-units between unit's body edge and target's (a unit's body, a loose
