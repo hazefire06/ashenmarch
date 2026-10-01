@@ -1,16 +1,16 @@
 class_name ExplosionsView
 extends Node3D
-## What blasts and fire arrows leave behind, read from the World's projectile
-## events after each step (MainView calls after_step()). Reads the World;
-## never writes it.
+## What blasts leave behind, read from the World's projectile events after
+## each step (MainView calls after_step()). Reads the World; never writes it.
 ## - A blast (EXPLODE) flashes: an unshaded, transparent sphere that grows and
 ##   fades in FLASH_TIME, then frees itself. If the blast dug a crater, the
 ##   terrain mesh and the gibs' ground collider are refreshed where the sim
 ##   scarred the heights, and a dark CraterMesh disc is laid on the new ground
 ##   for the rest of the mission.
-## - A fuse that goes out (FIZZLE) leaves a small grey puff.
-## - A fire arrow lighting the ground (IGNITE) leaves an orange-red scorch
-##   disc.
+## - A flame that goes out (FIZZLE: a fuse or a fire arrow in the rain, a
+##   fuse in water) leaves a small grey puff.
+## Fire draws itself: the terrain shows burning and scorched ground, and
+## FireView the flames and smoke.
 ##
 ## Explosions can overlap, and a later one digs under an earlier crater, so
 ## the discs near new scarring are rebuilt onto the changed ground.
@@ -32,15 +32,11 @@ const PUFF_COLOR: Color = Color(0.62, 0.62, 0.62, 0.65)
 const CRATER_DISC_SCALE: float = 1.25
 const CRATER_COLOR: Color = Color(0.1, 0.07, 0.05, 0.85)
 const CRATER_LIFT: float = 0.04
-## Scorch marks sit a touch higher, so one inside a crater wins.
-const SCORCH_RADIUS: int = 600
-const SCORCH_COLOR: Color = Color(0.9, 0.3, 0.08, 0.8)
-const SCORCH_LIFT: float = 0.06
 
 var _world: World
 var _terrain_view: TerrainView
 var _gibs: Gibs
-## Flashes and puffs still playing, and the craters and scorch marks that stay.
+## Flashes and puffs still playing, and the craters that stay.
 var _effects: Node3D
 var _marks: Node3D
 var _materials: Dictionary[Color, StandardMaterial3D] = {}
@@ -60,7 +56,7 @@ func setup(world: World, terrain_view: TerrainView, gibs: Gibs) -> void:
 	add_child(_marks)
 
 
-## Plays the tick's blasts, fizzles, and fires lit. Call it once after each
+## Plays the tick's blasts and fizzles. Call it once after each
 ## World.step(), which clears the events it reads.
 func after_step() -> void:
 	for event: ProjectileEvent in _world.projectile_events:
@@ -69,8 +65,6 @@ func after_step() -> void:
 				_on_explode(event)
 			ProjectileEvent.Kind.FIZZLE:
 				_puff(_point_of(event))
-			ProjectileEvent.Kind.IGNITE:
-				_add_mark(event.x, event.z, SCORCH_RADIUS, SCORCH_COLOR, SCORCH_LIFT)
 
 
 ## Flashes and puffs still playing.
@@ -78,7 +72,7 @@ func effect_count() -> int:
 	return _effects.get_child_count()
 
 
-## Craters and scorch marks on the ground.
+## Craters on the ground.
 func mark_count() -> int:
 	return _marks.get_child_count()
 

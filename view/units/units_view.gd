@@ -9,6 +9,11 @@ extends Node3D
 ## from (an attacker, an arrow's approach, a blast's center), or bursts it into
 ## gibs when the overkill is large enough. A ground attack a unit can't carry
 ## out floats "Can't reach" over it and greys the marker.
+##
+## Only what the watching side sees is drawn (Visibility.seen_by): a Husk
+## lying in deep water stays out of sight, and out of picking and hovering,
+## until one of the viewer's units comes close or it surfaces. The viewer is
+## the side the mouse commands (set_viewer, which F9 switches).
 
 ## What an order marker says, which sets its color.
 enum MarkerKind {
@@ -37,6 +42,7 @@ var _marker: MeshInstance3D
 var _marker_material: StandardMaterial3D
 var _marker_color: Color = MARKER_COLOR
 var _marker_age: float = MARKER_LIFETIME
+var _viewer: UnitType.Faction = UnitType.Faction.LIGHT
 
 
 ## gibs may be null, in which case bodies are never destroyed.
@@ -62,6 +68,7 @@ func after_step() -> void:
 		_current[unit.id] = _position_of(unit)
 		sprite.set_facing(unit.facing_x, unit.facing_z)
 		sprite.set_hp(unit.hp, unit.type.max_hp)
+		sprite.visible = Visibility.seen_by(_world, unit, _viewer)
 		# The sprite still standing is what marks a death as new: the body
 		# lies down on this tick and never again.
 		if not unit.is_alive() and not sprite.is_dead():
@@ -75,11 +82,21 @@ func after_step() -> void:
 			_current.erase(unit_id)
 
 
-## Every sprite, for screen-space picking.
+## Every sprite the viewer can see, for screen-space picking and hovering.
 func sprites() -> Array[UnitSprite]:
 	var out: Array[UnitSprite] = []
-	out.assign(_sprites.values())
+	for sprite: UnitSprite in _sprites.values():
+		if sprite.visible:
+			out.append(sprite)
 	return out
+
+
+## Draws what this side sees from now on.
+func set_viewer(side: UnitType.Faction) -> void:
+	_viewer = side
+	for unit: Unit in _world.units:
+		if _sprites.has(unit.id):
+			_sprites[unit.id].visible = Visibility.seen_by(_world, unit, _viewer)
 
 
 ## Flashes a ring on the ground where an order was given: green for a move,

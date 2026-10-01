@@ -3,7 +3,9 @@ extends GutTest
 ## where the blow came from (an attacker, an arrow's approach, a blast's
 ## center: CombatEvent.source_x/z), a ground attack nobody can carry out shows
 ## "Can't reach" over the unit and a grey marker, and the order markers take
-## their kind's color.
+## their kind's color. Phase 5: a Husk lying in deep water is drawn only once
+## the side watching (the one the mouse commands) sees it, and can't be picked
+## until then.
 
 const M: int = 1000
 const LIGHT: UnitType.Faction = UnitType.Faction.LIGHT
@@ -164,3 +166,54 @@ func _sprite_of(unit: Unit) -> UnitSprite:
 		if s.unit_id == unit.id:
 			return s
 	return null
+
+
+func test_a_submerged_husk_is_hidden_until_someone_comes_close() -> void:
+	var rows: Array[String] = []
+	for j: int in 40:
+		rows.append(".".repeat(20) + "3".repeat(20))
+	var world: World = World.new(1, TestTerrains.from_ascii(rows), _catalog)
+	var husk: Unit = world.spawn_unit(_catalog.index_of(&"husk"), DARK, 25 * M, 20 * M, -1, 0)
+	var shieldman: Unit = world.spawn_unit(_catalog.index_of(&"shieldman"), LIGHT, 10 * M, 20 * M, 1, 0)
+	var view: UnitsView = UnitsView.new()
+	add_child_autofree(view)
+	view.setup(world, UnitSelection.new(), null)
+	assert_false(_drawn_sprite(view, husk).visible, "out of sight in the creek")
+	assert_false(_listed(view, husk), "and can't be picked or hovered")
+	assert_true(_drawn_sprite(view, shieldman).visible)
+	shieldman.x = 22 * M
+	view.after_step()
+	assert_true(_drawn_sprite(view, husk).visible, "a Shieldman on the bank spots it")
+	assert_true(_listed(view, husk))
+	shieldman.x = 10 * M
+	view.after_step()
+	assert_false(_drawn_sprite(view, husk).visible, "and loses it again")
+
+
+func test_the_watching_side_always_sees_its_own_lurkers() -> void:
+	var rows: Array[String] = []
+	for j: int in 40:
+		rows.append("3".repeat(40))
+	var world: World = World.new(1, TestTerrains.from_ascii(rows), _catalog)
+	var husk: Unit = world.spawn_unit(_catalog.index_of(&"husk"), DARK, 25 * M, 20 * M, -1, 0)
+	var view: UnitsView = UnitsView.new()
+	add_child_autofree(view)
+	view.setup(world, UnitSelection.new(), null)
+	assert_false(_drawn_sprite(view, husk).visible)
+	view.set_viewer(DARK)
+	assert_true(_drawn_sprite(view, husk).visible, "the debug side switch shows the Dark side its own")
+
+
+# Any sprite of the unit's, drawn or not.
+func _drawn_sprite(view: UnitsView, unit: Unit) -> UnitSprite:
+	for child: Node in view.get_children():
+		if child is UnitSprite and (child as UnitSprite).unit_id == unit.id:
+			return child as UnitSprite
+	return null
+
+
+func _listed(view: UnitsView, unit: Unit) -> bool:
+	for sprite: UnitSprite in view.sprites():
+		if sprite.unit_id == unit.id:
+			return true
+	return false

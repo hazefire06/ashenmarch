@@ -2,8 +2,9 @@ extends GutTest
 ## ExplosionsView: what blasts, fizzles, and fire arrows leave behind. A blast
 ## that digs a crater re-meshes the terrain and refreshes the gibs' ground
 ## where the sim scarred it, then lays a dark disc on the new ground; a blast
-## in the air only flashes; a fizzle puffs; a fire lit leaves an orange
-## scorch. Worlds are real, and the events come from the sim.
+## in the air only flashes; a fizzle puffs (a fuse in rain, or doused in
+## water). A fire leaves no disc: the terrain draws the sim's fire itself.
+## Worlds are real, and the events come from the sim.
 
 const M: int = 1000
 
@@ -178,20 +179,11 @@ func test_a_fizzle_leaves_a_grey_puff_that_clears() -> void:
 	assert_true(gone)
 
 
-func test_a_fire_mark_leaves_a_small_orange_scorch() -> void:
+func test_a_fire_lit_leaves_no_disc() -> void:
 	_world.ignite(40 * M, 25 * M, 0)
 	_view.after_step()
-	assert_eq(_view.mark_count(), 1)
-	assert_eq(_view.effect_count(), 0, "no flash for a fire arrow")
-	var mark: MeshInstance3D = _marks()[0]
-	var color: Color = (mark.material_override as StandardMaterial3D).albedo_color
-	assert_gt(color.r, color.b + 0.4, "orange-red")
-	var vertices: PackedVector3Array = mark.mesh.surface_get_arrays(0)[Mesh.ARRAY_VERTEX]
-	var farthest: float = 0.0
-	for v: Vector3 in vertices:
-		farthest = maxf(farthest, Vector2(v.x - 40.0, v.z - 25.0).length())
-	assert_almost_eq(farthest, ExplosionsView.SCORCH_RADIUS / float(M), 0.01, "small")
-	assert_almost_eq(_center_y(mark), ExplosionsView.SCORCH_LIFT, 0.0001)
+	assert_eq(_view.mark_count(), 0, "the terrain shows the fire, and its scorch")
+	assert_eq(_view.effect_count(), 0, "and there's no flash")
 
 
 func test_a_later_crater_brings_an_earlier_disc_down_onto_the_new_ground() -> void:
