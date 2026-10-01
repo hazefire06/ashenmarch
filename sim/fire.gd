@@ -34,9 +34,10 @@ extends RefCounted
 ##    cell rolls for it, but it first spreads next tick. A front cell with
 ##    no such neighbor leaves the front for good: cells only ever go from
 ##    unburnt to burning to scorched.
-## 3. Burn-outs: cells whose time ends this tick are scorched.
-## 4. Damage, on its interval: living units in ascending id.
-## 5. Explosives: projectiles in ascending id.
+## 3. Damage, on its interval: living units in ascending id.
+## 4. Explosives: projectiles in ascending id.
+## 5. Burn-outs: cells whose time ends this tick are scorched, last, so a
+##    cell still hurts and sets things off in its final tick.
 ## Every roll is a draw from World.rng in that order; nothing else is
 ## random. Wind doesn't affect fire. Only the front does spreading work and
 ## burn-outs are kept by tick, so a fire costs per tick in proportion to its
@@ -165,14 +166,19 @@ func update(world: World) -> void:
 			_front.erase(k)
 		elif not _spread_from(world, k, damping):
 			_front.erase(k)
+	if world.tick % DAMAGE_INTERVAL_TICKS == 0:
+		_burn_units(world)
+	_catch_explosives(world)
 	if _ending.has(world.tick):
 		for k: int in _ending[world.tick]:
 			if state[k] == Cell.BURNING and burn_end[k] == world.tick:
 				_scorch(k)
 		_ending.erase(world.tick)
-	if world.tick % DAMAGE_INTERVAL_TICKS == 0:
-		_burn_units(world)
-	_catch_explosives(world)
+	if burn_end.is_empty():
+		# Rain put cells out before their time: their buckets would wait
+		# forever, since nothing runs while nothing burns.
+		_ending.clear()
+		_front.clear()
 
 
 ## Burning cells with when they burn out and who lit them, in sample order.

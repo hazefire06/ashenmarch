@@ -100,6 +100,36 @@ func test_spread_is_deterministic_per_seed() -> void:
 	assert_ne(a.fire.state, c.fire.state, "another seed burns differently")
 
 
+func test_spreading_only_from_the_front_changes_nothing() -> void:
+	# The optimization's claim: which cells are in the front changes how much
+	# work a tick does, never what happens. A world whose front is every
+	# burning cell, before every tick (brute force), must stay hash-identical
+	# to the real one, through rain (douses) and snow cover.
+	var rows: Array[String] = []
+	for j: int in 40:
+		rows.append(_mixed_row(j) if j % 9 != 4 else "1".repeat(40))
+	for world_seed: int in [1, 2]:
+		var real: World = _world(TestTerrains.from_ascii(rows), world_seed)
+		var brute: World = _world(TestTerrains.from_ascii(rows), world_seed)
+		for w: World in [real, brute]:
+			w.ignite(20 * M, 20 * M, 0)
+			w.ignite(5 * M, 30 * M, 0)
+			w.enqueue(SetWeatherCommand.new(400, 300, 0, 0, 0, 30))
+			w.enqueue(SetWeatherCommand.new(700, 0, 500, 0, 0, 30))
+		var mismatches: Array[int] = []
+		for t: int in 1000:
+			# Reaching into the private front is the point of this test.
+			for k: int in brute.fire.burn_end.keys():
+				brute.fire._front[k] = true
+			real.step()
+			brute.step()
+			if real.state_hash() != brute.state_hash():
+				mismatches.append(t)
+				break
+		assert_eq(mismatches, [] as Array[int], "seed %d" % world_seed)
+		assert_gt(real.fire.state.count(Fire.Cell.SCORCHED), 40, "seed %d: it burned for real" % world_seed)
+
+
 func test_heavy_rain_puts_a_fire_out_sooner() -> void:
 	var clear: World = _world(_brush(40), 3)
 	var rainy: World = _world(_brush(40), 3)
@@ -117,7 +147,7 @@ func test_heavy_rain_puts_a_fire_out_sooner() -> void:
 	assert_lt(rainy_burnt, clear_burnt / 10)
 
 
-func test_wet_ground_slows_the_spread_after_the_rain_stops() -> void:
+func test_soaked_ground_slows_the_spread_with_no_rain_falling() -> void:
 	var dry: World = _world(TestTerrains.flat(40, 40), 4)
 	var wet: World = _world(TestTerrains.flat(40, 40), 4)
 	wet.weather.wetness_ppm = Weather.PPM
@@ -154,6 +184,65 @@ func test_a_unit_standing_in_fire_is_hurt_every_10_ticks() -> void:
 	assert_eq(hits, [0, 10, 20])
 	assert_eq(unit.hp, unit.type.max_hp - 3 * Fire.DAMAGE)
 	assert_eq(by_sand.hp, by_sand.type.max_hp, "standing on sand two cells off, untouched")
+
+
+func test_a_cell_hurts_through_its_last_tick() -> void:
+	# Lit during tick 0, it burns until the end of tick GRASS_TICKS, a
+	# multiple of the damage interval: that tick hurts too.
+	assert_eq(GRASS_TICKS % Fire.DAMAGE_INTERVAL_TICKS, 0, "precondition")
+	var world: World = _world(_ringed("."))
+	var unit: Unit = world.spawn_unit(0, DARK, 5 * M, 5 * M, 0, 1)
+	world.ignite(5 * M, 5 * M, 0)
+	var last_hit: int = -1
+	var hits: int = 0
+	for t: int in GRASS_TICKS + 30:
+		world.step()
+		for e: CombatEvent in world.combat_events:
+			if e.target_id == unit.id and e.kind == CombatEvent.Kind.HIT:
+				last_hit = t
+				hits += 1
+	assert_eq(last_hit, GRASS_TICKS)
+	assert_eq(hits, GRASS_TICKS / Fire.DAMAGE_INTERVAL_TICKS + 1)
+
+
+func test_a_cell_sets_off_a_charge_in_its_last_tick() -> void:
+	var world: World = _world(_ringed("."))
+	world.ignite(5 * M, 5 * M, 0)
+	_run(world, GRASS_TICKS)
+	assert_eq(world.fire.cell_at(5 * M, 5 * M), Fire.Cell.BURNING)
+	var satchel: Projectile = _lay(world, &"satchel", 5 * M, 5 * M)
+	world.step()
+	assert_true(satchel.detonating, "caught during tick GRASS_TICKS, before it burned out")
+	assert_eq(world.fire.cell_at(5 * M, 5 * M), Fire.Cell.SCORCHED)
+
+
+func test_a_live_grenade_lying_in_fire_goes_off_early() -> void:
+	var world: World = _world(TestTerrains.flat(30, 30))
+	var grenade: Projectile = _lay(world, &"grenade", 10 * M, 10 * M)
+	grenade.fuse_left = 90
+	world.ignite(10 * M, 10 * M, 0)
+	var burst_at: int = -1
+	for t: int in 30:
+		world.step()
+		for e: ProjectileEvent in world.projectile_events:
+			if e.kind == ProjectileEvent.Kind.EXPLODE and e.projectile_id == grenade.id:
+				burst_at = t
+	assert_eq(burst_at, Explosions.CHAIN_DELAY_TICKS, "caught in tick 0, the chain delay later, long before its fuse")
+
+
+func test_charges_a_burning_sapper_drops_are_caught_at_once() -> void:
+	var sapper_type: UnitType = TestUnits.thrower(&"sapper", {"max_hp": Fire.DAMAGE, "special_charges": 4})
+	var world: World = _world(_ringed("."), 1, [sapper_type])
+	var sapper: Unit = world.spawn_unit(0, LIGHT, 5 * M, 5 * M, 0, 1)
+	world.ignite(5 * M, 5 * M, 0)
+	world.step()
+	assert_false(sapper.is_alive())
+	var charges: int = 0
+	for p: Projectile in world.projectiles:
+		if p.owner_id == sapper.id:
+			charges += 1
+			assert_true(p.detonating, "dropped into the fire it died in")
+	assert_eq(charges, 4)
 
 
 func test_a_fire_kill_is_credited_to_whoever_lit_it() -> void:
@@ -248,7 +337,6 @@ func test_changed_lists_the_cells_that_changed_this_tick() -> void:
 	world.ignite(5 * M, 5 * M, 0)
 	world.step()
 	assert_true(world.fire.changed.is_empty(), "nothing changed on a tick it just burned")
-	world.ignite(5 * M, 5 * M, 0)
 	_run(world, GRASS_TICKS)
 	assert_eq(world.fire.changed, PackedInt32Array([5 * 11 + 5]), "it burned out")
 
@@ -281,18 +369,22 @@ func _brush(size: int) -> Terrain:
 func _mixed() -> Terrain:
 	var rows: Array[String] = []
 	for j: int in 40:
-		var row: String = ""
-		for i: int in 40:
-			if i == 30 and j < 20:
-				row += "s"
-			elif (i + j) % 13 < 3:
-				row += "w"
-			elif (i * 3 + j) % 7 < 2:
-				row += "b"
-			else:
-				row += "."
-		rows.append(row)
+		rows.append(_mixed_row(j))
 	return TestTerrains.from_ascii(rows)
+
+
+func _mixed_row(j: int) -> String:
+	var row: String = ""
+	for i: int in 40:
+		if i == 30 and j < 20:
+			row += "s"
+		elif (i + j) % 13 < 3:
+			row += "w"
+		elif (i * 3 + j) % 7 < 2:
+			row += "b"
+		else:
+			row += "."
+	return row
 
 
 func _run(world: World, ticks: int) -> void:
