@@ -31,7 +31,9 @@ extends RefCounted
 ## no roll: it is a dud from then on. A fire arrow rolls once for its flame
 ## when it lands, but only if that chance isn't zero, so in clear weather it
 ## draws nothing a plain arrow doesn't; a flame that goes out (FIZZLE) lights
-## no fire, though the arrow still wounds.
+## no fire, though the arrow still wounds. One landing in water goes out
+## with no roll (FIZZLE), and one striking a unit that stands in water has
+## nothing to light, so it doesn't roll either.
 ##
 ## Units are tested at their positions after this tick's movement. A unit
 ## killed earlier in the same pass (a lower-id arrow) no longer stops later
@@ -220,7 +222,9 @@ func _strike(world: World, p: Projectile, target: Unit) -> void:
 		var variance: int = world.rng.randi_range(-DAMAGE_VARIANCE_PERMILLE, DAMAGE_VARIANCE_PERMILLE)
 		var damage: int = maxi(1, FixedMath.div_round(p.type.impact_damage * (PERMILLE + variance), PERMILLE))
 		Damage.apply(world, target, damage, from_x, from_z, p.owner_id, aspect)
-	if p.type.marks_fire and not _flame_goes_out(world, p, false):
+	# Over water there is nothing to light, so no roll for the flame either.
+	var dry: bool = world.terrain.water_depth_at(target.x, target.z) == 0
+	if p.type.marks_fire and dry and not _flame_goes_out(world, p, false):
 		world.ignite(target.x, target.z, p.instigator_id)
 	world.remove_projectile(p)
 
@@ -235,8 +239,14 @@ func _stick(world: World, p: Projectile) -> void:
 	e.dir_z = f.vz
 	e.depth = world.terrain.water_depth_at(p.x, p.z)
 	world.projectile_events.append(e)
-	if p.type.marks_fire and not _flame_goes_out(world, p, true):
-		world.ignite(p.x, p.z, p.instigator_id)
+	if p.type.marks_fire:
+		if e.depth > 0:
+			# Water puts the flame out: no roll, like a fuse.
+			var doused: ProjectileEvent = ProjectileEvent.about(ProjectileEvent.Kind.FIZZLE, p)
+			doused.depth = e.depth
+			world.projectile_events.append(doused)
+		elif not _flame_goes_out(world, p, true):
+			world.ignite(p.x, p.z, p.instigator_id)
 	world.remove_projectile(p)
 
 

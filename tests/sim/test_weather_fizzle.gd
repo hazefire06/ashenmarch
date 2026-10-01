@@ -30,9 +30,9 @@ func test_the_chances_combine_as_independent_ones() -> void:
 
 
 func test_something_that_doesnt_burn_never_fizzles() -> void:
-	var world: World = _world(TestTerrains.flat(20, 20))
+	var t: ProjectileType = TestUnits.projectile(&"satchel", {"rain_fizzle_permille": 500})
+	var world: World = _world(TestTerrains.flat(20, 20), [t])
 	var satchel: Projectile = _place(world, &"satchel", 10 * M, 10 * M)
-	satchel.type.rain_fizzle_permille = 500
 	_weather(world, FULL, FULL, FULL)
 	assert_eq(ProjectileSystem.fizzle_permille(world, satchel, true), 0)
 
@@ -40,6 +40,8 @@ func test_something_that_doesnt_burn_never_fizzles() -> void:
 func test_100_grenades_in_heavy_rain_fizzle_at_the_configured_rate() -> void:
 	# The shipped grenade, 10 m apart: beyond its blast and knock radii, so
 	# none sets off or throws another.
+	var pooled: int = 0
+	var expected: int = 0
 	for world_seed: int in [1, 2, 3]:
 		var world: World = World.new(world_seed, TestTerrains.flat(110, 110), TestUnits.catalog([TestUnits.dummy(&"dummy")]))
 		world.enqueue(SetWeatherCommand.new(0, FULL, 0, 0, 0, 0))
@@ -49,7 +51,7 @@ func test_100_grenades_in_heavy_rain_fizzle_at_the_configured_rate() -> void:
 			p.fuse_left = 3
 			grenades.append(p)
 		world.step()
-		var expected: int = ProjectileSystem.fizzle_permille(world, grenades[0], true)
+		expected = ProjectileSystem.fizzle_permille(world, grenades[0], true)
 		var fizzled: int = 0
 		var burst: int = 0
 		for _t: int in 3:
@@ -65,6 +67,9 @@ func test_100_grenades_in_heavy_rain_fizzle_at_the_configured_rate() -> void:
 		for p: Projectile in world.projectiles:
 			duds += 1 if p.dud else 0
 		assert_eq(duds, fizzled, "the fizzled ones stay, unexploded")
+		pooled += fizzled
+	# All 300 together: 3 sigma is about 26.
+	assert_almost_eq(pooled, 3 * expected / 10, 26, "pooled over the three seeds")
 
 
 func test_snow_cover_counts_only_for_a_grenade_on_the_ground() -> void:
@@ -123,9 +128,8 @@ func test_a_grenade_rolling_into_water_goes_out() -> void:
 
 
 func test_a_grenade_on_dry_ground_beside_water_still_bursts() -> void:
-	var world: World = _world(_pond())
+	var world: World = _world(_pond(), [TestUnits.projectile(&"grenade", {"fizzle_permille": 0})])
 	var p: Projectile = _place(world, &"grenade", 10 * M, 20 * M)
-	p.type.fizzle_permille = 0
 	p.fuse_left = 10
 	_run(world, 10)
 	assert_true(p.removed)
@@ -146,6 +150,22 @@ func test_a_fire_arrow_in_clear_weather_draws_nothing_a_plain_arrow_doesnt() -> 
 	_launch(rainy, &"fire_arrow", 10 * M, 2 * M, 20 * M, 20_000, 0, 0)
 	_run(rainy, 30)
 	assert_ne(rainy.rng.state, plain.rng.state, "in rain it rolls once for its flame")
+
+
+func test_a_fire_arrow_landing_in_water_goes_out_without_dice_even_in_rain() -> void:
+	var fire: World = _world(_pond())
+	var plain: World = _world(_pond())
+	for w: World in [fire, plain]:
+		w.enqueue(SetWeatherCommand.new(0, FULL, 0, 0, 0, 0))
+	_launch(fire, &"fire_arrow", 25 * M, 2 * M, 20 * M, 20_000, 0, 0)
+	_launch(plain, &"arrow", 25 * M, 2 * M, 20 * M, 20_000, 0, 0)
+	var fizzled: int = 0
+	for _t: int in 30:
+		fire.step()
+		plain.step()
+		fizzled += _count(fire, ProjectileEvent.Kind.FIZZLE)
+	assert_eq(fizzled, 1, "the water puts it out")
+	assert_eq(fire.rng.state, plain.rng.state, "with no roll")
 
 
 func test_a_fire_arrow_put_out_by_rain_lights_nothing_but_still_wounds() -> void:
