@@ -25,14 +25,14 @@ extends SceneTree
 ##
 ## The Light side is driven through sim commands, exactly like player input.
 ## Every wait counts sim ticks, never wall-clock time, and each stage starts on
-## a whole second of ticks, so every run plays out the same and the result lines
-## are the same on every machine. The Dark side is the AI: stages 1 to 6 spawn each group from a spec
-## (AiDirector.spawn_group) and switch behaviors with AiDirector.set_behavior;
-## the finale is driven by the demo's MissionScript triggers. MainView's own
-## Riverside mission is switched off (MainView.mission_path) and the demo
-## starts its own before the first step. MainView also spawns the Light test
-## squads at tick 0; the demo removes them, so nothing else is on the field
-## for the AI to hunt.
+## a whole second of ticks, so every run plays out the same and the result
+## lines are the same on every machine. The Dark side is the AI: stages 1 to 6
+## spawn each group from a spec (AiDirector.spawn_group) and switch behaviors
+## with AiDirector.set_behavior; the finale is driven by the demo's
+## MissionScript triggers. MainView's own Riverside mission is switched off
+## (MainView.mission_path) and the demo starts its own before the first step.
+## MainView also spawns the Light test squads at tick 0; the demo removes
+## them, so nothing else is on the field for the AI to hunt.
 
 const M: int = 1000
 const LIGHT: UnitType.Faction = UnitType.Faction.LIGHT
@@ -185,10 +185,14 @@ func _patrol() -> void:
 	_attack_move(scouts, c + Vector2(0.0, 2.0), Formations.Kind.SHORT_LINE)
 	var t1: int = _world.tick
 	await _until(func() -> bool: return _first.has("hunt"), FIGHT_TIMEOUT)
-	var spotted: float = _since(t1)
+	var spotted: String = "It never spotted the Shieldmen."
+	if _first.has("hunt"):
+		spotted = "It spotted the Shieldmen %.0f s after they set out and switched to %s." % [
+			_since(t1), AiGroupSpec.Behavior.find_key(patrol.behavior)
+		]
 	await _until(func() -> bool: return _alive(scouts) == 0 or _alive(patrol.spawned_ids) == 0, FIGHT_TIMEOUT)
-	_result("The patrol reached %d waypoints in %.0f s. It spotted the Shieldmen %.0f s after they set out and switched to %s. Then: Shieldmen %d/4, Husks %d/5." % [
-		_n("waypoint"), walked, spotted, AiGroupSpec.Behavior.find_key(patrol.behavior), _alive(scouts), _alive(patrol.spawned_ids)
+	_result("The patrol reached %d waypoints in %.0f s. %s Then: Shieldmen %d/4, Husks %d/5." % [
+		_n("waypoint"), walked, spotted, _alive(scouts), _alive(patrol.spawned_ids)
 	])
 	await _wait_sim(READ_AFTER)
 
@@ -202,11 +206,13 @@ func _ambush() -> void:
 	_attack_move(shieldmen, Vector2(300.0, 252.0), Formations.Kind.BOX)
 	var t0: int = _world.tick
 	await _until(func() -> bool: return _first.has("sprung"), FIGHT_TIMEOUT)
-	var sprang: float = _since(t0)
+	var sprang: String = "The ambush never sprang."
+	if _first.has("sprung"):
+		sprang = "Sprang %.1f s after the Shieldmen set out, as the first of them reached the ford; %d/6 Husks surfaced." % [
+			_since(t0), _surfaced
+		]
 	await _until(func() -> bool: return _alive(shieldmen) == 0 or _alive(ambush.spawned_ids) == 0, FIGHT_TIMEOUT)
-	_result("Sprang %.1f s after the Shieldmen set out, as the first of them reached the ford; %d/6 Husks surfaced. Then: Shieldmen %d/8, Husks %d/6." % [
-		sprang, _surfaced, _alive(shieldmen), _alive(ambush.spawned_ids)
-	])
+	_result("%s Then: Shieldmen %d/8, Husks %d/6." % [sprang, _alive(shieldmen), _alive(ambush.spawned_ids)])
 	await _wait_sim(READ_AFTER)
 
 
@@ -221,8 +227,9 @@ func _flank() -> void:
 		_swingers[unit_id] = true
 	var t0: int = _world.tick
 	await _until(func() -> bool: return _alive(wardens) == 0 or _alive(raiders.spawned_ids) == 0, FIGHT_TIMEOUT)
-	_result("The Rippers planned a %d-waypoint route round the line and struck %.0f s after setting out. Ripper swings: %d at Wardens, %d at Shieldmen. Then: Wardens %d/3, Shieldmen %d/8, Rippers %d/5." % [
-		_n("flank waypoint"), _since(t0, "strike"), _swings.get(&"warden", 0), _swings.get(&"shieldman", 0),
+	var struck: String = "never struck" if not _first.has("strike") else "struck %.0f s after setting out" % _since(t0, "strike")
+	_result("The Rippers planned a %d-waypoint route round the line and %s. Ripper swings: %d at Wardens, %d at Shieldmen. Then: Wardens %d/3, Shieldmen %d/8, Rippers %d/5." % [
+		_n("flank waypoint"), struck, _swings.get(&"warden", 0), _swings.get(&"shieldman", 0),
 		_alive(wardens), _alive(screen), _alive(raiders.spawned_ids)
 	])
 	await _wait_sim(READ_AFTER)
@@ -270,8 +277,13 @@ func _cluster() -> void:
 	for at: Vector2 in _bursts:
 		knot_burst = minf(knot_burst, at.distance_to(c))
 		straggler_burst = minf(straggler_burst, at.distance_to(straggler_at))
-	_result("%d/3 Blightbags burst, the nearest blast %.1f m from the knot's middle and %.1f m from the straggler, which they passed on the way. After %.0f s: %d of the knot killed, %d paralyzed; the straggler is untouched (%d/1)." % [
-		3 - _alive(bags.spawned_ids), knot_burst, straggler_burst, _since(t0), 10 - _alive(knot), _paralyzed(knot), _alive(straggler)
+	var blasts: String = "No blast went off."
+	if not _bursts.is_empty():
+		blasts = "The nearest blast was %.1f m from the knot's middle and %.1f m from the straggler, which they passed on the way." % [
+			knot_burst, straggler_burst
+		]
+	_result("%d/3 Blightbags burst. %s After %.0f s: %d of the knot killed, %d paralyzed; the straggler %d/1." % [
+		3 - _alive(bags.spawned_ids), blasts, _since(t0), 10 - _alive(knot), _paralyzed(knot), _alive(straggler)
 	])
 	await _wait_sim(READ_AFTER)
 
@@ -285,13 +297,16 @@ func _retreat() -> void:
 	_attack_move(wall, c, Formations.Kind.SHORT_LINE)
 	var t0: int = _world.tick
 	await _until(func() -> bool: return _first.has("retreat") or _alive(raiders.spawned_ids) == 0, FIGHT_TIMEOUT)
-	var health: int = roundi(100.0 * AiOrders.hp_sum(raiders.living(_world)) / maxf(raiders.start_hp, 1.0))
 	var left: int = _alive(raiders.spawned_ids)
-	var fell_back: float = _since(t0, "retreat")
-	await _until(func() -> bool: return raiders.behavior != AiGroupSpec.Behavior.RETREAT, FIGHT_TIMEOUT)
-	_result("The Rippers fell back %.0f s after the Shieldmen set out, with %d/4 left and %d%% of their starting health. They walked to the retreat point, 36 m from the post, and are now in %s. Shieldmen %d/10." % [
-		fell_back, left, health, AiGroupSpec.Behavior.find_key(raiders.behavior), _alive(wall)
-	])
+	var fell_back: String = "The Rippers never fell back."
+	if _first.has("retreat"):
+		var health: int = roundi(100.0 * AiOrders.hp_sum(raiders.living(_world)) / maxf(raiders.start_hp, 1.0))
+		fell_back = "The Rippers fell back %.0f s after the Shieldmen set out, with %d/4 left and %d%% of their starting health." % [
+			_since(t0, "retreat"), left, health
+		]
+		await _until(func() -> bool: return raiders.behavior != AiGroupSpec.Behavior.RETREAT, FIGHT_TIMEOUT)
+		fell_back += " They walked to the retreat point, 36 m from the post, and are now in %s." % AiGroupSpec.Behavior.find_key(raiders.behavior)
+	_result("%s Shieldmen %d/10, Rippers %d/4." % [fell_back, _alive(wall), _alive(raiders.spawned_ids)])
 	await _wait_sim(READ_AFTER)
 
 
@@ -310,9 +325,10 @@ func _finale() -> void:
 	for group: AiGroup in _world.ai.groups:
 		if group.faction == DARK and group.spec_index >= Group.WAVE_ONE:
 			dark.append_array(group.spawned_ids)
-	_result("%s banner after %.0f s. Rain and reinforcements came at %.0f s. Light %d/%d standing, Dark %d/%d down. Objective now: %s" % [
-		MissionHud.banner_text(_world.mission.outcome) if _world.mission.outcome != MissionRuntime.Outcome.NONE else "No outcome",
-		_since(t0), _since(t0, "trigger:reinforce"), _alive(light), light.size(), dark.size() - _alive(dark), dark.size(),
+	var banner: String = "No outcome" if _world.mission.outcome == MissionRuntime.Outcome.NONE else MissionHud.banner_text(_world.mission.outcome) + " banner"
+	var reinforced: String = "never came" if not _first.has("trigger:reinforce") else "came at %.0f s" % _since(t0, "trigger:reinforce")
+	_result("%s after %.0f s. Rain and reinforcements %s. Light %d/%d standing, Dark %d/%d down. Objective now: %s" % [
+		banner, _since(t0), reinforced, _alive(light), light.size(), dark.size() - _alive(dark), dark.size(),
 		_world.mission.objective
 	])
 	await _wait_sim(READ_AFTER + 3.0)
@@ -613,6 +629,8 @@ func _first_of(group: AiGroup, type_id: StringName) -> int:
 
 func _note_ai(event: AiEvent) -> void:
 	match event.kind:
+		AiEvent.Kind.SPAWNED:
+			_watch_group(event.group_id)
 		AiEvent.Kind.WAYPOINT_REACHED:
 			_bump("waypoint")
 		AiEvent.Kind.AMBUSH_SPRUNG:
@@ -627,6 +645,16 @@ func _note_ai(event: AiEvent) -> void:
 		AiEvent.Kind.BEHAVIOR:
 			if event.value == AiGroupSpec.Behavior.HUNT:
 				_stamp("hunt")
+
+
+# Puts every unit of the group with this id on the tally. A trigger spawns its
+# group inside a step, where nothing else tells the demo about it.
+func _watch_group(group_id: int) -> void:
+	for group: AiGroup in _world.ai.groups:
+		if group.id == group_id:
+			for unit_id: int in group.spawned_ids:
+				_watched[unit_id] = true
+			return
 
 
 func _note_mission(event: MissionEvent) -> void:

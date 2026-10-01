@@ -10,9 +10,9 @@ extends RefCounted
 ## - 0, fresh: plans (FlankRoute). Already found out (an enemy in contact, as
 ##   in 1): strike, so a group fighting when its focus dies keeps fighting
 ##   instead of walking off round a screen it stands next to. Nothing in the
-##   way: strike. Otherwise the route round the screen's nearer end, or round the other
-##   end if the nearer one leaves the map or the group's pathing component:
-##   approach. Neither works: strike.
+##   way: strike. Otherwise the route round the screen's nearer end, or round
+##   the other end if the nearer one leaves the map or the group's pathing
+##   component: approach. Neither works: strike.
 ## - 1, approach: walks the route one leg per waypoint with plain moves, so
 ##   nothing on the way stops it to fight. It strikes at once when found out:
 ##   an enemy is within CONTACT of a member. Being hurt does not count: archers
