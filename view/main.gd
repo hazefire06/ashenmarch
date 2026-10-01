@@ -2,8 +2,8 @@ class_name MainView
 extends Node3D
 ## Entry scene: loads the map and unit catalog, owns the World, and advances
 ## it one tick per physics frame. The terrain view, camera, overhead map, and
-## unit, projectile, and explosion views read the World; only commands change
-## it. Everything that draws the ground is built from the World's own terrain,
+## unit, projectile, explosion, fire, and weather views read the World; only
+## commands change it. Everything that draws the ground is built from the World's own terrain,
 ## not the one loaded from the map: explosions scar the World's copy.
 
 const WORLD_SEED: int = 1
@@ -44,6 +44,8 @@ var _weather_preset: int = 0
 @onready var _gibs: Gibs = $Gibs
 @onready var _projectiles_view: ProjectilesView = $Projectiles
 @onready var _explosions_view: ExplosionsView = $Explosions
+@onready var _fire_view: FireView = $Fire
+@onready var _precipitation: PrecipitationView = $Precipitation
 @onready var _camera: RtsCamera = $CameraRig
 @onready var _selection: SelectionController = $Hud/Selection
 @onready var _control_bar: ControlBar = $Hud/ControlBar
@@ -83,6 +85,8 @@ func _ready() -> void:
 	_units_view.setup(world, _selection.selection, _gibs)
 	_projectiles_view.setup(world)
 	_explosions_view.setup(world, _terrain_view, _gibs)
+	_fire_view.setup(world)
+	_precipitation.setup(world, _camera)
 	_selection.setup(world, _units_view, _camera.get_camera(), TerrainPicker.new(terrain))
 	_selection.side_changed.connect(_units_view.set_viewer)
 	_control_bar.setup(_selection, world)
@@ -101,6 +105,7 @@ func _physics_process(_delta: float) -> void:
 	_units_view.after_step()
 	_projectiles_view.after_step()
 	_explosions_view.after_step()
+	_fire_view.after_step()
 	_terrain_view.update_fire(world.fire)
 	_terrain_view.set_weather(world.weather)
 

@@ -2,9 +2,9 @@ shader_type spatial;
 render_mode diffuse_lambert, specular_disabled;
 
 // Flat-shaded placeholder terrain: banded height colors (TerrainPalette),
-// tinted by ground type, charred or glowing where the sim's fire has been or
-// is, darkened when wet, whitened by snow on faces that point up, and the
-// water-depth tint on top. TerrainView sets every uniform.
+// tinted by ground type, charred where the sim's fire has been, darkened when
+// wet, whitened by snow on faces that point up, glowing where it burns now,
+// and the water-depth tint on top. TerrainView sets every uniform.
 
 uniform sampler2D height_ramp : source_color, filter_nearest, repeat_disable;
 // One texel per heightmap sample: water tint color, alpha = blend strength.
@@ -51,16 +51,18 @@ void fragment() {
 	float fire = texture(fire_state, uv).r;
 	if (fire > 0.75) {
 		ground = mix(ground, CHAR, 0.85);
-	} else if (fire > 0.25) {
-		ground = mix(ground, EMBER, 0.6);
-		EMISSION = EMBER * 0.5;
 	}
 
 	// Wet ground is darker and a little cooler.
 	ground *= mix(vec3(1.0), vec3(0.66, 0.70, 0.76), wetness);
-	// Snow settles on faces that point up, not on steep ones.
+	// Snow settles on faces that point up, not on steep ones. It can cover
+	// burnt ground, but a burning cell melts its own.
 	float up = (INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).y;
 	ground = mix(ground, SNOW, snow_cover * smoothstep(0.55, 0.85, up));
+	if (fire > 0.25 && fire <= 0.75) {
+		ground = mix(ground, EMBER, 0.6);
+		EMISSION = EMBER * 0.5;
+	}
 
 	vec4 tint = texture(water_tint, uv);
 	ALBEDO = mix(ground, tint.rgb, tint.a);

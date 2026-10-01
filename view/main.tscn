@@ -1,4 +1,4 @@
-[gd_scene load_steps=13 format=3]
+[gd_scene load_steps=15 format=3]
 
 [ext_resource type="Script" path="res://view/main.gd" id="1_main"]
 [ext_resource type="Script" path="res://view/terrain/terrain_view.gd" id="2_terrain"]
@@ -11,6 +11,8 @@
 [ext_resource type="Script" path="res://view/hud/unit_tooltip.gd" id="9_tooltip"]
 [ext_resource type="Script" path="res://view/projectiles/projectiles_view.gd" id="10_projectiles"]
 [ext_resource type="Script" path="res://view/effects/explosions_view.gd" id="11_explosions"]
+[ext_resource type="Script" path="res://view/effects/fire_view.gd" id="12_fire"]
+[ext_resource type="Script" path="res://view/weather/precipitation_view.gd" id="13_precipitation"]
 
 [sub_resource type="Environment" id="Environment_sky"]
 background_mode = 1
@@ -42,6 +44,12 @@ script = ExtResource("10_projectiles")
 
 [node name="Explosions" type="Node3D" parent="."]
 script = ExtResource("11_explosions")
+
+[node name="Fire" type="Node3D" parent="."]
+script = ExtResource("12_fire")
+
+[node name="Precipitation" type="Node3D" parent="."]
+script = ExtResource("13_precipitation")
 
 [node name="CameraRig" type="Node3D" parent="."]
 script = ExtResource("3_camera")
