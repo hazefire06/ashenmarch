@@ -196,3 +196,17 @@ func test_the_overhead_map_colors_blend_ground_then_water() -> void:
 		TerrainPalette.ground_color(t, 0, Terrain.Ground.SAND).lerp(Color(deep.r, deep.g, deep.b), deep.a),
 		"water over the ground"
 	)
+
+
+func test_a_cell_lit_between_steps_still_shows() -> void:
+	# The next step clears fire.changed before the view reads it, so a cell
+	# lit outside a step (a test, a debug tool) is caught by the count.
+	var rows: Array[String] = []
+	for j: int in 11:
+		rows.append("sssss" + ("." if j == 5 else "s") + "sssss")
+	var world: World = World.new(1, TestTerrains.from_ascii(rows), TestTerrains.catalog())
+	var view: TerrainView = _view_of(world.terrain)
+	world.ignite(5 * M, 5 * M, 0)
+	world.step()
+	view.update_fire(world.fire)
+	assert_eq(view.fire_texel(5, 5), TerrainView.FIRE_TEXEL[Fire.Cell.BURNING])

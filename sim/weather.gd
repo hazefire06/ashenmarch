@@ -23,6 +23,9 @@ extends RefCounted
 
 const PERMILLE: int = 1000
 const PPM: int = 1_000_000
+## mm/s either way along each axis (a 180 km/h gale). Wind is clamped to it,
+## so a ramp's products can't overflow whatever the data says.
+const MAX_WIND: int = 50_000
 ## Ticks of full snow from bare ground to fully covered (about 67 s). Lighter
 ## snow covers in proportion.
 const SNOW_COVER_TICKS: int = 2000
@@ -60,7 +63,8 @@ func change_to(
 ) -> void:
 	_from = _values_at(start_tick)
 	_to = PackedInt64Array([
-		clampi(to_rain, 0, PERMILLE), clampi(to_snow, 0, PERMILLE), to_wind_x, to_wind_z,
+		clampi(to_rain, 0, PERMILLE), clampi(to_snow, 0, PERMILLE),
+		clampi(to_wind_x, -MAX_WIND, MAX_WIND), clampi(to_wind_z, -MAX_WIND, MAX_WIND),
 	])
 	_ramp_start = start_tick
 	_ramp_ticks = maxi(0, ramp_ticks)

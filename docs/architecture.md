@@ -612,7 +612,7 @@ The environment changes tactics:
 ### Weather
 - **State, all integers and hashed:**
   - `rain`, `snow`: intensity in permille.
-  - `wind_x`, `wind_z`: mm/s. **Visual only**; nothing in the sim reads it.
+  - `wind_x`, `wind_z`: mm/s, clamped to ±50 m/s so a ramp's products can't overflow. **Visual only**; nothing in the sim reads it.
   - `snow_cover_ppm`, `wetness_ppm`: parts per million, exposed as permille.
   - The ramp in progress.
 - **`change_to(start_tick, …, ramp_ticks, snow_cover = -1)`:**
@@ -644,7 +644,10 @@ The environment changes tactics:
   - The roll is skipped when the chance is 0, so in clear weather a fire arrow draws nothing a plain arrow doesn't.
   - A fizzled arrow still wounds; it just lights nothing.
   - Shipped values: 500/300/400.
-- **Water, no dice.** A lit fuse that touches water of depth ≥ 1 (a bounce, a roll step, coming to rest) goes out at once (FIZZLE, with `depth`). The grenade is a dud, which a blast or a fire can still set off. A fire arrow landing in water lights nothing, because water cells can't burn.
+- **Water, no dice.**
+  - A lit fuse that touches water of depth ≥ 1 (a bounce, a roll step, coming to rest) goes out at once (FIZZLE, with `depth`). The grenade is a dud, which a blast or a fire can still set off.
+  - A fire arrow landing in water goes out the same way: FIZZLE, no roll, nothing lit.
+  - A fire arrow striking a unit that stands in water has nothing to light, so it doesn't roll either.
 - **Throwers** don't auto-pick an enemy standing in water: the throw would be wasted. A ground attack still throws where it's told.
   - The Riverside lockstep battle's Sappers used to bombard the ford itself; they now shell the dry far bank.
 
@@ -686,11 +689,15 @@ The environment changes tactics:
    - One roll per such neighbor with a non-zero chance, in row-major neighbor order.
    - A neighbor lit now burns at once, so no later cell rolls for it, but it spreads only from next tick.
    - A front cell with nothing left to light leaves the front for good, because cells only go unburnt → burning → scorched.
-3. **Burn-outs:** from a bucket keyed by tick.
-4. **Damage**, on its interval: units in ascending id.
-5. **Explosives:** projectiles in ascending id.
+3. **Damage**, on its interval: units in ascending id.
+4. **Explosives:** projectiles in ascending id.
+5. **Burn-outs:** from a bucket keyed by tick. They come last, so a cell still hurts and sets things off in its final tick, L + `BURN_TICKS`.
+   - A cell an arrow lit during tick L is in that tick's front, since it was lit before the pass, and spreads from L.
+   - A cell the spread lit during tick L first spreads at L + 1.
+   - Both burn out at the end of L + `BURN_TICKS`.
 
 **Cost.** Only the front does spreading work and burn-outs are bucketed, so the cost per tick tracks the fire's edge, not its area. Front membership changes how much work a tick does, never what happens, so it isn't hashed.
+- `test_spreading_only_from_the_front_changes_nothing` proves it. A world whose front is every burning cell before every tick (brute force) stays hash-identical to the real one for 1000 ticks of mixed ground, water, rain, and snow.
 
 **Hash.**
 - `hash_fields()`: the burning cells (index, burn-out tick, lighter).
@@ -751,7 +758,7 @@ The environment changes tactics:
   - Enqueues the schedule at tick 0, and adds the `Fire` and `Precipitation` views.
   - Feeds the terrain the fire and weather after every step.
   - The stats line shows rain, snow, wetness, cover, and burning cells.
-  - **F6** (debug) cycles clear → rain → heavy rain → snow through a `SetWeatherCommand` ramped over 3 s.
+  - **F6** (debug) cycles clear → rain → heavy rain → snow through a `SetWeatherCommand` ramped over 3 s. It lasts until the schedule's next change, which arrives as a command like any other.
 
 ### Measured (M4 Max, headless)
 | Scenario | Result |

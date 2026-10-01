@@ -118,6 +118,17 @@ func test_schedule_validation() -> void:
 	assert_true(_has_error(_schedule([_change(0, 0, 0, 0, -1, -1)]), "ramp_ticks"))
 	assert_true(_has_error(_schedule([_change(0, 0, 0, 0, 0, 1001)]), "snow_cover"))
 	assert_true(_has_error(_schedule([null]), "null"))
+	var gale: WeatherChange = _change(0, 0, 0, Weather.MAX_WIND + 1, 0, -1)
+	assert_true(_has_error(_schedule([gale]), "wind"))
+
+
+func test_wind_is_bounded() -> void:
+	var world: World = World.new(1)
+	world.enqueue(SetWeatherCommand.new(0, 0, 0, 1 << 40, -(1 << 40), 1 << 40))
+	_run(world, 1)
+	_run(world, 10)
+	assert_between(world.weather.wind_x, 0, Weather.MAX_WIND, "clamped, so a ramp can't overflow")
+	assert_between(world.weather.wind_z, -Weather.MAX_WIND, 0)
 
 
 func test_the_shipped_schedule_is_valid() -> void:

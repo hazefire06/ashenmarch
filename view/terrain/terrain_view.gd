@@ -19,6 +19,8 @@ var _shared_indices: PackedInt32Array = PackedInt32Array()
 var _material: ShaderMaterial
 var _fire_image: Image
 var _fire_texture: ImageTexture
+## Cells burning at the last update_fire().
+var _burning_seen: int = 0
 
 
 ## Replaces any existing chunks with meshes for this terrain.
@@ -67,12 +69,20 @@ func rebuild_region(terrain: Terrain, cells: Rect2i) -> void:
 
 
 ## Brings the fire texture up to date with the cells that changed this tick
-## (fire.changed). Call it after each World.step().
+## (fire.changed). Call it after each World.step(). A cell lit between steps
+## never shows in changed (the next step clears it first), so a burning
+## count that differs from last time also rewrites every burning cell.
 func update_fire(fire: Fire) -> void:
-	if fire == null or fire.changed.is_empty() or _fire_image == null:
+	if fire == null or _fire_image == null:
 		return
+	var recount: bool = fire.burn_end.size() != _burning_seen
+	if fire.changed.is_empty() and not recount:
+		return
+	_burning_seen = fire.burn_end.size()
 	var w: int = _fire_image.get_width()
-	for k: int in fire.changed:
+	var cells: Array = fire.burn_end.keys() if recount else []
+	cells.append_array(Array(fire.changed))
+	for k: int in cells:
 		var value: int = FIRE_TEXEL[fire.state[k]]
 		_fire_image.set_pixel(k % w, k / w, Color8(value, 0, 0))
 	_fire_texture.update(_fire_image)
@@ -120,6 +130,7 @@ func _make_material(terrain: Terrain) -> ShaderMaterial:
 	material.set_shader_parameter("water_tint", ImageTexture.create_from_image(_water_tint_image(terrain)))
 	material.set_shader_parameter("ground_tint", ImageTexture.create_from_image(_ground_tint_image(terrain)))
 	_fire_image = Image.create(terrain.size_x, terrain.size_z, false, Image.FORMAT_R8)
+	_burning_seen = 0
 	_fire_texture = ImageTexture.create_from_image(_fire_image)
 	material.set_shader_parameter("fire_state", _fire_texture)
 	material.set_shader_parameter("wetness", 0.0)

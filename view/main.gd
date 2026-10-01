@@ -10,7 +10,8 @@ const WORLD_SEED: int = 1
 const MAP_PATH: String = "res://maps/riverside/riverside.tres"
 const CATALOG_PATH: String = "res://data/units/catalog.tres"
 ## Test weather until Phase 8's missions: showers from about 45 s, a downpour
-## at 2 min, clearing at 3 min. F6 overrides it (DebugWeather).
+## at 2 min, clearing at 3 min. F6 changes it until the schedule's next
+## change (DebugWeather).
 const WEATHER_PATH: String = "res://data/weather/riverside_showers.tres"
 ## Test setup until Phase 8's mission data: two 5x4 blocks at 2 m spacing,
 ## Shieldmen on the north bank by the ford, Husks across the creek. A row of

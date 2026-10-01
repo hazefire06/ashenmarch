@@ -11,7 +11,7 @@ extends Resource
 ## Permille, 0..1000.
 @export var rain: int = 0
 @export var snow: int = 0
-## mm/s. Visual only.
+## mm/s, at most Weather.MAX_WIND either way. Visual only.
 @export var wind_x: int = 0
 @export var wind_z: int = 0
 @export var ramp_ticks: int = 0
@@ -28,6 +28,8 @@ func validate(where: String) -> PackedStringArray:
 		errors.append("%s: rain must be 0..1000" % where)
 	if snow < 0 or snow > Weather.PERMILLE:
 		errors.append("%s: snow must be 0..1000" % where)
+	if absi(wind_x) > Weather.MAX_WIND or absi(wind_z) > Weather.MAX_WIND:
+		errors.append("%s: wind must be within %d mm/s" % [where, Weather.MAX_WIND])
 	if ramp_ticks < 0:
 		errors.append("%s: ramp_ticks can't be negative" % where)
 	if snow_cover < -1 or snow_cover > Weather.PERMILLE:
