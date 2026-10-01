@@ -25,13 +25,22 @@ extends RefCounted
 ##   fizzle (the dud stays, and a blast can still set it off) or queues the
 ##   explosion; a caught charge goes off when its countdown ends.
 ##
+## Weather and water (Phase 5): a fuse fizzles more in rain and snow, and on
+## snow-covered ground (fizzle_permille). A lit fuse that touches water of
+## depth 1 or more (a bounce, a roll, coming to rest) goes out at once, with
+## no roll: it is a dud from then on. A fire arrow rolls once for its flame
+## when it lands, but only if that chance isn't zero, so in clear weather it
+## draws nothing a plain arrow doesn't; a flame that goes out (FIZZLE) lights
+## no fire, though the arrow still wounds.
+##
 ## Units are tested at their positions after this tick's movement. A unit
 ## killed earlier in the same pass (a lower-id arrow) no longer stops later
 ## arrows: they fly on past the falling body.
 ##
 ## RNG draws, in projectile id order: an arrow striking a body draws a block
 ## roll (front arc of a shielded target only) then its damage variance; a
-## fuse burning down draws the fizzle roll.
+## fire arrow landing then draws its flame's fizzle roll (only when the
+## chance isn't zero); a fuse burning down draws the fizzle roll.
 
 ## Normals from the ground gradient have this length.
 const N_ONE: int = 65536
@@ -87,10 +96,24 @@ func update(world: World) -> void:
 		_burn(world, p)
 
 
-## Chance in permille that a fuse burning down goes out instead. Phase 5
-## adds rain, snow, and wet ground here.
-static func fizzle_permille(_world: World, p: Projectile) -> int:
-	return p.type.fizzle_permille
+## Chance in permille that a burning projectile's flame goes out: its type's
+## own chance, rain and snow falling (each scaled by its intensity), and,
+## when it lies on the ground, the snow covering it. They combine as
+## independent chances: 1 - (1 - base)(1 - rain)(1 - snow)(1 - cover).
+## Zero for anything that doesn't burn.
+static func fizzle_permille(world: World, p: Projectile, on_ground: bool) -> int:
+	var t: ProjectileType = p.type
+	if not t.burns():
+		return 0
+	var w: Weather = world.weather
+	var cover: int = w.snow_cover() * t.snow_cover_fizzle_permille / PERMILLE if on_ground else 0
+	var keep: int = (
+		(PERMILLE - t.fizzle_permille)
+		* (PERMILLE - w.rain * t.rain_fizzle_permille / PERMILLE)
+		* (PERMILLE - w.snow * t.snow_fizzle_permille / PERMILLE)
+		* (PERMILLE - cover)
+	) / (PERMILLE * PERMILLE * PERMILLE)
+	return PERMILLE - keep
 
 
 ## Surface normal of the ground at (x, z) milli-units, length N_ONE, from
@@ -197,7 +220,7 @@ func _strike(world: World, p: Projectile, target: Unit) -> void:
 		var variance: int = world.rng.randi_range(-DAMAGE_VARIANCE_PERMILLE, DAMAGE_VARIANCE_PERMILLE)
 		var damage: int = maxi(1, FixedMath.div_round(p.type.impact_damage * (PERMILLE + variance), PERMILLE))
 		Damage.apply(world, target, damage, from_x, from_z, p.owner_id, aspect)
-	if p.type.marks_fire:
+	if p.type.marks_fire and not _flame_goes_out(world, p, false):
 		world.mark_fire(target.x, target.z)
 	world.remove_projectile(p)
 
@@ -212,9 +235,20 @@ func _stick(world: World, p: Projectile) -> void:
 	e.dir_z = f.vz
 	e.depth = world.terrain.water_depth_at(p.x, p.z)
 	world.projectile_events.append(e)
-	if p.type.marks_fire:
+	if p.type.marks_fire and not _flame_goes_out(world, p, true):
 		world.mark_fire(p.x, p.z)
 	world.remove_projectile(p)
+
+
+# A fire arrow's flame on landing: rolls to go out (in a body, or stuck in
+# the ground where snow can smother it), but only when there is a chance, so
+# clear weather draws nothing. Reports a fizzle.
+static func _flame_goes_out(world: World, p: Projectile, on_ground: bool) -> bool:
+	var chance: int = fizzle_permille(world, p, on_ground)
+	if chance <= 0 or world.rng.randi_range(0, PERMILLE - 1) >= chance:
+		return false
+	world.projectile_events.append(ProjectileEvent.about(ProjectileEvent.Kind.FIZZLE, p))
+	return true
 
 
 # A grenade or charge meets the ground.
@@ -232,6 +266,7 @@ func _bounce(world: World, p: Projectile) -> void:
 	event.speed = maxi(into, 0)
 	world.projectile_events.append(event)
 	_rest_on_ground(world.terrain, p)
+	_douse_if_in_water(world, p)
 	if into <= 0:
 		return
 	var rebound: int = into * p.type.restitution_permille / PERMILLE
@@ -294,6 +329,7 @@ func _roll(world: World, p: Projectile) -> void:
 		f.vz = 0
 		p.motion = Projectile.Motion.RESTING
 		_rest_on_ground(terrain, p)
+		_douse_if_in_water(world, p)
 		return
 	var ax: int = f.px
 	var ay: int = f.py
@@ -327,6 +363,7 @@ func _roll(world: World, p: Projectile) -> void:
 		p.motion = Projectile.Motion.FLYING
 	else:
 		f.py = rest_y
+		_douse_if_in_water(world, p)
 
 
 # Fuse and chain countdown.
@@ -334,7 +371,8 @@ func _burn(world: World, p: Projectile) -> void:
 	if p.fuse_left > 0:
 		p.fuse_left -= 1
 		if p.fuse_left == 0 and not p.detonating:
-			if world.rng.randi_range(0, PERMILLE - 1) < fizzle_permille(world, p):
+			var on_ground: bool = p.motion != Projectile.Motion.FLYING
+			if world.rng.randi_range(0, PERMILLE - 1) < fizzle_permille(world, p, on_ground):
 				p.dud = true
 				world.projectile_events.append(ProjectileEvent.about(ProjectileEvent.Kind.FIZZLE, p))
 			else:
@@ -343,6 +381,26 @@ func _burn(world: World, p: Projectile) -> void:
 		p.detonate_in -= 1
 		if p.detonate_in == 0:
 			world.explosions.detonate(world, p)
+
+
+# A lit fuse touching water (the ground under it is at depth 1 or more) goes
+# out for good: no roll, and the projectile is a dud from now on.
+static func _douse_if_in_water(world: World, p: Projectile) -> void:
+	if p.fuse_left <= 0 or p.detonating:
+		return
+	var f: FlightState = p.flight
+	var mx: int = FlightState.to_mm(f.px)
+	var mz: int = FlightState.to_mm(f.pz)
+	var depth: int = world.terrain.water_depth_at(mx, mz)
+	if depth <= 0:
+		return
+	p.fuse_left = 0
+	p.dud = true
+	var e: ProjectileEvent = ProjectileEvent.new(ProjectileEvent.Kind.FIZZLE, mx, FlightState.to_mm(f.py), mz)
+	e.projectile_id = p.id
+	e.type_index = p.type_index
+	e.depth = depth
+	world.projectile_events.append(e)
 
 
 # Sits the projectile on the ground under it if it has sunk into it.

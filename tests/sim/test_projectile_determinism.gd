@@ -59,8 +59,10 @@ func test_a_different_seed_lands_differently() -> void:
 
 
 # The Phase 3 ford battle with ranged units on both sides: Longbows and
-# Sappers behind the Shieldmen, Drifters behind the Husks. Sappers mine the
-# ford and bombard it; everyone else attack-moves.
+# Sappers behind the Shieldmen, Drifters behind the Husks. Sappers mine their
+# own bank and bombard the far bank of the ford, which the Husks cross
+# on their way (not the ford itself: water puts a lit fuse out); everyone
+# else attack-moves.
 func _battle(world_seed: int) -> World:
 	var world: World = World.new(world_seed, _terrain, _catalog)
 	var light: PackedInt32Array = PackedInt32Array()
@@ -88,7 +90,7 @@ func _battle(world_seed: int) -> World:
 	world.enqueue(UseSpecialCommand.new(1, sappers))
 	world.enqueue(AttackMoveCommand.new(1, dark, 295 * M, 195 * M, Formations.Kind.RABBLE))
 	world.enqueue(AttackMoveCommand.new(90, light, 295 * M, 215 * M, Formations.Kind.SHORT_LINE))
-	world.enqueue(GroundAttackCommand.new(60, sappers, 297 * M, 225 * M))
+	world.enqueue(GroundAttackCommand.new(60, sappers, 297 * M, 237 * M))
 	world.enqueue(UseSpecialCommand.new(120, archers))
 	return world
 
