@@ -30,6 +30,9 @@ enum Kind {
 	## unit_id picked the projectile up (a herb into its stack, or a loose
 	## object into its hand) at (x, y, z).
 	PICK_UP,
+	## unit_id cast lightning (type_index) from (x, y, z) to (end_x, end_y,
+	## end_z), half-width radius. Everything along it was struck this tick.
+	BOLT,
 }
 
 var kind: Kind
@@ -49,6 +52,10 @@ var crater: int = 0
 var depth: int = 0
 var speed: int = 0
 var cells: Rect2i = Rect2i()
+## BOLT: where the line ended (milli-units).
+var end_x: int = 0
+var end_y: int = 0
+var end_z: int = 0
 
 
 func _init(event_kind: Kind, at_x: int = 0, at_y: int = 0, at_z: int = 0) -> void:

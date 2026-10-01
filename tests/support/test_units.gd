@@ -83,6 +83,20 @@ static func thrower(type_id: StringName, overrides: Dictionary = {}) -> UnitType
 	return ranged(type_id, base)
 
 
+## A lightning caster built on ranged(): no melee, bolts out to 40 m with an
+## 8 m dead zone, a 30-tick cast, a 120-tick cooldown, and no spread.
+static func caster(type_id: StringName, overrides: Dictionary = {}) -> UnitType:
+	var base: Dictionary = {
+		"melee_damage": 0, "melee_accuracy_permille": 0, "melee_reach": 0,
+		"melee_windup_ticks": 0, "melee_cooldown_ticks": 0, "acquire_radius": 0,
+		"ranged_projectile": &"lightning", "ranged_launch_height": 1600,
+		"ranged_min_range": 8000, "ranged_max_range": 40_000,
+		"ranged_windup_ticks": 30, "ranged_cooldown_ticks": 120,
+	}
+	base.merge(overrides, true)
+	return ranged(type_id, base)
+
+
 ## A healer built on melee(): a support unit carrying six herbs that heal
 ## 60 hp after a 15-tick wind-up.
 static func healer(type_id: StringName, overrides: Dictionary = {}) -> UnitType:

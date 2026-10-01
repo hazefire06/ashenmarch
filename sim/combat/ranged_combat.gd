@@ -36,6 +36,12 @@ extends RefCounted
 ##   can't reach it, or the spot is inside its minimum range, it gives up
 ##   (CANT_REACH) and holds.
 ##
+## Lightning (a BOLT projectile) is a straight line rather than a flight
+## (Lightning): it aims at the chest with no lead, needs the line clear of
+## the ground and, for an auto-picked target, of friends all the way to the
+## end of its reach. The loose pass makes its one spread draw and queues it;
+## every queued bolt strikes once all shots have left, in caster id order.
+##
 ## Status effects: a paralyzed unit loses its draw and does nothing. A
 ## confused one (any order, ground attack included) shoots at the nearest
 ## unit of either side in range, with no care for friends in the way.
@@ -67,6 +73,10 @@ const CHEST_PERMILLE: int = 600
 const LAUNCH_IGNORE_TICKS: int = ProjectileSystem.LAUNCH_IGNORE_TICKS
 const PERMILLE: int = 1000
 
+## Bolts cast this tick, waiting for every shot to leave: caster id, type
+## index, aim x, y, z, reach. Empty between ticks.
+var _bolts: Array[PackedInt64Array] = []
+
 
 func update(world: World) -> void:
 	if world.catalog == null:
@@ -77,6 +87,9 @@ func update(world: World) -> void:
 			loosing.append(unit)
 	for unit: Unit in loosing:
 		_loose(world, unit)
+	for bolt: PackedInt64Array in _bolts:
+		Lightning.strike(world, world.get_unit(bolt[0]), bolt[1], bolt[2], bolt[3], bolt[4], bolt[5])
+	_bolts.clear()
 
 
 ## Longest horizontal distance (milli-units) unit may shoot at a point rise
@@ -288,12 +301,13 @@ func _aim_at_unit(world: World, unit: Unit, target: Unit, x: int, z: int, carefu
 	var p: ProjectileType = world.catalog.projectile_types[type_index]
 	var ground: int = world.terrain.height_at(x, z)
 	var y: int = ground
-	if p.behavior == ProjectileType.Behavior.STICKS:
+	if p.behavior != ProjectileType.Behavior.BOUNCES:
 		# At the aim point, which is where a walker is led to: leading an enemy
-		# into our own line would put the arrow on the line.
-		if careful and _friend_beside(world, unit, x, z, target.type.body_radius):
+		# into our own line would put the arrow on the line. (A bolt checks
+		# its whole line for friends instead.)
+		if careful and p.behavior == ProjectileType.Behavior.STICKS and _friend_beside(world, unit, x, z, target.type.body_radius):
 			return AimSolution.failed()
-		y = ground + target.type.hover_height + target.type.body_height * CHEST_PERMILLE / PERMILLE
+		y = chest_height(target, ground)
 	elif careful and p.bursts() and _friend_in_blast(world, unit, p, x, ground, z):
 		return AimSolution.failed()
 	elif p.fuse_ticks > 0 and world.terrain.water_depth_at(x, z) > 0:
@@ -314,12 +328,19 @@ func _aim(
 ) -> AimSolution:
 	var t: UnitType = unit.type
 	var from: FlightState = launch_point(unit)
+	var dist: int = FixedMath.length(x - unit.x, z - unit.z)
+	var spread: int = spread_for(unit, y - FlightState.to_mm(from.py), dist)
+	if p.behavior == ProjectileType.Behavior.BOLT:
+		var bolt: AimSolution = AimSolution.new()
+		var reach: int = effective_max_range(unit, world.terrain.height_at(x, z) - FlightState.to_mm(from.py), dist)
+		bolt.ok = Lightning.is_clear(
+			world, unit, p, x, y, z, avoid_friends, PATH_MARGIN + spread * dist / PERMILLE, reach
+		)
+		return bolt
 	var tx: int = x * FlightState.SUB
 	var ty: int = y * FlightState.SUB
 	var tz: int = z * FlightState.SUB
 	var speed: int = FlightState.speed_from_mm_per_s(t.ranged_launch_speed)
-	var dist: int = FixedMath.length(x - unit.x, z - unit.z)
-	var spread: int = spread_for(unit, y - FlightState.to_mm(from.py), dist)
 	var avoid: Array[Unit] = []
 	if avoid_friends:
 		# The corridor is as wide as the aim cone at the target.
@@ -342,6 +363,8 @@ func _aim(
 func _flight_ticks(world: World, unit: Unit, target: Unit) -> int:
 	var t: UnitType = unit.type
 	var p: ProjectileType = world.catalog.projectile_types[next_projectile(world, unit)]
+	if p.behavior == ProjectileType.Behavior.BOLT:
+		return 0
 	var y: int = world.terrain.height_at(target.x, target.z)
 	if p.behavior == ProjectileType.Behavior.STICKS:
 		y += target.type.hover_height + target.type.body_height * CHEST_PERMILLE / PERMILLE
@@ -375,8 +398,17 @@ func _friend_in_blast(world: World, unit: Unit, p: ProjectileType, x: int, y: in
 	return false
 
 
+## Milli-units above the ground at a target's feet that arrows and bolts aim
+## for: its chest.
+static func chest_height(target: Unit, ground: int) -> int:
+	return ground + target.type.hover_height + target.type.body_height * CHEST_PERMILLE / PERMILLE
+
+
 # The draw is done: aim again at where the target will be, spread, launch.
 func _loose(world: World, unit: Unit) -> void:
+	if world.catalog.projectile_types[next_projectile(world, unit)].behavior == ProjectileType.Behavior.BOLT:
+		_loose_bolt(world, unit)
+		return
 	var solution: AimSolution
 	var aim_x: int
 	var aim_z: int
@@ -422,6 +454,50 @@ func _loose(world: World, unit: Unit) -> void:
 	var e: ProjectileEvent = ProjectileEvent.about(ProjectileEvent.Kind.LAUNCH, shot)
 	e.unit_id = unit.id
 	world.projectile_events.append(e)
+	_spend_shot(unit)
+
+
+# Lightning: aim again (no lead), check the line, one lateral spread draw,
+# and queue it to strike once every shot has left.
+func _loose_bolt(world: World, unit: Unit) -> void:
+	var type_index: int = next_projectile(world, unit)
+	var x: int
+	var y: int
+	var z: int
+	var careful: bool = false
+	if unit.order == Unit.Order.GROUND_ATTACK and not StatusEffects.confused(world, unit):
+		x = unit.ground_x
+		z = unit.ground_z
+		y = world.terrain.height_at(x, z)
+	else:
+		var target: Unit = world.get_unit(unit.shot_target_id)
+		if target == null or not target.is_alive():
+			unit.clear_shot()
+			return
+		x = target.x
+		z = target.z
+		y = chest_height(target, world.terrain.height_at(x, z))
+		careful = not StatusEffects.confused(world, unit)
+	var p: ProjectileType = world.catalog.projectile_types[type_index]
+	var from_y: int = unit.y + unit.type.ranged_launch_height
+	var dist: int = FixedMath.length(x - unit.x, z - unit.z)
+	var rise: int = world.terrain.height_at(x, z) - from_y
+	var spread: int = spread_for(unit, rise, dist)
+	var reach: int = effective_max_range(unit, rise, dist)
+	if not Lightning.is_clear(world, unit, p, x, y, z, careful, PATH_MARGIN + spread * dist / PERMILLE, reach):
+		unit.clear_shot()
+		return
+	# Spread: a sideways miss of up to spread x distance, either way.
+	var offset: int = spread * dist / PERMILLE * world.rng.randi_range(-PERMILLE, PERMILLE) / PERMILLE
+	var dir: Vector2i = FixedMath.normalize(x - unit.x, z - unit.z, FixedMath.DIR_ONE)
+	x += FixedMath.div_round(-dir.y * offset, FixedMath.DIR_ONE)
+	z += FixedMath.div_round(dir.x * offset, FixedMath.DIR_ONE)
+	_bolts.append(PackedInt64Array([unit.id, type_index, x, y, z, reach]))
+	_spend_shot(unit)
+
+
+# The shot has left: cooldown, ammunition, and a nocked fire arrow spent.
+static func _spend_shot(unit: Unit) -> void:
 	unit.shot_cooldown_left = Veterancy.ranged_cooldown(unit)
 	if unit.ammo_left > 0:
 		unit.ammo_left -= 1
