@@ -96,7 +96,10 @@ func _build() -> void:
 	)
 	orders.add_child(_ground_attack_toggle)
 	var ability: Button = _button("Ability (T)")
-	ability.tooltip_text = "Use the selection's special: a Sapper drops a satchel charge, a Longbow nocks its fire arrow (T)"
+	ability.tooltip_text = (
+		"Use the selection's special (T): a Sapper drops a satchel charge, a Longbow nocks its fire arrow, "
+		+ "a Blightbag bursts. With a Warden, then click a unit to heal it (an undead one dies of it)"
+	)
 	ability.pressed.connect(_controller.use_special_selected)
 	orders.add_child(ability)
 	var side: Button = _button("Switch side")

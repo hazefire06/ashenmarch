@@ -11,8 +11,15 @@ extends Node3D
 ##   projectile's position, turned along its flight;
 ## - a fused ball (a grenade) is a sphere in the type's color, with a bright
 ##   spark that blinks while the fuse burns. A dud is darker and has no spark;
-## - any other bouncing projectile (a satchel charge) is a small box in the
-##   type's color with a "Charge" label.
+## - a burst waiting to go off with no pickup (a Blightbag's) is a ball in
+##   its color;
+## - any other bouncing projectile is a small box in the type's color with a
+##   label: "Charge" for one with a blast (a satchel), else the type's name
+##   (a herb, a gas packet, a body part). Something carried rides in its
+##   carrier's hand: the sim puts it there.
+##
+## object_at() picks a loose object someone could pick up, for right-click
+## orders and the tooltip.
 ##
 ## The sim forgets an arrow once it sticks and only reports a STICK event, so
 ## the stuck ones are cosmetic: a ring buffer of STUCK_ARROW_LIMIT instances
@@ -39,6 +46,8 @@ const DUD_DARKEN: float = 0.6
 const CHARGE_LABEL: String = "Charge"
 ## The label is hidden beyond this many meters, like unit names.
 const LABEL_RANGE: float = 35.0
+## Pixels around a loose object's center that still count as pointing at it.
+const PICK_RADIUS: float = 14.0
 
 var _world: World
 ## One root node per live projectile, keyed by entity id, and the positions
@@ -162,7 +171,7 @@ func _make_node(p: Projectile) -> Node3D:
 		# Boxes are centered; put the tip at the node's origin, the tail
 		# behind it (+z, since the node looks along -z).
 		body.position = Vector3(0.0, 0.0, length * 0.5)
-	elif t.fuse_ticks > 0:
+	elif t.fuse_ticks > 0 or (t.pickup == ProjectileType.Pickup.NONE and t.bursts()):
 		var radius: float = maxf(t.radius / mm, MIN_BALL_RADIUS)
 		var ball: SphereMesh = SphereMesh.new()
 		ball.radius = radius
@@ -170,14 +179,15 @@ func _make_node(p: Projectile) -> Node3D:
 		ball.radial_segments = 12
 		ball.rings = 6
 		body.mesh = ball
-		var spark: MeshInstance3D = _make_spark(radius)
-		root.add_child(spark)
-		_sparks[p.id] = spark
+		if t.fuse_ticks > 0:
+			var spark: MeshInstance3D = _make_spark(radius)
+			root.add_child(spark)
+			_sparks[p.id] = spark
 	else:
 		var box: BoxMesh = BoxMesh.new()
 		box.size = Vector3.ONE * t.radius * 2.0 / mm
 		body.mesh = box
-		root.add_child(_make_charge_label(t.radius / mm))
+		root.add_child(_make_charge_label(t.radius / mm, label_for(t)))
 	body.material_override = _material(_color_of(p))
 	root.add_child(body)
 	add_child(root)
@@ -213,10 +223,37 @@ func _make_spark(ball_radius: float) -> MeshInstance3D:
 	return spark
 
 
-func _make_charge_label(half_size: float) -> Label3D:
+## The label over a loose object of type t: "Charge" for anything with a
+## blast, else its name.
+static func label_for(t: ProjectileType) -> String:
+	return CHARGE_LABEL if t.is_explosive() else t.display_name
+
+
+## The id of the loose object under the screen point that could be picked up
+## (lying still, with a pickup kind), the nearest the camera if several; -1
+## if none.
+func object_at(camera: Camera3D, at: Vector2) -> int:
+	var best: int = -1
+	var best_distance: float = INF
+	for p: Projectile in _world.projectiles:
+		if p.removed or p.motion != Projectile.Motion.RESTING or p.type.pickup == ProjectileType.Pickup.NONE:
+			continue
+		var node: Node3D = _nodes.get(p.id)
+		if node == null or camera.is_position_behind(node.global_position):
+			continue
+		if camera.unproject_position(node.global_position).distance_to(at) > PICK_RADIUS:
+			continue
+		var d: float = camera.global_position.distance_to(node.global_position)
+		if d < best_distance:
+			best = p.id
+			best_distance = d
+	return best
+
+
+func _make_charge_label(half_size: float, text: String) -> Label3D:
 	var label: Label3D = Label3D.new()
 	label.name = "Label"
-	label.text = CHARGE_LABEL
+	label.text = text
 	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	label.pixel_size = 0.006
 	label.font_size = 32

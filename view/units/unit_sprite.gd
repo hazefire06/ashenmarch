@@ -8,8 +8,11 @@ extends Node3D
 ## quad a clean upright rectangle on screen at the steep RTS camera pitch,
 ## where a vertical quad would look squashed and lean with perspective.
 ##
-## A hit or block tints the quad for FLASH_TIME, and show_notice() floats a
-## line of text over the unit for NOTICE_TIME. A dead unit's quad stops
+## A hit or block tints the quad for FLASH_TIME (a heal tints it green), and
+## show_notice() floats a line of text over the unit for NOTICE_TIME. Status
+## effects (set_statuses) tint the quad while they last and name themselves
+## in a tag above the name: pale blue for paralysis, magenta for confusion,
+## and a flickering orange for burning. A dead unit's quad stops
 ## billboarding and lies on the ground, head away from the killing blow, dimmed
 ## and unlabeled, and stays there. A gibbed body is not drawn at all; the gibs
 ## replace it.
@@ -19,6 +22,17 @@ const FACING_COLOR: Color = Color(0.08, 0.08, 0.08)
 const DEAD_TINT: Color = Color(0.35, 0.35, 0.35)
 const HIT_FLASH_COLOR: Color = Color(1.0, 0.96, 0.9)
 const BLOCK_FLASH_COLOR: Color = Color(0.55, 0.66, 0.82)
+const HEAL_FLASH_COLOR: Color = Color(0.45, 1.0, 0.5)
+## Status tints and tag colors, and how far the body is pulled toward them.
+const PARALYZED_COLOR: Color = Color(0.6, 0.8, 1.0)
+const CONFUSED_COLOR: Color = Color(1.0, 0.35, 0.9)
+const BURNING_COLOR: Color = Color(1.0, 0.5, 0.1)
+const STATUS_TINT: float = 0.55
+## Seconds per flicker of a burning unit's tint.
+const BURN_FLICKER_TIME: float = 0.12
+const PARALYZED_TEXT: String = "Paralyzed"
+const CONFUSED_TEXT: String = "Confused"
+const BURNING_TEXT: String = "Burning"
 ## Seconds a hit or block tint takes to fade out.
 const FLASH_TIME: float = 0.12
 ## Seconds a notice ("Can't reach") stays over the unit.
@@ -72,6 +86,11 @@ var _facing: Vector2 = Vector2(0.0, -1.0)
 var _flash_color: Color = HIT_FLASH_COLOR
 var _flash_left: float = 0.0
 var _notice_left: float = 0.0
+var _paralyzed: bool = false
+var _confused: bool = false
+var _burning: bool = false
+var _flicker: float = 0.0
+var _status_tag: Label3D
 
 
 func setup(unit: Unit) -> void:
@@ -155,8 +174,8 @@ func set_hp(hp: int, max_hp: int) -> void:
 	_refresh_overlays()
 
 
-## Tints the body briefly: white for a HIT, steel blue for a BLOCK. Other
-## kinds, and a dead unit, do nothing.
+## Tints the body briefly: white for a HIT, steel blue for a BLOCK, green for
+## a HEAL. Other kinds, and a dead unit, do nothing.
 func flash(kind: CombatEvent.Kind) -> void:
 	if _dead:
 		return
@@ -164,6 +183,8 @@ func flash(kind: CombatEvent.Kind) -> void:
 		_flash_color = HIT_FLASH_COLOR
 	elif kind == CombatEvent.Kind.BLOCK:
 		_flash_color = BLOCK_FLASH_COLOR
+	elif kind == CombatEvent.Kind.HEAL:
+		_flash_color = HEAL_FLASH_COLOR
 	else:
 		return
 	_flash_left = FLASH_TIME
@@ -188,6 +209,44 @@ func show_notice(text: String) -> void:
 ## The notice's text while it is showing, else an empty string.
 func notice_text() -> String:
 	return _notice.text if _notice != null and _notice.visible else ""
+
+
+## Shows which status effects the unit is under: a tint on the body and a tag
+## naming them. Repeating the current state does nothing.
+func set_statuses(paralyzed: bool, confused: bool, burning: bool) -> void:
+	if paralyzed == _paralyzed and confused == _confused and burning == _burning:
+		return
+	_paralyzed = paralyzed
+	_confused = confused
+	_burning = burning
+	var names: PackedStringArray = PackedStringArray()
+	if paralyzed:
+		names.append(PARALYZED_TEXT)
+	if confused:
+		names.append(CONFUSED_TEXT)
+	if burning:
+		names.append(BURNING_TEXT)
+	if names.is_empty():
+		if _status_tag != null:
+			_status_tag.visible = false
+	else:
+		if _status_tag == null:
+			_status_tag = _make_label("", Color.WHITE)
+			# Between the name and a notice.
+			_status_tag.position = Vector3(0.0, height + 0.5, 0.0)
+			_status_tag.font_size = 26
+			add_child(_status_tag)
+		_status_tag.text = " · ".join(names)
+		_status_tag.modulate = _status_color()
+		_status_tag.visible = not _dead
+	_apply_body_color()
+	if burning:
+		set_process(true)
+
+
+## The status tag's text while it shows, else an empty string.
+func status_text() -> String:
+	return _status_tag.text if _status_tag != null and _status_tag.visible else ""
 
 
 ## Lays the body on the ground, or stands it back up. blow_dir is the ground
@@ -244,15 +303,34 @@ func _process(delta: float) -> void:
 		_notice_left -= delta
 		if _notice_left <= 0.0:
 			_notice.visible = false
-	if _flash_left <= 0.0 and _notice_left <= 0.0:
+	var burning: bool = _burning and not _dead
+	if burning:
+		_flicker += delta
+		_apply_body_color()
+	if _flash_left <= 0.0 and _notice_left <= 0.0 and not burning:
 		set_process(false)
 
 
-# Body color: the type's, dimmed when dead, blended toward the flash color
-# while a flash fades.
+# Body color: the type's, dimmed when dead, pulled toward a status tint (a
+# burning one flickers), and blended toward the flash color while a flash
+# fades.
 func _apply_body_color() -> void:
 	var base: Color = _color * DEAD_TINT if _dead else _color
+	if not _dead and (_paralyzed or _confused or _burning):
+		var tint: float = STATUS_TINT
+		if _burning and not _paralyzed and not _confused:
+			tint *= 0.6 + 0.4 * float(int(_flicker / BURN_FLICKER_TIME) % 2)
+		base = base.lerp(_status_color(), tint)
 	_body_material.albedo_color = base.lerp(_flash_color, _flash_left / FLASH_TIME)
+
+
+# The most telling status: paralysis, then confusion, then burning.
+func _status_color() -> Color:
+	if _paralyzed:
+		return PARALYZED_COLOR
+	if _confused:
+		return CONFUSED_COLOR
+	return BURNING_COLOR
 
 
 # Ring, label, facing tick, and health bar belong to a living unit.
@@ -262,6 +340,8 @@ func _refresh_overlays() -> void:
 	_label.visible = alive
 	if _notice != null and not alive:
 		_notice.visible = false
+	if _status_tag != null and not alive:
+		_status_tag.visible = false
 	_facing_pivot.visible = alive
 	_hp_bar.visible = alive and (_selected or _hp < _max_hp)
 

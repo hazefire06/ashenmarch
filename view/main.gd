@@ -3,7 +3,8 @@ extends Node3D
 ## Entry scene: loads the map and unit catalog, owns the World, and advances
 ## it one tick per physics frame. The terrain view, camera, overhead map, and
 ## unit, projectile, explosion, fire, and weather views read the World; only
-## commands change it. Everything that draws the ground is built from the World's own terrain,
+## commands change it. The gas cloud and herb plant views read it too.
+## Everything that draws the ground is built from the World's own terrain,
 ## not the one loaded from the map: explosions scar the World's copy.
 
 const WORLD_SEED: int = 1
@@ -46,12 +47,15 @@ var _weather_preset: int = 0
 @onready var _projectiles_view: ProjectilesView = $Projectiles
 @onready var _explosions_view: ExplosionsView = $Explosions
 @onready var _fire_view: FireView = $Fire
+@onready var _gas_view: GasCloudsView = $GasClouds
+@onready var _plants_view: HerbPlantsView = $HerbPlants
 @onready var _precipitation: PrecipitationView = $Precipitation
 @onready var _camera: RtsCamera = $CameraRig
 @onready var _selection: SelectionController = $Hud/Selection
 @onready var _control_bar: ControlBar = $Hud/ControlBar
 @onready var _overhead_map: OverheadMap = $Hud/OverheadMap
 @onready var _tooltip: UnitTooltip = $Hud/UnitTooltip
+@onready var _info_panel: UnitInfoPanel = $Hud/UnitInfoPanel
 @onready var _stats_label: Label = $Hud/StatsLabel
 
 
@@ -87,11 +91,16 @@ func _ready() -> void:
 	_projectiles_view.setup(world)
 	_explosions_view.setup(world, _terrain_view, _gibs)
 	_fire_view.setup(world)
+	_gas_view.setup(world)
+	_plants_view.setup(world)
 	_precipitation.setup(world, _camera)
-	_selection.setup(world, _units_view, _camera.get_camera(), TerrainPicker.new(terrain))
+	_selection.setup(
+		world, _units_view, _camera.get_camera(), TerrainPicker.new(terrain), _projectiles_view, _plants_view
+	)
 	_selection.side_changed.connect(_units_view.set_viewer)
 	_control_bar.setup(_selection, world)
-	_tooltip.setup(_selection, world)
+	_info_panel.setup(_selection, world, _control_bar)
+	_tooltip.setup(_selection, world, _camera.get_camera(), _projectiles_view, _plants_view)
 	print(
 		"terrain loaded %dx%d in %d ms; meshes and overhead map built in %d ms"
 		% [terrain.size_x, terrain.size_z, loaded_ms - started_ms, Time.get_ticks_msec() - loaded_ms]
@@ -107,6 +116,8 @@ func _physics_process(_delta: float) -> void:
 	_projectiles_view.after_step()
 	_explosions_view.after_step()
 	_fire_view.after_step()
+	_gas_view.after_step()
+	_plants_view.after_step()
 	_terrain_view.update_fire(world.fire)
 	_terrain_view.set_weather(world.weather)
 

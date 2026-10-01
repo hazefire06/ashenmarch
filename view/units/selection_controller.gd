@@ -5,7 +5,9 @@ extends Control
 ## - Left drag box-selects; shift adds.
 ## - Double-click selects every unit of that type on screen; shift adds.
 ## - Right click moves the selection to the ground under the cursor, in the
-##   current formation.
+##   current formation. On a herb plant, a loose object, or a body that one of
+##   the selection can do something with (strike it, pick it up, tear a part
+##   off it), it sends that unit instead (InteractCommand).
 ## - Cmd/Ctrl + right click attack-moves there instead: the selection fights
 ##   whatever it meets on the way.
 ## - Cmd/Ctrl + left click orders a ground attack: the selection's ranged
@@ -16,8 +18,12 @@ extends Control
 ##   or a trackpad can give every order. Right click, Esc, pressing the button
 ##   again, or losing the selection cancels it.
 ## - T uses the selection's special ability (the bar's Ability button too).
+##   With a Warden that has herbs in the selection it also arms Heal: the
+##   next left click on a unit sends the nearest such Warden to heal it (or,
+##   if it is undead, kill it).
 ## - 1..0 pick the formation for the next move order. Cmd/Ctrl+1..0 save a
 ##   group; Option/Alt+1..0 recall it. H stops. F9 (debug) switches sides.
+##   F8 (debug) paralyzes, confuses, or sets alight the selection, in turn.
 ##
 ## Only living units of the controlled side can be selected. Selection is view
 ## state; orders go to the sim as commands for the next tick, the same stream
@@ -36,6 +42,8 @@ enum ArmedOrder {
 	MOVE,
 	ATTACK_MOVE,
 	GROUND_ATTACK,
+	## Wait for a click on a unit to heal (HealCommand).
+	HEAL,
 }
 
 ## Pixels the mouse must move while held before a click becomes a drag.
@@ -44,6 +52,11 @@ const DRAG_THRESHOLD: float = 6.0
 const PICK_SLOP: float = 3.0
 const BOX_FILL: Color = Color(1.0, 0.92, 0.35, 0.12)
 const BOX_EDGE: Color = Color(1.0, 0.92, 0.35, 0.9)
+## F8: how long each debug status lasts, and the order they come in.
+const DEBUG_STATUS_TICKS: int = 5 * World.TICK_RATE
+const DEBUG_STATUSES: Array[StatusEffects.Kind] = [
+	StatusEffects.Kind.PARALYSIS, StatusEffects.Kind.CONFUSION, StatusEffects.Kind.BURNING,
+]
 
 var selection: UnitSelection = UnitSelection.new()
 var formation: Formations.Kind = Formations.Kind.SHORT_LINE
@@ -56,6 +69,9 @@ var _world: World
 var _units: UnitsView
 var _camera: Camera3D
 var _picker: TerrainPicker
+var _projectiles: ProjectilesView
+var _plants: HerbPlantsView
+var _debug_status: int = 0
 var _pressing: bool = false
 var _dragging: bool = false
 var _press_at: Vector2
@@ -70,11 +86,18 @@ func _ready() -> void:
 	selection.changed.connect(_on_selection_changed)
 
 
-func setup(world: World, units: UnitsView, camera: Camera3D, picker: TerrainPicker) -> void:
+## projectiles and plants may be null; then right click never lands on a loose
+## object or a herb plant.
+func setup(
+	world: World, units: UnitsView, camera: Camera3D, picker: TerrainPicker,
+	projectiles: ProjectilesView = null, plants: HerbPlantsView = null
+) -> void:
 	_world = world
 	_units = units
 	_camera = camera
 	_picker = picker
+	_projectiles = projectiles
+	_plants = plants
 
 
 func set_formation(kind: Formations.Kind) -> void:
@@ -110,10 +133,25 @@ func stop_selected() -> void:
 
 
 ## Each selected unit uses its special: Sappers drop a charge, Longbows nock
-## their fire arrow. Units with nothing left ignore it.
+## their fire arrow, Blightbags burst. Units with nothing left ignore it. A
+## Warden's needs a patient, so with one that has herbs selected this arms
+## Heal for the next click on a unit.
 func use_special_selected() -> void:
-	if not selection.is_empty():
-		_world.enqueue(UseSpecialCommand.new(_world.tick, selection.ids()))
+	if selection.is_empty():
+		return
+	_world.enqueue(UseSpecialCommand.new(_world.tick, selection.ids()))
+	if _has_healer():
+		arm(ArmedOrder.HEAL)
+
+
+## Debug (F8): the next of paralysis, confusion, and burning on the selection,
+## for DEBUG_STATUS_TICKS.
+func cycle_debug_status() -> void:
+	if selection.is_empty():
+		return
+	var kind: StatusEffects.Kind = DEBUG_STATUSES[_debug_status]
+	_debug_status = (_debug_status + 1) % DEBUG_STATUSES.size()
+	_world.enqueue(ApplyStatusCommand.new(_world.tick, selection.ids(), kind, DEBUG_STATUS_TICKS))
 
 
 ## Debug: hands the mouse to the other side. Clears the selection.
@@ -162,7 +200,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		elif event.is_action(InputBindings.COMMAND):
 			if armed_order != ArmedOrder.NONE:
 				arm(ArmedOrder.NONE)
-			else:
+			elif not _order_interact(button.position):
 				_order_move(button.position, false)
 			get_viewport().set_input_as_handled()
 		return
@@ -227,6 +265,9 @@ func _handle_keys(event: InputEvent) -> bool:
 	if event.is_action_pressed(InputBindings.SWITCH_SIDE):
 		switch_side()
 		return true
+	if event.is_action_pressed(InputBindings.CYCLE_STATUS):
+		cycle_debug_status()
+		return true
 	return false
 
 
@@ -289,6 +330,8 @@ func _place_armed_order(at: Vector2) -> void:
 			_order_move(at, true)
 		ArmedOrder.GROUND_ATTACK:
 			_order_ground_attack(at)
+		ArmedOrder.HEAL:
+			_order_heal(at)
 
 
 # Moves the selection to the ground under the screen point, or attack-moves it
@@ -323,6 +366,63 @@ func _order_ground_attack(at: Vector2) -> void:
 	_units.show_marker(hit, UnitsView.MarkerKind.GROUND_ATTACK)
 	if armed_order != ArmedOrder.NONE:
 		arm(ArmedOrder.NONE)
+
+
+# Sends the nearest selected Warden with herbs to heal the living unit under
+# the screen point, either side. A click on no one leaves Heal armed.
+func _order_heal(at: Vector2) -> void:
+	var target_id: int = unit_at(at, false)
+	var target: Unit = _world.get_unit(target_id) if target_id >= 0 else null
+	if target == null or not target.is_alive():
+		return
+	_world.enqueue(HealCommand.new(_world.tick, selection.ids(), target_id))
+	_units.show_marker(_units.sprite_position(target_id), UnitsView.MarkerKind.MOVE)
+	arm(ArmedOrder.NONE)
+
+
+# Right click on something that isn't ground: a herb plant, a loose object,
+# or a body that someone selected can do something with. Sends that order
+# and returns true; false if there is no such thing under the point.
+func _order_interact(at: Vector2) -> bool:
+	if selection.is_empty():
+		return false
+	var target_id: int = -1
+	if _plants != null:
+		target_id = _plants.plant_at(_camera, at)
+	if target_id < 0 and _projectiles != null:
+		target_id = _projectiles.object_at(_camera, at)
+	if target_id < 0:
+		var unit_id: int = unit_at(at, false)
+		var body: Unit = _world.get_unit(unit_id) if unit_id >= 0 else null
+		if body != null and not body.is_alive():
+			target_id = unit_id
+	if target_id < 0 or not _someone_can(target_id):
+		return false
+	_world.enqueue(InteractCommand.new(_world.tick, selection.ids(), target_id))
+	var target: SimEntity = _world.get_entity(target_id)
+	_units.show_marker(Vector3(target.x, target.y, target.z) / float(World.UNITS_PER_METER), UnitsView.MarkerKind.MOVE)
+	return true
+
+
+# True if a selected unit could act on the entity (Interactions.action_for).
+func _someone_can(entity_id: int) -> bool:
+	var target: SimEntity = _world.get_entity(entity_id)
+	if target == null:
+		return false
+	for unit_id: int in selection.ids():
+		var unit: Unit = _world.get_unit(unit_id)
+		if unit != null and unit.is_alive() and Interactions.action_for(_world, unit, target) != Interactions.Action.NONE:
+			return true
+	return false
+
+
+# True if a selected unit is a healer with a herb left.
+func _has_healer() -> bool:
+	for unit_id: int in selection.ids():
+		var unit: Unit = _world.get_unit(unit_id)
+		if unit != null and unit.is_alive() and unit.type.special_ability == UnitType.Special.HEAL and unit.special_left > 0:
+			return true
+	return false
 
 
 # The ground point under the screen point, or Vector3.INF if nothing is

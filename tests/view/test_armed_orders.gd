@@ -268,6 +268,78 @@ func test_ability_button_path_uses_the_special() -> void:
 	assert_eq(_world.projectiles.size(), 1)
 
 
+func test_t_with_a_warden_arms_heal_and_a_click_on_a_unit_heals_it() -> void:
+	var warden: Unit = _world.spawn_unit(_world.catalog.index_of(&"warden"), LIGHT, 20 * M, 12 * M, 1, 0)
+	_units_view().after_step()
+	await wait_process_frames(2)  # the sprites move to their units in _process
+	_unit.hp = 40
+	_controller.selection.select(PackedInt32Array([warden.id]))
+	_press_key(KEY_T)
+	assert_eq(_controller.armed_order, SelectionController.ArmedOrder.HEAL)
+	_click(MOUSE_BUTTON_LEFT, _camera.unproject_position(Vector3(10.0, 0.0, 20.0)))
+	assert_eq(_controller.armed_order, SelectionController.ArmedOrder.NONE, "one shot")
+	_world.step()
+	assert_eq(warden.order, Unit.Order.INTERACT)
+	assert_eq(warden.interact_id, _unit.id)
+
+
+func test_t_without_a_warden_arms_nothing() -> void:
+	_controller.selection.select(PackedInt32Array([_sapper.id]))
+	_press_key(KEY_T)
+	assert_eq(_controller.armed_order, SelectionController.ArmedOrder.NONE)
+
+
+func test_an_armed_heal_ignores_clicks_on_the_ground() -> void:
+	var warden: Unit = _world.spawn_unit(_world.catalog.index_of(&"warden"), LIGHT, 20 * M, 12 * M, 1, 0)
+	_units_view().after_step()
+	_controller.selection.select(PackedInt32Array([warden.id]))
+	_controller.use_special_selected()
+	_click(MOUSE_BUTTON_LEFT, _camera.unproject_position(Vector3(30.0, 0.0, 30.0)))
+	assert_eq(_controller.armed_order, SelectionController.ArmedOrder.HEAL, "still waiting for a unit")
+
+
+func test_right_click_on_a_herb_plant_sends_someone_to_strike_it() -> void:
+	var plants: HerbPlantsView = HerbPlantsView.new()
+	add_child_autofree(plants)
+	var plant: HerbPlant = _world.spawn_herb_plant(20 * M, 20 * M)
+	plants.setup(_world)
+	_controller.setup(_world, _units_view(), _camera, TerrainPicker.new(_world.terrain), null, plants)
+	_controller.selection.select(PackedInt32Array([_unit.id]))
+	_click(MOUSE_BUTTON_RIGHT, _camera.unproject_position(Vector3(20.0, HerbPlantsView.BUSH_HEIGHT * 0.5, 20.0)))
+	_world.step()
+	assert_eq(_unit.order, Unit.Order.INTERACT)
+	assert_eq(_unit.interact_id, plant.id)
+
+
+func test_right_click_on_something_nobody_selected_can_use_is_a_move() -> void:
+	var projectiles: ProjectilesView = ProjectilesView.new()
+	add_child_autofree(projectiles)
+	_world.drop_object(_world.catalog.projectile_index_of(&"herb"), 20 * M, 20 * M, 0)
+	projectiles.setup(_world)
+	_controller.setup(_world, _units_view(), _camera, TerrainPicker.new(_world.terrain), projectiles, null)
+	_controller.selection.select(PackedInt32Array([_unit.id]))
+	_click(MOUSE_BUTTON_RIGHT)
+	_world.step()
+	assert_eq(_unit.order, Unit.Order.MOVE, "a Shieldman can't pick up a herb, so it walks there")
+
+
+func test_f8_cycles_status_effects_on_the_selection() -> void:
+	_controller.selection.select(PackedInt32Array([_unit.id]))
+	_press_key(KEY_F8)
+	_world.step()
+	assert_true(StatusEffects.paralyzed(_world, _unit))
+	_press_key(KEY_F8)
+	_world.step()
+	assert_true(StatusEffects.confused(_world, _unit))
+
+
+func _units_view() -> UnitsView:
+	for child: Node in get_children():
+		if child is UnitsView:
+			return child as UnitsView
+	return null
+
+
 # Presses a mouse button, straight into the handler: at the screen center
 # unless `at` says otherwise (Vector2.INF also means the center), with
 # Cmd/Ctrl or Shift held if asked.
