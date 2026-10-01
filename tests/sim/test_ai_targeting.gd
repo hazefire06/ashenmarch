@@ -19,6 +19,7 @@ const GRUNT: int = 1
 const DUMMY: int = 2
 const BOMB: int = 3
 const WALKER: int = 4
+const TARGET: int = 5
 
 var _catalog: UnitCatalog
 var _bolt: ProjectileType
@@ -31,6 +32,8 @@ func before_all() -> void:
 		TestUnits.dummy(&"dummy"),
 		TestUnits.bomb(&"bomb", {"ai_tactic": UnitType.AiTactic.CLUSTER}),
 		TestUnits.melee(&"walker", {"move_speed": 1000}),
+		# Stands still and dies to three bolts.
+		TestUnits.dummy(&"target", {"max_hp": 100}),
 	]
 	_catalog = TestUnits.catalog(types)
 	_bolt = _catalog.find_projectile(&"lightning")
@@ -45,7 +48,9 @@ func _world(terrain: Terrain) -> World:
 
 ## A DARK group spawned as spec 0 at (x, z) m: entries are [type id, count]
 ## pairs, spawned in that order.
-func _group(world: World, entries: Array, x: int, z: int, behavior: AiGroupSpec.Behavior) -> AiGroup:
+func _group(
+	world: World, entries: Array, x: int, z: int, behavior: AiGroupSpec.Behavior, guard_radius: int = 0
+) -> AiGroup:
 	var g: AiGroupSpec = AiGroupSpec.new()
 	g.name = &"pack"
 	for pair: Array in entries:
@@ -55,6 +60,7 @@ func _group(world: World, entries: Array, x: int, z: int, behavior: AiGroupSpec.
 		g.units.append(e)
 	g.spawns = PackedInt32Array([x * M, z * M])
 	g.behavior = behavior
+	g.guard_radius = guard_radius
 	if behavior == AiGroupSpec.Behavior.PATROL:
 		g.waypoints = PackedInt32Array([40 * M, z * M, x * M, z * M])
 	assert_eq(g.validate(_catalog), PackedStringArray(), "the spec is valid")
@@ -365,6 +371,46 @@ func test_melee_members_go_for_what_threatens_their_standoff_unit() -> void:
 	assert_lte(FixedMath.length(order.x - raider.x, order.z - raider.z), 1500, "sent at the raider")
 	for i: int in 4:
 		assert_eq(group.ordered_target[i], raider.id, "grunt %d after the raider" % i)
+
+
+# --- GUARD ------------------------------------------------------------------
+
+
+func test_a_guarding_caster_isnt_called_back_from_its_spot_while_intruders_live() -> void:
+	var world: World = _world(TestTerrains.flat(80, 40))
+	var radius: int = 10 * M
+	var leash: int = radius * AiBehaviors.GUARD_LEASH_PERMILLE / 1000
+	var group: AiGroup = _group(world, [[&"caster", 1]], 40, 20, AiGroupSpec.Behavior.GUARD, radius)
+	var caster: Unit = group.living(world)[0]
+	var anchor: Vector2i = Vector2i(group.anchor_x, group.anchor_z)
+	# 8 m from the post: inside the guard radius and inside the caster's dead
+	# zone, so it backs off to a spot 36 m from the intruder, 28 m from the
+	# post and well past the 15 m leash, and casts from there.
+	var intruder: Unit = world.spawn_unit(TARGET, LIGHT, 48 * M, 20 * M, -1, 0)
+	var orders: int = 0
+	var recalls: int = 0
+	var farthest: int = 0
+	var died: int = -1
+	while world.tick < 2400:
+		world.step()
+		for e: AiEvent in _events(world, AiEvent.Kind.ORDER):
+			if e.unit_id != caster.id or died >= 0:
+				continue
+			orders += 1
+			if e.value == 0 and Vector2i(e.x, e.z) == anchor:
+				recalls += 1
+		if died < 0:
+			farthest = maxi(farthest, FixedMath.length(caster.x - anchor.x, caster.z - anchor.y))
+			if not intruder.is_alive():
+				died = world.tick
+	var home: int = FixedMath.length(caster.x - anchor.x, caster.z - anchor.y)
+	gut.p("guard: farthest %d mm out while the intruder lived, %d orders, %d recalls, it died at tick %d, "
+		% [farthest, orders, recalls, died] + "%d mm from the post at the end" % home)
+	assert_gt(farthest, leash, "its spot was past the leash")
+	assert_eq(recalls, 0, "never called back while the intruder lived")
+	assert_eq(orders, 0, "nor sent anywhere but its spot")
+	assert_gt(died, 0, "so it kept casting and killed the intruder")
+	assert_lte(home, radius, "then the stray return brought it home")
 
 
 # --- march ------------------------------------------------------------------

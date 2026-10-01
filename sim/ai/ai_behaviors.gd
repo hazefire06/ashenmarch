@@ -12,7 +12,7 @@ extends RefCounted
 ##   it to on_alert.
 ## - GUARD: chases enemies inside its radius of the anchor, comes back to the
 ##   anchor when none are left, and calls back any member a chase drags past
-##   the leash.
+##   the leash (STANDOFF members excepted while there are intruders).
 ## - HUNT: goes after every enemy it can see.
 ## - AMBUSH: lies still, held where it stands, until it is disturbed: an enemy
 ##   within alert_radius of any member, a member hurt, or a member fighting.
@@ -171,30 +171,34 @@ static func _advance_waypoint(group: AiGroup) -> void:
 # GUARD: members walking home from a recall are left alone until they get
 # there. The rest: busy members farther from the anchor than
 # GUARD_LEASH_PERMILLE of the radius are called back with a plain move,
-# busy or not. Then, if enemies are inside the radius of the anchor (center
-# to center), the others engage the ones they can get at; if there are none,
-# or none they can reach, free members outside the radius attack-move back
-# to the anchor.
+# busy or not, except STANDOFF members while there are intruders: a spot
+# far enough out to shoot from is often past the leash, and one is busy
+# there because it is shooting, not because a chase dragged it off. Then,
+# if enemies are inside the radius of the anchor (center to center), the
+# others engage the ones they can get at; if there are none, or none they
+# can reach, free members outside the radius attack-move back to the anchor,
+# STANDOFF members included.
 static func _guard(world: World, group: AiGroup, units: Array[Unit]) -> void:
 	var radius: int = group.spec.guard_radius if group.spec.guard_radius > 0 else DEFAULT_GUARD_RADIUS
 	var leash: int = radius * GUARD_LEASH_PERMILLE / 1000
 	var ax: int = group.anchor_x
 	var az: int = group.anchor_z
+	var intruders: Array[Unit] = []
+	for enemy: Unit in AiOrders.enemies(world, group.faction):
+		if _distance(enemy, ax, az) <= radius:
+			intruders.append(enemy)
 	var recalled: Array[Unit] = []
 	var others: Array[Unit] = []
 	for unit: Unit in units:
 		if _walking_home(group, unit):
 			continue
-		if not AiOrders.is_free(world, unit) and _distance(unit, ax, az) > leash:
+		var shooting_in: bool = AiTactics.is_standoff(unit) and not intruders.is_empty()
+		if not AiOrders.is_free(world, unit) and _distance(unit, ax, az) > leash and not shooting_in:
 			recalled.append(unit)
 		else:
 			others.append(unit)
 	if not recalled.is_empty():
 		AiOrders.march(world, group, recalled, ax, az, false, true)
-	var intruders: Array[Unit] = []
-	for enemy: Unit in AiOrders.enemies(world, group.faction):
-		if _distance(enemy, ax, az) <= radius:
-			intruders.append(enemy)
 	if not intruders.is_empty() and AiOrders.engage(world, group, others, intruders):
 		return
 	var strays: Array[Unit] = []
