@@ -25,11 +25,17 @@ var spawned_ids: PackedInt32Array = PackedInt32Array()
 ## Members still alive and still on `faction`, ascending.
 var members: PackedInt32Array = PackedInt32Array()
 ## What the AI last sent each member to, parallel to `members` and pruned with
-## it: the group-level goal (not the member's formation slot, nor the spot a
-## march sends a STANDOFF member to behind it), the unit id of the objective
-## it was sent after (0 for none), and whether it was an attack-move (1) or a
-## plain move (0). The AI compares these with its next plan so it only
-## re-orders a member when the plan changed.
+## it: where it was sent, the unit id of the objective it was sent after (0
+## for none), and whether it was an attack-move (1) or a plain move (0). The
+## AI compares these with its next plan so it only re-orders a member when the
+## plan changed. Where it was sent is never the member's own formation slot:
+## - a march: the march's goal, for STANDOFF members too, though they are
+##   sent to a point short of it (AiTactics.behind);
+## - an ASSAULT member, or a STANDOFF member with no spot: the objective's
+##   position when it was sent;
+## - a STANDOFF member to a firing spot: that spot (StandoffSpot);
+## - a CLUSTER member: the middle of the knot (ClusterFinder).
+## A new member starts recorded at its own position, with no objective.
 var ordered_x: PackedInt64Array = PackedInt64Array()
 var ordered_z: PackedInt64Array = PackedInt64Array()
 var ordered_target: PackedInt32Array = PackedInt32Array()

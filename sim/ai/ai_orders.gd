@@ -135,12 +135,22 @@ static func march(
 ## unless one of those threatens a STANDOFF member of the group
 ## (AiTactics.threats): then the threat it ranks best. Members not already
 ## after that objective (_should_reorder) attack-move to it in one move.
-static func engage(world: World, group: AiGroup, units: Array[Unit], candidates: Array[Unit]) -> bool:
+## With threat_reach above 0, only threats within threat_reach of the group's
+## anchor (center to center) count: a GUARD passes its leash, so its
+## bodyguards aren't sent after a threat the leash would call them back from,
+## to be sent again once home.
+static func engage(
+	world: World, group: AiGroup, units: Array[Unit], candidates: Array[Unit], threat_reach: int = 0
+) -> bool:
 	var picked: Array[Unit] = []
 	for unit: Unit in units:
 		if is_free(world, unit) or (unit.is_alive() and AiTactics.is_standoff(unit)):
 			picked.append(unit)
-	var threats: Array[Unit] = AiTactics.threats(world, group)
+	var threats: Array[Unit] = []
+	for threat: Unit in AiTactics.threats(world, group):
+		var from_anchor: int = FixedMath.length(threat.x - group.anchor_x, threat.z - group.anchor_z)
+		if threat_reach <= 0 or from_anchor <= threat_reach:
+			threats.append(threat)
 	var any_objective: bool = false
 	for key: int in _bucket_keys(world, picked):
 		var bucket: Array[Unit] = _bucket(world, picked, key)
@@ -179,11 +189,12 @@ static func _assault(
 ## One UnitOrders.move for units (non-empty, ascending id) to (x, z) after
 ## objective_id (0 for none), recorded per member as sent to (goal_x, goal_z)
 ## (the group's goal, which a march's STANDOFF members stop short of), and
-## reported as one ORDER event at (x, z) naming the lowest id. Every ORDER
-## the AI gives goes through here.
+## reported as one event of kind at (x, z) naming the lowest id, with value 1
+## for an attack-move: an ORDER, or a STANDOFF for a move to a firing spot.
+## Every order the AI gives goes through here.
 static func send(
 	world: World, group: AiGroup, units: Array[Unit], x: int, z: int, attack: bool, objective_id: int,
-	goal_x: int, goal_z: int
+	goal_x: int, goal_z: int, kind: AiEvent.Kind = AiEvent.Kind.ORDER
 ) -> void:
 	var ids: PackedInt32Array = PackedInt32Array()
 	for unit: Unit in units:
@@ -191,7 +202,7 @@ static func send(
 	UnitOrders.move(world, ids, x, z, group.spec.formation, attack)
 	for unit_id: int in ids:
 		group.record_order(unit_id, goal_x, goal_z, objective_id, attack)
-	world.ai_events.append(AiEvent.new(AiEvent.Kind.ORDER, group.id, x, z, 1 if attack else 0, ids[0]))
+	world.ai_events.append(AiEvent.new(kind, group.id, x, z, 1 if attack else 0, ids[0]))
 
 
 # Whether a free member already sent after objective should be sent again:

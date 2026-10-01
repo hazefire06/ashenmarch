@@ -24,7 +24,7 @@ const PROTECT_RADIUS: int = 10000
 ## rest, along the way the group came.
 const STANDOFF_BEHIND: int = 6000
 ## Milli-units a STANDOFF member's new spot must be from the one it is
-## walking to, or from where it stands, before it is sent there.
+## walking to before it is sent to the new one.
 const SPOT_SLACK: int = 2000
 ## Milli-units a CLUSTER member's knot must drift from where it was sent
 ## before it is sent again.
@@ -155,24 +155,24 @@ static func cluster(world: World, group: AiGroup, member: Unit, candidates: Arra
 	return true
 
 
-# Sends a STANDOFF member to spot (single-unit plain move, recorded with the
-# objective, a STANDOFF event) unless it is walking a plain move to within
-# SPOT_SLACK of it already, or, not walking one, stands within SPOT_SLACK of
-# it.
+# Sends a STANDOFF member to spot (a single-unit plain move, recorded with
+# the spot and the objective, reported as a STANDOFF event) unless it is
+# walking a plain move to within SPOT_SLACK of it already. One that isn't is
+# sent however close it stands: it is only asked to move because where it
+# stands won't do, and a step can be all the difference.
 static func _to_spot(
 	world: World, group: AiGroup, member: Unit, spot: PackedInt64Array, objective: Unit
 ) -> void:
 	var x: int = spot[0]
 	var z: int = spot[1]
 	var i: int = group.member_index(member.id)
-	if member.order == Unit.Order.MOVE:
-		if FixedMath.length(x - group.ordered_x[i], z - group.ordered_z[i]) <= SPOT_SLACK:
-			return
-	elif FixedMath.length(x - member.x, z - member.z) <= SPOT_SLACK:
+	if (
+		member.order == Unit.Order.MOVE
+		and FixedMath.length(x - group.ordered_x[i], z - group.ordered_z[i]) <= SPOT_SLACK
+	):
 		return
-	UnitOrders.move(world, PackedInt32Array([member.id]), x, z, group.spec.formation, false)
-	group.record_order(member.id, x, z, objective.id, false)
-	world.ai_events.append(AiEvent.new(AiEvent.Kind.STANDOFF, group.id, x, z, 0, member.id))
+	var one: Array[Unit] = [member]
+	AiOrders.send(world, group, one, x, z, false, objective.id, x, z, AiEvent.Kind.STANDOFF)
 
 
 # True if a visible enemy is where the unit could shoot it from where it

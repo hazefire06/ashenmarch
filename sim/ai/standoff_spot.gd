@@ -3,7 +3,7 @@ extends RefCounted
 ## Where a STANDOFF unit (UnitType.AiTactic.STANDOFF: a Stormcaller, a
 ## Drifter) should stand to shoot a target, whether where it stands will do,
 ## and whether an enemy has got inside its dead zone. Static and pure: it
-## reads the world and changes nothing; AiOrders moves the unit.
+## reads the world and changes nothing; AiTactics moves the unit.
 ##
 ## A spot is on the circle of ai_standoff_permille of the unit's range about
 ## the target. The first tried is straight back along the line from the
@@ -30,6 +30,7 @@ const DEAD_ZONE_MARGIN: int = 2000
 ## checks the real flight before it shoots; this keeps the AI from choosing a
 ## spot that puts a friend in the way to begin with.
 const FRIEND_CORRIDOR: int = 1500
+## ai_standoff_permille is in parts per this many.
 const PERMILLE: int = 1000
 
 

@@ -20,6 +20,7 @@ const DUMMY: int = 2
 const BOMB: int = 3
 const WALKER: int = 4
 const TARGET: int = 5
+const BOWMAN: int = 6
 
 var _catalog: UnitCatalog
 var _bolt: ProjectileType
@@ -34,6 +35,9 @@ func before_all() -> void:
 		TestUnits.melee(&"walker", {"move_speed": 1000}),
 		# Stands still and dies to three bolts.
 		TestUnits.dummy(&"target", {"max_hp": 100}),
+		# Arrows out to 50 m, a 4 m dead zone: a STANDOFF unit an enemy can stand
+		# near without driving it off.
+		TestUnits.ranged(&"bowman", {"ai_tactic": UnitType.AiTactic.STANDOFF, "ai_standoff_permille": 800}),
 	]
 	_catalog = TestUnits.catalog(types)
 	_bolt = _catalog.find_projectile(&"lightning")
@@ -298,6 +302,23 @@ func test_a_drawing_standoff_unit_is_only_moved_to_escape_its_dead_zone() -> voi
 	assert_gt(FixedMath.length(caster.order_x - dummy.x, caster.order_z - dummy.z), 30 * M, "away from it")
 
 
+func test_a_standoff_unit_beside_a_spot_it_doesnt_hold_is_still_sent_there() -> void:
+	var world: World = _world(TestTerrains.flat(80, 40))
+	var group: AiGroup = _group(world, [[&"caster", 1]], 25, 20, AiGroupSpec.Behavior.HUNT)
+	var caster: Unit = group.living(world)[0]
+	_place(caster, 25_500, 20 * M)
+	var dummy: Unit = world.spawn_unit(DUMMY, LIGHT, 60 * M, 20 * M, -1, 0)
+	# Past the target, where the caster's line runs on to its 40 m reach from
+	# 34.5 m out (to x = 65.5 m), but not from the spot 36 m out (to 64 m).
+	world.spawn_unit(DUMMY, DARK, 65_200, 20 * M, -1, 0)
+	assert_false(StandoffSpot.holds(world, caster, dummy), "its line is blocked from where it stands")
+	assert_eq(StandoffSpot.find(world, caster, dummy), PackedInt64Array([24 * M, 20 * M]), "1.5 m back is clear")
+	AiOrders.engage(world, group, group.living(world), AiOrders.enemies(world, DARK))
+	assert_eq(_events(world, AiEvent.Kind.STANDOFF).size(), 1, "sent there though it is close")
+	assert_eq(caster.order, Unit.Order.MOVE)
+	assert_eq(Vector2i(caster.order_x, caster.order_z), Vector2i(24 * M, 20 * M))
+
+
 func test_with_no_spot_it_attack_moves_unless_it_already_has_a_shot() -> void:
 	var world: World = _world(_pocket())
 	var group: AiGroup = _group(world, [[&"caster", 1]], 5, 6, AiGroupSpec.Behavior.HUNT)
@@ -373,7 +394,75 @@ func test_melee_members_go_for_what_threatens_their_standoff_unit() -> void:
 		assert_eq(group.ordered_target[i], raider.id, "grunt %d after the raider" % i)
 
 
+func test_bodyguards_fall_back_to_the_candidates_when_they_cant_reach_the_threat() -> void:
+	# Deep water at x = 30-31 m, impassable to the living, splits the map.
+	var rows: Array[String] = []
+	for j: int in 40:
+		rows.append(".".repeat(30) + "33" + ".".repeat(48))
+	var world: World = _world(TestTerrains.from_ascii(rows))
+	var group: AiGroup = _group(world, [[&"grunt", 2], [&"caster", 1]], 20, 20, AiGroupSpec.Behavior.HUNT)
+	var units: Array[Unit] = group.living(world)
+	_place(units[0], 20 * M, 19 * M)
+	_place(units[1], 20 * M, 21 * M)
+	_place(units[2], 26 * M, 20 * M)
+	# On the caster across the water, and the nearest enemy to the grunts.
+	var threat: Unit = world.spawn_unit(DUMMY, LIGHT, 34 * M, 20 * M, -1, 0)
+	var dummy: Unit = world.spawn_unit(DUMMY, LIGHT, 5 * M, 20 * M, 1, 0)
+	assert_eq(AiTactics.threats(world, group), [threat])
+	AiOrders.engage(world, group, units, AiOrders.enemies(world, DARK))
+	var orders: Array[AiEvent] = _events(world, AiEvent.Kind.ORDER)
+	assert_eq(orders.size(), 1, "the grunts' order")
+	if orders.size() == 1:
+		assert_eq(orders[0].unit_id, units[0].id)
+		assert_eq(Vector2i(orders[0].x, orders[0].z), Vector2i(dummy.x, dummy.z), "after what they can reach")
+	assert_eq(group.ordered_target[0], dummy.id)
+	assert_eq(group.ordered_target[1], dummy.id)
+
+
 # --- GUARD ------------------------------------------------------------------
+
+
+func test_guard_bodyguards_leave_a_threat_past_the_leash_alone() -> void:
+	# The bowman shoots from past the leash at an enemy standing by it;
+	# another enemy is inside the radius. Sent at the one by the bowman, the
+	# grunts would be dragged past the leash, called back, and sent again.
+	var world: World = _world(TestTerrains.flat(80, 40))
+	var radius: int = 10 * M
+	var leash: int = radius * AiBehaviors.GUARD_LEASH_PERMILLE / 1000
+	var group: AiGroup = _group(world, [[&"grunt", 3], [&"bowman", 1]], 40, 20, AiGroupSpec.Behavior.GUARD, radius)
+	var units: Array[Unit] = group.living(world)
+	var anchor: Vector2i = Vector2i(group.anchor_x, group.anchor_z)
+	for i: int in 3:
+		_place(units[i], 40 * M, (19 + i) * M)
+	var bowman: Unit = units[3]
+	_place(bowman, 12 * M, 20 * M)
+	# Inside the radius, but past the grunts' 8 m acquire radius, so a walk
+	# toward the stray doesn't pick it up on the way.
+	var intruder: Unit = world.spawn_unit(DUMMY, LIGHT, 49 * M, 20 * M, -1, 0)
+	var stray: Unit = world.spawn_unit(DUMMY, LIGHT, 12 * M, 27 * M, 0, -1)
+	assert_lte(_distance(bowman, stray), AiTactics.PROTECT_RADIUS, "the stray threatens the bowman")
+	assert_gt(FixedMath.length(stray.x - anchor.x, stray.z - anchor.y), leash, "from past the leash")
+	var orders: int = 0
+	var recalls: int = 0
+	var farthest: int = 0
+	while world.tick < 900:
+		world.step()
+		for e: AiEvent in _events(world, AiEvent.Kind.ORDER):
+			if world.get_unit(e.unit_id).type_index != GRUNT:
+				continue
+			orders += 1
+			if e.value == 0 and Vector2i(e.x, e.z) == anchor:
+				recalls += 1
+		for i: int in 3:
+			farthest = maxi(farthest, FixedMath.length(units[i].x - anchor.x, units[i].z - anchor.y))
+	gut.p("guard bodyguards: %d grunt orders, %d recalls, farthest %d mm from the post" % [orders, recalls, farthest])
+	assert_eq(recalls, 0, "never called back")
+	assert_lte(orders, 2, "no shuttling")
+	assert_lte(farthest, leash, "never dragged past the leash")
+	for i: int in 3:
+		assert_eq(group.ordered_target[i], intruder.id, "grunt %d after the intruder" % i)
+
+
 
 
 func test_a_guarding_caster_isnt_called_back_from_its_spot_while_intruders_live() -> void:

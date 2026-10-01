@@ -175,9 +175,11 @@ static func _advance_waypoint(group: AiGroup) -> void:
 # far enough out to shoot from is often past the leash, and one is busy
 # there because it is shooting, not because a chase dragged it off. Then,
 # if enemies are inside the radius of the anchor (center to center), the
-# others engage the ones they can get at; if there are none, or none they
-# can reach, free members outside the radius attack-move back to the anchor,
-# STANDOFF members included.
+# others engage the ones they can get at, the bodyguard rule counting only
+# threats within the leash (a threat to a STANDOFF member out past it would
+# drag its bodyguards out to be called back and sent again); if there are
+# none, or none they can reach, free members outside the radius attack-move
+# back to the anchor, STANDOFF members included.
 static func _guard(world: World, group: AiGroup, units: Array[Unit]) -> void:
 	var radius: int = group.spec.guard_radius if group.spec.guard_radius > 0 else DEFAULT_GUARD_RADIUS
 	var leash: int = radius * GUARD_LEASH_PERMILLE / 1000
@@ -199,7 +201,7 @@ static func _guard(world: World, group: AiGroup, units: Array[Unit]) -> void:
 			others.append(unit)
 	if not recalled.is_empty():
 		AiOrders.march(world, group, recalled, ax, az, false, true)
-	if not intruders.is_empty() and AiOrders.engage(world, group, others, intruders):
+	if not intruders.is_empty() and AiOrders.engage(world, group, others, intruders, leash):
 		return
 	var strays: Array[Unit] = []
 	for unit: Unit in others:
