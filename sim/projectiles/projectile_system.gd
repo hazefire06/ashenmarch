@@ -181,7 +181,7 @@ func _bodies_near(world: World, ax: int, az: int, bx: int, bz: int) -> Array[Uni
 	var half: int = FixedMath.isqrt((bx - ax) * (bx - ax) + (bz - az) * (bz - az)) / FlightState.SUB / 2
 	var out: Array[Unit] = []
 	for unit: Unit in grid.near(mx, mz, half + _largest_radius + 1000):
-		if unit.is_alive() and not MeleeCombat.is_hidden(world.terrain, unit):
+		if unit.is_alive() and not Visibility.is_submerged(world.terrain, unit):
 			out.append(unit)
 	return out
 

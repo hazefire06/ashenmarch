@@ -85,6 +85,10 @@ const ALL_ROLES_MASK: int = (1 << Role.MELEE) | (1 << Role.RANGED) | (1 << Role.
 @export var uphill_slowdown_permille: int = 0
 ## Hidden from the player's view at depth LIVING_IMPASSABLE_DEPTH and deeper.
 @export var hidden_in_deep_water: bool = false
+## Milli-units: while hidden, an enemy's living unit this close (center to
+## center, horizontally) still sees it (Visibility). 0: only seen once it
+## surfaces.
+@export var reveal_radius: int = 0
 
 @export_group("Melee")
 @export var melee_damage: int = 0
@@ -196,6 +200,8 @@ func validate() -> PackedStringArray:
 		errors.append("%s: preferred_target_roles has unknown role bits" % who)
 	if hover_height < 0:
 		errors.append("%s: hover_height can't be negative" % who)
+	if reveal_radius < 0:
+		errors.append("%s: reveal_radius can't be negative" % who)
 	if has_ranged():
 		errors.append_array(_validate_ranged(who))
 	if special_ability != Special.NONE:

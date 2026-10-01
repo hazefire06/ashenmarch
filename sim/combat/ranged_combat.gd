@@ -248,7 +248,7 @@ func _pick(world: World, unit: Unit, current: Unit) -> Unit:
 
 # Alive, an enemy, visible, and within range as the crow flies.
 func _may_target(world: World, unit: Unit, other: Unit) -> bool:
-	if not other.is_alive() or other.faction == unit.faction or MeleeCombat.is_hidden(world.terrain, other):
+	if not other.is_alive() or other.faction == unit.faction or Visibility.is_submerged(world.terrain, other):
 		return false
 	var dist: int = FixedMath.length(other.x - unit.x, other.z - unit.z)
 	if dist < unit.type.ranged_min_range:
