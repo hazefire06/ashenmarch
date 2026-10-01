@@ -30,7 +30,7 @@ Success looks like this:
 | **Pre-rendered 3D sprites, not pixel art** | The camera zooms freely and pitches 35°–65°, so pixel art shimmers at non-integer scales. Pre-rendered sprites scale cleanly with mipmaps, and any unit can be re-rendered (new angle, resolution, lighting) by rerunning a script. |
 | **Hybrid generation**: scripted APIs, with Tim choosing by eye | Volume work is scripted and reproducible. The judgment calls (which model, which take) stay human. |
 | **Meshy API** for models, rigging and animation; **Blender** (headless) for rendering | Meshy's API covers generation, auto-rigging, and an animation library of 697 presets. Blender guarantees that all 8 directions match, because they are one model rotated. |
-| **ElevenLabs API** for SFX, voices, and first-pass music. Suno (manual) is the music fallback. | One account covers all three. Udio is out: its downloads have been disabled since 2025-10-29. |
+| **ElevenLabs API** for SFX and voices. **Music is auditioned on Suno and ElevenLabs Music**, and Tim picks by ear. | ElevenLabs covers SFX and voices from one account (90k credits). Suno is well suited to full songs; it has no official public API, so Tim uses it by hand on suno.com. Udio is out: its downloads have been disabled since 2025-10-29. |
 | **The whole light side is one Scots clan** (working name *Clan Cairnbrae*) | Tim's call: a brawling, boastful clan with funny war cries. All names and lines are original, with no Discworld names, lines, or characters (see §8.4). |
 | **Art data lives apart from `UnitType`** (`data/art/`, `data/audio/`) | Phase 7 is editing `unit_type.gd` and `data/units/`. Keeping art out of them means no conflicts and no sim changes. |
 | **Only owned or CC0 sources** | The repo is public. Sonniss is out: its license v2.0 (2026-08-27) bans supplying its sounds "as sound effects to any other person… modified or re-designed". Paid Meshy output is "customer owned". |
@@ -235,6 +235,7 @@ audio-src/cues.toml            every sound: id, prompt, duration_s, loop, varian
 audio-src/voices/<unit>.toml   bark lines by trigger, plus the voice description for Voice Design
 audio-src/manifest.json        allowlisted fields only; reruns never re-buy
 audio-src/raw/                 downloaded originals (LFS)
+audio-src/music/inbox/         music Tim downloads from Suno (LFS)
 scripts/audio/generate.py      plan (free) | sfx | voices | music   (paid; Tim runs these in Terminal.app)
 scripts/audio/process.py       ffmpeg (free; Claude runs it)
 assets/audio/                  game-ready: short SFX as mono WAV; loops and music as OGG with loop points
@@ -252,12 +253,18 @@ ElevenLabs returns looping SFX as MP3 only, so loops are converted to OGG.
 
 | Item | Estimate |
 |---|---|
-| SFX, durations set explicitly at 40 credits/s instead of 200 per automatic-length generation | about 15k |
-| Voices, from text-to-speech at $0.022 per 1,000 characters on v4 at pay-as-you-go rates (credits per character unverified) | about 20k |
-| Music, at 900 credits/min, generated last | about 45k |
-| Reserve | about 10k |
+| SFX, durations set explicitly at 40 credits/s instead of 200 per automatic-length generation | about 20k |
+| Voices: 6 designed voices with several takes per line, from text-to-speech at $0.022 per 1,000 characters on v4 at pay-as-you-go rates (credits per character unverified) | about 30k |
+| Music auditions on ElevenLabs Music, at 900 credits/min | about 10k |
+| Reserve | about 30k |
 
-`plan` prints the estimate before any paid run. If music runs out, the fallback is Suno Pro (20 downloads a month, with commercial rights).
+`plan` prints the estimate before any paid run.
+
+**Music** comes from **Suno** (manual) and ElevenLabs Music, picked by ear:
+- **Plan:** Suno Pro is $10/month ($8 billed yearly), with 20 downloads a month and commercial rights on paid downloads. Use Pro, not the free tier: the free tier is non-commercial and capped at 7 downloads in total, and the repo is public.
+- **Saving downloads:** audition in the browser and download only the keepers, so the cap isn't spent on rejects. About 10 tracks are needed: a calm and a combat track for each of the 3 maps, a menu theme, and victory and defeat stingers.
+- **Instrumental mode.** For a combat version, use Suno's remix tools on the calm track if the plan has them, for a shared theme. Otherwise reuse the same style prompt. Use stems for layering only if Pro can download them; that's unverified.
+- **Getting files in:** Tim saves downloads to `audio-src/music/inbox/`. `process.py` makes each track loop seamlessly by crossfading its tail into its head, then converts it to OGG with loop points. Each track gets a row in `LICENSES.md`.
 
 ### 8.2 What makes sound
 
@@ -335,9 +342,15 @@ ElevenLabs returns looping SFX as MP3 only, so loops are converted to OGG.
 **Voices:** ElevenLabs Voice Design creates one designed voice per unit type (two for the Shieldman), described in `audio-src/voices/<unit>.toml`, and that voice is used for every line so it stays consistent.
 
 **Originality rule:**
-- The clan is inspired by the "tiny furious Scots clan" archetype and uses real Scots dialect (aye, cannae, skelp, stramash, gie it laldy).
-- No Discworld names, catchphrases, or characters: no "Feegle", "Crivens", "Nae king! Nae quin!…", "Wee Free Men", "kelda" or "hag".
+- The clan is inspired by the "tiny furious Scots clan" archetype and uses real Scots dialect (aye, cannae, skelp, stramash, gie it laldy, crivens).
+- No Discworld names, catchphrases, or characters: no "Feegle", "Nac Mac", "Nae king! Nae quin!…", "Wee Free Men", "kelda" or "hag".
+- "Crivens" is allowed. It is a Scots exclamation, a corruption of "Christ" (OED), first recorded in print in 1894 (Dictionary of the Scots Language), so it is not Pratchett's coinage.
 - Every line is original.
+
+**Clan-wide random line:**
+- `audio-src/voices/_clan.toml` holds lines any clan unit may say on any trigger, in its own voice. It starts with **"Crivens!"**.
+- About 1 bark in 10 is replaced by a clan-wide line.
+- A clan-wide line never plays twice in a row across the whole side, so it stays a surprise.
 
 **Shieldman lines (draft, 35 lines):**
 
@@ -369,7 +382,7 @@ ElevenLabs returns looping SFX as MP3 only, so loops are converted to OGG.
 - Hidden units stay silent; explosions are always heard.
 - The combat-music trigger's hysteresis.
 - Weather intensity to ambience loop volumes.
-- Bark rules: shuffle bag, cooldowns, choosing the speaker, the clicked-too-often counter.
+- Bark rules: shuffle bag, cooldowns, choosing the speaker, the clicked-too-often counter, about a 1-in-10 clan-wide line that never repeats back to back.
 - Bank validation: every referenced cue exists and has at least one variant; every unit's voice file covers the required triggers.
 
 ## 9. Risks and unverified items
@@ -381,7 +394,8 @@ ElevenLabs returns looping SFX as MP3 only, so loops are converted to OGG.
 | Meshy rigging may fail on the Blightbag or Drifter | Design as humanoids; Mixamo fallback |
 | Whether credits bought for Meshy's API carry the web plan's "customer owned" license | Low risk for a personal project; recorded in `LICENSES.md` |
 | Whether ElevenLabs API calls draw from the 90k account credits; credits per character for speech; pay-as-you-go commercial terms | First cheap call shows it on the usage page; the key's quota caps spend |
-| ElevenLabs Music quality for orchestral dark fantasy | A2 listening gate; Suno fallback |
+| Music quality for orchestral dark fantasy | Audition Suno and ElevenLabs Music side by side; A2 listening gate |
+| Suno's monthly download cap (20 on Pro); whether Pro can download stems; whether remixing can make a combat version on a shared theme | Audition in the browser and download only keepers; fall back to the same style prompt; upgrade to Premier (60 downloads a month) only if needed |
 | Positional audio on Web in Sample mode | Phase 10 check; screen-pan fallback |
 | `AnimatedSprite3D` performance at 300 units on Compatibility | Profile in Phase 10; MultiMesh path if needed |
 
