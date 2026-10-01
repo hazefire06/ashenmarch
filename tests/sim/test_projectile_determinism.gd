@@ -33,8 +33,8 @@ func test_same_seed_same_landings_and_state() -> void:
 		_record(b, landings_b)
 		if (t + 1) % 150 == 0 and a.state_hash() != b.state_hash():
 			mismatches.append(t + 1)
-	gut.p("%d landings, %d fire marks, %d scarred samples; %.2f ms/tick per world" % [
-		landings_a.size() / 4, a.fire_marks.size() / 3, a.terrain.scars.size(),
+	gut.p("%d landings, %d cells on fire or burnt, %d scarred samples; %.2f ms/tick per world" % [
+		landings_a.size() / 4, a.fire.burning.size() + a.fire.state.count(Fire.Cell.SCORCHED), a.terrain.scars.size(),
 		(Time.get_ticks_usec() - started) / 1000.0 / (2 * TICKS),
 	])
 	assert_gt(landings_a.size() / 4, 50, "plenty landed")

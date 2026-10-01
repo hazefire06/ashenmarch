@@ -48,7 +48,8 @@ enum Behavior {
 @export_group("Impact")
 ## STICKS: damage to a unit it flies into.
 @export var impact_damage: int = 0
-## Leaves a fire mark where it lands (fire arrows). Phase 5 lights it.
+## Lights the ground where it lands (fire arrows; Fire), unless its flame
+## goes out first.
 @export var marks_fire: bool = false
 
 @export_group("Fuse")

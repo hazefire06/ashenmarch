@@ -45,9 +45,8 @@ var projectile_system: ProjectileSystem = ProjectileSystem.new()
 var explosions: Explosions = Explosions.new()
 ## Rain, snow, wind, snow cover, and wetness; changed by SetWeatherCommand.
 var weather: Weather = Weather.new()
-## Where fire arrows landed, as (tick, x, z) triples. Phase 5's fire starts
-## from these.
-var fire_marks: PackedInt64Array = PackedInt64Array()
+## Brush fire on the terrain's samples. Null without a terrain.
+var fire: Fire
 ## What happened in fights during the last step, for the view. Output only:
 ## cleared at the start of each step and not part of state_hash().
 var combat_events: Array[CombatEvent] = []
@@ -66,6 +65,7 @@ func _init(world_seed: int, world_terrain: Terrain = null, unit_catalog: UnitCat
 	catalog = unit_catalog
 	if terrain != null:
 		pathing = Pathing.new(terrain)
+		fire = Fire.new(terrain)
 
 
 ## Queues a command to apply at the start of command.tick. Returns false if
@@ -86,11 +86,15 @@ func enqueue(command: SimCommand) -> bool:
 ## 5. steer the units, which sets their velocities (knockback included);
 ## 6. integrate the units;
 ## 7. move the projectiles against the units' new positions: hits, bounces,
-##    fuses;
-## 8. resolve the explosions that brings, then drop removed projectiles.
+##    fuses, fire arrows lighting fires;
+## 8. resolve the explosions that brings;
+## 9. burn: fires go out, spread, burn out, hurt units, and catch explosives;
+## 10. drop removed projectiles.
 func step() -> void:
 	combat_events.clear()
 	projectile_events.clear()
+	if fire != null:
+		fire.changed.clear()
 	_apply_commands()
 	weather.update(tick)
 	if terrain != null:
@@ -101,6 +105,7 @@ func step() -> void:
 	if terrain != null and catalog != null:
 		projectile_system.update(self)
 		explosions.resolve(self, projectile_system.grid)
+		fire.update(self)
 		_drop_removed_projectiles()
 	tick += 1
 
@@ -180,10 +185,16 @@ func remove_projectile(p: Projectile) -> void:
 	p.removed = true
 
 
-## Records a fire arrow's mark at (x, z) for Phase 5's fire.
-func mark_fire(x: int, z: int) -> void:
-	fire_marks.append_array(PackedInt64Array([tick, x, z]))
-	projectile_events.append(ProjectileEvent.new(ProjectileEvent.Kind.FIRE_MARK, x, terrain.height_at(x, z), z))
+## Lights the ground at (x, z) (a fire arrow landing), credited to
+## instigator_id, and tells the view. False if it can't burn there: sand,
+## rock, water, or already burning or burnt.
+func ignite(x: int, z: int, instigator_id: int) -> bool:
+	if not fire.ignite(x, z, instigator_id):
+		return false
+	var e: ProjectileEvent = ProjectileEvent.new(ProjectileEvent.Kind.IGNITE, x, terrain.height_at(x, z), z)
+	e.unit_id = instigator_id
+	projectile_events.append(e)
+	return true
 
 
 func despawn_entity(entity_id: int) -> void:
@@ -219,10 +230,11 @@ func state_hash() -> String:
 	ctx.update(weather.hash_fields().to_byte_array())
 	if terrain != null:
 		ctx.update(terrain.scar_hash_fields().to_byte_array())
-	ctx.update(PackedInt64Array([fire_marks.size()]).to_byte_array())
-	if not fire_marks.is_empty():
-		# HashingContext rejects an empty buffer.
-		ctx.update(fire_marks.to_byte_array())
+	if fire != null:
+		ctx.update(fire.hash_fields().to_byte_array())
+		if not fire.state.is_empty():
+			# HashingContext rejects an empty buffer.
+			ctx.update(fire.state)
 	var ids: Array[int] = []
 	ids.assign(entities.keys())
 	ids.sort()

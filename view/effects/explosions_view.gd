@@ -9,8 +9,8 @@ extends Node3D
 ##   scarred the heights, and a dark CraterMesh disc is laid on the new ground
 ##   for the rest of the mission.
 ## - A fuse that goes out (FIZZLE) leaves a small grey puff.
-## - A fire arrow's landing (FIRE_MARK) leaves an orange-red scorch disc. It is
-##   only a mark until Phase 5 turns it into fire.
+## - A fire arrow lighting the ground (IGNITE) leaves an orange-red scorch
+##   disc.
 ##
 ## Explosions can overlap, and a later one digs under an earlier crater, so
 ## the discs near new scarring are rebuilt onto the changed ground.
@@ -60,7 +60,7 @@ func setup(world: World, terrain_view: TerrainView, gibs: Gibs) -> void:
 	add_child(_marks)
 
 
-## Plays the tick's blasts, fizzles, and fire marks. Call it once after each
+## Plays the tick's blasts, fizzles, and fires lit. Call it once after each
 ## World.step(), which clears the events it reads.
 func after_step() -> void:
 	for event: ProjectileEvent in _world.projectile_events:
@@ -69,7 +69,7 @@ func after_step() -> void:
 				_on_explode(event)
 			ProjectileEvent.Kind.FIZZLE:
 				_puff(_point_of(event))
-			ProjectileEvent.Kind.FIRE_MARK:
+			ProjectileEvent.Kind.IGNITE:
 				_add_mark(event.x, event.z, SCORCH_RADIUS, SCORCH_COLOR, SCORCH_LIFT)
 
 

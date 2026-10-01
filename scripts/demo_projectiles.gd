@@ -103,8 +103,8 @@ func _volley() -> void:
 	var light: PackedInt32Array = line.duplicate()
 	light.append_array(archers)
 	var seconds: float = await _fight(light, husks, FIGHT_TIMEOUT)
-	_result("%d/10 Husks down in %.0f s. %d arrows loosed, %d struck a body (%d a friend), %d stuck in the ground. %d fire marks for Phase 5." % [
-		10 - _alive(husks), seconds, _n("launch"), _n("hit"), _n("friendly hit"), _n("stick"), _n("fire mark")
+	_result("%d/10 Husks down in %.0f s. %d arrows loosed, %d struck a body (%d a friend), %d stuck in the ground. %d fires lit." % [
+		10 - _alive(husks), seconds, _n("launch"), _n("hit"), _n("friendly hit"), _n("stick"), _n("fire lit")
 	])
 	await _wait(READ_AFTER)
 
@@ -314,8 +314,8 @@ func _count(event: ProjectileEvent) -> void:
 				_bump("satchel blast")
 		ProjectileEvent.Kind.FIZZLE:
 			_bump("fizzle")
-		ProjectileEvent.Kind.FIRE_MARK:
-			_bump("fire mark")
+		ProjectileEvent.Kind.IGNITE:
+			_bump("fire lit")
 
 
 func _bump(key: String) -> void:
@@ -330,7 +330,7 @@ func _refresh_tally() -> void:
 	if _tally == null or _event == 0:
 		return
 	var parts: PackedStringArray = PackedStringArray()
-	for key: String in ["launch", "stick", "hit", "friendly hit", "blocked", "bounce", "fizzle", "blast", "crater", "fire mark"]:
+	for key: String in ["launch", "stick", "hit", "friendly hit", "blocked", "bounce", "fizzle", "blast", "crater", "fire lit"]:
 		if _counts.has(key):
 			parts.append("%s %d" % [key, _counts[key]])
 	var standing: PackedInt32Array = PackedInt32Array([0, 0])

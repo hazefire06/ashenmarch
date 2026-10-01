@@ -133,14 +133,15 @@ func test_a_grenade_on_dry_ground_beside_water_still_bursts() -> void:
 
 
 func test_a_fire_arrow_in_clear_weather_draws_nothing_a_plain_arrow_doesnt() -> void:
-	var fire: World = _world(TestTerrains.flat(40, 40))
-	var plain: World = _world(TestTerrains.flat(40, 40))
+	# On sand, so no fire starts and spreads (which draws its own dice).
+	var fire: World = _world(_sand())
+	var plain: World = _world(_sand())
 	_launch(fire, &"fire_arrow", 10 * M, 2 * M, 20 * M, 20_000, 0, 0)
 	_launch(plain, &"arrow", 10 * M, 2 * M, 20 * M, 20_000, 0, 0)
 	_run(fire, 30)
 	_run(plain, 30)
 	assert_eq(fire.rng.state, plain.rng.state)
-	var rainy: World = _world(TestTerrains.flat(40, 40))
+	var rainy: World = _world(_sand())
 	rainy.enqueue(SetWeatherCommand.new(0, FULL, 0, 0, 0, 0))
 	_launch(rainy, &"fire_arrow", 10 * M, 2 * M, 20 * M, 20_000, 0, 0)
 	_run(rainy, 30)
@@ -161,16 +162,16 @@ func test_a_fire_arrow_put_out_by_rain_lights_nothing_but_still_wounds() -> void
 	assert_true(p.removed)
 	assert_lt(dummy.hp, dummy.type.max_hp, "the arrow still hurts")
 	assert_has(events, ProjectileEvent.Kind.FIZZLE)
-	assert_does_not_have(events, ProjectileEvent.Kind.FIRE_MARK, "its flame went out")
+	assert_does_not_have(events, ProjectileEvent.Kind.IGNITE, "its flame went out")
 
 
-func test_a_fire_arrow_in_clear_weather_still_marks_fire() -> void:
+func test_a_fire_arrow_in_clear_weather_still_lights_a_fire() -> void:
 	var world: World = _world(TestTerrains.flat(40, 40))
 	_launch(world, &"fire_arrow", 10 * M, 2 * M, 20 * M, 20_000, 0, 0)
 	var marked: int = 0
 	for _t: int in 30:
 		world.step()
-		marked += _count(world, ProjectileEvent.Kind.FIRE_MARK)
+		marked += _count(world, ProjectileEvent.Kind.IGNITE)
 	assert_eq(marked, 1)
 
 
@@ -244,6 +245,14 @@ func _pond() -> Terrain:
 	var rows: Array[String] = []
 	for j: int in 40:
 		rows.append(".".repeat(15) + "1".repeat(25))
+	return TestTerrains.from_ascii(rows)
+
+
+# Flat 40 x 40 m of sand: nothing burns.
+func _sand() -> Terrain:
+	var rows: Array[String] = []
+	for j: int in 40:
+		rows.append("s".repeat(40))
 	return TestTerrains.from_ascii(rows)
 
 

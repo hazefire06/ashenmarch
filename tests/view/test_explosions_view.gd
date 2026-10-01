@@ -2,7 +2,7 @@ extends GutTest
 ## ExplosionsView: what blasts, fizzles, and fire arrows leave behind. A blast
 ## that digs a crater re-meshes the terrain and refreshes the gibs' ground
 ## where the sim scarred it, then lays a dark disc on the new ground; a blast
-## in the air only flashes; a fizzle puffs; a fire mark leaves an orange
+## in the air only flashes; a fizzle puffs; a fire lit leaves an orange
 ## scorch. Worlds are real, and the events come from the sim.
 
 const M: int = 1000
@@ -179,7 +179,7 @@ func test_a_fizzle_leaves_a_grey_puff_that_clears() -> void:
 
 
 func test_a_fire_mark_leaves_a_small_orange_scorch() -> void:
-	_world.mark_fire(40 * M, 25 * M)
+	_world.ignite(40 * M, 25 * M, 0)
 	_view.after_step()
 	assert_eq(_view.mark_count(), 1)
 	assert_eq(_view.effect_count(), 0, "no flash for a fire arrow")

@@ -221,7 +221,7 @@ func _strike(world: World, p: Projectile, target: Unit) -> void:
 		var damage: int = maxi(1, FixedMath.div_round(p.type.impact_damage * (PERMILLE + variance), PERMILLE))
 		Damage.apply(world, target, damage, from_x, from_z, p.owner_id, aspect)
 	if p.type.marks_fire and not _flame_goes_out(world, p, false):
-		world.mark_fire(target.x, target.z)
+		world.ignite(target.x, target.z, p.instigator_id)
 	world.remove_projectile(p)
 
 
@@ -236,7 +236,7 @@ func _stick(world: World, p: Projectile) -> void:
 	e.depth = world.terrain.water_depth_at(p.x, p.z)
 	world.projectile_events.append(e)
 	if p.type.marks_fire and not _flame_goes_out(world, p, true):
-		world.mark_fire(p.x, p.z)
+		world.ignite(p.x, p.z, p.instigator_id)
 	world.remove_projectile(p)
 
 
