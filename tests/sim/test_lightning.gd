@@ -141,6 +141,26 @@ func test_bolts_of_one_tick_strike_together() -> void:
 	assert_false(b.is_alive(), "though the first bolt killed the second caster")
 
 
+func test_a_bolt_never_strikes_anything_far_off_its_line() -> void:
+	# Bodies far to the side of the line, within its span along it, once
+	# overflowed the swept-cylinder test (its terms grow with the square of
+	# the distance) and read as struck: the demo's bolt hit the ford, 180 m
+	# off.
+	var world: World = World.new(1, TestTerrains.flat(260, 60), _catalog)
+	var caster: Unit = world.spawn_unit(CASTER, DARK, 10 * M, 5 * M, 0, 1)
+	var near: Unit = world.spawn_unit(DUMMY, LIGHT, 10 * M, 25 * M, 0, -1)
+	var far: Array[Unit] = []
+	var far_friends: Array[Unit] = []
+	for k: int in 6:
+		far.append(world.spawn_unit(DUMMY, LIGHT, (150 + 20 * k) * M, (15 + 6 * k) * M, 0, -1))
+		far_friends.append(world.spawn_unit(DUMMY, DARK, (160 + 20 * k) * M, (15 + 6 * k) * M, 0, -1))
+	assert_true(Lightning.is_clear(world, caster, _bolt, 10 * M, 1000, 25 * M, true, 200, 40 * M), "no far friend blocks it")
+	Lightning.strike(world, caster, _index(), 10 * M, 1000, 25 * M, 40 * M)
+	_assert_struck(near)
+	for unit: Unit in far + far_friends:
+		assert_eq(unit.hp, unit.type.max_hp, "%d m to the side, untouched" % [unit.x / M - 10])
+
+
 func test_the_same_seed_casts_the_same_bolts() -> void:
 	var hashes: Array[String] = []
 	for _run: int in 2:

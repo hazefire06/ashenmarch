@@ -129,7 +129,18 @@ static func distance_to_segment(px: int, py: int, pz: int, a: PackedInt64Array, 
 
 
 # True if the segment a-b, as wide as width either side, touches unit's body.
+# Bodies outside the segment's box (grown by the width and the body) are
+# ruled out first: besides saving the work, the swept-cylinder test's
+# quadratic terms overflow 64 bits for a body hundreds of metres off a 40 m
+# line, and would read as a hit. (ProjectileSystem only ever asks about
+# bodies its grid found near the segment.)
 static func _touches(unit: Unit, a: PackedInt64Array, b: PackedInt64Array, width: int) -> bool:
+	var reach: int = width + unit.type.body_radius
+	if (
+		unit.x < mini(a[0], b[0]) - reach or unit.x > maxi(a[0], b[0]) + reach
+		or unit.z < mini(a[2], b[2]) - reach or unit.z > maxi(a[2], b[2]) + reach
+	):
+		return false
 	return ProjectileCollision.cylinder_contact(
 		a[0], a[1], a[2], b[0], b[1], b[2], width,
 		unit.x, unit.z, unit.type.body_radius, unit.y, unit.y + unit.type.body_height
