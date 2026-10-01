@@ -130,6 +130,8 @@ func test_every_shipped_ranged_unit_can_reach_its_max_range() -> void:
 		if not t.has_ranged():
 			continue
 		var p: ProjectileType = _catalog.find_projectile(t.ranged_projectile)
+		if p.behavior == ProjectileType.Behavior.BOLT:
+			continue  # Lightning is a straight line; test_lightning covers its reach.
 		var from: FlightState = FlightState.at_mm(0, t.ranged_launch_height, 0, 0, 0, 0)
 		var target_y: int = 0 if p.is_explosive() else 1000
 		var speed: int = FlightState.speed_from_mm_per_s(t.ranged_launch_speed)
@@ -161,9 +163,10 @@ func test_validate_rejects_half_defined_melee() -> void:
 func test_validate_rejects_half_defined_ranged() -> void:
 	var t: UnitType = _valid_type()
 	t.ranged_projectile = &"arrow"
-	# launch speed, lob grade, launch height, max range, cooldown, the
-	# min < max rule, and ammo are all missing.
-	assert_eq(t.validate().size(), 7, str(t.validate()))
+	# launch height, max range, cooldown, the min < max rule, and ammo are
+	# all missing. Launch speed and lob grade depend on the projectile, so
+	# the catalog checks them (test_catalog_needs_a_launch_for_what_flies).
+	assert_eq(t.validate().size(), 5, str(t.validate()))
 	t.ranged_launch_speed = 30_000
 	t.ranged_lob_grade_permille = 600
 	t.ranged_launch_height = 1500
@@ -207,6 +210,65 @@ func test_catalog_rejects_unknown_and_unsuitable_projectiles() -> void:
 	arrow.impact_damage = 10
 	catalog.projectile_types.append(arrow)
 	assert_eq(catalog.validate().size(), 1, "a sticking charge: %s" % [catalog.validate()])
+
+
+func test_catalog_needs_a_launch_for_what_flies() -> void:
+	var t: UnitType = _valid_type()
+	t.ranged_projectile = &"arrow"
+	t.ranged_launch_height = 1500
+	t.ranged_max_range = 40_000
+	t.ranged_cooldown_ticks = 30
+	t.ranged_ammo = -1
+	assert_eq(t.validate(), PackedStringArray())
+	var catalog: UnitCatalog = TestUnits.catalog([t])
+	assert_eq(catalog.validate().size(), 2, "launch speed and lob grade: %s" % [catalog.validate()])
+	var bolt: ProjectileType = ProjectileType.new()
+	bolt.id = &"bolt"
+	bolt.display_name = "Bolt"
+	bolt.behavior = ProjectileType.Behavior.BOLT
+	bolt.radius = 300
+	bolt.impact_damage = 40
+	catalog.projectile_types.append(bolt)
+	t.ranged_projectile = &"bolt"
+	assert_eq(catalog.validate(), PackedStringArray(), "a bolt isn't launched")
+
+
+func test_validate_checks_the_new_specials_and_carrying() -> void:
+	var t: UnitType = _valid_type()
+	t.special_ability = UnitType.Special.HEAL
+	t.special_charges = 6
+	t.special_projectile = &"herb"
+	assert_eq(t.validate().size(), 1, "heal_hp: %s" % [t.validate()])
+	t.heal_hp = 60
+	assert_eq(t.validate(), PackedStringArray())
+	var bomb: UnitType = _valid_type()
+	bomb.melee_detonates = true
+	assert_eq(bomb.validate().size(), 5, "melee numbers and the DETONATE special: %s" % [bomb.validate()])
+	var thrower: UnitType = _valid_type()
+	thrower.scavenge_radius = 8000
+	assert_eq(thrower.validate().size(), 1, "scavenging without throwing: %s" % [thrower.validate()])
+	thrower.throws_carried = true
+	assert_gt(thrower.validate().size(), 2, "throwing needs the throw numbers")
+
+
+func test_projectile_validation_by_behavior() -> void:
+	var gas: ProjectileType = TestUnits.projectile(&"satchel", {
+		"blast_radius": 0, "blast_inner_radius": 0, "blast_damage": 0, "knock_radius": 0,
+		"knock_speed": 0, "crater_radius": 0, "crater_depth": 0,
+		"gas_radius": 3000, "gas_ticks": 90, "gas_paralysis_ticks": 30,
+	})
+	assert_true(gas.chain_detonates and gas.bursts() and not gas.is_explosive(), "gas-only can chain")
+	gas.gas_ticks = 0
+	assert_eq(gas.validate().size(), 1, str(gas.validate()))
+	var bolt: ProjectileType = ProjectileType.new()
+	bolt.id = &"bolt"
+	bolt.display_name = "Bolt"
+	bolt.behavior = ProjectileType.Behavior.BOLT
+	bolt.radius = 300
+	assert_eq(bolt.validate().size(), 1, "a bolt needs damage, not bounce numbers: %s" % [bolt.validate()])
+	bolt.impact_damage = 40
+	bolt.pickup = ProjectileType.Pickup.CARRY
+	assert_eq(bolt.validate().size(), 2, str(bolt.validate()))
 
 
 func test_validate_rejects_out_of_range_permille_and_role_bits() -> void:

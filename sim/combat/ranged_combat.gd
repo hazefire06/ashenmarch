@@ -36,6 +36,22 @@ extends RefCounted
 ##   can't reach it, or the spot is inside its minimum range, it gives up
 ##   (CANT_REACH) and holds.
 ##
+## Carriers (UnitType.throws_carried: Rippers) fight at range while they
+## hold something (Interactions): the same rules, with their ranged_* numbers
+## as the throw and what they hold as the projectile. The throw launches the
+## object itself (thrown, so a gas packet bursts where it lands), and the
+## carrier is back to melee.
+##
+## Lightning (a BOLT projectile) is a straight line rather than a flight
+## (Lightning): it aims at the chest with no lead, needs the line clear of
+## the ground and, for an auto-picked target, of friends all the way to the
+## end of its reach. The loose pass makes its one spread draw and queues it;
+## every queued bolt strikes once all shots have left, in caster id order.
+##
+## Status effects: a paralyzed unit loses its draw and does nothing. A
+## confused one (any order, ground attack included) shoots at the nearest
+## unit of either side in range, with no care for friends in the way.
+##
 ## Range: ranged_max_range on level ground, shortened uphill by
 ## uphill_range_permille. Aim: the unit's own AimStyle first, then the other
 ## if that fails or its path isn't clear. Arrows aim at the chest, throws at
@@ -63,16 +79,34 @@ const CHEST_PERMILLE: int = 600
 const LAUNCH_IGNORE_TICKS: int = ProjectileSystem.LAUNCH_IGNORE_TICKS
 const PERMILLE: int = 1000
 
+## Bolts cast this tick, waiting for every shot to leave: caster id, type
+## index, aim x, y, z, reach. Empty between ticks.
+var _bolts: Array[PackedInt64Array] = []
+
 
 func update(world: World) -> void:
 	if world.catalog == null:
 		return
 	var loosing: Array[Unit] = []
 	for unit: Unit in world.units:
-		if unit.is_alive() and unit.type.has_ranged() and _decide(world, unit):
-			loosing.append(unit)
+		if not unit.is_alive():
+			continue
+		if unit.fights_at_range():
+			if _decide(world, unit):
+				loosing.append(unit)
+			continue
+		# A carrier with empty hands (it threw, or its load went off): its
+		# throw cooldown still runs, and it stops standing to shoot, so an
+		# attack-mover marches on and a holder can scavenge again.
+		if unit.shot_cooldown_left > 0:
+			unit.shot_cooldown_left -= 1
+		if unit.state == Unit.State.SHOOTING or unit.shot_target_id != 0:
+			_stand_down(world, unit)
 	for unit: Unit in loosing:
 		_loose(world, unit)
+	for bolt: PackedInt64Array in _bolts:
+		Lightning.strike(world, world.get_unit(bolt[0]), bolt[1], bolt[2], bolt[3], bolt[4], bolt[5])
+	_bolts.clear()
 
 
 ## Longest horizontal distance (milli-units) unit may shoot at a point rise
@@ -101,8 +135,12 @@ static func launch_point(unit: Unit) -> FlightState:
 	return FlightState.at_mm(unit.x, unit.y + unit.type.ranged_launch_height, unit.z, 0, 0, 0)
 
 
-## The projectile type unit fires next: the fire arrow when nocked.
+## The projectile type unit fires next: what it carries, or the fire arrow
+## when nocked.
 static func next_projectile(world: World, unit: Unit) -> int:
+	var carried: Projectile = world.carried_by(unit)
+	if carried != null:
+		return carried.type_index
 	if unit.fire_nocked:
 		return world.catalog.projectile_index_of(unit.type.special_projectile)
 	return world.catalog.projectile_index_of(unit.type.ranged_projectile)
@@ -112,26 +150,31 @@ static func next_projectile(world: World, unit: Unit) -> int:
 func _decide(world: World, unit: Unit) -> bool:
 	if unit.shot_cooldown_left > 0:
 		unit.shot_cooldown_left -= 1
-	if unit.is_reeling() or unit.target_id != 0 or unit.state == Unit.State.ATTACKING:
+	if (
+		unit.is_reeling() or StatusEffects.paralyzed(world, unit)
+		or unit.target_id != 0 or unit.state == Unit.State.ATTACKING
+	):
 		unit.clear_shot()
 		return false
-	if unit.order == Unit.Order.MOVE:
+	var confused: bool = StatusEffects.confused(world, unit)
+	if (unit.order == Unit.Order.MOVE or unit.order == Unit.Order.INTERACT) and not confused:
 		return false
 	if unit.ammo_left == 0:
 		_stand_down(world, unit)
 		return false
-	if unit.order == Unit.Order.GROUND_ATTACK:
+	if unit.order == Unit.Order.GROUND_ATTACK and not confused:
 		return _ground(world, unit)
-	return _hold_or_march(world, unit)
+	return _hold_or_march(world, unit, confused)
 
 
-# Order NONE or ATTACK_MOVE: shoot what comes in range.
-func _hold_or_march(world: World, unit: Unit) -> bool:
+# Order NONE or ATTACK_MOVE (or anything, confused): shoot what comes in
+# range.
+func _hold_or_march(world: World, unit: Unit, confused: bool) -> bool:
 	if unit.state == Unit.State.MOVING and unit.order == Unit.Order.NONE:
 		# A holding unit only moves to step aside; it shoots when it stops.
 		return false
 	var target: Unit = world.get_unit(unit.shot_target_id) if unit.shot_target_id != 0 else null
-	var lost: bool = target != null and not _may_target(world, unit, target)
+	var lost: bool = target != null and not _may_target(world, unit, target, confused)
 	if lost:
 		target = null
 	# Look again on this unit's own re-pick tick, or at once when the target
@@ -139,7 +182,7 @@ func _hold_or_march(world: World, unit: Unit) -> bool:
 	# its re-pick tick rather than trying every tick.
 	var due: bool = lost or (world.tick + unit.id) % RETARGET_TICKS == 0
 	if unit.aim_left == 0 and due:
-		target = _pick(world, unit, target)
+		target = _pick(world, unit, target, confused)
 	if target == null:
 		_stand_down(world, unit)
 		return false
@@ -231,24 +274,27 @@ func _cant_reach(world: World, unit: Unit) -> void:
 # is worth switching to (the shot itself re-aims, so it isn't re-checked
 # here), else the first of the nearest few candidates a clear launch
 # reaches; null if none.
-func _pick(world: World, unit: Unit, current: Unit) -> Unit:
+func _pick(world: World, unit: Unit, current: Unit, confused: bool) -> Unit:
 	var candidates: Array[Unit] = []
 	for other: Unit in world.units:
-		if other != current and _may_target(world, unit, other):
+		if other != current and _may_target(world, unit, other, confused):
 			candidates.append(other)
-	candidates.sort_custom(func(a: Unit, b: Unit) -> bool: return Targeting.ranks_before(unit, a, b))
+	candidates.sort_custom(func(a: Unit, b: Unit) -> bool: return Targeting.ranks_before(unit, a, b, confused))
 	var best: Unit = candidates[0] if not candidates.is_empty() else null
-	if current != null and (best == null or not Targeting.worth_switching(unit, current, best)):
+	if current != null and (best == null or not Targeting.worth_switching(unit, current, best, confused)):
 		return current
 	for i: int in mini(MAX_AIM_TRIES, candidates.size()):
-		if _aim_at_unit(world, unit, candidates[i], candidates[i].x, candidates[i].z).ok:
+		if _aim_at_unit(world, unit, candidates[i], candidates[i].x, candidates[i].z, not confused).ok:
 			return candidates[i]
 	return null
 
 
-# Alive, an enemy, visible, and within range as the crow flies.
-func _may_target(world: World, unit: Unit, other: Unit) -> bool:
-	if not other.is_alive() or other.faction == unit.faction or Visibility.is_submerged(world.terrain, other):
+# Alive, an enemy (anyone else, confused), visible, and within range as the
+# crow flies.
+func _may_target(world: World, unit: Unit, other: Unit, confused: bool) -> bool:
+	if other == unit or not other.is_alive() or Visibility.is_submerged(world.terrain, other):
+		return false
+	if other.faction == unit.faction and not confused:
 		return false
 	var dist: int = FixedMath.length(other.x - unit.x, other.z - unit.z)
 	if dist < unit.type.ranged_min_range:
@@ -268,25 +314,27 @@ func _reaches_ground(world: World, unit: Unit) -> bool:
 
 
 # A clear launch at target, imagined standing at (x, z) (where it is now,
-# or where it will be when the shot lands), avoiding friendly bodies and,
-# for a thrower, friends in the blast.
-func _aim_at_unit(world: World, unit: Unit, target: Unit, x: int, z: int) -> AimSolution:
+# or where it will be when the shot lands). careful (auto-picked targets of
+# a unit in its right mind) also avoids friendly bodies and, for a thrower,
+# friends in the blast.
+func _aim_at_unit(world: World, unit: Unit, target: Unit, x: int, z: int, careful: bool) -> AimSolution:
 	var type_index: int = next_projectile(world, unit)
 	var p: ProjectileType = world.catalog.projectile_types[type_index]
 	var ground: int = world.terrain.height_at(x, z)
 	var y: int = ground
-	if p.behavior == ProjectileType.Behavior.STICKS:
+	if p.behavior != ProjectileType.Behavior.BOUNCES or p.impact_damage > 0:
 		# At the aim point, which is where a walker is led to: leading an enemy
-		# into our own line would put the arrow on the line.
-		if _friend_beside(world, unit, x, z, target.type.body_radius):
+		# into our own line would put the arrow on the line. (A bolt checks
+		# its whole line for friends instead.)
+		if careful and p.behavior == ProjectileType.Behavior.STICKS and _friend_beside(world, unit, x, z, target.type.body_radius):
 			return AimSolution.failed()
-		y = ground + target.type.hover_height + target.type.body_height * CHEST_PERMILLE / PERMILLE
-	elif p.is_explosive() and _friend_in_blast(world, unit, p, x, ground, z):
+		y = chest_height(target, ground)
+	elif careful and p.bursts() and _friend_in_blast(world, unit, p, x, ground, z):
 		return AimSolution.failed()
 	elif p.fuse_ticks > 0 and world.terrain.water_depth_at(x, z) > 0:
 		# The fuse would go out where it lands (ProjectileSystem).
 		return AimSolution.failed()
-	return _aim(world, unit, p, x, y, z, true)
+	return _aim(world, unit, p, x, y, z, careful)
 
 
 func _aim_at_ground(world: World, unit: Unit, x: int, z: int) -> AimSolution:
@@ -301,12 +349,17 @@ func _aim(
 ) -> AimSolution:
 	var t: UnitType = unit.type
 	var from: FlightState = launch_point(unit)
+	var dist: int = FixedMath.length(x - unit.x, z - unit.z)
+	var spread: int = spread_for(unit, y - FlightState.to_mm(from.py), dist)
+	if p.behavior == ProjectileType.Behavior.BOLT:
+		var bolt: AimSolution = AimSolution.new()
+		var reach: int = effective_max_range(unit, world.terrain.height_at(x, z) - FlightState.to_mm(from.py), dist)
+		bolt.ok = Lightning.is_clear(world, unit, p, x, y, z, avoid_friends, PATH_MARGIN, spread, reach)
+		return bolt
 	var tx: int = x * FlightState.SUB
 	var ty: int = y * FlightState.SUB
 	var tz: int = z * FlightState.SUB
 	var speed: int = FlightState.speed_from_mm_per_s(t.ranged_launch_speed)
-	var dist: int = FixedMath.length(x - unit.x, z - unit.z)
-	var spread: int = spread_for(unit, y - FlightState.to_mm(from.py), dist)
 	var avoid: Array[Unit] = []
 	if avoid_friends:
 		# The corridor is as wide as the aim cone at the target.
@@ -329,6 +382,8 @@ func _aim(
 func _flight_ticks(world: World, unit: Unit, target: Unit) -> int:
 	var t: UnitType = unit.type
 	var p: ProjectileType = world.catalog.projectile_types[next_projectile(world, unit)]
+	if p.behavior == ProjectileType.Behavior.BOLT:
+		return 0
 	var y: int = world.terrain.height_at(target.x, target.z)
 	if p.behavior == ProjectileType.Behavior.STICKS:
 		y += target.type.hover_height + target.type.body_height * CHEST_PERMILLE / PERMILLE
@@ -352,9 +407,9 @@ func _friend_beside(world: World, unit: Unit, x: int, z: int, r: int) -> bool:
 
 
 # True if a friend of unit (unit included) would be caught by p bursting at
-# (x, y, z).
+# (x, y, z): in its blast or its gas.
 func _friend_in_blast(world: World, unit: Unit, p: ProjectileType, x: int, y: int, z: int) -> bool:
-	var reach: int = p.blast_radius + FRIENDLY_BLAST_MARGIN
+	var reach: int = p.effect_radius() + FRIENDLY_BLAST_MARGIN
 	for other: Unit in world.units:
 		if other.is_alive() and other.faction == unit.faction:
 			if Explosions.distance_to_body(other, x, y, z) < reach:
@@ -362,12 +417,21 @@ func _friend_in_blast(world: World, unit: Unit, p: ProjectileType, x: int, y: in
 	return false
 
 
+## Milli-units above the ground at a target's feet that arrows and bolts aim
+## for: its chest.
+static func chest_height(target: Unit, ground: int) -> int:
+	return ground + target.type.hover_height + target.type.body_height * CHEST_PERMILLE / PERMILLE
+
+
 # The draw is done: aim again at where the target will be, spread, launch.
 func _loose(world: World, unit: Unit) -> void:
+	if world.catalog.projectile_types[next_projectile(world, unit)].behavior == ProjectileType.Behavior.BOLT:
+		_loose_bolt(world, unit)
+		return
 	var solution: AimSolution
 	var aim_x: int
 	var aim_z: int
-	if unit.order == Unit.Order.GROUND_ATTACK:
+	if unit.order == Unit.Order.GROUND_ATTACK and not StatusEffects.confused(world, unit):
 		aim_x = unit.ground_x
 		aim_z = unit.ground_z
 		solution = _aim_at_ground(world, unit, aim_x, aim_z)
@@ -384,7 +448,7 @@ func _loose(world: World, unit: Unit) -> void:
 			var ticks: int = _flight_ticks(world, unit, target)
 			aim_x += target.vx * ticks
 			aim_z += target.vz * ticks
-		solution = _aim_at_unit(world, unit, target, aim_x, aim_z)
+		solution = _aim_at_unit(world, unit, target, aim_x, aim_z, not StatusEffects.confused(world, unit))
 	if not solution.ok:
 		# Lost the shot (the target moved out of reach, a friend stepped in
 		# the way): pick again next tick.
@@ -398,17 +462,71 @@ func _loose(world: World, unit: Unit) -> void:
 	var v: PackedInt64Array = Ballistics.perturb(
 		solution.vx, solution.vy, solution.vz, spread_for(unit, rise, dist), world.rng
 	)
-	var shot: Projectile = world.spawn_projectile(
-		type_index, FlightState.new(from.px, from.py, from.pz, v[0], v[1], v[2]), unit.id
-	)
+	var flight: FlightState = FlightState.new(from.px, from.py, from.pz, v[0], v[1], v[2])
+	var shot: Projectile = world.carried_by(unit)
+	if shot != null:
+		# Out of the hand and away: it is the thrower's now.
+		world.release(shot)
+		shot.flight = flight
+		shot.motion = Projectile.Motion.FLYING
+		shot.thrown = true
+		shot.owner_id = unit.id
+		shot.instigator_id = unit.id
+		shot.sync_position()
+	else:
+		shot = world.spawn_projectile(type_index, flight, unit.id)
 	shot.ignore_id = unit.id
 	shot.ignore_ticks = LAUNCH_IGNORE_TICKS
-	if p.fuse_ticks > 0:
+	if p.fuse_ticks > 0 and not shot.thrown:
 		var variance: int = world.rng.randi_range(-p.fuse_variance_permille, p.fuse_variance_permille)
 		shot.fuse_left = maxi(1, p.fuse_ticks + FixedMath.div_round(p.fuse_ticks * variance, PERMILLE))
 	var e: ProjectileEvent = ProjectileEvent.about(ProjectileEvent.Kind.LAUNCH, shot)
 	e.unit_id = unit.id
 	world.projectile_events.append(e)
+	_spend_shot(unit)
+
+
+# Lightning: aim again (no lead), check the line, one lateral spread draw,
+# and queue it to strike once every shot has left.
+func _loose_bolt(world: World, unit: Unit) -> void:
+	var type_index: int = next_projectile(world, unit)
+	var x: int
+	var y: int
+	var z: int
+	var careful: bool = false
+	if unit.order == Unit.Order.GROUND_ATTACK and not StatusEffects.confused(world, unit):
+		x = unit.ground_x
+		z = unit.ground_z
+		y = world.terrain.height_at(x, z)
+	else:
+		var target: Unit = world.get_unit(unit.shot_target_id)
+		if target == null or not target.is_alive():
+			unit.clear_shot()
+			return
+		x = target.x
+		z = target.z
+		y = chest_height(target, world.terrain.height_at(x, z))
+		careful = not StatusEffects.confused(world, unit)
+	var p: ProjectileType = world.catalog.projectile_types[type_index]
+	var from_y: int = unit.y + unit.type.ranged_launch_height
+	var dist: int = FixedMath.length(x - unit.x, z - unit.z)
+	var rise: int = world.terrain.height_at(x, z) - from_y
+	var spread: int = spread_for(unit, rise, dist)
+	var reach: int = effective_max_range(unit, rise, dist)
+	if not Lightning.is_clear(world, unit, p, x, y, z, careful, PATH_MARGIN, spread, reach):
+		unit.clear_shot()
+		return
+	# Spread: a sideways miss of up to spread x distance, either way.
+	var offset: int = spread * dist / PERMILLE * world.rng.randi_range(-PERMILLE, PERMILLE) / PERMILLE
+	var dir: Vector2i = FixedMath.normalize(x - unit.x, z - unit.z, FixedMath.DIR_ONE)
+	x += FixedMath.div_round(-dir.y * offset, FixedMath.DIR_ONE)
+	z += FixedMath.div_round(dir.x * offset, FixedMath.DIR_ONE)
+	_bolts.append(PackedInt64Array([unit.id, type_index, x, y, z, reach]))
+	_spend_shot(unit)
+
+
+# The shot has left: cooldown, ammunition, and a nocked fire arrow spent.
+static func _spend_shot(unit: Unit) -> void:
 	unit.shot_cooldown_left = Veterancy.ranged_cooldown(unit)
 	if unit.ammo_left > 0:
 		unit.ammo_left -= 1

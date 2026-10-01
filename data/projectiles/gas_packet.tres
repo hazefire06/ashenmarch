@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="ProjectileType" format=3]
+
+[ext_resource type="Script" path="res://sim/projectiles/projectile_type.gd" id="1_gpk01"]
+
+[resource]
+script = ExtResource("1_gpk01")
+id = &"gas_packet"
+display_name = "Gas packet"
+behavior = 1
+pickup = 1
+radius = 110
+drag_ppm_per_m = 3000
+restitution_permille = 80
+friction_permille = 300
+roll_accel_permille = 300
+rolling_resistance = 5000
+rest_speed = 500
+static_slope_permille = 500
+bursts_on_impact = true
+chain_detonates = true
+gas_radius = 3500
+gas_ticks = 180
+gas_paralysis_ticks = 60
+placeholder_color = Color(0.55, 0.7, 0.25, 1)
+length = 220

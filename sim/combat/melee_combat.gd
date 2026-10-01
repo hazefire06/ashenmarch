@@ -19,6 +19,8 @@ extends RefCounted
 ## - Order.NONE: fight enemies within reach + ADJACENT_SLACK, stepping in to
 ##   close that gap, but only enemies within HOLD_LEASH of the held spot.
 ## - Order.MOVE: no fighting until the unit arrives (it then holds, NONE).
+## - Order.INTERACT: no fighting either; the errand (Interactions) owns the
+##   unit until it is done.
 ## - Order.ATTACK_MOVE: fight enemies within the type's acquire_radius, chase
 ##   them up to ATTACK_MOVE_LEASH_PERMILLE of it, and resume the march after
 ##   each fight.
@@ -30,11 +32,21 @@ extends RefCounted
 ## - Enemies hidden in deep water can't be picked until they surface to
 ##   fight, and an enemy the unit can't walk to (another pathing component)
 ##   is only fought if in reach.
-## - Units with a ranged attack only fight in melee what comes adjacent
-##   (reach + ADJACENT_SLACK), whatever their order, and never chase: their
-##   fight is at range (RangedCombat). Taking up a melee fight abandons a
-##   draw in progress.
-## - A unit reeling from a blast's knockback does nothing but recover.
+## - Units whose fight is at range (a ranged attack, or something in hand to
+##   throw: Unit.fights_at_range) only fight in melee what comes adjacent
+##   (reach + ADJACENT_SLACK), whatever their order, and never chase
+##   (RangedCombat). Taking up a melee fight abandons a draw in progress.
+## - A melee_detonates unit's blow is it bursting: when its wind-up ends with
+##   the target in reach, it dies (Damage.self_destruct) and its burst goes
+##   off. No dice.
+## - A unit reeling from a blast's knockback does nothing but recover. A
+##   paralyzed one does nothing at all, and loses a swing it was winding up.
+## - A confused unit (StatusEffects) fights the nearest unit of either side
+##   within its acquire radius, whatever its order, without role preferences
+##   or its hold leash.
+## - A paralyzed target can't block. A blow that lands spoils the target's
+##   draw or cast in progress, and a type with melee_status_ticks also
+##   inflicts its melee_status (a paralyzing touch).
 
 enum Aspect {
 	FRONT,
@@ -104,6 +116,16 @@ static func aspect_of(defender: Unit, from_x: int, from_z: int) -> Aspect:
 	return Aspect.FLANK
 
 
+## True if a blow (or an arrow) from aspect may meet the target's shield: it
+## comes from the front, the target has one, and it isn't paralyzed. The
+## caller rolls shield_block_permille only when this is true.
+static func can_block(world: World, target: Unit, aspect: Aspect) -> bool:
+	return (
+		aspect == Aspect.FRONT and target.type.shield_block_permille > 0
+		and not StatusEffects.paralyzed(world, target)
+	)
+
+
 static func damage_multiplier(aspect: Aspect) -> int:
 	match aspect:
 		Aspect.FLANK:
@@ -119,13 +141,20 @@ func _decide(world: World, unit: Unit, grid: UnitGrid) -> bool:
 		unit.cooldown_left -= 1
 	if unit.is_reeling():
 		return false
-	if unit.order == Unit.Order.MOVE:
+	if StatusEffects.paralyzed(world, unit):
+		unit.windup_left = 0
+		return false
+	# A confused unit's order waits until it wears off (UnitOrders.resume).
+	var confused: bool = StatusEffects.confused(world, unit)
+	if unit.order == Unit.Order.INTERACT and not confused:
+		return false
+	if unit.order == Unit.Order.MOVE and not confused:
 		if unit.state != Unit.State.IDLE:
 			return false
 		# Arrived: hold here from now on.
 		UnitOrders.hold(unit)
-	if unit.type.melee_damage <= 0:
-		if unit.order == Unit.Order.ATTACK_MOVE and unit.state == Unit.State.IDLE:
+	if not unit.type.has_melee():
+		if not confused and unit.order == Unit.Order.ATTACK_MOVE and unit.state == Unit.State.IDLE:
 			# No melee to fight with, but the march still ends on arrival.
 			UnitOrders.hold(unit)
 		return false
@@ -139,13 +168,13 @@ func _decide(world: World, unit: Unit, grid: UnitGrid) -> bool:
 			unit.windup_left -= 1
 			return unit.windup_left == 0
 		unit.clear_engagement()
-	var target: Unit = _kept_target(world, unit)
+	var target: Unit = _kept_target(world, unit, confused)
 	if target == null or not Targeting.in_reach(unit, target):
-		target = _acquire(world, unit, grid, target)
+		target = _acquire(world, unit, grid, target, confused)
 	if target == null:
 		if was_fighting or unit.state == Unit.State.ATTACKING:
 			_resume(world, unit)
-		elif unit.order == Unit.Order.ATTACK_MOVE and unit.state == Unit.State.IDLE:
+		elif not confused and unit.order == Unit.Order.ATTACK_MOVE and unit.state == Unit.State.IDLE:
 			# Reached the end of the march with nothing left to fight.
 			UnitOrders.hold(unit)
 		return false
@@ -160,12 +189,16 @@ func _decide(world: World, unit: Unit, grid: UnitGrid) -> bool:
 
 
 # The unit's current target if it may keep it; otherwise drops it (and any
-# swing) and returns null.
-func _kept_target(world: World, unit: Unit) -> Unit:
+# swing) and returns null. A friend is only ever a target while confused.
+func _kept_target(world: World, unit: Unit, confused: bool) -> Unit:
 	if unit.target_id == 0:
 		return null
 	var target: Unit = world.get_unit(unit.target_id)
-	if target == null or not target.is_alive() or not _in_leash(world, unit, target):
+	if (
+		target == null or not target.is_alive()
+		or (target.faction == unit.faction and not confused)
+		or not _in_leash(world, unit, target, confused)
+	):
 		unit.clear_engagement()
 		return null
 	return target
@@ -173,41 +206,43 @@ func _kept_target(world: World, unit: Unit) -> Unit:
 
 # The best enemy the unit may fight now, or current if no other is worth
 # switching to. Null if there is none.
-func _acquire(world: World, unit: Unit, grid: UnitGrid, current: Unit) -> Unit:
-	var radius: int = _acquire_radius(unit)
+func _acquire(world: World, unit: Unit, grid: UnitGrid, current: Unit, confused: bool) -> Unit:
+	var radius: int = _acquire_radius(unit, confused)
 	var component: int = world.pathing.component_at(unit.x, unit.z, unit.type.mobility)
 	var candidates: Array[Unit] = []
 	for other: Unit in grid.near(unit.x, unit.z, radius + unit.type.body_radius + _largest_radius, unit):
-		if other.faction == unit.faction or Visibility.is_submerged(world.terrain, other):
+		if (other.faction == unit.faction and not confused) or Visibility.is_submerged(world.terrain, other):
 			continue
-		if Targeting.edge_distance(unit, other) > radius or not _within_hold(unit, other):
+		if Targeting.edge_distance(unit, other) > radius or (not confused and not _within_hold(unit, other)):
 			continue
 		if not Targeting.in_reach(unit, other) and not _can_walk_to(world, unit, component, other):
 			continue
 		candidates.append(other)
-	var best: Unit = Targeting.pick(unit, candidates)
-	if current != null and (best == null or not Targeting.worth_switching(unit, current, best)):
+	var best: Unit = Targeting.pick(unit, candidates, confused)
+	if current != null and (best == null or not Targeting.worth_switching(unit, current, best, confused)):
 		return current
 	return best
 
 
-# Edge distance within which the unit picks up new enemies.
-func _acquire_radius(unit: Unit) -> int:
-	if unit.order == Unit.Order.ATTACK_MOVE and not unit.type.has_ranged():
+# Edge distance within which the unit picks up new enemies: an attack-mover
+# (or a confused unit) looks out to its acquire radius, anyone else only at
+# what comes adjacent. Units whose fight is at range never look far.
+func _acquire_radius(unit: Unit, confused: bool) -> int:
+	if (unit.order == Unit.Order.ATTACK_MOVE or confused) and not unit.fights_at_range():
 		return unit.type.acquire_radius
 	return unit.type.melee_reach + ADJACENT_SLACK
 
 
 # True if the unit may keep fighting or chasing target.
-func _in_leash(world: World, unit: Unit, target: Unit) -> bool:
+func _in_leash(world: World, unit: Unit, target: Unit, confused: bool) -> bool:
 	if Targeting.in_reach(unit, target):
 		return true
 	if Visibility.is_submerged(world.terrain, target):
 		return false
 	var limit: int = unit.type.melee_reach + ADJACENT_SLACK
-	if unit.order == Unit.Order.ATTACK_MOVE and not unit.type.has_ranged():
+	if (unit.order == Unit.Order.ATTACK_MOVE or confused) and not unit.fights_at_range():
 		limit = unit.type.acquire_radius * ATTACK_MOVE_LEASH_PERMILLE / PERMILLE
-	if Targeting.edge_distance(unit, target) > limit or not _within_hold(unit, target):
+	if Targeting.edge_distance(unit, target) > limit or (not confused and not _within_hold(unit, target)):
 		return false
 	var component: int = world.pathing.component_at(unit.x, unit.z, unit.type.mobility)
 	return _can_walk_to(world, unit, component, target)
@@ -276,18 +311,32 @@ func _strike(world: World, attacker: Unit) -> void:
 	if not Targeting.in_reach(attacker, target, REACH_TOLERANCE):
 		world.combat_events.append(miss)
 		return
+	if attacker.type.melee_detonates:
+		# A blow from a unit killed earlier this tick is wasted: it already
+		# burst when it died.
+		if attacker.is_alive():
+			Damage.self_destruct(world, attacker)
+		return
 	if world.rng.randi_range(0, PERMILLE - 1) >= Veterancy.melee_accuracy(attacker):
 		world.combat_events.append(miss)
 		return
-	var block: int = target.type.shield_block_permille
-	if aspect == Aspect.FRONT and block > 0 and world.rng.randi_range(0, PERMILLE - 1) < block:
+	if can_block(world, target, aspect) and world.rng.randi_range(0, PERMILLE - 1) < target.type.shield_block_permille:
 		world.combat_events.append(CombatEvent.new(CombatEvent.Kind.BLOCK, attacker.id, target.id, aspect))
 		return
 	var variance: int = world.rng.randi_range(-DAMAGE_VARIANCE_PERMILLE, DAMAGE_VARIANCE_PERMILLE)
 	var damage: int = maxi(1, FixedMath.div_round(
 		attacker.type.melee_damage * (PERMILLE + variance) * damage_multiplier(aspect), PERMILLE * PERMILLE
 	))
-	Damage.apply(world, target, damage, attacker.x, attacker.z, attacker.id, aspect)
+	if Damage.apply(world, target, damage, attacker.x, attacker.z, attacker.id, aspect):
+		return
+	# Struck, it loses the shot or spell it was drawing, or the herb it was
+	# about to apply.
+	target.clear_shot()
+	target.act_left = 0
+	if attacker.type.melee_status_ticks > 0:
+		StatusEffects.apply(
+			world, target, attacker.type.melee_status, attacker.type.melee_status_ticks, attacker.id
+		)
 
 
 static func _face(unit: Unit, target: Unit) -> void:

@@ -7,6 +7,7 @@ script = ExtResource("1_stc01")
 id = &"satchel"
 display_name = "Satchel charge"
 behavior = 1
+pickup = 1
 radius = 120
 drag_ppm_per_m = 3000
 restitution_permille = 150

@@ -21,6 +21,12 @@ extends RefCounted
 ##   lifts off where the ground drops away faster than it follows, and
 ##   comes to rest when slow on gentle enough ground.
 ## - RESTING: doesn't move.
+## - CARRIED: rides in its carrier's hand (Interactions.hand_y) and touches
+##   nothing. Should the carrier be gone, it falls.
+## - Thrown by a unit (Projectile.thrown), on its first contact: a type that
+##   bursts on impact (gas packets) goes off there, at once; one with
+##   impact_damage (body parts) hurts the body it flies into, no roll. After
+##   that first contact it is just a loose object.
 ## - Then fuses and chain countdowns: a fuse that burns down rolls for a
 ##   fizzle (the dud stays, and a blast can still set it off) or queues the
 ##   explosion; a caught charge goes off when its countdown ends.
@@ -39,8 +45,12 @@ extends RefCounted
 ## killed earlier in the same pass (a lower-id arrow) no longer stops later
 ## arrows: they fly on past the falling body.
 ##
+## A fire arrow whose flame holds sets the unit it strikes burning
+## (StatusEffects.FIRE_ARROW_BURN_TICKS) as well as lighting the ground.
+##
 ## RNG draws, in projectile id order: an arrow striking a body draws a block
-## roll (front arc of a shielded target only) then its damage variance; a
+## roll (front arc of a shielded target that isn't paralyzed only) then its
+## damage variance; a
 ## fire arrow landing then draws its flame's fizzle roll (only when the
 ## chance isn't zero); a fuse burning down draws the fizzle roll.
 
@@ -92,6 +102,8 @@ func update(world: World) -> void:
 				_fly(world, p)
 			Projectile.Motion.ROLLING:
 				_roll(world, p)
+			Projectile.Motion.CARRIED:
+				_carry(world, p)
 		if p.removed:
 			continue
 		p.sync_position()
@@ -157,14 +169,16 @@ func _fly(world: World, p: Projectile) -> void:
 		_move_to(f, ax, ay, az, body_frac)
 		if p.type.behavior == ProjectileType.Behavior.STICKS:
 			_strike(world, p, body)
-		else:
+		elif not _burst_on_impact(world, p):
+			_hit_body(world, p, body)
 			_glance(p, body)
 		return
 	if ground != ProjectileCollision.NO_CONTACT:
 		_move_to(f, ax, ay, az, ground)
 		if p.type.behavior == ProjectileType.Behavior.STICKS:
 			_stick(world, p)
-		else:
+		elif not _burst_on_impact(world, p):
+			p.thrown = false
 			_bounce(world, p)
 		return
 	var mx: int = FlightState.to_mm(f.px)
@@ -215,17 +229,23 @@ func _strike(world: World, p: Projectile, target: Unit) -> void:
 	var hit: ProjectileEvent = ProjectileEvent.about(ProjectileEvent.Kind.HIT, p)
 	hit.unit_id = target.id
 	world.projectile_events.append(hit)
-	var block: int = target.type.shield_block_permille
-	if aspect == MeleeCombat.Aspect.FRONT and block > 0 and world.rng.randi_range(0, PERMILLE - 1) < block:
+	if (
+		MeleeCombat.can_block(world, target, aspect)
+		and world.rng.randi_range(0, PERMILLE - 1) < target.type.shield_block_permille
+	):
 		world.combat_events.append(CombatEvent.new(CombatEvent.Kind.BLOCK, p.owner_id, target.id, aspect))
 	else:
 		var variance: int = world.rng.randi_range(-DAMAGE_VARIANCE_PERMILLE, DAMAGE_VARIANCE_PERMILLE)
 		var damage: int = maxi(1, FixedMath.div_round(p.type.impact_damage * (PERMILLE + variance), PERMILLE))
 		Damage.apply(world, target, damage, from_x, from_z, p.owner_id, aspect)
 	# Over water there is nothing to light, so no roll for the flame either.
+	# A flame that holds sets the unit alight as well as the ground.
 	var dry: bool = world.terrain.water_depth_at(target.x, target.z) == 0
 	if p.type.marks_fire and dry and not _flame_goes_out(world, p, false):
 		world.ignite(target.x, target.z, p.instigator_id)
+		StatusEffects.apply(
+			world, target, StatusEffects.Kind.BURNING, StatusEffects.FIRE_ARROW_BURN_TICKS, p.instigator_id
+		)
 	world.remove_projectile(p)
 
 
@@ -259,6 +279,26 @@ static func _flame_goes_out(world: World, p: Projectile, on_ground: bool) -> boo
 		return false
 	world.projectile_events.append(ProjectileEvent.about(ProjectileEvent.Kind.FIZZLE, p))
 	return true
+
+
+# Something a unit threw that bursts on impact (a gas packet) goes off where
+# it first touched, this tick. Returns true if it did.
+static func _burst_on_impact(world: World, p: Projectile) -> bool:
+	if not p.thrown or not p.type.bursts_on_impact:
+		return false
+	p.sync_position()
+	world.explosions.detonate(world, p)
+	return true
+
+
+# A thrown object with impact damage (a body part) hurts the first body it
+# flies into, with no roll, credited to the thrower. Either way it is no
+# longer in its first flight.
+static func _hit_body(world: World, p: Projectile, unit: Unit) -> void:
+	if p.thrown and p.type.impact_damage > 0:
+		var back: Vector2i = FixedMath.normalize(-p.flight.vx, -p.flight.vz, FixedMath.DIR_ONE)
+		Damage.apply(world, unit, p.type.impact_damage, unit.x + back.x, unit.z + back.y, p.instigator_id)
+	p.thrown = false
 
 
 # A grenade or charge meets the ground.
@@ -374,6 +414,22 @@ func _roll(world: World, p: Projectile) -> void:
 	else:
 		f.py = rest_y
 		_douse_if_in_water(world, p)
+
+
+# In a hand: at the carrier's, after this tick's movement.
+func _carry(world: World, p: Projectile) -> void:
+	var carrier: Unit = world.get_unit(p.carrier_id)
+	if carrier == null or not carrier.is_alive() or carrier.carried_id != p.id:
+		world.release(p)
+		p.motion = Projectile.Motion.FLYING
+		return
+	var f: FlightState = p.flight
+	f.px = carrier.x * FlightState.SUB
+	f.py = Interactions.hand_y(carrier) * FlightState.SUB
+	f.pz = carrier.z * FlightState.SUB
+	f.vx = 0
+	f.vy = 0
+	f.vz = 0
 
 
 # Fuse and chain countdown.

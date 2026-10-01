@@ -8,7 +8,8 @@ extends Node3D
 ## the target, and a kill lays the body down away from where the blow came
 ## from (an attacker, an arrow's approach, a blast's center), or bursts it into
 ## gibs when the overkill is large enough. A ground attack a unit can't carry
-## out floats "Can't reach" over it and greys the marker.
+## out floats "Can't reach" over it and greys the marker. Status effects tint
+## a sprite and name themselves over it; a heal flashes it green.
 ##
 ## Only what the watching side sees is drawn (Visibility.seen_by): a Husk
 ## lying in deep water stays out of sight, and out of picking and hovering,
@@ -68,6 +69,10 @@ func after_step() -> void:
 		_current[unit.id] = _position_of(unit)
 		sprite.set_facing(unit.facing_x, unit.facing_z)
 		sprite.set_hp(unit.hp, unit.type.max_hp)
+		sprite.set_statuses(
+			StatusEffects.paralyzed(_world, unit), StatusEffects.confused(_world, unit),
+			StatusEffects.has(_world, unit, StatusEffects.Kind.BURNING)
+		)
 		sprite.visible = Visibility.seen_by(_world, unit, _viewer)
 		# The sprite still standing is what marks a death as new: the body
 		# lies down on this tick and never again.
@@ -80,6 +85,12 @@ func after_step() -> void:
 			_sprites.erase(unit_id)
 			_previous.erase(unit_id)
 			_current.erase(unit_id)
+
+
+## Where the unit's sprite stands now (meters), for markers.
+func sprite_position(unit_id: int) -> Vector3:
+	var sprite: UnitSprite = _sprites.get(unit_id)
+	return sprite.position if sprite != null else Vector3.ZERO
 
 
 ## Every sprite the viewer can see, for screen-space picking and hovering.
@@ -140,7 +151,7 @@ func _react_to_combat() -> Dictionary[int, Vector2]:
 		if target == null:
 			continue
 		match event.kind:
-			CombatEvent.Kind.HIT, CombatEvent.Kind.BLOCK:
+			CombatEvent.Kind.HIT, CombatEvent.Kind.BLOCK, CombatEvent.Kind.HEAL:
 				_sprite_for(target).flash(event.kind)
 			CombatEvent.Kind.KILL:
 				var blow: Vector2 = _blow_direction(event, target)

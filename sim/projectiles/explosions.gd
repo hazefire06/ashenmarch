@@ -21,8 +21,17 @@ extends RefCounted
 ##    whoever set off this one. Other
 ##    loose objects within knock_radius are thrown (arrows in flight aren't
 ##    touched).
-## 5. A crater, if the burst was near enough the ground (Terrain.scar).
+## 5. Gas: a cloud (GasCloud) hangs where it burst, if the type has gas.
+## 6. Scatter: the type's scatter_projectile, scatter_count of them, lie in a
+##    ring scatter_radius out, at rest (a Blightbag's gas packets). They come
+##    after step 4, so this burst doesn't set them off.
+## 7. A crater, if the burst was near enough the ground (Terrain.scar).
 ##    Craters never change where anyone can walk.
+##
+## Units die in step 1, before step 4 walks the projectiles: a death drops
+## charges or a burst into world.projectiles, which that walk then visits.
+## Steps 5 and 6 spawn after it. Gas alone hurts no one and sets nothing off:
+## only a blast does.
 ##
 ## Kills are credited to the burst's instigator: the thrower of a grenade,
 ## or whoever set off the blast that caught a charge.
@@ -48,12 +57,17 @@ func detonate(_world: World, p: Projectile) -> void:
 	_queue.append(p)
 
 
-## Sets off a loose charge, grenade, or dud caught by a blast or a fire: it
-## goes off CHAIN_DELAY_TICKS later, credited to instigator_id. The caller
-## checks it can be (chain_detonates, not already detonating).
-static func catch(p: Projectile, instigator_id: int) -> void:
+## Sets off a loose charge, grenade, or dud caught by a blast, a fire, or
+## lightning (or a Blightbag's burst at its death): it goes off exactly
+## CHAIN_DELAY_TICKS ticks after this one, credited to instigator_id. The
+## caller checks it can be (chain_detonates, not already detonating).
+## ProjectileSystem counts the delay down, so one caught before it has run
+## this tick gets a tick more (World.projectile_pass_begun). Nothing already
+## lying about is caught during the pass itself; only charges spawned in it
+## (a Blightbag an arrow killed), which it doesn't count this tick.
+static func catch(world: World, p: Projectile, instigator_id: int) -> void:
 	p.detonating = true
-	p.detonate_in = CHAIN_DELAY_TICKS
+	p.detonate_in = CHAIN_DELAY_TICKS + (0 if world.projectile_pass_begun else 1)
 	p.fuse_left = 0
 	p.instigator_id = instigator_id
 
@@ -112,7 +126,9 @@ func _burst(world: World, grid: UnitGrid, p: Projectile) -> void:
 	var reach: int = maxi(t.blast_radius, t.knock_radius)
 	# The grid gives nearby bodies in bucket order; blasts treat them in id
 	# order so damage and credit don't depend on where anyone stood.
-	var near: Array[Unit] = grid.near(bx, bz, reach + _largest_radius)
+	var near: Array[Unit] = []
+	if reach > 0:
+		near = grid.near(bx, bz, reach + _largest_radius)
 	near.sort_custom(func(a: Unit, b: Unit) -> bool: return a.id < b.id)
 	for unit: Unit in near:
 		if not unit.is_alive():
@@ -131,13 +147,29 @@ func _burst(world: World, grid: UnitGrid, p: Projectile) -> void:
 			(other.x - bx) * (other.x - bx) + (other.y - by) * (other.y - by) + (other.z - bz) * (other.z - bz)
 		) - other.type.radius)
 		if other.type.chain_detonates and d < t.blast_radius:
-			catch(other, p.instigator_id)
-		elif d < t.knock_radius and other.type.behavior == ProjectileType.Behavior.BOUNCES:
+			catch(world, other, p.instigator_id)
+		elif (
+			d < t.knock_radius and other.type.behavior == ProjectileType.Behavior.BOUNCES
+			and other.motion != Projectile.Motion.CARRIED
+		):
+			# Something in a hand stays there.
 			_knock_object(t, other, bx, bz, d)
+	if t.gas_radius > 0:
+		world.spawn_cloud(bx, by, bz, t, p.instigator_id)
+	if t.scatter_projectile != &"":
+		var index: int = world.catalog.projectile_index_of(t.scatter_projectile)
+		for k: int in t.scatter_count:
+			var angle: int = k * FixedMath.ANGLE_FULL / t.scatter_count
+			world.drop_object(
+				index,
+				bx + FixedMath.cos_b(angle) * t.scatter_radius / FixedMath.TRIG_ONE,
+				bz + FixedMath.sin_b(angle) * t.scatter_radius / FixedMath.TRIG_ONE,
+				0
+			)
 	var e: ProjectileEvent = ProjectileEvent.new(ProjectileEvent.Kind.EXPLODE, bx, by, bz)
 	e.projectile_id = p.id
 	e.type_index = p.type_index
-	e.radius = t.blast_radius
+	e.radius = t.effect_radius()
 	if t.crater_radius > 0 and by - world.terrain.height_at(bx, bz) <= t.crater_radius:
 		e.cells = world.terrain.scar(bx, bz, t.crater_radius, t.crater_depth)
 		e.crater = t.crater_radius

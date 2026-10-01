@@ -1,4 +1,4 @@
-[gd_scene load_steps=15 format=3]
+[gd_scene load_steps=18 format=3]
 
 [ext_resource type="Script" path="res://view/main.gd" id="1_main"]
 [ext_resource type="Script" path="res://view/terrain/terrain_view.gd" id="2_terrain"]
@@ -13,6 +13,9 @@
 [ext_resource type="Script" path="res://view/effects/explosions_view.gd" id="11_explosions"]
 [ext_resource type="Script" path="res://view/effects/fire_view.gd" id="12_fire"]
 [ext_resource type="Script" path="res://view/weather/precipitation_view.gd" id="13_precipitation"]
+[ext_resource type="Script" path="res://view/effects/gas_clouds_view.gd" id="14_gas"]
+[ext_resource type="Script" path="res://view/units/herb_plants_view.gd" id="15_plants"]
+[ext_resource type="Script" path="res://view/hud/unit_info_panel.gd" id="16_info"]
 
 [sub_resource type="Environment" id="Environment_sky"]
 background_mode = 1
@@ -48,6 +51,12 @@ script = ExtResource("11_explosions")
 [node name="Fire" type="Node3D" parent="."]
 script = ExtResource("12_fire")
 
+[node name="GasClouds" type="Node3D" parent="."]
+script = ExtResource("14_gas")
+
+[node name="HerbPlants" type="Node3D" parent="."]
+script = ExtResource("15_plants")
+
 [node name="Precipitation" type="Node3D" parent="."]
 script = ExtResource("13_precipitation")
 
@@ -71,6 +80,9 @@ text = "tick 0"
 
 [node name="OverheadMap" type="Control" parent="Hud"]
 script = ExtResource("4_overhead")
+
+[node name="UnitInfoPanel" type="PanelContainer" parent="Hud"]
+script = ExtResource("16_info")
 
 [node name="UnitTooltip" type="PanelContainer" parent="Hud"]
 script = ExtResource("9_tooltip")

@@ -1,0 +1,29 @@
+[gd_resource type="Resource" script_class="ProjectileType" format=3]
+
+[ext_resource type="Script" path="res://sim/projectiles/projectile_type.gd" id="1_bbt01"]
+
+[resource]
+script = ExtResource("1_bbt01")
+id = &"blight_burst"
+display_name = "Blight burst"
+behavior = 1
+radius = 300
+restitution_permille = 100
+friction_permille = 300
+roll_accel_permille = 300
+rolling_resistance = 5000
+rest_speed = 500
+static_slope_permille = 1000
+blast_radius = 4000
+blast_inner_radius = 1000
+blast_damage = 50
+knock_radius = 5000
+knock_speed = 5000
+gas_radius = 5000
+gas_ticks = 300
+gas_paralysis_ticks = 60
+scatter_projectile = &"gas_packet"
+scatter_count = 2
+scatter_radius = 4500
+placeholder_color = Color(0.65, 0.7, 0.2, 1)
+length = 600

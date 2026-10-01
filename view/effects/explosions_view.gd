@@ -9,6 +9,10 @@ extends Node3D
 ##   for the rest of the mission.
 ## - A flame that goes out (FIZZLE: a fuse or a fire arrow in the rain, a
 ##   fuse in water) leaves a small grey puff.
+## - A burst that is all gas (a gas packet) puffs green instead of flashing;
+##   GasCloudsView draws the cloud it leaves.
+## - Lightning (BOLT) is a jagged line of bright segments from the caster to
+##   where it ended, with a flash there, gone in BOLT_TIME.
 ## Fire draws itself: the terrain shows burning and scorched ground, and
 ## FireView the flames and smoke.
 ##
@@ -32,6 +36,14 @@ const PUFF_COLOR: Color = Color(0.62, 0.62, 0.62, 0.65)
 const CRATER_DISC_SCALE: float = 1.25
 const CRATER_COLOR: Color = Color(0.1, 0.07, 0.05, 0.85)
 const CRATER_LIFT: float = 0.04
+const GAS_PUFF_COLOR: Color = Color(0.62, 0.78, 0.25, 0.7)
+const BOLT_TIME: float = 0.2
+const BOLT_COLOR: Color = Color(0.82, 0.9, 1.0, 1.0)
+## Meters: the bolt's thickness, and how far its kinks stray from the line.
+const BOLT_THICKNESS: float = 0.06
+const BOLT_JITTER: float = 0.35
+## A kink about every this many meters.
+const BOLT_KINK_EVERY: float = 2.5
 
 var _world: World
 var _terrain_view: TerrainView
@@ -65,6 +77,8 @@ func after_step() -> void:
 				_on_explode(event)
 			ProjectileEvent.Kind.FIZZLE:
 				_puff(_point_of(event))
+			ProjectileEvent.Kind.BOLT:
+				_bolt(event)
 
 
 ## Flashes and puffs still playing.
@@ -78,6 +92,10 @@ func mark_count() -> int:
 
 
 func _on_explode(event: ProjectileEvent) -> void:
+	var t: ProjectileType = _type_of(event)
+	if t != null and not t.is_explosive():
+		_blob(_point_of(event), 0.3, 1.2, GAS_PUFF_COLOR, PUFF_TIME, PUFF_RISE)
+		return
 	_flash(_point_of(event), event.radius / float(World.UNITS_PER_METER))
 	if event.crater <= 0:
 		return
@@ -90,6 +108,50 @@ func _on_explode(event: ProjectileEvent) -> void:
 			_gibs.update_heights_in(_world.terrain, event.cells)
 		_refit_marks(event.cells)
 	_add_mark(event.x, event.z, roundi(event.crater * CRATER_DISC_SCALE), CRATER_COLOR, CRATER_LIFT)
+
+
+# A jagged chain of thin boxes from the bolt's start to its end, and a small
+# flash where it ended; all fade together. The kinks are cosmetic, from the
+# view's own dice.
+func _bolt(event: ProjectileEvent) -> void:
+	var mm: float = float(World.UNITS_PER_METER)
+	var from: Vector3 = _point_of(event)
+	var to: Vector3 = Vector3(event.end_x, event.end_y, event.end_z) / mm
+	var bolt: Node3D = Node3D.new()
+	var material: StandardMaterial3D = StandardMaterial3D.new()
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	material.albedo_color = BOLT_COLOR
+	var kinks: int = maxi(1, int(from.distance_to(to) / BOLT_KINK_EVERY))
+	var previous: Vector3 = from
+	for k: int in range(1, kinks + 1):
+		var point: Vector3 = from.lerp(to, float(k) / kinks)
+		if k < kinks:
+			point += Vector3(randf_range(-1.0, 1.0), randf_range(-0.5, 0.5), randf_range(-1.0, 1.0)) * BOLT_JITTER
+		bolt.add_child(_bolt_segment(previous, point, material))
+		previous = point
+	_effects.add_child(bolt)
+	var tween: Tween = create_tween()
+	tween.tween_property(material, "albedo_color:a", 0.0, BOLT_TIME)
+	tween.tween_callback(bolt.queue_free)
+	_blob(to, 0.2, 0.8, BOLT_COLOR, BOLT_TIME * 2.0, 0.0)
+
+
+static func _bolt_segment(a: Vector3, b: Vector3, material: StandardMaterial3D) -> MeshInstance3D:
+	var box: BoxMesh = BoxMesh.new()
+	box.size = Vector3(BOLT_THICKNESS, BOLT_THICKNESS, maxf(a.distance_to(b), 0.01))
+	var segment: MeshInstance3D = MeshInstance3D.new()
+	segment.mesh = box
+	segment.material_override = material
+	segment.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	segment.transform = Transform3D(ProjectilesView.aim_basis(b - a), (a + b) * 0.5)
+	return segment
+
+
+func _type_of(event: ProjectileEvent) -> ProjectileType:
+	if event.type_index < 0 or event.type_index >= _world.catalog.projectile_types.size():
+		return null
+	return _world.catalog.projectile_types[event.type_index]
 
 
 # A sphere that grows to FLASH_RADIUS_SHARE of the blast and fades out.

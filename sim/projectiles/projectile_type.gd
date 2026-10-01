@@ -2,7 +2,8 @@ class_name ProjectileType
 extends Resource
 ## Data-driven projectile definition, saved as data/projectiles/<id>.tres and
 ## listed in the unit catalog's projectile_types. The sim reads every
-## projectile number from here: arrows, grenades, satchel charges.
+## projectile number from here: arrows, grenades, satchel charges, lightning,
+## and the loose things units pick up (herbs, gas packets, body parts).
 ##
 ## Same conventions as UnitType: integers only (milli-units, mm/s, ticks,
 ## permille), and required numbers default to 0 so validate() can reject a
@@ -13,17 +14,32 @@ enum Behavior {
 	## Arrows: stop dead where they land. They hurt a unit they fly into.
 	STICKS,
 	## Grenades and satchels: bounce, roll on slopes, come to rest. They
-	## glance off bodies without hurting them.
+	## glance off bodies, hurting them only if impact_damage is set (a thrown
+	## body part).
 	BOUNCES,
+	## Lightning: never flies. The shot is a straight line, resolved the
+	## tick it leaves (Lightning), hurting every body along it.
+	BOLT,
+}
+
+## Who may pick it up off the ground.
+enum Pickup {
+	NONE,
+	## A unit that throws what it carries (UnitType.throws_carried: Rippers).
+	CARRY,
+	## A healer (UnitType.Special.HEAL: Wardens), adding it to its stack.
+	HERB,
 }
 
 ## Stable key used by unit types (ranged_projectile, special_projectile).
 @export var id: StringName = &""
 @export var display_name: String = ""
 @export var behavior: Behavior = Behavior.STICKS
+@export var pickup: Pickup = Pickup.NONE
 
 @export_group("Flight")
-## Milli-units. Collision radius against ground and bodies.
+## Milli-units. Collision radius against ground and bodies; for a BOLT, half
+## the width of the line it hurts.
 @export var radius: int = 0
 ## Quadratic air drag: parts per million of speed lost per metre travelled.
 ## 5000 loses 0.5% of its speed every metre. 0 flies in a vacuum.
@@ -46,8 +62,12 @@ enum Behavior {
 @export var static_slope_permille: int = 0
 
 @export_group("Impact")
-## STICKS: damage to a unit it flies into.
+## STICKS and BOLT: damage to a unit it strikes. BOUNCES: damage to a unit it
+## flies into (0: none), with no roll.
 @export var impact_damage: int = 0
+## BOUNCES: once a unit has thrown it, it bursts on the first thing it
+## touches, ground or body.
+@export var bursts_on_impact: bool = false
 ## Lights the ground where it lands (fire arrows; Fire), unless its flame
 ## goes out first.
 @export var marks_fire: bool = false
@@ -88,6 +108,22 @@ enum Behavior {
 ## Set off by any blast that reaches it (satchels, grenades, duds).
 @export var chain_detonates: bool = false
 
+@export_group("Gas")
+## Milli-units. A burst leaves a cloud this wide that paralyzes everyone in
+## it (GasCloud). 0: no gas.
+@export var gas_radius: int = 0
+## Ticks the cloud lingers.
+@export var gas_ticks: int = 0
+## Ticks a unit stays paralyzed after it was last in the cloud.
+@export var gas_paralysis_ticks: int = 0
+
+@export_group("Scatter")
+## Projectile id a burst leaves lying around it, scatter_count of them in a
+## ring scatter_radius out (a Blightbag's gas packets). Empty: none.
+@export var scatter_projectile: StringName = &""
+@export var scatter_count: int = 0
+@export var scatter_radius: int = 0
+
 @export_group("View")
 ## Placeholder color until the art pass. View only.
 @export var placeholder_color: Color = Color.WHITE
@@ -95,8 +131,20 @@ enum Behavior {
 @export var length: int = 0
 
 
+## Has a blast that hurts and throws.
 func is_explosive() -> bool:
 	return blast_radius > 0
+
+
+## Goes off at all: a blast, a gas cloud, or both.
+func bursts() -> bool:
+	return blast_radius > 0 or gas_radius > 0
+
+
+## Milli-units: how far from where it goes off it does anything to anyone,
+## the larger of its blast and its gas.
+func effect_radius() -> int:
+	return maxi(blast_radius, gas_radius)
 
 
 ## Carries a flame: a lit fuse or a fire arrow. Weather and water put it out.
@@ -116,21 +164,30 @@ func validate() -> PackedStringArray:
 		errors.append("%s: radius must be positive" % who)
 	if drag_ppm_per_m < 0 or drag_ppm_per_m > 100_000:
 		errors.append("%s: drag_ppm_per_m must be 0..100000" % who)
-	if behavior == Behavior.STICKS:
-		if impact_damage <= 0:
-			errors.append("%s: a sticking projectile needs impact_damage" % who)
-	else:
-		for field: String in ["restitution_permille", "friction_permille", "roll_accel_permille"]:
-			var value: int = int(get(field))
-			if value < 0 or value > 1000:
-				errors.append("%s: %s must be 0..1000" % [who, field])
-		if rest_speed <= 0:
-			errors.append("%s: rest_speed must be positive" % who)
-		if rolling_resistance < 0 or static_slope_permille < 0:
-			errors.append("%s: rolling_resistance and static_slope_permille can't be negative" % who)
+	match behavior:
+		Behavior.STICKS, Behavior.BOLT:
+			if impact_damage <= 0:
+				errors.append("%s: a sticking projectile or bolt needs impact_damage" % who)
+		Behavior.BOUNCES:
+			for field: String in ["restitution_permille", "friction_permille", "roll_accel_permille"]:
+				var value: int = int(get(field))
+				if value < 0 or value > 1000:
+					errors.append("%s: %s must be 0..1000" % [who, field])
+			if rest_speed <= 0:
+				errors.append("%s: rest_speed must be positive" % who)
+			if rolling_resistance < 0 or static_slope_permille < 0:
+				errors.append("%s: rolling_resistance and static_slope_permille can't be negative" % who)
+			if impact_damage < 0:
+				errors.append("%s: impact_damage can't be negative" % who)
+	if behavior == Behavior.BOLT and (bursts() or fuse_ticks > 0 or marks_fire or pickup != Pickup.NONE):
+		errors.append("%s: a bolt can't burst, burn, have a fuse, or be picked up" % who)
+	if pickup != Pickup.NONE and behavior != Behavior.BOUNCES:
+		errors.append("%s: only a BOUNCES projectile can lie about to be picked up" % who)
+	if bursts_on_impact and (behavior != Behavior.BOUNCES or not bursts()):
+		errors.append("%s: bursts_on_impact needs a BOUNCES projectile that bursts" % who)
 	if fuse_ticks < 0:
 		errors.append("%s: fuse_ticks can't be negative" % who)
-	if fuse_ticks > 0 and not is_explosive():
+	if fuse_ticks > 0 and not bursts():
 		errors.append("%s: a fuse needs something to explode" % who)
 	for field: String in ["fuse_variance_permille", "fizzle_permille"]:
 		var value: int = int(get(field))
@@ -140,10 +197,26 @@ func validate() -> PackedStringArray:
 		var value: int = int(get(field))
 		if value < 0 or value > 1000:
 			errors.append("%s: %s must be 0..1000" % [who, field])
-	if chain_detonates and not is_explosive():
-		errors.append("%s: chain_detonates needs a blast" % who)
+	if chain_detonates and not bursts():
+		errors.append("%s: chain_detonates needs a blast or gas" % who)
 	if is_explosive():
 		errors.append_array(_validate_blast(who))
+	errors.append_array(_validate_gas(who))
+	if scatter_projectile != &"" and (scatter_count <= 0 or scatter_radius <= 0 or not bursts()):
+		errors.append("%s: scatter needs a burst, a positive count, and a radius" % who)
+	if scatter_projectile == &"" and scatter_count != 0:
+		errors.append("%s: scatter_count without scatter_projectile" % who)
+	return errors
+
+
+func _validate_gas(who: String) -> PackedStringArray:
+	var errors: PackedStringArray = PackedStringArray()
+	if gas_radius < 0:
+		errors.append("%s: gas_radius can't be negative" % who)
+	elif gas_radius > 0 and (gas_ticks <= 0 or gas_paralysis_ticks <= 0):
+		errors.append("%s: gas needs positive gas_ticks and gas_paralysis_ticks" % who)
+	elif gas_radius == 0 and (gas_ticks != 0 or gas_paralysis_ticks != 0):
+		errors.append("%s: gas_ticks and gas_paralysis_ticks need a gas_radius" % who)
 	return errors
 
 

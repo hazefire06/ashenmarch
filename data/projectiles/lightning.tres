@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="ProjectileType" format=3]
+
+[ext_resource type="Script" path="res://sim/projectiles/projectile_type.gd" id="1_ltn01"]
+
+[resource]
+script = ExtResource("1_ltn01")
+id = &"lightning"
+display_name = "Lightning"
+behavior = 2
+radius = 350
+impact_damage = 45
+placeholder_color = Color(0.75, 0.85, 1, 1)

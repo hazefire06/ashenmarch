@@ -42,13 +42,20 @@ enum AimStyle {
 	LOB,
 }
 
-## What T does. Phase 6 appends more.
+## What T does.
 enum Special {
 	NONE,
 	## Nock the fire arrow: the next shot is special_projectile.
 	FIRE_ARROW,
 	## Drop a charge (special_projectile) at the unit's feet.
 	SATCHEL,
+	## Heal a unit with a herb (special_projectile, a HERB pickup): T arms it
+	## and a click picks who (HealCommand). special_charges is the stack it
+	## starts with and can hold.
+	HEAL,
+	## Burst (special_projectile) where it stands, dying. It bursts the same
+	## way whenever it dies, whatever killed it.
+	DETONATE,
 }
 
 const WATER_DEPTH_LEVELS: int = Terrain.MAX_WATER_DEPTH + 1
@@ -103,6 +110,14 @@ const ALL_ROLES_MASK: int = (1 << Role.MELEE) | (1 << Role.RANGED) | (1 << Role.
 @export var melee_cooldown_ticks: int = 0
 ## Chance in permille to block a melee hit from the front arc. 0: no shield.
 @export var shield_block_permille: int = 0
+## A status effect every blow that lands inflicts (a paralyzing touch), for
+## melee_status_ticks ticks. 0 ticks: none.
+@export var melee_status: StatusEffects.Kind = StatusEffects.Kind.PARALYSIS
+@export var melee_status_ticks: int = 0
+## The blow is the unit bursting (a Blightbag): it closes in and winds up like
+## any melee unit, and when the wind-up ends with the target in reach it dies
+## and its DETONATE special goes off. No accuracy roll, no damage of its own.
+@export var melee_detonates: bool = false
 
 @export_group("Targeting")
 ## Milli-units, body edge to body edge: how far an attack-moving unit looks
@@ -153,6 +168,21 @@ const ALL_ROLES_MASK: int = (1 << Role.MELEE) | (1 << Role.RANGED) | (1 << Role.
 @export var special_charges: int = 0
 ## Projectile id the special fires or drops.
 @export var special_projectile: StringName = &""
+## HEAL: hit points a herb gives back.
+@export var heal_hp: int = 0
+## HEAL: ticks from reaching the patient to the herb taking effect.
+@export var heal_windup_ticks: int = 0
+
+@export_group("Carrying")
+## Picks up loose CARRY objects (and tears parts off bodies) and throws them,
+## using the Ranged group's launch, range, timing, and spread numbers with no
+## ranged_projectile of its own (Rippers).
+@export var throws_carried: bool = false
+## Milli-units: how far off, center to center, it notices something to pick
+## up while it has nothing better to do. 0: only when ordered to.
+@export var scavenge_radius: int = 0
+## Projectile id of what it tears off a body. Empty: it leaves bodies alone.
+@export var scavenged_projectile: StringName = &""
 
 @export_group("Veterancy")
 ## The most each kill-based bonus can reach, in permille. See Veterancy for
@@ -183,12 +213,16 @@ func validate() -> PackedStringArray:
 	if uphill_slowdown_permille < 0 or uphill_slowdown_permille > 1000:
 		errors.append("%s: uphill_slowdown_permille must be 0..1000" % who)
 	errors.append_array(_validate_water(who))
-	if melee_damage > 0:
+	if has_melee():
 		for field: String in ["melee_reach", "melee_windup_ticks", "melee_cooldown_ticks", "acquire_radius"]:
 			if int(get(field)) <= 0:
 				errors.append("%s: melee needs a positive %s" % [who, field])
-		if melee_accuracy_permille <= 0 or melee_accuracy_permille > 1000:
-			errors.append("%s: melee_accuracy_permille must be 1..1000" % who)
+	if melee_damage > 0 and (melee_accuracy_permille <= 0 or melee_accuracy_permille > 1000):
+		errors.append("%s: melee_accuracy_permille must be 1..1000" % who)
+	if melee_detonates and special_ability != Special.DETONATE:
+		errors.append("%s: melee_detonates needs the DETONATE special" % who)
+	if melee_detonates and melee_damage > 0:
+		errors.append("%s: a unit whose blow is bursting has no melee_damage" % who)
 	for field: String in [
 		"shield_block_permille", "veterancy_accuracy_permille",
 		"veterancy_attack_rate_permille", "veterancy_speed_permille",
@@ -196,6 +230,8 @@ func validate() -> PackedStringArray:
 		var value: int = int(get(field))
 		if value < 0 or value > 1000:
 			errors.append("%s: %s must be 0..1000" % [who, field])
+	if melee_status_ticks < 0:
+		errors.append("%s: melee_status_ticks can't be negative" % who)
 	if preferred_target_roles & ~ALL_ROLES_MASK != 0:
 		errors.append("%s: preferred_target_roles has unknown role bits" % who)
 	if hover_height < 0:
@@ -204,6 +240,18 @@ func validate() -> PackedStringArray:
 		errors.append("%s: reveal_radius can't be negative" % who)
 	if has_ranged():
 		errors.append_array(_validate_ranged(who))
+	if throws_carried:
+		if has_ranged():
+			errors.append("%s: a unit can't both shoot and throw what it carries" % who)
+		else:
+			errors.append_array(_validate_ranged(who))
+			for field: String in ["ranged_launch_speed", "ranged_lob_grade_permille"]:
+				if int(get(field)) <= 0:
+					errors.append("%s: throwing needs a positive %s" % [who, field])
+	if scavenge_radius < 0:
+		errors.append("%s: scavenge_radius can't be negative" % who)
+	if (scavenge_radius > 0 or scavenged_projectile != &"") and not throws_carried:
+		errors.append("%s: scavenging needs throws_carried" % who)
 	if special_ability != Special.NONE:
 		if special_charges <= 0:
 			errors.append("%s: a special needs charges" % who)
@@ -211,11 +259,20 @@ func validate() -> PackedStringArray:
 			errors.append("%s: a special needs special_projectile" % who)
 	if special_ability == Special.FIRE_ARROW and not has_ranged():
 		errors.append("%s: a fire arrow needs a ranged attack to shoot it" % who)
+	if special_ability == Special.HEAL and heal_hp <= 0:
+		errors.append("%s: HEAL needs a positive heal_hp" % who)
+	if heal_windup_ticks < 0:
+		errors.append("%s: heal_windup_ticks can't be negative" % who)
 	return errors
 
 
 func has_ranged() -> bool:
 	return ranged_projectile != &""
+
+
+## True if it fights in melee at all: blows, or bursting on contact.
+func has_melee() -> bool:
+	return melee_damage > 0 or melee_detonates
 
 
 ## Water depth levels this unit's mobility lets it stand in.
@@ -225,10 +282,9 @@ func can_enter_depth(depth: int) -> bool:
 
 func _validate_ranged(who: String) -> PackedStringArray:
 	var errors: PackedStringArray = PackedStringArray()
-	for field: String in [
-		"ranged_launch_speed", "ranged_lob_grade_permille", "ranged_launch_height",
-		"ranged_max_range", "ranged_cooldown_ticks",
-	]:
+	# Launch speed and lob grade depend on what is shot (a bolt needs
+	# neither), so UnitCatalog checks them against the projectile.
+	for field: String in ["ranged_launch_height", "ranged_max_range", "ranged_cooldown_ticks"]:
 		if int(get(field)) <= 0:
 			errors.append("%s: ranged needs a positive %s" % [who, field])
 	if ranged_min_range < 0 or ranged_min_range >= ranged_max_range:

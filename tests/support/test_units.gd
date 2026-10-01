@@ -83,6 +83,78 @@ static func thrower(type_id: StringName, overrides: Dictionary = {}) -> UnitType
 	return ranged(type_id, base)
 
 
+## A lightning caster built on ranged(): no melee, bolts out to 40 m with an
+## 8 m dead zone, a 30-tick cast, a 120-tick cooldown, and no spread.
+static func caster(type_id: StringName, overrides: Dictionary = {}) -> UnitType:
+	var base: Dictionary = {
+		"melee_damage": 0, "melee_accuracy_permille": 0, "melee_reach": 0,
+		"melee_windup_ticks": 0, "melee_cooldown_ticks": 0, "acquire_radius": 0,
+		"ranged_projectile": &"lightning", "ranged_launch_height": 1600,
+		"ranged_min_range": 8000, "ranged_max_range": 40_000,
+		"ranged_windup_ticks": 30, "ranged_cooldown_ticks": 120,
+	}
+	base.merge(overrides, true)
+	return ranged(type_id, base)
+
+
+## A scavenger built on melee(): it picks up loose objects and tears parts
+## off bodies within 8 m, and throws them like a thrower (a lob at 0.8 grade,
+## up to 15 m/s, 3-20 m, a 12-tick wind-up, no spread), hunting ranged and
+## support units first.
+static func scavenger(type_id: StringName, overrides: Dictionary = {}) -> UnitType:
+	var base: Dictionary = {
+		"preferred_target_roles": (1 << UnitType.Role.RANGED) | (1 << UnitType.Role.SUPPORT),
+		"throws_carried": true, "scavenge_radius": 8000, "scavenged_projectile": &"body_part",
+		"ranged_aim": UnitType.AimStyle.LOB, "ranged_launch_speed": 15_000,
+		"ranged_lob_grade_permille": 800, "ranged_launch_height": 1500,
+		"ranged_min_range": 3000, "ranged_max_range": 20_000,
+		"ranged_windup_ticks": 12, "ranged_cooldown_ticks": 30, "ranged_ammo": -1,
+	}
+	base.merge(overrides, true)
+	return melee(type_id, base)
+
+
+## A healer built on melee(): a support unit carrying six herbs that heal
+## 60 hp after a 15-tick wind-up.
+static func healer(type_id: StringName, overrides: Dictionary = {}) -> UnitType:
+	var base: Dictionary = {
+		"role": UnitType.Role.SUPPORT,
+		"special_ability": UnitType.Special.HEAL,
+		"special_charges": 6,
+		"special_projectile": &"herb",
+		"heal_hp": 60,
+		"heal_windup_ticks": 15,
+	}
+	base.merge(overrides, true)
+	return melee(type_id, base)
+
+
+## An undead dummy that walks anywhere wet: what a herb kills.
+static func undead(type_id: StringName, overrides: Dictionary = {}) -> UnitType:
+	var base: Dictionary = {
+		"nature": UnitType.Nature.UNDEAD, "mobility": Terrain.Mobility.UNDEAD,
+		"water_speed_permille": PackedInt32Array([1000, 1000, 1000, 1000, 1000]),
+	}
+	base.merge(overrides, true)
+	return dummy(type_id, base)
+
+
+## A walking bomb: undead, no blows of its own; its blow is bursting into the
+## shipped blight burst after a 20-tick wind-up, and any death bursts it.
+static func bomb(type_id: StringName, overrides: Dictionary = {}) -> UnitType:
+	var base: Dictionary = {
+		"nature": UnitType.Nature.UNDEAD, "mobility": Terrain.Mobility.UNDEAD,
+		"water_speed_permille": PackedInt32Array([1000, 1000, 1000, 1000, 1000]),
+		"max_hp": 40, "move_speed": 1100,
+		"melee_damage": 0, "melee_accuracy_permille": 0, "melee_windup_ticks": 20,
+		"melee_cooldown_ticks": 30, "acquire_radius": 10_000, "melee_detonates": true,
+		"special_ability": UnitType.Special.DETONATE, "special_charges": 1,
+		"special_projectile": &"blight_burst",
+	}
+	base.merge(overrides, true)
+	return melee(type_id, base)
+
+
 ## Private copies of the shipped projectile types, in catalog order. Copies,
 ## because load() hands every caller the same cached resources: a test that
 ## tweaks one must not change it for the rest of the run.

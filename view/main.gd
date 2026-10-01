@@ -3,7 +3,8 @@ extends Node3D
 ## Entry scene: loads the map and unit catalog, owns the World, and advances
 ## it one tick per physics frame. The terrain view, camera, overhead map, and
 ## unit, projectile, explosion, fire, and weather views read the World; only
-## commands change it. Everything that draws the ground is built from the World's own terrain,
+## commands change it. The gas cloud and herb plant views read it too.
+## Everything that draws the ground is built from the World's own terrain,
 ## not the one loaded from the map: explosions scar the World's copy.
 
 const WORLD_SEED: int = 1
@@ -18,7 +19,9 @@ const WEATHER_PATH: String = "res://data/weather/riverside_showers.tres"
 ## five Reavers stands behind the Shieldmen and a row of five Rippers behind
 ## the Husks, on the side away from the enemy. Phase 4 adds a row of six
 ## Longbows and a row of three Sappers behind the Shieldmen and Reavers, and a
-## row of six Drifters behind the Husks and Rippers.
+## row of six Drifters behind the Husks and Rippers. Phase 6 adds three
+## Wardens behind the Sappers, three Blightbags in front of the Husks, and two
+## Stormcallers behind the Drifters, and plants the map's herb plants.
 const TEST_SQUAD_SIZE: int = 20
 const SHIELDMEN_ORIGIN: Vector2i = Vector2i(290_000, 185_000)
 const HUSKS_ORIGIN: Vector2i = Vector2i(250_000, 275_000)
@@ -28,6 +31,9 @@ const TEST_SHOCK_ROW_SIZE: int = 5
 const TEST_LONGBOW_COUNT: int = 6
 const TEST_SAPPER_COUNT: int = 3
 const TEST_DRIFTER_COUNT: int = 6
+const TEST_WARDEN_COUNT: int = 3
+const TEST_BLIGHTBAG_COUNT: int = 3
+const TEST_STORMCALLER_COUNT: int = 2
 ## Where the camera starts: between the two squads, looking north.
 const CAMERA_START: Vector2 = Vector2(285.0, 245.0)
 const CAMERA_START_DISTANCE: float = 75.0
@@ -46,12 +52,15 @@ var _weather_preset: int = 0
 @onready var _projectiles_view: ProjectilesView = $Projectiles
 @onready var _explosions_view: ExplosionsView = $Explosions
 @onready var _fire_view: FireView = $Fire
+@onready var _gas_view: GasCloudsView = $GasClouds
+@onready var _plants_view: HerbPlantsView = $HerbPlants
 @onready var _precipitation: PrecipitationView = $Precipitation
 @onready var _camera: RtsCamera = $CameraRig
 @onready var _selection: SelectionController = $Hud/Selection
 @onready var _control_bar: ControlBar = $Hud/ControlBar
 @onready var _overhead_map: OverheadMap = $Hud/OverheadMap
 @onready var _tooltip: UnitTooltip = $Hud/UnitTooltip
+@onready var _info_panel: UnitInfoPanel = $Hud/UnitInfoPanel
 @onready var _stats_label: Label = $Hud/StatsLabel
 
 
@@ -82,16 +91,22 @@ func _ready() -> void:
 	_overhead_map.setup(terrain, _camera)
 	_gibs.setup(terrain)
 	_spawn_test_squads()
+	_plant_herbs(load(MAP_PATH) as MapInfo)
 	_schedule_weather()
 	_units_view.setup(world, _selection.selection, _gibs)
 	_projectiles_view.setup(world)
 	_explosions_view.setup(world, _terrain_view, _gibs)
 	_fire_view.setup(world)
+	_gas_view.setup(world)
+	_plants_view.setup(world)
 	_precipitation.setup(world, _camera)
-	_selection.setup(world, _units_view, _camera.get_camera(), TerrainPicker.new(terrain))
+	_selection.setup(
+		world, _units_view, _camera.get_camera(), TerrainPicker.new(terrain), _projectiles_view, _plants_view
+	)
 	_selection.side_changed.connect(_units_view.set_viewer)
 	_control_bar.setup(_selection, world)
-	_tooltip.setup(_selection, world)
+	_info_panel.setup(_selection, world, _control_bar)
+	_tooltip.setup(_selection, world, _camera.get_camera(), _projectiles_view, _plants_view)
 	print(
 		"terrain loaded %dx%d in %d ms; meshes and overhead map built in %d ms"
 		% [terrain.size_x, terrain.size_z, loaded_ms - started_ms, Time.get_ticks_msec() - loaded_ms]
@@ -107,6 +122,8 @@ func _physics_process(_delta: float) -> void:
 	_projectiles_view.after_step()
 	_explosions_view.after_step()
 	_fire_view.after_step()
+	_gas_view.after_step()
+	_plants_view.after_step()
 	_terrain_view.update_fire(world.fire)
 	_terrain_view.set_weather(world.weather)
 
@@ -192,3 +209,26 @@ func _spawn_test_squads() -> void:
 		world.enqueue(SpawnUnitCommand.new(
 			world.tick, &"drifter", UnitType.Faction.DARK, drifter.x, drifter.y, 0, -1
 		))
+	# Phase 6: Wardens behind the Sappers; Blightbags in front of the Husks,
+	# toward the creek; Stormcallers behind the Drifters.
+	for i: int in TEST_WARDEN_COUNT:
+		var warden: Vector2i = SHIELDMEN_ORIGIN + Vector2i(i * 3 * TEST_SQUAD_SPACING / 2, -4 * TEST_SQUAD_SPACING)
+		world.enqueue(SpawnUnitCommand.new(
+			world.tick, &"warden", UnitType.Faction.LIGHT, warden.x, warden.y, 0, 1
+		))
+	for i: int in TEST_BLIGHTBAG_COUNT:
+		var bag: Vector2i = HUSKS_ORIGIN + Vector2i(i * 2 * TEST_SQUAD_SPACING, -TEST_SQUAD_SPACING)
+		world.enqueue(SpawnUnitCommand.new(
+			world.tick, &"blightbag", UnitType.Faction.DARK, bag.x, bag.y, 0, -1
+		))
+	for i: int in TEST_STORMCALLER_COUNT:
+		var caller: Vector2i = HUSKS_ORIGIN + Vector2i(i * 4 * TEST_SQUAD_SPACING, (block_rows + 2) * TEST_SQUAD_SPACING)
+		world.enqueue(SpawnUnitCommand.new(
+			world.tick, &"stormcaller", UnitType.Faction.DARK, caller.x, caller.y, 0, -1
+		))
+
+
+# The map's herb plants, as tick-0 commands like the spawns.
+func _plant_herbs(map: MapInfo) -> void:
+	for k: int in range(0, map.herb_plants.size() - 1, 2):
+		world.enqueue(SpawnHerbPlantCommand.new(world.tick, map.herb_plants[k], map.herb_plants[k + 1]))

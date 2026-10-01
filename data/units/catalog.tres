@@ -14,8 +14,16 @@
 [ext_resource type="Resource" path="res://data/projectiles/fire_arrow.tres" id="12_far01"]
 [ext_resource type="Resource" path="res://data/projectiles/grenade.tres" id="13_grn01"]
 [ext_resource type="Resource" path="res://data/projectiles/satchel.tres" id="14_stc01"]
+[ext_resource type="Resource" path="res://data/units/warden.tres" id="15_wdn01"]
+[ext_resource type="Resource" path="res://data/projectiles/herb.tres" id="16_hrb01"]
+[ext_resource type="Resource" path="res://data/units/blightbag.tres" id="17_bbg01"]
+[ext_resource type="Resource" path="res://data/projectiles/gas_packet.tres" id="18_gpk01"]
+[ext_resource type="Resource" path="res://data/projectiles/blight_burst.tres" id="19_bbt01"]
+[ext_resource type="Resource" path="res://data/units/stormcaller.tres" id="20_stc02"]
+[ext_resource type="Resource" path="res://data/projectiles/lightning.tres" id="21_ltn01"]
+[ext_resource type="Resource" path="res://data/projectiles/body_part.tres" id="22_bpt01"]
 
 [resource]
 script = ExtResource("1_netvh")
-types = Array[ExtResource("2_k6cb4")]([ExtResource("3_rw1vc"), ExtResource("4_nbt4h"), ExtResource("5_rvr01"), ExtResource("6_rpr01"), ExtResource("7_lbw01"), ExtResource("8_spr01"), ExtResource("9_dft01")])
-projectile_types = Array[ExtResource("10_ptp01")]([ExtResource("11_arw01"), ExtResource("12_far01"), ExtResource("13_grn01"), ExtResource("14_stc01")])
+types = Array[ExtResource("2_k6cb4")]([ExtResource("3_rw1vc"), ExtResource("4_nbt4h"), ExtResource("5_rvr01"), ExtResource("6_rpr01"), ExtResource("7_lbw01"), ExtResource("8_spr01"), ExtResource("9_dft01"), ExtResource("15_wdn01"), ExtResource("17_bbg01"), ExtResource("20_stc02")])
+projectile_types = Array[ExtResource("10_ptp01")]([ExtResource("11_arw01"), ExtResource("12_far01"), ExtResource("13_grn01"), ExtResource("14_stc01"), ExtResource("16_hrb01"), ExtResource("18_gpk01"), ExtResource("19_bbt01"), ExtResource("21_ltn01"), ExtResource("22_bpt01")])

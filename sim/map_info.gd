@@ -17,3 +17,6 @@ extends Resource
 @export var max_height: int = 0
 ## Steepest slope walking units can stand on, in permille (1000 = 45 degrees).
 @export var max_walkable_slope: int = 0
+## Herb plants growing on the map, as x, z pairs in milli-units. MainView
+## plants one for each (SpawnHerbPlantCommand) at the start.
+@export var herb_plants: PackedInt32Array = PackedInt32Array()
