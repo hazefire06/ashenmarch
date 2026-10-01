@@ -128,14 +128,16 @@ func _screen_to_world(screen: Vector2) -> Vector2:
 
 
 # Builds an RGB8 image with texel (i, j) = sample (i, j): banded height color,
-# water tint, and a hillshade from the neighboring heights. The colors depend
-# only on the height band and water depth, so they are looked up from a small
-# table built through TerrainPalette instead of called per texel.
+# ground tint, water tint, and a hillshade from the neighboring heights. The
+# colors depend only on the height band, ground type, and water depth, so
+# they are looked up from a small table built through TerrainPalette instead
+# of called per texel.
 static func _build_image(terrain: Terrain) -> Image:
 	var width: int = terrain.size_x
 	var height: int = terrain.size_z
 	var heights: PackedInt32Array = terrain.heights
 	var water: PackedByteArray = terrain.water
+	var ground: PackedByteArray = terrain.ground
 	var min_h: int = heights[0]
 	var max_h: int = heights[0]
 	for k: int in heights.size():
@@ -145,8 +147,9 @@ static func _build_image(terrain: Terrain) -> Image:
 
 	var palette: Array[Color] = []
 	for depth: int in Terrain.MAX_WATER_DEPTH + 1:
-		for band: int in TerrainPalette.BANDS:
-			palette.append(TerrainPalette.ground_color((band + 0.5) / TerrainPalette.BANDS, depth))
+		for kind: int in Terrain.GROUND_COUNT:
+			for band: int in TerrainPalette.BANDS:
+				palette.append(TerrainPalette.ground_color((band + 0.5) / TerrainPalette.BANDS, depth, kind))
 
 	# Heights and cell_size are both milli-units, so the ratio is the same
 	# dimensionless slope as rise over run in meters.
@@ -168,7 +171,7 @@ static func _build_image(terrain: Terrain) -> Image:
 			var t: float = clampf(float(heights[k] - min_h) / h_range, 0.0, 0.9999)
 			var band: int = int(t * TerrainPalette.BANDS)
 			var depth: int = mini(water[k], Terrain.MAX_WATER_DEPTH)
-			var color: Color = palette[depth * TerrainPalette.BANDS + band]
+			var color: Color = palette[(depth * Terrain.GROUND_COUNT + ground[k]) * TerrainPalette.BANDS + band]
 			var o: int = k * 3
 			data[o] = clampi(int(color.r * shade * 255.0 + 0.5), 0, 255)
 			data[o + 1] = clampi(int(color.g * shade * 255.0 + 0.5), 0, 255)
