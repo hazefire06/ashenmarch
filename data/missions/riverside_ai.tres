@@ -1,0 +1,232 @@
+[gd_resource type="Resource" script_class="MissionScript" format=3]
+
+[ext_resource type="Script" path="res://sim/missions/mission_script.gd" id="1_msc01"]
+[ext_resource type="Script" path="res://sim/ai/ai_group_spec.gd" id="2_grp01"]
+[ext_resource type="Script" path="res://sim/ai/ai_unit_entry.gd" id="3_ent01"]
+[ext_resource type="Script" path="res://sim/missions/trigger_spec.gd" id="4_trg01"]
+[ext_resource type="Script" path="res://sim/missions/trigger_action.gd" id="5_act01"]
+[ext_resource type="Script" path="res://sim/weather_change.gd" id="6_wch01"]
+
+; The Dark side of Riverside, hand-written. Positions are milli-units (1000 = 1 m)
+; on the Riverside map: the creek meanders west to east, the ford crosses it at
+; x = 300 m (depth 1 from z = 218 to 234 m), the Light squads start on the north
+; bank around (290, 185) m, and everything south of z = 236 m is dry. Counts are
+; the same at every tier except the ambush's, which grows from 4 to 8 Husks.
+; Entries list melee before ranged: a group spawns front to back in the order
+; listed, so the Husks stand in front of the Stormcallers behind them.
+
+; ---- unit entries ----
+
+[sub_resource type="Resource" id="Entry_patrol_husk"]
+script = ExtResource("3_ent01")
+type_id = &"husk"
+counts = PackedInt32Array(6)
+
+[sub_resource type="Resource" id="Entry_storm_husk"]
+script = ExtResource("3_ent01")
+type_id = &"husk"
+counts = PackedInt32Array(6)
+
+[sub_resource type="Resource" id="Entry_husk_ambush"]
+script = ExtResource("3_ent01")
+type_id = &"husk"
+counts = PackedInt32Array(4, 5, 6, 7, 8)
+
+[sub_resource type="Resource" id="Entry_ripper_5"]
+script = ExtResource("3_ent01")
+type_id = &"ripper"
+counts = PackedInt32Array(5)
+
+[sub_resource type="Resource" id="Entry_stormcaller_2"]
+script = ExtResource("3_ent01")
+type_id = &"stormcaller"
+counts = PackedInt32Array(2)
+
+[sub_resource type="Resource" id="Entry_blightbag_3"]
+script = ExtResource("3_ent01")
+type_id = &"blightbag"
+counts = PackedInt32Array(3)
+
+[sub_resource type="Resource" id="Entry_drifter_6"]
+script = ExtResource("3_ent01")
+type_id = &"drifter"
+counts = PackedInt32Array(6)
+
+; ---- groups ----
+
+; Husks looping a triangle along the south bank, east of where the ford comes
+; ashore. Any Light unit within 12 m of any of them sends them hunting.
+[sub_resource type="Resource" id="Group_south_patrol"]
+script = ExtResource("2_grp01")
+name = &"south_patrol"
+units = Array[ExtResource("3_ent01")]([SubResource("Entry_patrol_husk")])
+spawns = PackedInt32Array(296000, 248000)
+spawn_at_start = true
+behavior = 1
+waypoints = PackedInt32Array(296000, 248000, 330000, 252000, 314000, 264000)
+alert_radius = 12000
+
+; Husks lying in the depth-3 water 17 m west of the ford (every sample within
+; 3 m of the spawn point is depth 3, so the whole group is hidden). They spring
+; when a Light unit comes within 8 m, or when the "ford" trigger sets them
+; hunting.
+[sub_resource type="Resource" id="Group_ford_ambush"]
+script = ExtResource("2_grp01")
+name = &"ford_ambush"
+units = Array[ExtResource("3_ent01")]([SubResource("Entry_husk_ambush")])
+spawns = PackedInt32Array(284000, 222000)
+spawn_at_start = true
+behavior = 5
+alert_radius = 8000
+
+; Rippers that come late, from the south-east, for the Longbows, Sappers, and
+; Wardens (flank_roles keeps its default of ranged and support). The "raid"
+; trigger spawns them.
+[sub_resource type="Resource" id="Group_raiders"]
+script = ExtResource("2_grp01")
+name = &"raiders"
+units = Array[ExtResource("3_ent01")]([SubResource("Entry_ripper_5")])
+spawns = PackedInt32Array(340000, 272000)
+behavior = 4
+
+; The dark camp, where the old test squad stood: Husks in front, two
+; Stormcallers behind. Holds its ground and fights what comes within 25 m; if
+; it is losing badly it falls back once, to the south, and guards that.
+[sub_resource type="Resource" id="Group_storm"]
+script = ExtResource("2_grp01")
+name = &"storm"
+units = Array[ExtResource("3_ent01")]([SubResource("Entry_storm_husk"), SubResource("Entry_stormcaller_2")])
+spawns = PackedInt32Array(250000, 275000)
+spawn_at_start = true
+behavior = 2
+guard_radius = 25000
+retreat_below_permille = 400
+retreat_point = PackedInt32Array(250000, 305000)
+
+; Walking bombs, slowly marching at the nearest Light unit from the start.
+[sub_resource type="Resource" id="Group_bags"]
+script = ExtResource("2_grp01")
+name = &"bags"
+units = Array[ExtResource("3_ent01")]([SubResource("Entry_blightbag_3")])
+spawns = PackedInt32Array(270000, 262000)
+spawn_at_start = true
+behavior = 3
+
+; Drifters walking the south bank west of the ford, in range of the north bank
+; across the creek. A Light unit within 30 m sends them hunting (and standing
+; off at range, as Drifters do).
+[sub_resource type="Resource" id="Group_drifters"]
+script = ExtResource("2_grp01")
+name = &"drifters"
+units = Array[ExtResource("3_ent01")]([SubResource("Entry_drifter_6")])
+spawns = PackedInt32Array(246000, 232000)
+spawn_at_start = true
+behavior = 1
+waypoints = PackedInt32Array(246000, 232000, 262000, 238000, 278000, 242000)
+alert_radius = 30000
+
+; ---- weather ----
+
+[sub_resource type="Resource" id="Weather_rain"]
+script = ExtResource("6_wch01")
+rain = 700
+wind_x = 3000
+wind_z = 1000
+ramp_ticks = 150
+
+; ---- trigger actions ----
+
+[sub_resource type="Resource" id="Action_objective_cross"]
+script = ExtResource("5_act01")
+kind = 2
+text = "Cross the creek and clear the south bank"
+
+[sub_resource type="Resource" id="Action_objective_hold"]
+script = ExtResource("5_act01")
+kind = 2
+text = "Hold the ford"
+
+[sub_resource type="Resource" id="Action_spring_ambush"]
+script = ExtResource("5_act01")
+kind = 5
+group = &"ford_ambush"
+behavior = 3
+
+[sub_resource type="Resource" id="Action_spawn_raiders"]
+script = ExtResource("5_act01")
+group = &"raiders"
+
+[sub_resource type="Resource" id="Action_rain"]
+script = ExtResource("5_act01")
+kind = 1
+weather = SubResource("Weather_rain")
+
+[sub_resource type="Resource" id="Action_objective_raiders"]
+script = ExtResource("5_act01")
+kind = 2
+text = "Raiders on the flank"
+
+[sub_resource type="Resource" id="Action_objective_clear"]
+script = ExtResource("5_act01")
+kind = 2
+text = "Clear the south bank"
+
+[sub_resource type="Resource" id="Action_win"]
+script = ExtResource("5_act01")
+kind = 3
+
+[sub_resource type="Resource" id="Action_lose"]
+script = ExtResource("5_act01")
+kind = 4
+
+; ---- triggers, in the order they are checked ----
+
+; The first objective, set on the first tick.
+[sub_resource type="Resource" id="Trigger_start"]
+script = ExtResource("4_trg01")
+name = &"start"
+condition = 2
+ticks = PackedInt32Array(0)
+actions = Array[ExtResource("5_act01")]([SubResource("Action_objective_cross")])
+
+; Light comes within 15 m of the middle of the ford: the objective changes and
+; the ambush rises.
+[sub_resource type="Resource" id="Trigger_ford"]
+script = ExtResource("4_trg01")
+name = &"ford"
+condition = 0
+area = PackedInt32Array(300000, 227000, 15000)
+actions = Array[ExtResource("5_act01")]([SubResource("Action_objective_hold"), SubResource("Action_spring_ambush")])
+
+; 90 seconds in: the Rippers arrive and the rain starts.
+[sub_resource type="Resource" id="Trigger_raid"]
+script = ExtResource("4_trg01")
+name = &"raid"
+condition = 2
+ticks = PackedInt32Array(2700)
+actions = Array[ExtResource("5_act01")]([SubResource("Action_spawn_raiders"), SubResource("Action_rain"), SubResource("Action_objective_raiders")])
+
+[sub_resource type="Resource" id="Trigger_raid_over"]
+script = ExtResource("4_trg01")
+name = &"raid_over"
+condition = 3
+names = Array[StringName]([&"raiders"])
+actions = Array[ExtResource("5_act01")]([SubResource("Action_objective_clear")])
+
+[sub_resource type="Resource" id="Trigger_win"]
+script = ExtResource("4_trg01")
+name = &"win"
+condition = 4
+faction = 1
+actions = Array[ExtResource("5_act01")]([SubResource("Action_win")])
+
+[sub_resource type="Resource" id="Trigger_lose"]
+script = ExtResource("4_trg01")
+name = &"lose"
+condition = 4
+actions = Array[ExtResource("5_act01")]([SubResource("Action_lose")])
+
+[resource]
+script = ExtResource("1_msc01")
+groups = Array[ExtResource("2_grp01")]([SubResource("Group_south_patrol"), SubResource("Group_ford_ambush"), SubResource("Group_raiders"), SubResource("Group_storm"), SubResource("Group_bags"), SubResource("Group_drifters")])
+triggers = Array[ExtResource("4_trg01")]([SubResource("Trigger_start"), SubResource("Trigger_ford"), SubResource("Trigger_raid"), SubResource("Trigger_raid_over"), SubResource("Trigger_win"), SubResource("Trigger_lose")])
