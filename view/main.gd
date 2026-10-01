@@ -39,6 +39,11 @@ const CAMERA_START_DISTANCE: float = 75.0
 const SIM_TIME_SMOOTHING: float = 0.05
 
 var world: World
+## The mission to start, a MissionScript resource path. Set it before the
+## scene enters the tree: _ready reads it. Empty starts no mission, so a
+## caller (the AI demo) can start its own on the fresh world with
+## World.start_mission before the first step.
+var mission_path: String = MISSION_PATH
 
 var _sim_ms: float = 0.0
 ## The DebugWeather preset F6 last picked.
@@ -159,9 +164,11 @@ func _process(_delta: float) -> void:
 # triggers and AI act inside World.step(), not through commands, so there is
 # nothing to enqueue.
 func _start_mission() -> void:
-	var mission_script: MissionScript = load(MISSION_PATH) as MissionScript
+	if mission_path.is_empty():
+		return
+	var mission_script: MissionScript = load(mission_path) as MissionScript
 	if mission_script == null or not world.start_mission(mission_script, MISSION_TIER):
-		push_error("MainView: could not start the mission %s" % MISSION_PATH)
+		push_error("MainView: could not start the mission %s" % mission_path)
 
 
 # The Light side. Enqueued as tick-0 commands, not spawned directly, so the

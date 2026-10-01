@@ -28,10 +28,11 @@ extends SceneTree
 ## a whole second of ticks, so every run plays out the same and the result lines
 ## are the same on every machine. The Dark side is the AI: stages 1 to 6 spawn each group from a spec
 ## (AiDirector.spawn_group) and switch behaviors with AiDirector.set_behavior;
-## the finale is driven by the demo's MissionScript triggers. MainView starts
-## the game's own Riverside mission and spawns the Light test squads at tick 0;
-## this demo replaces that mission with its own before the first step and
-## removes the squads, so nothing else is on the field for the AI to hunt.
+## the finale is driven by the demo's MissionScript triggers. MainView's own
+## Riverside mission is switched off (MainView.mission_path) and the demo
+## starts its own before the first step. MainView also spawns the Light test
+## squads at tick 0; the demo removes them, so nothing else is on the field
+## for the AI to hunt.
 
 const M: int = 1000
 const LIGHT: UnitType.Faction = UnitType.Faction.LIGHT
@@ -97,9 +98,11 @@ func _initialize() -> void:
 	# Lets the sim keep up at DEMO_SPEED > 1 instead of slowing down.
 	Engine.max_physics_steps_per_frame = 16
 	_main = load("res://view/main.tscn").instantiate() as MainView
+	# No mission of the game's own: the demo starts its own.
+	_main.mission_path = ""
 	root.add_child(_main)
 	# MainView builds its world in _ready, which has not run yet, and steps it
-	# in _physics_process, which comes after: swap the mission in between.
+	# in _physics_process, which comes after: start the mission in between.
 	if _main.is_node_ready():
 		_start_mission()
 	else:
@@ -319,13 +322,12 @@ func _finale() -> void:
 
 
 # The mission the demo plays: every stage's groups (spawned by the stages for
-# 1 to 6, by triggers for the finale) and the finale's triggers. MainView has
-# started the game's own mission already, which would spawn its own Dark side
-# on the first step and decide the outcome when a side runs out; it is dropped
-# here, before any step, in favor of this one.
+# 1 to 6, by triggers for the finale) and the finale's triggers. MainView is
+# told to start none of its own (mission_path), because the game's Riverside
+# mission would spawn its own Dark side on the first step and decide the
+# outcome when a side runs out.
 func _start_mission() -> void:
 	_mission_script = _build_script()
-	_main.world.mission = null
 	if not _main.world.start_mission(_mission_script, TIER):
 		push_error("demo_ai: could not start the demo mission")
 
