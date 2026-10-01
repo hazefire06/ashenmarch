@@ -38,8 +38,11 @@ var units: Array[Unit] = []
 ## Every arrow, grenade, and charge in the world, in ascending id order (a
 ## subset of entities). Removed ones stay flagged until the end of the tick.
 var projectiles: Array[Projectile] = []
+## Herb plants on the map, in ascending id order (a subset of entities).
+var herb_plants: Array[HerbPlant] = []
 var statuses: StatusEffects = StatusEffects.new()
 var combat: MeleeCombat = MeleeCombat.new()
+var interactions: Interactions = Interactions.new()
 var ranged: RangedCombat = RangedCombat.new()
 var movement: UnitMovement = UnitMovement.new()
 var projectile_system: ProjectileSystem = ProjectileSystem.new()
@@ -54,6 +57,12 @@ var combat_events: Array[CombatEvent] = []
 ## What projectiles did during the last step, for the view. Output only,
 ## like combat_events.
 var projectile_events: Array[ProjectileEvent] = []
+## True from when ProjectileSystem starts in the current step to the end of
+## it; false between ticks. Explosions.catch reads it to keep chain delays
+## exact: the pass counts down what was there when it began, so a charge
+## caught earlier in the tick is counted this tick, and one spawned during or
+## after it isn't.
+var projectile_pass_begun: bool = false
 
 var _next_entity_id: int = 1
 var _pending: Array[SimCommand] = []
@@ -84,18 +93,21 @@ func enqueue(command: SimCommand) -> bool:
 ## 2. advance the weather (ramps, snow cover, wetness);
 ## 3. status effects (wear-offs, water putting out the burning, burns);
 ## 4. melee (targets, chases, blows, deaths);
-## 5. ranged (targets, draws, shots leaving);
-## 6. steer the units, which sets their velocities (knockback included);
-## 7. integrate the units;
-## 8. move the projectiles against the units' new positions: hits, bounces,
-##    fuses, fire arrows lighting fires;
-## 9. resolve the explosions that brings;
-## 10. burn: fires go out, spread, burn out, set units alight, and catch
+## 5. errands (heals, pick-ups, herb plants);
+## 6. ranged (targets, draws, shots leaving);
+## 7. steer the units, which sets their velocities (knockback included);
+## 8. integrate the units;
+## 9. move the projectiles against the units' new positions: hits, bounces,
+##    fuses, fire arrows lighting fires, carried things following their
+##    carriers;
+## 10. resolve the explosions that brings;
+## 11. burn: fires go out, spread, burn out, set units alight, and catch
 ##     explosives;
-## 11. drop removed projectiles.
+## 12. drop removed projectiles.
 func step() -> void:
 	combat_events.clear()
 	projectile_events.clear()
+	projectile_pass_begun = false
 	if fire != null:
 		fire.changed.clear()
 	_apply_commands()
@@ -103,14 +115,17 @@ func step() -> void:
 	if terrain != null:
 		statuses.update(self)
 		combat.update(self)
+		interactions.update(self)
 		ranged.update(self)
 		movement.update(self)
 	_integrate()
 	if terrain != null and catalog != null:
+		projectile_pass_begun = true
 		projectile_system.update(self)
 		explosions.resolve(self, projectile_system.grid)
 		fire.update(self)
 		_drop_removed_projectiles()
+	projectile_pass_begun = false
 	tick += 1
 
 
@@ -167,26 +182,68 @@ func spawn_projectile(type_index: int, flight: FlightState, owner_id: int) -> Pr
 ## Lays unit's special charge on the ground at (x, z), at rest. It never
 ## goes off by itself: a blast sets it off. Null if the unit has none.
 func drop_charge(unit: Unit, x: int, z: int) -> Projectile:
-	var index: int = catalog.projectile_index_of(unit.type.special_projectile)
-	if index < 0:
+	return drop_object(catalog.projectile_index_of(unit.type.special_projectile), x, z, unit.id)
+
+
+## Lays a projectile of catalog type type_index on the ground at (x, z)
+## (clamped to the map), at rest, dropped by owner_id (0 for none): a charge,
+## a herb, a gas packet. Null for a bad index.
+func drop_object(type_index: int, x: int, z: int, owner_id: int) -> Projectile:
+	if type_index < 0 or type_index >= catalog.projectile_types.size():
 		return null
-	var radius: int = catalog.projectile_types[index].radius
+	var radius: int = catalog.projectile_types[type_index].radius
 	var cx: int = clampi(x, 0, terrain.extent_x())
 	var cz: int = clampi(z, 0, terrain.extent_z())
 	var p: Projectile = spawn_projectile(
-		index, FlightState.at_mm(cx, terrain.height_at(cx, cz) + radius, cz, 0, 0, 0), unit.id
+		type_index, FlightState.at_mm(cx, terrain.height_at(cx, cz) + radius, cz, 0, 0, 0), owner_id
 	)
 	p.motion = Projectile.Motion.RESTING
 	var e: ProjectileEvent = ProjectileEvent.about(ProjectileEvent.Kind.DROP, p)
-	e.unit_id = unit.id
+	e.unit_id = owner_id
 	projectile_events.append(e)
 	return p
 
 
+## Puts a herb plant on the ground at (x, z), clamped to the map.
+func spawn_herb_plant(x: int, z: int) -> HerbPlant:
+	if terrain == null:
+		return null
+	var cx: int = clampi(x, 0, terrain.extent_x())
+	var cz: int = clampi(z, 0, terrain.extent_z())
+	var plant: HerbPlant = HerbPlant.new(_next_entity_id, cx, terrain.height_at(cx, cz), cz)
+	_register(plant)
+	herb_plants.append(plant)
+	return plant
+
+
 ## Flags a projectile for removal at the end of this tick. Loops over
 ## projectiles skip flagged ones; the array itself doesn't change mid-tick.
+## Something carried leaves its carrier's hand.
 func remove_projectile(p: Projectile) -> void:
 	p.removed = true
+	release(p)
+
+
+## Takes p out of its carrier's hand, if it is in one. The caller decides
+## what happens to it next (thrown, dropped, gone).
+func release(p: Projectile) -> void:
+	if p.carrier_id == 0:
+		return
+	var carrier: Unit = get_unit(p.carrier_id)
+	if carrier != null and carrier.carried_id == p.id:
+		carrier.carried_id = 0
+	p.carrier_id = 0
+
+
+## What unit carries, or null: a carried_id whose object is gone (burst in
+## its hand, despawned) counts as empty-handed.
+func carried_by(unit: Unit) -> Projectile:
+	if unit.carried_id == 0:
+		return null
+	var p: Projectile = get_entity(unit.carried_id) as Projectile
+	if p == null or p.removed or p.carrier_id != unit.id:
+		return null
+	return p
 
 
 ## Lights the ground at (x, z) (a fire arrow landing), credited to
@@ -204,9 +261,20 @@ func ignite(x: int, z: int, instigator_id: int) -> bool:
 func despawn_entity(entity_id: int) -> void:
 	var entity: SimEntity = get_entity(entity_id)
 	if entity is Unit:
+		var p: Projectile = carried_by(entity as Unit)
+		if p != null:
+			# Its load falls where it stood.
+			release(p)
+			p.flight.vx = 0
+			p.flight.vy = 0
+			p.flight.vz = 0
+			p.motion = Projectile.Motion.FLYING
 		units.erase(entity)
 	elif entity is Projectile:
+		release(entity as Projectile)
 		projectiles.erase(entity)
+	elif entity is HerbPlant:
+		herb_plants.erase(entity)
 	entities.erase(entity_id)
 
 

@@ -18,6 +18,9 @@ enum Kind {
 	MISS,
 	## A blow killed the target.
 	KILL,
+	## A healer's herb took effect: damage is the hit points given back (0 on
+	## an undead target, which the herb killed: a KILL comes with it).
+	HEAL,
 }
 
 var kind: Kind

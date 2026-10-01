@@ -19,6 +19,8 @@ extends RefCounted
 ## - Order.NONE: fight enemies within reach + ADJACENT_SLACK, stepping in to
 ##   close that gap, but only enemies within HOLD_LEASH of the held spot.
 ## - Order.MOVE: no fighting until the unit arrives (it then holds, NONE).
+## - Order.INTERACT: no fighting either; the errand (Interactions) owns the
+##   unit until it is done.
 ## - Order.ATTACK_MOVE: fight enemies within the type's acquire_radius, chase
 ##   them up to ATTACK_MOVE_LEASH_PERMILLE of it, and resume the march after
 ##   each fight.
@@ -30,10 +32,13 @@ extends RefCounted
 ## - Enemies hidden in deep water can't be picked until they surface to
 ##   fight, and an enemy the unit can't walk to (another pathing component)
 ##   is only fought if in reach.
-## - Units with a ranged attack only fight in melee what comes adjacent
-##   (reach + ADJACENT_SLACK), whatever their order, and never chase: their
-##   fight is at range (RangedCombat). Taking up a melee fight abandons a
-##   draw in progress.
+## - Units whose fight is at range (a ranged attack, or something in hand to
+##   throw: Unit.fights_at_range) only fight in melee what comes adjacent
+##   (reach + ADJACENT_SLACK), whatever their order, and never chase
+##   (RangedCombat). Taking up a melee fight abandons a draw in progress.
+## - A melee_detonates unit's blow is it bursting: when its wind-up ends with
+##   the target in reach, it dies (Damage.self_destruct) and its burst goes
+##   off. No dice.
 ## - A unit reeling from a blast's knockback does nothing but recover. A
 ##   paralyzed one does nothing at all, and loses a swing it was winding up.
 ## - A confused unit (StatusEffects) fights the nearest unit of either side
@@ -141,12 +146,14 @@ func _decide(world: World, unit: Unit, grid: UnitGrid) -> bool:
 		return false
 	# A confused unit's order waits until it wears off (UnitOrders.resume).
 	var confused: bool = StatusEffects.confused(world, unit)
+	if unit.order == Unit.Order.INTERACT and not confused:
+		return false
 	if unit.order == Unit.Order.MOVE and not confused:
 		if unit.state != Unit.State.IDLE:
 			return false
 		# Arrived: hold here from now on.
 		UnitOrders.hold(unit)
-	if unit.type.melee_damage <= 0:
+	if not unit.type.has_melee():
 		if not confused and unit.order == Unit.Order.ATTACK_MOVE and unit.state == Unit.State.IDLE:
 			# No melee to fight with, but the march still ends on arrival.
 			UnitOrders.hold(unit)
@@ -221,7 +228,7 @@ func _acquire(world: World, unit: Unit, grid: UnitGrid, current: Unit, confused:
 # (or a confused unit) looks out to its acquire radius, anyone else only at
 # what comes adjacent. Units whose fight is at range never look far.
 func _acquire_radius(unit: Unit, confused: bool) -> int:
-	if (unit.order == Unit.Order.ATTACK_MOVE or confused) and not unit.type.has_ranged():
+	if (unit.order == Unit.Order.ATTACK_MOVE or confused) and not unit.fights_at_range():
 		return unit.type.acquire_radius
 	return unit.type.melee_reach + ADJACENT_SLACK
 
@@ -233,7 +240,7 @@ func _in_leash(world: World, unit: Unit, target: Unit, confused: bool) -> bool:
 	if Visibility.is_submerged(world.terrain, target):
 		return false
 	var limit: int = unit.type.melee_reach + ADJACENT_SLACK
-	if (unit.order == Unit.Order.ATTACK_MOVE or confused) and not unit.type.has_ranged():
+	if (unit.order == Unit.Order.ATTACK_MOVE or confused) and not unit.fights_at_range():
 		limit = unit.type.acquire_radius * ATTACK_MOVE_LEASH_PERMILLE / PERMILLE
 	if Targeting.edge_distance(unit, target) > limit or (not confused and not _within_hold(unit, target)):
 		return false
@@ -304,6 +311,12 @@ func _strike(world: World, attacker: Unit) -> void:
 	if not Targeting.in_reach(attacker, target, REACH_TOLERANCE):
 		world.combat_events.append(miss)
 		return
+	if attacker.type.melee_detonates:
+		# A blow from a unit killed earlier this tick is wasted: it already
+		# burst when it died.
+		if attacker.is_alive():
+			Damage.self_destruct(world, attacker)
+		return
 	if world.rng.randi_range(0, PERMILLE - 1) >= Veterancy.melee_accuracy(attacker):
 		world.combat_events.append(miss)
 		return
@@ -316,8 +329,10 @@ func _strike(world: World, attacker: Unit) -> void:
 	))
 	if Damage.apply(world, target, damage, attacker.x, attacker.z, attacker.id, aspect):
 		return
-	# Struck, it loses the shot or spell it was drawing.
+	# Struck, it loses the shot or spell it was drawing, or the herb it was
+	# about to apply.
 	target.clear_shot()
+	target.act_left = 0
 	if attacker.type.melee_status_ticks > 0:
 		StatusEffects.apply(
 			world, target, attacker.type.melee_status, attacker.type.melee_status_ticks, attacker.id

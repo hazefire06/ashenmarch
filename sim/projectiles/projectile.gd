@@ -13,6 +13,9 @@ enum Motion {
 	ROLLING,
 	## Lying still. Only a blast moves it again.
 	RESTING,
+	## In a unit's hand (carrier_id): it goes where the carrier goes and
+	## touches nothing until it is thrown or dropped.
+	CARRIED,
 }
 
 var type: ProjectileType
@@ -44,6 +47,11 @@ var age: int = 0
 ## Flagged for removal; World drops it at the end of the tick, so the loops
 ## that flag it never see the array change under them.
 var removed: bool = false
+## The unit holding it (motion CARRIED); 0 for none.
+var carrier_id: int = 0
+## A unit threw it and it hasn't come to rest: a bursts_on_impact type goes
+## off on the first thing it touches. Things thrown by a blast don't count.
+var thrown: bool = false
 
 
 func _init(
@@ -87,5 +95,6 @@ func hash_fields() -> PackedInt64Array:
 	fields.append_array(PackedInt64Array([
 		type_index, owner_id, instigator_id, motion, fuse_left, 1 if dud else 0,
 		1 if detonating else 0, detonate_in, ignore_id, ignore_ticks, age, 1 if removed else 0,
+		carrier_id, 1 if thrown else 0,
 	]))
 	return fields

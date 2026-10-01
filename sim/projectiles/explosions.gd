@@ -48,12 +48,17 @@ func detonate(_world: World, p: Projectile) -> void:
 	_queue.append(p)
 
 
-## Sets off a loose charge, grenade, or dud caught by a blast or a fire: it
-## goes off CHAIN_DELAY_TICKS later, credited to instigator_id. The caller
-## checks it can be (chain_detonates, not already detonating).
-static func catch(p: Projectile, instigator_id: int) -> void:
+## Sets off a loose charge, grenade, or dud caught by a blast, a fire, or
+## lightning (or a Blightbag's burst at its death): it goes off exactly
+## CHAIN_DELAY_TICKS ticks after this one, credited to instigator_id. The
+## caller checks it can be (chain_detonates, not already detonating).
+## ProjectileSystem counts the delay down, so one caught before it has run
+## this tick gets a tick more (World.projectile_pass_begun). Nothing already
+## lying about is caught during the pass itself; only charges spawned in it
+## (a Blightbag an arrow killed), which it doesn't count this tick.
+static func catch(world: World, p: Projectile, instigator_id: int) -> void:
 	p.detonating = true
-	p.detonate_in = CHAIN_DELAY_TICKS
+	p.detonate_in = CHAIN_DELAY_TICKS + (0 if world.projectile_pass_begun else 1)
 	p.fuse_left = 0
 	p.instigator_id = instigator_id
 
@@ -131,8 +136,12 @@ func _burst(world: World, grid: UnitGrid, p: Projectile) -> void:
 			(other.x - bx) * (other.x - bx) + (other.y - by) * (other.y - by) + (other.z - bz) * (other.z - bz)
 		) - other.type.radius)
 		if other.type.chain_detonates and d < t.blast_radius:
-			catch(other, p.instigator_id)
-		elif d < t.knock_radius and other.type.behavior == ProjectileType.Behavior.BOUNCES:
+			catch(world, other, p.instigator_id)
+		elif (
+			d < t.knock_radius and other.type.behavior == ProjectileType.Behavior.BOUNCES
+			and other.motion != Projectile.Motion.CARRIED
+		):
+			# Something in a hand stays there.
 			_knock_object(t, other, bx, bz, d)
 	var e: ProjectileEvent = ProjectileEvent.new(ProjectileEvent.Kind.EXPLODE, bx, by, bz)
 	e.projectile_id = p.id

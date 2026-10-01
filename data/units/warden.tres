@@ -1,0 +1,29 @@
+[gd_resource type="Resource" script_class="UnitType" format=3]
+
+[ext_resource type="Script" path="res://sim/units/unit_type.gd" id="1_wdn01"]
+
+[resource]
+script = ExtResource("1_wdn01")
+id = &"warden"
+display_name = "Warden"
+role = 2
+max_hp = 85
+body_radius = 400
+body_height = 1750
+move_speed = 2600
+water_speed_permille = PackedInt32Array(1000, 750, 500, 0, 0)
+uphill_slowdown_permille = 450
+melee_damage = 9
+melee_accuracy_permille = 750
+melee_reach = 600
+melee_windup_ticks = 7
+melee_cooldown_ticks = 24
+acquire_radius = 8000
+special_ability = 3
+special_charges = 6
+special_projectile = &"herb"
+heal_hp = 60
+heal_windup_ticks = 15
+veterancy_accuracy_permille = 100
+veterancy_attack_rate_permille = 100
+placeholder_color = Color(0.55, 0.85, 0.6, 1)

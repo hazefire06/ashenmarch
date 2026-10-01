@@ -27,6 +27,9 @@ enum Kind {
 	## A ground-attack order at (x, z) could not be carried out by unit_id:
 	## out of reach from anywhere it can walk, or inside its minimum range.
 	CANT_REACH,
+	## unit_id picked the projectile up (a herb into its stack, or a loose
+	## object into its hand) at (x, y, z).
+	PICK_UP,
 }
 
 var kind: Kind

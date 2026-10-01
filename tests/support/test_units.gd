@@ -83,6 +83,31 @@ static func thrower(type_id: StringName, overrides: Dictionary = {}) -> UnitType
 	return ranged(type_id, base)
 
 
+## A healer built on melee(): a support unit carrying six herbs that heal
+## 60 hp after a 15-tick wind-up.
+static func healer(type_id: StringName, overrides: Dictionary = {}) -> UnitType:
+	var base: Dictionary = {
+		"role": UnitType.Role.SUPPORT,
+		"special_ability": UnitType.Special.HEAL,
+		"special_charges": 6,
+		"special_projectile": &"herb",
+		"heal_hp": 60,
+		"heal_windup_ticks": 15,
+	}
+	base.merge(overrides, true)
+	return melee(type_id, base)
+
+
+## An undead dummy that walks anywhere wet: what a herb kills.
+static func undead(type_id: StringName, overrides: Dictionary = {}) -> UnitType:
+	var base: Dictionary = {
+		"nature": UnitType.Nature.UNDEAD, "mobility": Terrain.Mobility.UNDEAD,
+		"water_speed_permille": PackedInt32Array([1000, 1000, 1000, 1000, 1000]),
+	}
+	base.merge(overrides, true)
+	return dummy(type_id, base)
+
+
 ## Private copies of the shipped projectile types, in catalog order. Copies,
 ## because load() hands every caller the same cached resources: a test that
 ## tweaks one must not change it for the rest of the run.

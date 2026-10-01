@@ -21,6 +21,8 @@ extends RefCounted
 ##   lifts off where the ground drops away faster than it follows, and
 ##   comes to rest when slow on gentle enough ground.
 ## - RESTING: doesn't move.
+## - CARRIED: rides in its carrier's hand (Interactions.hand_y) and touches
+##   nothing. Should the carrier be gone, it falls.
 ## - Then fuses and chain countdowns: a fuse that burns down rolls for a
 ##   fizzle (the dud stays, and a blast can still set it off) or queues the
 ##   explosion; a caught charge goes off when its countdown ends.
@@ -96,6 +98,8 @@ func update(world: World) -> void:
 				_fly(world, p)
 			Projectile.Motion.ROLLING:
 				_roll(world, p)
+			Projectile.Motion.CARRIED:
+				_carry(world, p)
 		if p.removed:
 			continue
 		p.sync_position()
@@ -384,6 +388,22 @@ func _roll(world: World, p: Projectile) -> void:
 	else:
 		f.py = rest_y
 		_douse_if_in_water(world, p)
+
+
+# In a hand: at the carrier's, after this tick's movement.
+func _carry(world: World, p: Projectile) -> void:
+	var carrier: Unit = world.get_unit(p.carrier_id)
+	if carrier == null or not carrier.is_alive() or carrier.carried_id != p.id:
+		world.release(p)
+		p.motion = Projectile.Motion.FLYING
+		return
+	var f: FlightState = p.flight
+	f.px = carrier.x * FlightState.SUB
+	f.py = Interactions.hand_y(carrier) * FlightState.SUB
+	f.pz = carrier.z * FlightState.SUB
+	f.vx = 0
+	f.vy = 0
+	f.vz = 0
 
 
 # Fuse and chain countdown.

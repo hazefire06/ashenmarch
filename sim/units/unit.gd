@@ -34,6 +34,10 @@ enum Order {
 	## Ranged units: bombard (ground_x, ground_z), walking into range first if
 	## needed, until given another order.
 	GROUND_ATTACK,
+	## An errand (Interactions): walk to interact_id and do something to it
+	## (heal it, pick it up, strike a herb plant), then go back to
+	## resume_order.
+	INTERACT,
 }
 
 ## Bitmask of states each state may change to, indexed by State. Every live
@@ -111,9 +115,9 @@ var kills: int = 0
 ## GROUND_ATTACK: the spot being bombarded.
 var ground_x: int = 0
 var ground_z: int = 0
-## GROUND_ATTACK: the unit has already walked toward the spot to get in
-## range, so finding itself stopped and still unable to reach it means it
-## never will.
+## GROUND_ATTACK (or INTERACT): the unit has already walked toward the spot
+## (or its errand's target) to get in range, so finding itself stopped and
+## still unable to reach it means it never will.
 var ground_walked: bool = false
 ## Entity id of the unit being shot at; 0 for none.
 var shot_target_id: int = 0
@@ -137,6 +141,19 @@ var knock_vz: int = 0
 var status_until: PackedInt32Array = PackedInt32Array()
 ## The unit credited with what Burning does to this one (0 for none).
 var burn_credit_id: int = 0
+## INTERACT: the entity the errand is about (a unit, a loose object, a herb
+## plant); 0 for none.
+var interact_id: int = 0
+## INTERACT: the order to go back to when the errand is done: NONE (hold
+## where it ends) or ATTACK_MOVE (march on to order_x/z).
+var resume_order: Order = Order.NONE
+## INTERACT: ticks until the wind-up of the errand's act ends (a heal, a
+## strike, a pick-up); 0 when not winding up.
+var act_left: int = 0
+## The loose object in this unit's hand (Projectile.carrier_id); 0 for none.
+var carried_id: int = 0
+## A body: parts a scavenger has torn off it.
+var parts_taken: int = 0
 
 
 func _init(
@@ -177,6 +194,7 @@ func kill() -> void:
 	clear_order()
 	clear_engagement()
 	clear_shot()
+	clear_errand()
 	StatusEffects.clear(self)
 	order = Order.NONE
 	vx = 0
@@ -198,6 +216,20 @@ func clear_engagement() -> void:
 func clear_shot() -> void:
 	shot_target_id = 0
 	aim_left = 0
+
+
+## True if this unit's fight is at range right now: it shoots, or has
+## something in hand to throw. Such a unit only takes on in melee what comes
+## adjacent, and never chases.
+func fights_at_range() -> bool:
+	return type.has_ranged() or carried_id != 0
+
+
+## Drops the errand: no target, no wind-up. Leaves the order itself alone.
+func clear_errand() -> void:
+	interact_id = 0
+	act_left = 0
+	resume_order = Order.NONE
 
 
 ## True while a blast's knockback is still throwing the unit: it can't
@@ -244,6 +276,7 @@ func hash_fields() -> PackedInt64Array:
 		target_id, windup_left, cooldown_left, kills, path.size(),
 		ground_x, ground_z, 1 if ground_walked else 0, shot_target_id, aim_left, shot_cooldown_left,
 		ammo_left, special_left, 1 if fire_nocked else 0, knock_vx, knock_vz, burn_credit_id,
+		interact_id, resume_order, act_left, carried_id, parts_taken,
 	]))
 	for until: int in status_until:
 		fields.append(until)

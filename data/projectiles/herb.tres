@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="ProjectileType" format=3]
+
+[ext_resource type="Script" path="res://sim/projectiles/projectile_type.gd" id="1_hrb01"]
+
+[resource]
+script = ExtResource("1_hrb01")
+id = &"herb"
+display_name = "Healing herb"
+behavior = 1
+pickup = 2
+radius = 80
+drag_ppm_per_m = 5000
+restitution_permille = 100
+friction_permille = 300
+roll_accel_permille = 200
+rolling_resistance = 6000
+rest_speed = 500
+static_slope_permille = 600
+placeholder_color = Color(0.35, 0.8, 0.3, 1)
+length = 160

@@ -123,7 +123,7 @@ func _decide(world: World, unit: Unit) -> bool:
 		unit.clear_shot()
 		return false
 	var confused: bool = StatusEffects.confused(world, unit)
-	if unit.order == Unit.Order.MOVE and not confused:
+	if (unit.order == Unit.Order.MOVE or unit.order == Unit.Order.INTERACT) and not confused:
 		return false
 	if unit.ammo_left == 0:
 		_stand_down(world, unit)
@@ -294,7 +294,7 @@ func _aim_at_unit(world: World, unit: Unit, target: Unit, x: int, z: int, carefu
 		if careful and _friend_beside(world, unit, x, z, target.type.body_radius):
 			return AimSolution.failed()
 		y = ground + target.type.hover_height + target.type.body_height * CHEST_PERMILLE / PERMILLE
-	elif careful and p.is_explosive() and _friend_in_blast(world, unit, p, x, ground, z):
+	elif careful and p.bursts() and _friend_in_blast(world, unit, p, x, ground, z):
 		return AimSolution.failed()
 	elif p.fuse_ticks > 0 and world.terrain.water_depth_at(x, z) > 0:
 		# The fuse would go out where it lands (ProjectileSystem).
@@ -365,9 +365,9 @@ func _friend_beside(world: World, unit: Unit, x: int, z: int, r: int) -> bool:
 
 
 # True if a friend of unit (unit included) would be caught by p bursting at
-# (x, y, z).
+# (x, y, z): in its blast or its gas.
 func _friend_in_blast(world: World, unit: Unit, p: ProjectileType, x: int, y: int, z: int) -> bool:
-	var reach: int = p.blast_radius + FRIENDLY_BLAST_MARGIN
+	var reach: int = p.effect_radius() + FRIENDLY_BLAST_MARGIN
 	for other: Unit in world.units:
 		if other.is_alive() and other.faction == unit.faction:
 			if Explosions.distance_to_body(other, x, y, z) < reach:

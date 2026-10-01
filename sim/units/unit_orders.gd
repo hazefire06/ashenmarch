@@ -119,6 +119,8 @@ static func resume(world: World, unit: Unit) -> void:
 			)
 		Unit.Order.GROUND_ATTACK:
 			world.movement.order_stop(unit)
+		Unit.Order.INTERACT:
+			Interactions.restart(world, unit)
 		_:
 			hold(unit)
 			world.movement.order_stop(unit)
