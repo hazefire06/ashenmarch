@@ -14,7 +14,10 @@ extends RefCounted
 ##   anchor when none are left, and calls back any member a chase drags past
 ##   the leash.
 ## - HUNT: goes after every enemy it can see.
-## - FLANK, AMBUSH, RETREAT: not built yet; a group given one stands as it is.
+## - AMBUSH: lies still, held where it stands, until it is disturbed: an enemy
+##   within alert_radius of any member, a member hurt, or a member fighting.
+##   Then it springs into on_alert.
+## - FLANK, RETREAT: not built yet; a group given one stands as it is.
 
 ## What a leg (one march to one goal) came to.
 enum LegResult {
@@ -224,9 +227,34 @@ static func _flank(_world: World, _group: AiGroup, _units: Array[Unit]) -> void:
 	pass
 
 
-# AMBUSH: does nothing yet; the group keeps whatever orders it has.
-static func _ambush(_world: World, _group: AiGroup, _units: Array[Unit]) -> void:
-	pass
+# AMBUSH: a disturbed group switches to on_alert, which springs it
+# (AiDirector.set_behavior) and plans under the new behavior at once. A quiet
+# one tells any free member that isn't holding to hold where it stands, so a
+# member that wandered off, or was sent off, goes back to lying still. A busy
+# member is left alone: that is a disturbance already.
+static func _ambush(world: World, group: AiGroup, units: Array[Unit]) -> void:
+	if _disturbed(world, group, units):
+		switch_to(world, group, group.spec.on_alert)
+		return
+	var restless: PackedInt32Array = PackedInt32Array()
+	for unit: Unit in units:
+		if unit.order != Unit.Order.NONE and AiOrders.is_free(world, unit):
+			restless.append(unit.id)
+	if not restless.is_empty():
+		UnitOrders.stop(world, restless)
+
+
+# True if an ambush has been found: its members have lost hit points since the
+# last think (blasts and arrows reach units under the water), one is fighting
+# (an enemy walked into it), or an enemy it can see is within alert_radius of
+# any member, center to center.
+static func _disturbed(world: World, group: AiGroup, units: Array[Unit]) -> bool:
+	if AiOrders.hp_sum(units) < group.last_hp:
+		return true
+	for unit: Unit in units:
+		if unit.target_id != 0 or unit.state == Unit.State.ATTACKING:
+			return true
+	return _enemy_within(world, group.faction, units, group.spec.alert_radius)
 
 
 # RETREAT: does nothing yet; the group keeps whatever orders it has.

@@ -64,7 +64,7 @@ var route: PackedInt64Array = PackedInt64Array()
 var route_index: int = 0
 
 ## Hit points of the members at spawn and when the AI last looked. The drop
-## from one to the other is what makes a group retreat.
+## from one to the other is what makes a group retreat, or springs an ambush.
 var start_hp: int = 0
 var last_hp: int = 0
 ## True once the group has retreated; it only retreats once.

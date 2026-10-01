@@ -56,8 +56,13 @@ func spawn_group(world: World, spec: AiGroupSpec, spec_index: int, tier: int) ->
 
 
 ## Gives the group a new behavior with a clean slate: the old plan's progress
-## is dropped and the group plans at the next update.
+## is dropped and the group plans at the next update. A group leaving AMBUSH
+## springs first, so whatever ends the ambush (an alert, or a trigger that sets
+## another behavior) brings the lurkers up, and the spring is reported before
+## the change.
 func set_behavior(world: World, group: AiGroup, behavior: AiGroupSpec.Behavior) -> void:
+	if group.behavior == AiGroupSpec.Behavior.AMBUSH and behavior != AiGroupSpec.Behavior.AMBUSH:
+		spring(world, group)
 	group.behavior = behavior
 	group.phase = 0
 	group.leg_active = false
@@ -66,6 +71,21 @@ func set_behavior(world: World, group: AiGroup, behavior: AiGroupSpec.Behavior) 
 	group.route = PackedInt64Array()
 	group.think_now = true
 	world.ai_events.append(AiEvent.new(AiEvent.Kind.BEHAVIOR, group.id, 0, 0, behavior))
+
+
+## Brings an ambush up: every living member surfaces for good (Unit.surfaced),
+## so it can be seen and fought in deep water, and one AMBUSH_SPRUNG is
+## reported at the members' centroid with the member count. A group with no
+## living members has nothing to bring up and reports nothing. set_behavior
+## calls this when a group leaves AMBUSH; nothing else should need to.
+func spring(world: World, group: AiGroup) -> void:
+	var units: Array[Unit] = group.living(world)
+	if units.is_empty():
+		return
+	for unit: Unit in units:
+		unit.surfaced = true
+	var c: Vector2i = AiOrders.centroid(units)
+	world.ai_events.append(AiEvent.new(AiEvent.Kind.AMBUSH_SPRUNG, group.id, c.x, c.y, units.size()))
 
 
 ## The groups spawned from the spec at spec_index, in creation order.

@@ -24,8 +24,8 @@ enum Behavior {
 	HUNT,
 	## Goes after the roles in flank_roles, circling to their rear.
 	FLANK,
-	## Waits hidden until an enemy comes within alert_radius, then springs
-	## into on_alert.
+	## Waits hidden until an enemy comes within alert_radius, a member is
+	## hurt, or one is fought, then springs into on_alert.
 	AMBUSH,
 	## Falls back to the retreat point. The AI enters it when the group's
 	## health drops below retreat_below_permille; a script can't set it.

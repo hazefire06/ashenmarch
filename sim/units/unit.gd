@@ -154,6 +154,11 @@ var act_left: int = 0
 var carried_id: int = 0
 ## A body: parts a scavenger has torn off it.
 var parts_taken: int = 0
+## True once the unit has sprung from an ambush (AiDirector.spring). It stays
+## visible and targetable in deep water for the rest of the mission, even a
+## type that hides there (Visibility.is_submerged): it has shown itself, and
+## going back under doesn't un-show it. Never reset.
+var surfaced: bool = false
 
 
 func _init(
@@ -277,6 +282,7 @@ func hash_fields() -> PackedInt64Array:
 		ground_x, ground_z, 1 if ground_walked else 0, shot_target_id, aim_left, shot_cooldown_left,
 		ammo_left, special_left, 1 if fire_nocked else 0, knock_vx, knock_vz, burn_credit_id,
 		interact_id, resume_order, act_left, carried_id, parts_taken,
+		1 if surfaced else 0,
 	]))
 	for until: int in status_until:
 		fields.append(until)
