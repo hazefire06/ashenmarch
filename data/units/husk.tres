@@ -16,6 +16,7 @@ move_speed = 1600
 water_speed_permille = PackedInt32Array(1000, 1000, 1000, 1000, 1000)
 uphill_slowdown_permille = 500
 hidden_in_deep_water = true
+reveal_radius = 4000
 melee_damage = 9
 melee_accuracy_permille = 700
 melee_reach = 500

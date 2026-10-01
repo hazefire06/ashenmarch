@@ -113,16 +113,6 @@ static func damage_multiplier(aspect: Aspect) -> int:
 	return PERMILLE
 
 
-## True if the unit is out of sight in deep water (Husks lying in wait). One
-## that is fighting has surfaced to do it, so it can be fought back.
-static func is_hidden(terrain: Terrain, unit: Unit) -> bool:
-	return (
-		unit.type.hidden_in_deep_water
-		and unit.state != Unit.State.ATTACKING
-		and terrain.water_depth_at(unit.x, unit.z) >= Terrain.LIVING_IMPASSABLE_DEPTH
-	)
-
-
 # One unit's decision for this tick. Returns true if its blow lands now.
 func _decide(world: World, unit: Unit, grid: UnitGrid) -> bool:
 	if unit.cooldown_left > 0:
@@ -188,7 +178,7 @@ func _acquire(world: World, unit: Unit, grid: UnitGrid, current: Unit) -> Unit:
 	var component: int = world.pathing.component_at(unit.x, unit.z, unit.type.mobility)
 	var candidates: Array[Unit] = []
 	for other: Unit in grid.near(unit.x, unit.z, radius + unit.type.body_radius + _largest_radius, unit):
-		if other.faction == unit.faction or is_hidden(world.terrain, other):
+		if other.faction == unit.faction or Visibility.is_submerged(world.terrain, other):
 			continue
 		if Targeting.edge_distance(unit, other) > radius or not _within_hold(unit, other):
 			continue
@@ -212,7 +202,7 @@ func _acquire_radius(unit: Unit) -> int:
 func _in_leash(world: World, unit: Unit, target: Unit) -> bool:
 	if Targeting.in_reach(unit, target):
 		return true
-	if is_hidden(world.terrain, target):
+	if Visibility.is_submerged(world.terrain, target):
 		return false
 	var limit: int = unit.type.melee_reach + ADJACENT_SLACK
 	if unit.order == Unit.Order.ATTACK_MOVE and not unit.type.has_ranged():

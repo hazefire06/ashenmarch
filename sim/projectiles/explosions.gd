@@ -16,8 +16,9 @@ extends RefCounted
 ## 3. Charges dropped by units that just died (a Sapper's satchels) land
 ##    now, so a Sapper caught in a blast cooks off its own charges.
 ## 4. Loose objects: every charge, grenade, or dud within blast_radius that
-##    isn't already bound to explode is caught: it goes off
-##    CHAIN_DELAY_TICKS later, credited to whoever set off this one. Other
+##    isn't already bound to explode is caught (catch(): fire catches them
+##    the same way): it goes off CHAIN_DELAY_TICKS later, credited to
+##    whoever set off this one. Other
 ##    loose objects within knock_radius are thrown (arrows in flight aren't
 ##    touched).
 ## 5. A crater, if the burst was near enough the ground (Terrain.scar).
@@ -45,6 +46,16 @@ func detonate(_world: World, p: Projectile) -> void:
 	p.detonate_in = 0
 	p.fuse_left = 0
 	_queue.append(p)
+
+
+## Sets off a loose charge, grenade, or dud caught by a blast or a fire: it
+## goes off CHAIN_DELAY_TICKS later, credited to instigator_id. The caller
+## checks it can be (chain_detonates, not already detonating).
+static func catch(p: Projectile, instigator_id: int) -> void:
+	p.detonating = true
+	p.detonate_in = CHAIN_DELAY_TICKS
+	p.fuse_left = 0
+	p.instigator_id = instigator_id
 
 
 ## Bursts every queued projectile, including ones set off by earlier bursts
@@ -120,10 +131,7 @@ func _burst(world: World, grid: UnitGrid, p: Projectile) -> void:
 			(other.x - bx) * (other.x - bx) + (other.y - by) * (other.y - by) + (other.z - bz) * (other.z - bz)
 		) - other.type.radius)
 		if other.type.chain_detonates and d < t.blast_radius:
-			other.detonating = true
-			other.detonate_in = CHAIN_DELAY_TICKS
-			other.fuse_left = 0
-			other.instigator_id = p.instigator_id
+			catch(other, p.instigator_id)
 		elif d < t.knock_radius and other.type.behavior == ProjectileType.Behavior.BOUNCES:
 			_knock_object(t, other, bx, bz, d)
 	var e: ProjectileEvent = ProjectileEvent.new(ProjectileEvent.Kind.EXPLODE, bx, by, bz)

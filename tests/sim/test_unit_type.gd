@@ -237,3 +237,16 @@ func _valid_type() -> UnitType:
 	t.water_speed_permille = PackedInt32Array([1000, 800, 600, 0, 0])
 	assert_eq(t.validate(), PackedStringArray(), "baseline must be valid")
 	return t
+
+
+func test_a_test_catalog_gets_its_own_copies_of_the_shipped_projectiles() -> void:
+	# Tests tweak projectile types; the shipped ones are cached resources
+	# every load() shares, so a tweak must never reach them.
+	var shipped: UnitCatalog = TestTerrains.catalog()
+	var mine: UnitCatalog = TestUnits.catalog([TestUnits.dummy(&"dummy")])
+	for i: int in shipped.projectile_types.size():
+		assert_ne(mine.projectile_types[i], shipped.projectile_types[i], "a copy of %s" % shipped.projectile_types[i].id)
+		assert_eq(mine.projectile_types[i].id, shipped.projectile_types[i].id)
+	var grenade: ProjectileType = mine.find_projectile(&"grenade")
+	grenade.fizzle_permille = 0
+	assert_gt(TestUnits.projectile(&"grenade").fizzle_permille, 0, "the shipped grenade is untouched")

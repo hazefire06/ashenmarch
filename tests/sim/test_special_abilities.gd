@@ -38,18 +38,22 @@ func test_t_nocks_the_fire_arrow_and_the_next_shot_is_it() -> void:
 	world.enqueue(UseSpecialCommand.new(0, PackedInt32Array([unit.id])))
 	world.spawn_unit(1, DARK, 30 * M, 20 * M, -1, 0)
 	var launched: Array[StringName] = []
+	var ignited: Array[ProjectileEvent] = []
 	for _t: int in 5 * World.TICK_RATE:
 		world.step()
 		for e: ProjectileEvent in world.projectile_events:
 			if e.kind == ProjectileEvent.Kind.LAUNCH:
 				launched.append(world.catalog.projectile_types[e.type_index].id)
+			elif e.kind == ProjectileEvent.Kind.IGNITE:
+				ignited.append(e)
 	assert_gte(launched.size(), 2)
 	assert_eq(launched[0], &"fire_arrow", "the nocked arrow goes first")
 	assert_eq(launched[1], &"arrow", "and only once")
 	assert_eq(unit.special_left, 0)
 	assert_false(unit.fire_nocked)
-	assert_eq(world.fire_marks.size(), 3, "one mark, where it struck: (tick, x, z)")
-	assert_almost_eq(world.fire_marks[1], 30 * M, 1000)
+	assert_eq(ignited.size(), 1, "one fire, lit where it struck")
+	assert_almost_eq(ignited[0].x, 30 * M, 1000)
+	assert_eq(ignited[0].unit_id, unit.id, "credited to the archer")
 
 
 func test_t_with_nothing_left_does_nothing() -> void:

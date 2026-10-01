@@ -24,10 +24,11 @@ extends RefCounted
 ##   id) or as soon as the target is gone. A target counts only if a launch
 ##   reaches it (Ballistics) along a path clear of the ground and of friendly
 ##   bodies. Throwers also skip a target with a friend (themselves included)
-##   within the blast of where it would land, and archers one locked in
-##   melee with a friend (within ARROW_FRIEND_MARGIN): an arrow a hand off
-##   target would hit the friend. An attack-mover stops to shoot and marches
-##   on when there is nothing left in range.
+##   within the blast of where it would land, or standing in water, which
+##   puts a lit fuse out; archers skip one locked in melee with a friend
+##   (within ARROW_FRIEND_MARGIN): an arrow a hand off target would hit the
+##   friend. An attack-mover stops to shoot and marches on when there is
+##   nothing left in range.
 ## - Order GROUND_ATTACK: the spot, again and again, until another order. Out
 ##   of reach, the unit walks toward it, looking again every
 ##   GROUND_RECHECK_TICKS. Friendly bodies in the way don't stop it: the
@@ -247,7 +248,7 @@ func _pick(world: World, unit: Unit, current: Unit) -> Unit:
 
 # Alive, an enemy, visible, and within range as the crow flies.
 func _may_target(world: World, unit: Unit, other: Unit) -> bool:
-	if not other.is_alive() or other.faction == unit.faction or MeleeCombat.is_hidden(world.terrain, other):
+	if not other.is_alive() or other.faction == unit.faction or Visibility.is_submerged(world.terrain, other):
 		return false
 	var dist: int = FixedMath.length(other.x - unit.x, other.z - unit.z)
 	if dist < unit.type.ranged_min_range:
@@ -281,6 +282,9 @@ func _aim_at_unit(world: World, unit: Unit, target: Unit, x: int, z: int) -> Aim
 			return AimSolution.failed()
 		y = ground + target.type.hover_height + target.type.body_height * CHEST_PERMILLE / PERMILLE
 	elif p.is_explosive() and _friend_in_blast(world, unit, p, x, ground, z):
+		return AimSolution.failed()
+	elif p.fuse_ticks > 0 and world.terrain.water_depth_at(x, z) > 0:
+		# The fuse would go out where it lands (ProjectileSystem).
 		return AimSolution.failed()
 	return _aim(world, unit, p, x, y, z, true)
 

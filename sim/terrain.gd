@@ -8,16 +8,18 @@ extends RefCounted
 ## (size_z - 1) * cell_size. i is the image column (x), j the image row (z),
 ## and the top image row is z = 0.
 ##
-## Heights interpolate bilinearly between samples. Water depth, the blocked
-## flag, and passability use the nearest sample, so a point query agrees with
-## the sample grid that pathing runs on.
+## Heights interpolate bilinearly between samples. Water depth, ground type,
+## the blocked flag, and passability use the nearest sample, so a point query
+## agrees with the sample grid that pathing and fire run on.
 ##
 ## Slopes are permille: millimetres of rise per metre of run (1000 = 45 deg).
 ##
 ## Mask PNG encoding (8-bit RGB or RGBA):
 ## - R: water depth level * MASK_DEPTH_STEP (0, 60, 120, 180, 240), so levels
 ##   are visible in an image editor. Decoded to the nearest level.
-## - G: reserved for ground type (fire spread, Phase 5).
+## - G: ground type * MASK_GROUND_STEP (0 grass, 50 brush, 100 wood, 150
+##   sand, 200 rock), decoded to the nearest type. 0 is grass, the normal
+##   case, the same way R = 0 is dry. Fire burns grass, brush, and wood.
 ## - B: >= MASK_BLOCKED_THRESHOLD means blocked for every unit.
 
 ## How a unit type moves over terrain. Phase 2's UnitType carries one.
@@ -30,6 +32,17 @@ enum Mobility {
 	FLOATING,
 }
 
+## What the ground is made of, from the mask's G channel. Decides what fire
+## can burn (Fire). Appending keeps earlier maps' values.
+enum Ground {
+	GRASS,
+	BRUSH,
+	WOOD,
+	SAND,
+	ROCK,
+}
+
+const GROUND_COUNT: int = 5
 const MAX_WATER_DEPTH: int = 4
 const LIVING_IMPASSABLE_DEPTH: int = 3
 ## Milli-units: the deepest explosions can dig any sample below the map's
@@ -38,6 +51,7 @@ const MAX_SCAR_DEPTH: int = 1000
 ## Cells per side of a tile_max tile.
 const TILE: int = 8
 const MASK_DEPTH_STEP: int = 60
+const MASK_GROUND_STEP: int = 50
 const MASK_BLOCKED_THRESHOLD: int = 128
 const PERMILLE: int = 1000
 
@@ -54,6 +68,8 @@ var heights: PackedInt32Array
 var water: PackedByteArray
 ## 1 where impassable to every mobility, else 0.
 var blocked: PackedByteArray
+## Ground type (Ground) per sample. Never written after loading.
+var ground: PackedByteArray
 ## Per-sample slope in permille: along each axis, the steeper of the edges to
 ## the two neighbors, combined into a magnitude. Taking the steeper edge
 ## (not a central difference) keeps a one-cell cliff from averaging down to
@@ -73,7 +89,7 @@ var tiles_z: int
 
 
 ## precomputed_slopes and precomputed_tile_max skip those passes;
-## copy_for_world() passes its own.
+## copy_for_world() passes its own. Empty ground_types is all grass.
 func _init(
 	samples_x: int,
 	samples_z: int,
@@ -83,13 +99,15 @@ func _init(
 	sample_blocked: PackedByteArray,
 	walkable_slope: int,
 	precomputed_slopes: PackedInt32Array = PackedInt32Array(),
-	precomputed_tile_max: PackedInt32Array = PackedInt32Array()
+	precomputed_tile_max: PackedInt32Array = PackedInt32Array(),
+	ground_types: PackedByteArray = PackedByteArray()
 ) -> void:
 	assert(samples_x >= 2 and samples_z >= 2, "terrain needs at least 2x2 samples")
 	assert(spacing > 0, "cell_size must be positive")
 	var count: int = samples_x * samples_z
 	assert(sample_heights.size() == count and sample_water.size() == count)
 	assert(sample_blocked.size() == count)
+	assert(ground_types.is_empty() or ground_types.size() == count)
 	size_x = samples_x
 	size_z = samples_z
 	cell_size = spacing
@@ -97,6 +115,11 @@ func _init(
 	heights = sample_heights
 	water = sample_water
 	blocked = sample_blocked
+	ground = ground_types
+	if ground.is_empty():
+		# A new array, so a caller's empty one isn't resized under it.
+		ground = PackedByteArray()
+		ground.resize(count)
 	sample_slopes = precomputed_slopes if precomputed_slopes.size() == count else _compute_sample_slopes()
 	tiles_x = (size_x - 2) / TILE + 1
 	tiles_z = (size_z - 2) / TILE + 1
@@ -166,25 +189,31 @@ static func from_png(
 	var sample_heights: PackedInt32Array = PackedInt32Array()
 	var sample_water: PackedByteArray = PackedByteArray()
 	var sample_blocked: PackedByteArray = PackedByteArray()
+	var ground_types: PackedByteArray = PackedByteArray()
 	sample_heights.resize(count)
 	sample_water.resize(count)
 	sample_blocked.resize(count)
+	ground_types.resize(count)
 	for k: int in count:
 		sample_heights[k] = (raw_heights[k] * max_height + raw_max / 2) / raw_max
 		sample_water[k] = depth_from_mask(mask[k * stride])
+		ground_types[k] = ground_from_mask(mask[k * stride + 1])
 		sample_blocked[k] = 1 if mask[k * stride + 2] >= MASK_BLOCKED_THRESHOLD else 0
-	return Terrain.new(w, h, spacing, sample_heights, sample_water, sample_blocked, walkable_slope)
+	return Terrain.new(
+		w, h, spacing, sample_heights, sample_water, sample_blocked, walkable_slope,
+		PackedInt32Array(), PackedInt32Array(), ground_types
+	)
 
 
 ## A terrain for one World to own: the same map with its own heights, so two
 ## worlds built from one loaded map (lockstep tests, replays) can't scar each
 ## other. Packed arrays are shared by reference in Godot 4, so the heights
-## are duplicated (one native copy); water, blocked, and slopes are never
-## written after loading and stay shared.
+## are duplicated (one native copy); water, blocked, ground, and slopes are
+## never written after loading and stay shared.
 func copy_for_world() -> Terrain:
 	var copy: Terrain = Terrain.new(
 		size_x, size_z, cell_size, heights.duplicate(), water, blocked, max_walkable_slope,
-		sample_slopes, tile_max
+		sample_slopes, tile_max, ground
 	)
 	copy.scars = scars.duplicate()
 	return copy
@@ -258,6 +287,16 @@ static func mask_from_depth(level: int) -> int:
 ## Water depth level for a mask R value, rounded to the nearest level.
 static func depth_from_mask(red: int) -> int:
 	return mini((red + MASK_DEPTH_STEP / 2) / MASK_DEPTH_STEP, MAX_WATER_DEPTH)
+
+
+## Mask G value for a ground type.
+static func mask_from_ground(type: int) -> int:
+	return clampi(type, 0, GROUND_COUNT - 1) * MASK_GROUND_STEP
+
+
+## Ground type for a mask G value, rounded to the nearest type.
+static func ground_from_mask(green: int) -> int:
+	return mini((green + MASK_GROUND_STEP / 2) / MASK_GROUND_STEP, GROUND_COUNT - 1)
 
 
 func extent_x() -> int:
@@ -336,6 +375,11 @@ func water_depth_at(x: int, z: int) -> int:
 	return water[_nearest_index(x, z)]
 
 
+## Ground type (Ground) at the nearest sample.
+func ground_at(x: int, z: int) -> int:
+	return ground[_nearest_index(x, z)]
+
+
 ## Whether a unit with this mobility may stand at (x, z). Decided at the
 ## nearest sample; always false off the map.
 func is_passable(x: int, z: int, mobility: Mobility) -> bool:
@@ -372,6 +416,10 @@ func sample_height(i: int, j: int) -> int:
 
 func sample_water_depth(i: int, j: int) -> int:
 	return water[j * size_x + i]
+
+
+func sample_ground(i: int, j: int) -> int:
+	return ground[j * size_x + i]
 
 
 func sample_slope(i: int, j: int) -> int:

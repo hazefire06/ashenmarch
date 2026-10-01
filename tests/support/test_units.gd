@@ -83,10 +83,15 @@ static func thrower(type_id: StringName, overrides: Dictionary = {}) -> UnitType
 	return ranged(type_id, base)
 
 
-## The shipped projectile types, in catalog order.
+## Private copies of the shipped projectile types, in catalog order. Copies,
+## because load() hands every caller the same cached resources: a test that
+## tweaks one must not change it for the rest of the run.
 static func shipped_projectiles() -> Array[ProjectileType]:
 	var c: UnitCatalog = load("res://data/units/catalog.tres") as UnitCatalog
-	return c.projectile_types.duplicate()
+	var copies: Array[ProjectileType] = []
+	for t: ProjectileType in c.projectile_types:
+		copies.append(t.duplicate())
+	return copies
 
 
 ## A private copy of a shipped projectile type, safe to tweak in a test.

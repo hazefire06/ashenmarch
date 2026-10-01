@@ -3,6 +3,10 @@ extends SceneTree
 ## - rolling hills
 ## - a creek meandering west to east across the full width, with a depth-3
 ##   core, depth-2 and depth-1 shoulders, and one depth-1 ford
+## - ground types (Phase 5, the mask's G channel): sandy banks along the
+##   creek, so it is a firebreak; rock on the high crests and steep ground;
+##   copses of wood and patches of brush; grass everywhere else. The creek
+##   bed is sand too, though water never burns anyway.
 ##
 ## Run with `make maps`. The PNGs it writes are the source of truth and are
 ## committed. Floats and FastNoiseLite are fine here because this runs
@@ -37,6 +41,18 @@ const FORD_RAMP_M: float = 3.0
 const FORD_DEPTH_M: float = 0.4
 ## Minimum water depth in meters for levels 1, 2, 3.
 const LEVEL_DEPTHS_M: Array[float] = [0.05, 0.8, 1.35]
+## Sand runs this far beyond the channel's edge on both banks.
+const SAND_BANK_M: float = 4.5
+## Rock above this height, or steeper than this (m per m).
+const ROCK_HEIGHT_M: float = 21.0
+const ROCK_SLOPE: float = 0.55
+## Wood copses and brush patches where their noise exceeds these.
+const WOOD_SEED: int = 1730
+const WOOD_FREQUENCY: float = 1.0 / 70.0
+const WOOD_THRESHOLD: float = 0.32
+const BRUSH_SEED: int = 1731
+const BRUSH_FREQUENCY: float = 1.0 / 28.0
+const BRUSH_THRESHOLD: float = 0.22
 
 
 func _initialize() -> void:
@@ -47,15 +63,30 @@ func _initialize() -> void:
 	noise.fractal_type = FastNoiseLite.FRACTAL_FBM
 	noise.fractal_octaves = 4
 
+	var wood: FastNoiseLite = _patches(WOOD_SEED, WOOD_FREQUENCY)
+	var brush: FastNoiseLite = _patches(BRUSH_SEED, BRUSH_FREQUENCY)
+
 	var cell_m: float = float(CELL_SIZE) / World.UNITS_PER_METER
 	var height: PngRaster = PngRaster.create(SIZE, SIZE, 1, 16)
 	var mask: PngRaster = PngRaster.create(SIZE, SIZE, 3, 8)
+	var heights_m: PackedFloat32Array = PackedFloat32Array()
+	heights_m.resize(SIZE * SIZE)
 	for j: int in SIZE:
 		for i: int in SIZE:
 			var ground: Vector2 = _ground(noise, i * cell_m, j * cell_m)
 			var raw: int = clampi(roundi(ground.x / MAX_HEIGHT_M * 65535.0), 0, 65535)
 			height.set_sample(i, j, 0, raw)
 			mask.set_sample(i, j, 0, Terrain.mask_from_depth(_level(ground.y)))
+			heights_m[j * SIZE + i] = ground.x
+	# Ground types need the slope, so they come once every height is known.
+	for j: int in SIZE:
+		for i: int in SIZE:
+			var x: float = i * cell_m
+			var z: float = j * cell_m
+			var type: int = _ground_type(
+				wood, brush, x, z, heights_m[j * SIZE + i], _slope(heights_m, i, j, cell_m)
+			)
+			mask.set_sample(i, j, 1, Terrain.mask_from_ground(type))
 
 	_write(OUT_DIR + "height.png", PngCodec.encode(height))
 	_write(OUT_DIR + "mask.png", PngCodec.encode(mask))
@@ -78,9 +109,7 @@ func _initialize() -> void:
 func _ground(noise: FastNoiseLite, x: float, z: float) -> Vector2:
 	var extent_m: float = (SIZE - 1) * float(CELL_SIZE) / World.UNITS_PER_METER
 	var water_m: float = lerpf(WATER_WEST_M, WATER_EAST_M, x / extent_m)
-	var slope: float = _creek_dz(x)
-	# Perpendicular distance to the centerline, corrected for its slope.
-	var d: float = absf(z - _creek_z(x)) / sqrt(1.0 + slope * slope)
+	var d: float = _creek_distance(x, z)
 	if d < CHANNEL_HALF_M:
 		var depth: float = CHANNEL_DEPTH_M * (1.0 - pow(d / CHANNEL_HALF_M, 2.0))
 		depth = minf(depth, _ford_cap(x))
@@ -93,6 +122,50 @@ func _ground(noise: FastNoiseLite, x: float, z: float) -> Vector2:
 	var valley_start: float = CHANNEL_HALF_M + BANK_M * 0.5
 	var valley: float = smoothstep(valley_start, valley_start + VALLEY_M, d)
 	return Vector2(lerpf(water_m + BANK_HEIGHT_M * bank, hills, valley), 0.0)
+
+
+## Ground type at (x, z) meters, given its height and slope (m per m).
+func _ground_type(
+	wood: FastNoiseLite, brush: FastNoiseLite, x: float, z: float, height_m: float, slope: float
+) -> int:
+	if _creek_distance(x, z) < CHANNEL_HALF_M + SAND_BANK_M:
+		return Terrain.Ground.SAND
+	if height_m > ROCK_HEIGHT_M or slope > ROCK_SLOPE:
+		return Terrain.Ground.ROCK
+	if wood.get_noise_2d(x, z) > WOOD_THRESHOLD:
+		return Terrain.Ground.WOOD
+	if brush.get_noise_2d(x, z) > BRUSH_THRESHOLD:
+		return Terrain.Ground.BRUSH
+	return Terrain.Ground.GRASS
+
+
+## Steepness at sample (i, j), m per m, by central differences (one-sided at
+## the edges).
+func _slope(heights_m: PackedFloat32Array, i: int, j: int, cell_m: float) -> float:
+	var i0: int = maxi(i - 1, 0)
+	var i1: int = mini(i + 1, SIZE - 1)
+	var j0: int = maxi(j - 1, 0)
+	var j1: int = mini(j + 1, SIZE - 1)
+	var gx: float = (heights_m[j * SIZE + i1] - heights_m[j * SIZE + i0]) / ((i1 - i0) * cell_m)
+	var gz: float = (heights_m[j1 * SIZE + i] - heights_m[j0 * SIZE + i]) / ((j1 - j0) * cell_m)
+	return sqrt(gx * gx + gz * gz)
+
+
+func _patches(noise_seed: int, frequency: float) -> FastNoiseLite:
+	var n: FastNoiseLite = FastNoiseLite.new()
+	n.seed = noise_seed
+	n.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
+	n.frequency = frequency
+	n.fractal_type = FastNoiseLite.FRACTAL_FBM
+	n.fractal_octaves = 3
+	return n
+
+
+## Perpendicular distance in meters from (x, z) to the creek's centerline,
+## corrected for its slope.
+func _creek_distance(x: float, z: float) -> float:
+	var slope: float = _creek_dz(x)
+	return absf(z - _creek_z(x)) / sqrt(1.0 + slope * slope)
 
 
 func _creek_z(x: float) -> float:
@@ -139,10 +212,12 @@ func _report(info: MapInfo) -> void:
 	if terrain == null:
 		return
 	var levels: Array[int] = [0, 0, 0, 0, 0]
+	var grounds: Array[int] = [0, 0, 0, 0, 0]
 	var steep: int = 0
 	var max_slope: int = 0
 	for k: int in terrain.heights.size():
 		levels[terrain.water[k]] += 1
+		grounds[terrain.ground[k]] += 1
 		max_slope = maxi(max_slope, terrain.sample_slopes[k])
 		if terrain.sample_slopes[k] > terrain.max_walkable_slope:
 			steep += 1
@@ -151,6 +226,7 @@ func _report(info: MapInfo) -> void:
 		terrain.size_x, terrain.size_z, heights.min(), heights.max()
 	])
 	print("water samples by depth level 0..4: %s" % [levels])
+	print("samples by ground (grass, brush, wood, sand, rock): %s" % [grounds])
 	print("max sample slope %d permille; %d samples steeper than %d" % [
 		max_slope, steep, terrain.max_walkable_slope
 	])

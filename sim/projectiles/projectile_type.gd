@@ -48,7 +48,8 @@ enum Behavior {
 @export_group("Impact")
 ## STICKS: damage to a unit it flies into.
 @export var impact_damage: int = 0
-## Leaves a fire mark where it lands (fire arrows). Phase 5 lights it.
+## Lights the ground where it lands (fire arrows; Fire), unless its flame
+## goes out first.
 @export var marks_fire: bool = false
 
 @export_group("Fuse")
@@ -58,6 +59,17 @@ enum Behavior {
 @export var fuse_variance_permille: int = 0
 ## Chance in permille that the fuse goes out instead, leaving a dud.
 @export var fizzle_permille: int = 0
+
+@export_group("Weather")
+## For burning projectiles (a lit fuse, or marks_fire; ignored on anything
+## else): extra chance in permille that the flame goes out in full rain, in
+## full snow, and lying on fully snow-covered ground. Each scales with the intensity or cover, and
+## they combine with fizzle_permille as independent chances
+## (ProjectileSystem.fizzle_permille). A fuse rolls when it burns down; a
+## fire arrow rolls when it lands. Water puts either out with no roll.
+@export var rain_fizzle_permille: int = 0
+@export var snow_fizzle_permille: int = 0
+@export var snow_cover_fizzle_permille: int = 0
 
 @export_group("Explosive")
 ## Milli-units. 0 means it doesn't explode.
@@ -85,6 +97,11 @@ enum Behavior {
 
 func is_explosive() -> bool:
 	return blast_radius > 0
+
+
+## Carries a flame: a lit fuse or a fire arrow. Weather and water put it out.
+func burns() -> bool:
+	return fuse_ticks > 0 or marks_fire
 
 
 ## Problems that make this type unusable, or an empty array if it is valid.
@@ -116,6 +133,10 @@ func validate() -> PackedStringArray:
 	if fuse_ticks > 0 and not is_explosive():
 		errors.append("%s: a fuse needs something to explode" % who)
 	for field: String in ["fuse_variance_permille", "fizzle_permille"]:
+		var value: int = int(get(field))
+		if value < 0 or value > 1000:
+			errors.append("%s: %s must be 0..1000" % [who, field])
+	for field: String in ["rain_fizzle_permille", "snow_fizzle_permille", "snow_cover_fizzle_permille"]:
 		var value: int = int(get(field))
 		if value < 0 or value > 1000:
 			errors.append("%s: %s must be 0..1000" % [who, field])

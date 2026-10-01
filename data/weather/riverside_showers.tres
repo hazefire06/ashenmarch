@@ -1,0 +1,36 @@
+[gd_resource type="Resource" script_class="WeatherSchedule" format=3]
+
+[ext_resource type="Script" path="res://sim/weather_schedule.gd" id="1_wsc01"]
+[ext_resource type="Script" path="res://sim/weather_change.gd" id="2_wch01"]
+
+[sub_resource type="Resource" id="Resource_calm"]
+script = ExtResource("2_wch01")
+wind_x = 1500
+wind_z = 500
+
+[sub_resource type="Resource" id="Resource_showers"]
+script = ExtResource("2_wch01")
+tick = 1350
+rain = 700
+wind_x = 3000
+wind_z = 1000
+ramp_ticks = 300
+
+[sub_resource type="Resource" id="Resource_downpour"]
+script = ExtResource("2_wch01")
+tick = 3600
+rain = 1000
+wind_x = 5000
+wind_z = 1500
+ramp_ticks = 150
+
+[sub_resource type="Resource" id="Resource_clearing"]
+script = ExtResource("2_wch01")
+tick = 5400
+wind_x = 1500
+wind_z = 500
+ramp_ticks = 600
+
+[resource]
+script = ExtResource("1_wsc01")
+changes = Array[ExtResource("2_wch01")]([SubResource("Resource_calm"), SubResource("Resource_showers"), SubResource("Resource_downpour"), SubResource("Resource_clearing")])

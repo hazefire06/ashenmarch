@@ -22,8 +22,8 @@ enum Kind {
 	FIZZLE,
 	## A charge was dropped at (x, y, z) by unit_id (T, or on death).
 	DROP,
-	## A fire arrow marked (x, z) for Phase 5's fire.
-	FIRE_MARK,
+	## A fire arrow lit the ground at (x, y, z), credited to unit_id (Fire).
+	IGNITE,
 	## A ground-attack order at (x, z) could not be carried out by unit_id:
 	## out of reach from anywhere it can walk, or inside its minimum range.
 	CANT_REACH,
