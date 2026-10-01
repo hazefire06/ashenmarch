@@ -72,7 +72,7 @@ static func switch_to(world: World, group: AiGroup, behavior: AiGroupSpec.Behavi
 ## one retry, sending everyone again (a WAYPOINT_FAILED event with value -1),
 ## and then FAILED. A finished leg is inactive, so calling again for the same
 ## goal starts a new one. Where they ended up is the centroid of the members
-## that aren't STANDOFF (AiOrders.front): those stop short of the goal on
+## that aren't STANDOFF (AiTactics.front): those stop short of the goal on
 ## purpose. A caller that must pull busy members away (a retreat) forces its
 ## own march first.
 static func leg(
@@ -88,7 +88,7 @@ static func leg(
 	AiOrders.march(world, group, units, x, z, attack)
 	if not _leg_done(world, group, units, x, z):
 		return LegResult.RUNNING
-	var c: Vector2i = AiOrders.centroid(AiOrders.front(units))
+	var c: Vector2i = AiOrders.centroid(AiTactics.front(units))
 	if FixedMath.length(c.x - x, c.y - z) <= LEG_ARRIVE_RADIUS:
 		group.leg_active = false
 		return LegResult.ARRIVED

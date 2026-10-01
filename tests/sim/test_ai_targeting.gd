@@ -361,7 +361,7 @@ func test_melee_members_go_for_what_threatens_their_standoff_unit() -> void:
 		return
 	var lead: Unit = units[0]
 	assert_lt(_distance(lead, dummy), _distance(lead, raider), "the dummy was nearer the grunts")
-	assert_lte(_distance(caster, raider), AiOrders.PROTECT_RADIUS, "the raider was on the caster")
+	assert_lte(_distance(caster, raider), AiTactics.PROTECT_RADIUS, "the raider was on the caster")
 	assert_lte(FixedMath.length(order.x - raider.x, order.z - raider.z), 1500, "sent at the raider")
 	for i: int in 4:
 		assert_eq(group.ordered_target[i], raider.id, "grunt %d after the raider" % i)
@@ -383,7 +383,7 @@ func test_march_sends_standoff_members_behind_the_goal_and_records_the_goal() ->
 	assert_eq(orders[0].unit_id, units[0].id, "the grunts first")
 	assert_eq(Vector2i(orders[0].x, orders[0].z), goal)
 	assert_eq(orders[1].unit_id, units[2].id)
-	assert_almost_eq(FixedMath.length(orders[1].x - goal.x, orders[1].z - goal.y), AiOrders.STANDOFF_BEHIND, 2)
+	assert_almost_eq(FixedMath.length(orders[1].x - goal.x, orders[1].z - goal.y), AiTactics.STANDOFF_BEHIND, 2)
 	assert_lt(orders[1].x, goal.x - 5900, "behind, on the side it comes from")
 	assert_eq(Vector2i(units[2].order_x, units[2].order_z), Vector2i(orders[1].x, orders[1].z))
 	for i: int in 3:
