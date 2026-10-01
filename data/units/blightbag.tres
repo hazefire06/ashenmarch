@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="UnitType" format=3]
+
+[ext_resource type="Script" path="res://sim/units/unit_type.gd" id="1_bbg01"]
+
+[resource]
+script = ExtResource("1_bbg01")
+id = &"blightbag"
+display_name = "Blightbag"
+faction = 1
+nature = 1
+mobility = 1
+max_hp = 40
+body_radius = 450
+body_height = 1600
+move_speed = 1100
+water_speed_permille = PackedInt32Array(1000, 1000, 1000, 1000, 1000)
+uphill_slowdown_permille = 500
+melee_reach = 500
+melee_windup_ticks = 20
+melee_cooldown_ticks = 30
+melee_detonates = true
+acquire_radius = 10000
+special_ability = 4
+special_charges = 1
+special_projectile = &"blight_burst"
+placeholder_color = Color(0.62, 0.66, 0.22, 1)

@@ -90,7 +90,8 @@ static func ground_attack(world: World, unit_ids: PackedInt32Array, x: int, z: i
 
 ## T: each living unit among unit_ids uses its special if it has one left.
 ## A Sapper drops a charge at its feet; a Longbow nocks its fire arrow (the
-## charge is spent when the arrow leaves).
+## charge is spent when the arrow leaves); a Blightbag bursts. A Warden's heal
+## needs a patient, so it comes as a HealCommand instead.
 static func use_special(world: World, unit_ids: PackedInt32Array) -> void:
 	for unit: Unit in living_units(world, unit_ids):
 		if unit.special_left <= 0:
@@ -101,6 +102,8 @@ static func use_special(world: World, unit_ids: PackedInt32Array) -> void:
 				world.drop_charge(unit, unit.x, unit.z)
 			UnitType.Special.FIRE_ARROW:
 				unit.fire_nocked = true
+			UnitType.Special.DETONATE:
+				Damage.self_destruct(world, unit)
 
 
 ## Puts the unit back on its own order after something overrode it (a

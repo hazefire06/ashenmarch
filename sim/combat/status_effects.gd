@@ -20,9 +20,11 @@ extends RefCounted
 ##   burns on FIRE_BURN_TICKS after stepping off; water of depth 1 or more
 ##   puts it out.
 ##
-## Update, per tick, units in ascending id: wear-offs (a confusion that ended
-## last tick resumes the unit's order), then water douses, then burn damage on
-## its interval. No randomness.
+## Update, per tick: first every gas cloud, in ascending id, paralyzes the
+## living units in it (GasCloud.contains) and counts down, the last of its
+## ticks flagging it spent; then, units in ascending id: wear-offs (a
+## confusion that ended last tick resumes the unit's order), water douses,
+## and burn damage on its interval. No randomness.
 
 enum Kind {
 	PARALYSIS,
@@ -43,6 +45,7 @@ const FIRE_ARROW_BURN_TICKS: int = 150
 
 
 func update(world: World) -> void:
+	_gas(world)
 	var ended: int = world.tick - 1
 	var burn_tick: bool = world.tick % BURN_INTERVAL_TICKS == 0
 	for unit: Unit in world.units:
@@ -56,6 +59,18 @@ func update(world: World) -> void:
 			unit.status_until[Kind.BURNING] = NONE
 		elif burn_tick:
 			Damage.apply(world, unit, BURN_DAMAGE, unit.x, unit.z, unit.burn_credit_id)
+
+
+func _gas(world: World) -> void:
+	for cloud: GasCloud in world.clouds:
+		if cloud.removed:
+			continue
+		for unit: Unit in world.units:
+			if unit.is_alive() and cloud.contains(unit):
+				apply(world, unit, Kind.PARALYSIS, cloud.paralysis_ticks, cloud.instigator_id)
+		cloud.ticks_left -= 1
+		if cloud.ticks_left <= 0:
+			cloud.removed = true
 
 
 ## Affects unit with kind for ticks more ticks, counting the current one,

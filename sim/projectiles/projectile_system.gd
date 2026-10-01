@@ -23,6 +23,10 @@ extends RefCounted
 ## - RESTING: doesn't move.
 ## - CARRIED: rides in its carrier's hand (Interactions.hand_y) and touches
 ##   nothing. Should the carrier be gone, it falls.
+## - Thrown by a unit (Projectile.thrown), on its first contact: a type that
+##   bursts on impact (gas packets) goes off there, at once; one with
+##   impact_damage (body parts) hurts the body it flies into, no roll. After
+##   that first contact it is just a loose object.
 ## - Then fuses and chain countdowns: a fuse that burns down rolls for a
 ##   fizzle (the dud stays, and a blast can still set it off) or queues the
 ##   explosion; a caught charge goes off when its countdown ends.
@@ -165,14 +169,16 @@ func _fly(world: World, p: Projectile) -> void:
 		_move_to(f, ax, ay, az, body_frac)
 		if p.type.behavior == ProjectileType.Behavior.STICKS:
 			_strike(world, p, body)
-		else:
+		elif not _burst_on_impact(world, p):
+			_hit_body(world, p, body)
 			_glance(p, body)
 		return
 	if ground != ProjectileCollision.NO_CONTACT:
 		_move_to(f, ax, ay, az, ground)
 		if p.type.behavior == ProjectileType.Behavior.STICKS:
 			_stick(world, p)
-		else:
+		elif not _burst_on_impact(world, p):
+			p.thrown = false
 			_bounce(world, p)
 		return
 	var mx: int = FlightState.to_mm(f.px)
@@ -273,6 +279,26 @@ static func _flame_goes_out(world: World, p: Projectile, on_ground: bool) -> boo
 		return false
 	world.projectile_events.append(ProjectileEvent.about(ProjectileEvent.Kind.FIZZLE, p))
 	return true
+
+
+# Something a unit threw that bursts on impact (a gas packet) goes off where
+# it first touched, this tick. Returns true if it did.
+static func _burst_on_impact(world: World, p: Projectile) -> bool:
+	if not p.thrown or not p.type.bursts_on_impact:
+		return false
+	p.sync_position()
+	world.explosions.detonate(world, p)
+	return true
+
+
+# A thrown object with impact damage (a body part) hurts the first body it
+# flies into, with no roll, credited to the thrower. Either way it is no
+# longer in its first flight.
+static func _hit_body(world: World, p: Projectile, unit: Unit) -> void:
+	if p.thrown and p.type.impact_damage > 0:
+		var back: Vector2i = FixedMath.normalize(-p.flight.vx, -p.flight.vz, FixedMath.DIR_ONE)
+		Damage.apply(world, unit, p.type.impact_damage, unit.x + back.x, unit.z + back.y, p.instigator_id)
+	p.thrown = false
 
 
 # A grenade or charge meets the ground.

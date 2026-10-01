@@ -40,6 +40,9 @@ var units: Array[Unit] = []
 var projectiles: Array[Projectile] = []
 ## Herb plants on the map, in ascending id order (a subset of entities).
 var herb_plants: Array[HerbPlant] = []
+## Gas clouds hanging in the air, in ascending id order (a subset of
+## entities). Spent ones stay flagged until the end of the tick.
+var clouds: Array[GasCloud] = []
 var statuses: StatusEffects = StatusEffects.new()
 var combat: MeleeCombat = MeleeCombat.new()
 var interactions: Interactions = Interactions.new()
@@ -103,7 +106,7 @@ func enqueue(command: SimCommand) -> bool:
 ## 10. resolve the explosions that brings;
 ## 11. burn: fires go out, spread, burn out, set units alight, and catch
 ##     explosives;
-## 12. drop removed projectiles.
+## 12. drop removed projectiles and spent clouds.
 func step() -> void:
 	combat_events.clear()
 	projectile_events.clear()
@@ -125,6 +128,7 @@ func step() -> void:
 		explosions.resolve(self, projectile_system.grid)
 		fire.update(self)
 		_drop_removed_projectiles()
+		_drop_spent_clouds()
 	projectile_pass_begun = false
 	tick += 1
 
@@ -204,6 +208,17 @@ func drop_object(type_index: int, x: int, z: int, owner_id: int) -> Projectile:
 	return p
 
 
+## Leaves a gas cloud of type t's gas at (x, y, z), set off by
+## instigator_id. It starts paralyzing next tick (StatusEffects).
+func spawn_cloud(x: int, y: int, z: int, t: ProjectileType, instigator_id: int) -> GasCloud:
+	var cloud: GasCloud = GasCloud.new(
+		_next_entity_id, x, y, z, t.gas_radius, t.gas_ticks, t.gas_paralysis_ticks, instigator_id
+	)
+	_register(cloud)
+	clouds.append(cloud)
+	return cloud
+
+
 ## Puts a herb plant on the ground at (x, z), clamped to the map.
 func spawn_herb_plant(x: int, z: int) -> HerbPlant:
 	if terrain == null:
@@ -275,6 +290,8 @@ func despawn_entity(entity_id: int) -> void:
 		projectiles.erase(entity)
 	elif entity is HerbPlant:
 		herb_plants.erase(entity)
+	elif entity is GasCloud:
+		clouds.erase(entity)
 	entities.erase(entity_id)
 
 
@@ -333,6 +350,18 @@ func _register(entity: SimEntity) -> void:
 func _integrate() -> void:
 	for entity: SimEntity in entities.values():
 		entity.integrate()
+
+
+func _drop_spent_clouds() -> void:
+	if clouds.is_empty():
+		return
+	var kept: Array[GasCloud] = []
+	for cloud: GasCloud in clouds:
+		if cloud.removed:
+			entities.erase(cloud.id)
+		else:
+			kept.append(cloud)
+	clouds = kept
 
 
 func _drop_removed_projectiles() -> void:

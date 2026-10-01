@@ -108,6 +108,22 @@ static func undead(type_id: StringName, overrides: Dictionary = {}) -> UnitType:
 	return dummy(type_id, base)
 
 
+## A walking bomb: undead, no blows of its own; its blow is bursting into the
+## shipped blight burst after a 20-tick wind-up, and any death bursts it.
+static func bomb(type_id: StringName, overrides: Dictionary = {}) -> UnitType:
+	var base: Dictionary = {
+		"nature": UnitType.Nature.UNDEAD, "mobility": Terrain.Mobility.UNDEAD,
+		"water_speed_permille": PackedInt32Array([1000, 1000, 1000, 1000, 1000]),
+		"max_hp": 40, "move_speed": 1100,
+		"melee_damage": 0, "melee_accuracy_permille": 0, "melee_windup_ticks": 20,
+		"melee_cooldown_ticks": 30, "acquire_radius": 10_000, "melee_detonates": true,
+		"special_ability": UnitType.Special.DETONATE, "special_charges": 1,
+		"special_projectile": &"blight_burst",
+	}
+	base.merge(overrides, true)
+	return melee(type_id, base)
+
+
 ## Private copies of the shipped projectile types, in catalog order. Copies,
 ## because load() hands every caller the same cached resources: a test that
 ## tweaks one must not change it for the rest of the run.
