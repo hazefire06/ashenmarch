@@ -103,6 +103,10 @@ const ALL_ROLES_MASK: int = (1 << Role.MELEE) | (1 << Role.RANGED) | (1 << Role.
 @export var melee_cooldown_ticks: int = 0
 ## Chance in permille to block a melee hit from the front arc. 0: no shield.
 @export var shield_block_permille: int = 0
+## A status effect every blow that lands inflicts (a paralyzing touch), for
+## melee_status_ticks ticks. 0 ticks: none.
+@export var melee_status: StatusEffects.Kind = StatusEffects.Kind.PARALYSIS
+@export var melee_status_ticks: int = 0
 
 @export_group("Targeting")
 ## Milli-units, body edge to body edge: how far an attack-moving unit looks
@@ -196,6 +200,8 @@ func validate() -> PackedStringArray:
 		var value: int = int(get(field))
 		if value < 0 or value > 1000:
 			errors.append("%s: %s must be 0..1000" % [who, field])
+	if melee_status_ticks < 0:
+		errors.append("%s: melee_status_ticks can't be negative" % who)
 	if preferred_target_roles & ~ALL_ROLES_MASK != 0:
 		errors.append("%s: preferred_target_roles has unknown role bits" % who)
 	if hover_height < 0:

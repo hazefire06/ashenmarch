@@ -20,7 +20,9 @@ extends RefCounted
 ## blasts can't throw anyone in either.
 ##
 ## Knockback keeps KNOCK_RETAIN_PERMILLE of itself each tick. While it is
-## fast (Unit.is_reeling) the unit doesn't walk.
+## fast (Unit.is_reeling) the unit doesn't walk. A paralyzed unit doesn't
+## walk either, nor count as stuck, so its order is still there when it can
+## move again; it can still be pushed.
 ##
 ## A unit's y is the ground under it plus its type's hover_height; a body
 ## lies on the ground, so a floating unit that dies drops.
@@ -100,7 +102,7 @@ func order_stop(unit: Unit) -> void:
 func update(world: World) -> void:
 	_solve_paths(world)
 	for unit: Unit in world.units:
-		if unit.state == Unit.State.MOVING:
+		if unit.state == Unit.State.MOVING and not StatusEffects.paralyzed(world, unit):
 			_advance(unit)
 	var grid: UnitGrid = UnitGrid.new(world.units, BUCKET_SIZE)
 	for unit: Unit in world.units:
@@ -203,8 +205,8 @@ func _steer(world: World, unit: Unit, grid: UnitGrid) -> void:
 	var near: Array[Unit] = grid.near(unit.x, unit.z, BUCKET_SIZE, unit)
 	var vx: int = 0
 	var vz: int = 0
-	var reeling: bool = unit.is_reeling()
-	if unit.state == Unit.State.MOVING and not unit.path_pending and unit.has_path() and not reeling:
+	var held: bool = unit.is_reeling() or StatusEffects.paralyzed(world, unit)
+	if unit.state == Unit.State.MOVING and not unit.path_pending and unit.has_path() and not held:
 		var dx: int = unit.waypoint_x() - unit.x
 		var dz: int = unit.waypoint_z() - unit.z
 		var d: int = FixedMath.length(dx, dz)

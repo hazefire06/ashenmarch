@@ -6,7 +6,8 @@ extends RefCounted
 ## order.
 ##
 ## Rank: a role the unit prefers (UnitType.preferred_target_roles) first,
-## then the nearest body edge, then the lower id.
+## then the nearest body edge, then the lower id. A confused unit has no
+## preferences (nearest_only): just the nearest, then the lower id.
 
 ## While still approaching, a unit only abandons its target for another of
 ## the same preference if that one is at least this much nearer (milli-units).
@@ -31,9 +32,9 @@ static func prefers(unit: Unit, other: Unit) -> bool:
 
 
 ## True if a ranks strictly ahead of b as a target for unit.
-static func ranks_before(unit: Unit, a: Unit, b: Unit) -> bool:
+static func ranks_before(unit: Unit, a: Unit, b: Unit, nearest_only: bool = false) -> bool:
 	var prefers_a: bool = prefers(unit, a)
-	if prefers_a != prefers(unit, b):
+	if not nearest_only and prefers_a != prefers(unit, b):
 		return prefers_a
 	var da: int = edge_distance(unit, a)
 	var db: int = edge_distance(unit, b)
@@ -43,10 +44,10 @@ static func ranks_before(unit: Unit, a: Unit, b: Unit) -> bool:
 
 
 ## The best-ranked of candidates for unit, or null if there are none.
-static func pick(unit: Unit, candidates: Array[Unit]) -> Unit:
+static func pick(unit: Unit, candidates: Array[Unit], nearest_only: bool = false) -> Unit:
 	var best: Unit = null
 	for other: Unit in candidates:
-		if best == null or ranks_before(unit, other, best):
+		if best == null or ranks_before(unit, other, best, nearest_only):
 			best = other
 	return best
 
@@ -54,10 +55,10 @@ static func pick(unit: Unit, candidates: Array[Unit]) -> Unit:
 ## True if a unit approaching current should chase candidate instead: a
 ## preferred role beats a non-preferred one outright; otherwise candidate
 ## must be RETARGET_MARGIN nearer.
-static func worth_switching(unit: Unit, current: Unit, candidate: Unit) -> bool:
+static func worth_switching(unit: Unit, current: Unit, candidate: Unit, nearest_only: bool = false) -> bool:
 	if candidate == current:
 		return false
 	var prefers_candidate: bool = prefers(unit, candidate)
-	if prefers_candidate != prefers(unit, current):
+	if not nearest_only and prefers_candidate != prefers(unit, current):
 		return prefers_candidate
 	return edge_distance(unit, candidate) + RETARGET_MARGIN <= edge_distance(unit, current)

@@ -36,6 +36,10 @@ extends RefCounted
 ##   can't reach it, or the spot is inside its minimum range, it gives up
 ##   (CANT_REACH) and holds.
 ##
+## Status effects: a paralyzed unit loses its draw and does nothing. A
+## confused one (any order, ground attack included) shoots at the nearest
+## unit of either side in range, with no care for friends in the way.
+##
 ## Range: ranged_max_range on level ground, shortened uphill by
 ## uphill_range_permille. Aim: the unit's own AimStyle first, then the other
 ## if that fails or its path isn't clear. Arrows aim at the chest, throws at
@@ -112,26 +116,31 @@ static func next_projectile(world: World, unit: Unit) -> int:
 func _decide(world: World, unit: Unit) -> bool:
 	if unit.shot_cooldown_left > 0:
 		unit.shot_cooldown_left -= 1
-	if unit.is_reeling() or unit.target_id != 0 or unit.state == Unit.State.ATTACKING:
+	if (
+		unit.is_reeling() or StatusEffects.paralyzed(world, unit)
+		or unit.target_id != 0 or unit.state == Unit.State.ATTACKING
+	):
 		unit.clear_shot()
 		return false
-	if unit.order == Unit.Order.MOVE:
+	var confused: bool = StatusEffects.confused(world, unit)
+	if unit.order == Unit.Order.MOVE and not confused:
 		return false
 	if unit.ammo_left == 0:
 		_stand_down(world, unit)
 		return false
-	if unit.order == Unit.Order.GROUND_ATTACK:
+	if unit.order == Unit.Order.GROUND_ATTACK and not confused:
 		return _ground(world, unit)
-	return _hold_or_march(world, unit)
+	return _hold_or_march(world, unit, confused)
 
 
-# Order NONE or ATTACK_MOVE: shoot what comes in range.
-func _hold_or_march(world: World, unit: Unit) -> bool:
+# Order NONE or ATTACK_MOVE (or anything, confused): shoot what comes in
+# range.
+func _hold_or_march(world: World, unit: Unit, confused: bool) -> bool:
 	if unit.state == Unit.State.MOVING and unit.order == Unit.Order.NONE:
 		# A holding unit only moves to step aside; it shoots when it stops.
 		return false
 	var target: Unit = world.get_unit(unit.shot_target_id) if unit.shot_target_id != 0 else null
-	var lost: bool = target != null and not _may_target(world, unit, target)
+	var lost: bool = target != null and not _may_target(world, unit, target, confused)
 	if lost:
 		target = null
 	# Look again on this unit's own re-pick tick, or at once when the target
@@ -139,7 +148,7 @@ func _hold_or_march(world: World, unit: Unit) -> bool:
 	# its re-pick tick rather than trying every tick.
 	var due: bool = lost or (world.tick + unit.id) % RETARGET_TICKS == 0
 	if unit.aim_left == 0 and due:
-		target = _pick(world, unit, target)
+		target = _pick(world, unit, target, confused)
 	if target == null:
 		_stand_down(world, unit)
 		return false
@@ -231,24 +240,27 @@ func _cant_reach(world: World, unit: Unit) -> void:
 # is worth switching to (the shot itself re-aims, so it isn't re-checked
 # here), else the first of the nearest few candidates a clear launch
 # reaches; null if none.
-func _pick(world: World, unit: Unit, current: Unit) -> Unit:
+func _pick(world: World, unit: Unit, current: Unit, confused: bool) -> Unit:
 	var candidates: Array[Unit] = []
 	for other: Unit in world.units:
-		if other != current and _may_target(world, unit, other):
+		if other != current and _may_target(world, unit, other, confused):
 			candidates.append(other)
-	candidates.sort_custom(func(a: Unit, b: Unit) -> bool: return Targeting.ranks_before(unit, a, b))
+	candidates.sort_custom(func(a: Unit, b: Unit) -> bool: return Targeting.ranks_before(unit, a, b, confused))
 	var best: Unit = candidates[0] if not candidates.is_empty() else null
-	if current != null and (best == null or not Targeting.worth_switching(unit, current, best)):
+	if current != null and (best == null or not Targeting.worth_switching(unit, current, best, confused)):
 		return current
 	for i: int in mini(MAX_AIM_TRIES, candidates.size()):
-		if _aim_at_unit(world, unit, candidates[i], candidates[i].x, candidates[i].z).ok:
+		if _aim_at_unit(world, unit, candidates[i], candidates[i].x, candidates[i].z, not confused).ok:
 			return candidates[i]
 	return null
 
 
-# Alive, an enemy, visible, and within range as the crow flies.
-func _may_target(world: World, unit: Unit, other: Unit) -> bool:
-	if not other.is_alive() or other.faction == unit.faction or Visibility.is_submerged(world.terrain, other):
+# Alive, an enemy (anyone else, confused), visible, and within range as the
+# crow flies.
+func _may_target(world: World, unit: Unit, other: Unit, confused: bool) -> bool:
+	if other == unit or not other.is_alive() or Visibility.is_submerged(world.terrain, other):
+		return false
+	if other.faction == unit.faction and not confused:
 		return false
 	var dist: int = FixedMath.length(other.x - unit.x, other.z - unit.z)
 	if dist < unit.type.ranged_min_range:
@@ -268,9 +280,10 @@ func _reaches_ground(world: World, unit: Unit) -> bool:
 
 
 # A clear launch at target, imagined standing at (x, z) (where it is now,
-# or where it will be when the shot lands), avoiding friendly bodies and,
-# for a thrower, friends in the blast.
-func _aim_at_unit(world: World, unit: Unit, target: Unit, x: int, z: int) -> AimSolution:
+# or where it will be when the shot lands). careful (auto-picked targets of
+# a unit in its right mind) also avoids friendly bodies and, for a thrower,
+# friends in the blast.
+func _aim_at_unit(world: World, unit: Unit, target: Unit, x: int, z: int, careful: bool) -> AimSolution:
 	var type_index: int = next_projectile(world, unit)
 	var p: ProjectileType = world.catalog.projectile_types[type_index]
 	var ground: int = world.terrain.height_at(x, z)
@@ -278,15 +291,15 @@ func _aim_at_unit(world: World, unit: Unit, target: Unit, x: int, z: int) -> Aim
 	if p.behavior == ProjectileType.Behavior.STICKS:
 		# At the aim point, which is where a walker is led to: leading an enemy
 		# into our own line would put the arrow on the line.
-		if _friend_beside(world, unit, x, z, target.type.body_radius):
+		if careful and _friend_beside(world, unit, x, z, target.type.body_radius):
 			return AimSolution.failed()
 		y = ground + target.type.hover_height + target.type.body_height * CHEST_PERMILLE / PERMILLE
-	elif p.is_explosive() and _friend_in_blast(world, unit, p, x, ground, z):
+	elif careful and p.is_explosive() and _friend_in_blast(world, unit, p, x, ground, z):
 		return AimSolution.failed()
 	elif p.fuse_ticks > 0 and world.terrain.water_depth_at(x, z) > 0:
 		# The fuse would go out where it lands (ProjectileSystem).
 		return AimSolution.failed()
-	return _aim(world, unit, p, x, y, z, true)
+	return _aim(world, unit, p, x, y, z, careful)
 
 
 func _aim_at_ground(world: World, unit: Unit, x: int, z: int) -> AimSolution:
@@ -384,7 +397,7 @@ func _loose(world: World, unit: Unit) -> void:
 			var ticks: int = _flight_ticks(world, unit, target)
 			aim_x += target.vx * ticks
 			aim_z += target.vz * ticks
-		solution = _aim_at_unit(world, unit, target, aim_x, aim_z)
+		solution = _aim_at_unit(world, unit, target, aim_x, aim_z, not StatusEffects.confused(world, unit))
 	if not solution.ok:
 		# Lost the shot (the target moved out of reach, a friend stepped in
 		# the way): pick again next tick.

@@ -15,11 +15,15 @@ const DROP_SPREAD: int = 300
 ## Takes amount hit points from target, which came from (from_x, from_z)
 ## (the attacker, the blast center, the arrow's approach). credit_id is the
 ## unit credited with a kill (0 for none); it only counts an enemy.
-## Returns true if this killed the target.
+## Returns true if this killed the target. A target already dead takes
+## nothing, so a body can't die (and drop or burst) twice when two blows meet
+## it in one tick.
 static func apply(
 	world: World, target: Unit, amount: int, from_x: int, from_z: int, credit_id: int,
 	aspect: MeleeCombat.Aspect = MeleeCombat.Aspect.FRONT
 ) -> bool:
+	if not target.is_alive():
+		return false
 	var hp_before: int = target.hp
 	target.hp -= amount
 	if target.hp > 0:

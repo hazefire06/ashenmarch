@@ -19,9 +19,10 @@ extends RefCounted
 ##   would be no fire at all.
 ## - Rain puts burning cells out: each rolls DOUSE_PPM_AT_FULL_RAIN (scaled
 ##   by intensity) every tick, and a doused cell is scorched.
-## - Every DAMAGE_INTERVAL_TICKS, each living unit standing on a burning
-##   cell loses DAMAGE hit points (Damage.apply), credited to whoever lit the
-##   fire. A cell lit by the spread inherits its source's lighter.
+## - Every living unit standing on a burning cell is set burning
+##   (StatusEffects.FIRE_BURN_TICKS, credited to whoever lit the fire), which
+##   is what hurts it, and keeps hurting for a while after it steps off. A
+##   cell lit by the spread inherits its source's lighter.
 ## - A charge, grenade, or dud lying or rolling on a burning cell is caught,
 ##   exactly as a blast catches it (Explosions.catch), credited the same way.
 ##
@@ -34,7 +35,7 @@ extends RefCounted
 ##    cell rolls for it, but it first spreads next tick. A front cell with
 ##    no such neighbor leaves the front for good: cells only ever go from
 ##    unburnt to burning to scorched.
-## 3. Damage, on its interval: living units in ascending id.
+## 3. Units on burning cells catch fire: living units in ascending id.
 ## 4. Explosives: projectiles in ascending id.
 ## 5. Burn-outs: cells whose time ends this tick are scorched, last, so a
 ##    cell still hurts and sets things off in its final tick.
@@ -77,10 +78,6 @@ const DOUSE_PPM_AT_FULL_RAIN: int = 15_000
 const RAIN_SPREAD_CUT: int = 900
 const WET_SPREAD_CUT: int = 800
 const SNOW_SPREAD_CUT: int = 900
-## Hit points lost every DAMAGE_INTERVAL_TICKS standing on a burning cell
-## (9 hp/s).
-const DAMAGE: int = 3
-const DAMAGE_INTERVAL_TICKS: int = 10
 ## Neighbor offsets (di, dj), row-major.
 const NEIGHBORS: Array[Vector2i] = [
 	Vector2i(-1, -1), Vector2i(0, -1), Vector2i(1, -1),
@@ -166,8 +163,7 @@ func update(world: World) -> void:
 			_front.erase(k)
 		elif not _spread_from(world, k, damping):
 			_front.erase(k)
-	if world.tick % DAMAGE_INTERVAL_TICKS == 0:
-		_burn_units(world)
+	_burn_units(world)
 	_catch_explosives(world)
 	if _ending.has(world.tick):
 		for k: int in _ending[world.tick]:
@@ -251,9 +247,7 @@ func _burn_units(world: World) -> void:
 		var at: Vector2i = terrain.nearest_sample(unit.x, unit.z)
 		var k: int = at.y * terrain.size_x + at.x
 		if state[k] == Cell.BURNING:
-			Damage.apply(
-				world, unit, DAMAGE, at.x * terrain.cell_size, at.y * terrain.cell_size, lit_by[k]
-			)
+			StatusEffects.apply(world, unit, StatusEffects.Kind.BURNING, StatusEffects.FIRE_BURN_TICKS, lit_by[k])
 
 
 func _catch_explosives(world: World) -> void:

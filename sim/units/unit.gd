@@ -132,6 +132,11 @@ var fire_nocked: bool = false
 ## and can't steer, swing, or shoot.
 var knock_vx: int = 0
 var knock_vz: int = 0
+## Last tick each status effect lasts, indexed by StatusEffects.Kind;
+## StatusEffects.NONE when not affected. See StatusEffects.
+var status_until: PackedInt32Array = PackedInt32Array()
+## The unit credited with what Burning does to this one (0 for none).
+var burn_credit_id: int = 0
 
 
 func _init(
@@ -145,6 +150,8 @@ func _init(
 	hp = unit_type.max_hp
 	ammo_left = unit_type.ranged_ammo
 	special_left = unit_type.special_charges
+	status_until.resize(StatusEffects.Kind.size())
+	status_until.fill(StatusEffects.NONE)
 
 
 func is_alive() -> bool:
@@ -161,14 +168,16 @@ func transition_to(new_state: State) -> bool:
 	return true
 
 
-## Kills the unit outright: hp 0, state DEAD, orders and fighting cleared.
-## A body lies on the ground, so UnitMovement drops a floating one.
+## Kills the unit outright: hp 0, state DEAD, orders, fighting, and status
+## effects cleared. A body lies on the ground, so UnitMovement drops a
+## floating one.
 func kill() -> void:
 	hp = 0
 	transition_to(State.DEAD)
 	clear_order()
 	clear_engagement()
 	clear_shot()
+	StatusEffects.clear(self)
 	order = Order.NONE
 	vx = 0
 	vy = 0
@@ -234,7 +243,9 @@ func hash_fields() -> PackedInt64Array:
 		order, order_x, order_z, order_facing_x, order_facing_z, order_speed_cap,
 		target_id, windup_left, cooldown_left, kills, path.size(),
 		ground_x, ground_z, 1 if ground_walked else 0, shot_target_id, aim_left, shot_cooldown_left,
-		ammo_left, special_left, 1 if fire_nocked else 0, knock_vx, knock_vz,
+		ammo_left, special_left, 1 if fire_nocked else 0, knock_vx, knock_vz, burn_credit_id,
 	]))
+	for until: int in status_until:
+		fields.append(until)
 	fields.append_array(path)
 	return fields

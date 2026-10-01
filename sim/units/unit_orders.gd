@@ -19,7 +19,7 @@ const KEEP_FACING_RADIUS: int = 2000
 static func move(
 	world: World, unit_ids: PackedInt32Array, x: int, z: int, formation: int, attack: bool = false
 ) -> void:
-	var group: Array[Unit] = _living_units(world, unit_ids)
+	var group: Array[Unit] = living_units(world, unit_ids)
 	if group.is_empty() or world.terrain == null:
 		return
 	var n: int = group.size()
@@ -69,7 +69,7 @@ static func move(
 ## Halts the living units among unit_ids where they stand. They hold that
 ## spot and fight enemies that come adjacent.
 static func stop(world: World, unit_ids: PackedInt32Array) -> void:
-	for unit: Unit in _living_units(world, unit_ids):
+	for unit: Unit in living_units(world, unit_ids):
 		hold(unit)
 		world.movement.order_stop(unit)
 
@@ -78,7 +78,7 @@ static func stop(world: World, unit_ids: PackedInt32Array) -> void:
 ## (x, z) until told otherwise, walking into range first if they must.
 ## Units without a ranged attack ignore it. RangedCombat carries it out.
 static func ground_attack(world: World, unit_ids: PackedInt32Array, x: int, z: int) -> void:
-	for unit: Unit in _living_units(world, unit_ids):
+	for unit: Unit in living_units(world, unit_ids):
 		if not unit.type.has_ranged():
 			continue
 		hold(unit)
@@ -92,7 +92,7 @@ static func ground_attack(world: World, unit_ids: PackedInt32Array, x: int, z: i
 ## A Sapper drops a charge at its feet; a Longbow nocks its fire arrow (the
 ## charge is spent when the arrow leaves).
 static func use_special(world: World, unit_ids: PackedInt32Array) -> void:
-	for unit: Unit in _living_units(world, unit_ids):
+	for unit: Unit in living_units(world, unit_ids):
 		if unit.special_left <= 0:
 			continue
 		match unit.type.special_ability:
@@ -101,6 +101,27 @@ static func use_special(world: World, unit_ids: PackedInt32Array) -> void:
 				world.drop_charge(unit, unit.x, unit.z)
 			UnitType.Special.FIRE_ARROW:
 				unit.fire_nocked = true
+
+
+## Puts the unit back on its own order after something overrode it (a
+## confusion wearing off): drops whatever it was fighting or shooting, then
+## marches on to a move or attack-move's goal, stands at a ground attack (it
+## walks into range again if it must), or holds where it stands.
+static func resume(world: World, unit: Unit) -> void:
+	unit.clear_engagement()
+	unit.clear_shot()
+	unit.ground_walked = false
+	match unit.order:
+		Unit.Order.MOVE, Unit.Order.ATTACK_MOVE:
+			world.movement.order_move(
+				world, unit, unit.order_x, unit.order_z,
+				unit.order_facing_x, unit.order_facing_z, unit.order_speed_cap
+			)
+		Unit.Order.GROUND_ATTACK:
+			world.movement.order_stop(unit)
+		_:
+			hold(unit)
+			world.movement.order_stop(unit)
 
 
 ## Gives the unit order NONE, holding where it stands now. Drops any fight.
@@ -117,8 +138,9 @@ static func hold(unit: Unit) -> void:
 
 
 ## The living units named by unit_ids, deduplicated, in ascending id order, so
-## the result doesn't depend on the order the player selected them in.
-static func _living_units(world: World, unit_ids: PackedInt32Array) -> Array[Unit]:
+## the result doesn't depend on the order the player selected them in. Every
+## group command starts from this.
+static func living_units(world: World, unit_ids: PackedInt32Array) -> Array[Unit]:
 	var ids: PackedInt32Array = unit_ids.duplicate()
 	ids.sort()
 	var group: Array[Unit] = []

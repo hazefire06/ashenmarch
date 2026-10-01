@@ -4,8 +4,9 @@ extends GutTest
 ## may spread to each unburnt flammable neighbor every tick, then lies
 ## scorched for good. Sand, rock, and water
 ## never burn. Rain puts burning cells out and, with wet or snowy ground,
-## slows the spread. Fire hurts whoever stands in it, credited to whoever lit
-## it, and sets off charges and duds. Spread is seeded, so the same seed
+## slows the spread. Fire sets alight whoever stands in it (Burning hurts),
+## credited to whoever lit it, and sets off charges and duds. Spread is
+## seeded, so the same seed
 ## burns the same ground.
 
 const M: int = 1000
@@ -169,7 +170,9 @@ func test_snow_cover_slows_the_spread() -> void:
 	assert_lt(Fire.spread_damping_permille(0, 500, 500), Fire.spread_damping_permille(0, 500, 0))
 
 
-func test_a_unit_standing_in_fire_is_hurt_every_10_ticks() -> void:
+func test_a_unit_standing_in_fire_catches_fire_and_is_hurt_every_10_ticks() -> void:
+	# The cell sets it alight at the end of tick 0; Burning hurts at the
+	# start of every tenth tick after that.
 	var world: World = _world(_ringed("."))
 	var unit: Unit = world.spawn_unit(0, DARK, 5 * M, 5 * M, 0, 1)
 	var by_sand: Unit = world.spawn_unit(0, DARK, 5 * M, 7 * M, 0, 1)
@@ -180,29 +183,34 @@ func test_a_unit_standing_in_fire_is_hurt_every_10_ticks() -> void:
 		for e: CombatEvent in world.combat_events:
 			if e.target_id == unit.id and e.kind == CombatEvent.Kind.HIT:
 				hits.append(t)
-				assert_eq(e.damage, Fire.DAMAGE)
-	assert_eq(hits, [0, 10, 20])
-	assert_eq(unit.hp, unit.type.max_hp - 3 * Fire.DAMAGE)
+				assert_eq(e.damage, StatusEffects.BURN_DAMAGE)
+	assert_eq(hits, [10, 20])
+	assert_eq(unit.hp, unit.type.max_hp - 2 * StatusEffects.BURN_DAMAGE)
+	assert_true(StatusEffects.has(world, unit, StatusEffects.Kind.BURNING))
 	assert_eq(by_sand.hp, by_sand.type.max_hp, "standing on sand two cells off, untouched")
+	assert_false(StatusEffects.has(world, by_sand, StatusEffects.Kind.BURNING))
 
 
-func test_a_cell_hurts_through_its_last_tick() -> void:
-	# Lit during tick 0, it burns until the end of tick GRASS_TICKS, a
-	# multiple of the damage interval: that tick hurts too.
-	assert_eq(GRASS_TICKS % Fire.DAMAGE_INTERVAL_TICKS, 0, "precondition")
+func test_a_cell_sets_units_alight_through_its_last_tick_and_they_burn_on() -> void:
+	# Lit during tick 0, the cell burns until the end of tick GRASS_TICKS and
+	# sets the unit alight in that tick too; the unit burns on for
+	# FIRE_BURN_TICKS after it.
 	var world: World = _world(_ringed("."))
 	var unit: Unit = world.spawn_unit(0, DARK, 5 * M, 5 * M, 0, 1)
 	world.ignite(5 * M, 5 * M, 0)
 	var last_hit: int = -1
 	var hits: int = 0
-	for t: int in GRASS_TICKS + 30:
+	for t: int in GRASS_TICKS + StatusEffects.FIRE_BURN_TICKS + 30:
 		world.step()
 		for e: CombatEvent in world.combat_events:
 			if e.target_id == unit.id and e.kind == CombatEvent.Kind.HIT:
 				last_hit = t
 				hits += 1
-	assert_eq(last_hit, GRASS_TICKS)
-	assert_eq(hits, GRASS_TICKS / Fire.DAMAGE_INTERVAL_TICKS + 1)
+	var burns_until: int = GRASS_TICKS + StatusEffects.FIRE_BURN_TICKS - 1
+	var expected_last: int = burns_until - burns_until % StatusEffects.BURN_INTERVAL_TICKS
+	assert_eq(world.fire.cell_at(5 * M, 5 * M), Fire.Cell.SCORCHED)
+	assert_eq(last_hit, expected_last, "still burning well after the cell went out")
+	assert_eq(hits, expected_last / StatusEffects.BURN_INTERVAL_TICKS)
 
 
 func test_a_cell_sets_off_a_charge_in_its_last_tick() -> void:
@@ -231,11 +239,14 @@ func test_a_live_grenade_lying_in_fire_goes_off_early() -> void:
 
 
 func test_charges_a_burning_sapper_drops_are_caught_at_once() -> void:
-	var sapper_type: UnitType = TestUnits.thrower(&"sapper", {"max_hp": Fire.DAMAGE, "special_charges": 4})
+	var sapper_type: UnitType = TestUnits.thrower(
+		&"sapper", {"max_hp": StatusEffects.BURN_DAMAGE, "special_charges": 4}
+	)
 	var world: World = _world(_ringed("."), 1, [sapper_type])
 	var sapper: Unit = world.spawn_unit(0, LIGHT, 5 * M, 5 * M, 0, 1)
 	world.ignite(5 * M, 5 * M, 0)
-	world.step()
+	# Alight at the end of tick 0, dead at the first burn, tick 10.
+	_run(world, StatusEffects.BURN_INTERVAL_TICKS + 1)
 	assert_false(sapper.is_alive())
 	var charges: int = 0
 	for p: Projectile in world.projectiles:
@@ -246,11 +257,13 @@ func test_charges_a_burning_sapper_drops_are_caught_at_once() -> void:
 
 
 func test_a_fire_kill_is_credited_to_whoever_lit_it() -> void:
-	var world: World = _world(_ringed("."), 1, [TestUnits.dummy(&"dummy", {"max_hp": Fire.DAMAGE})])
+	var world: World = _world(
+		_ringed("."), 1, [TestUnits.dummy(&"dummy", {"max_hp": StatusEffects.BURN_DAMAGE})]
+	)
 	var archer: Unit = world.spawn_unit(0, LIGHT, 1 * M, 1 * M, 0, 1)
 	var enemy: Unit = world.spawn_unit(0, DARK, 5 * M, 5 * M, 0, 1)
 	world.ignite(5 * M, 5 * M, archer.id)
-	world.step()
+	_run(world, StatusEffects.BURN_INTERVAL_TICKS + 1)
 	assert_false(enemy.is_alive())
 	assert_eq(archer.kills, 1)
 

@@ -39,8 +39,12 @@ extends RefCounted
 ## killed earlier in the same pass (a lower-id arrow) no longer stops later
 ## arrows: they fly on past the falling body.
 ##
+## A fire arrow whose flame holds sets the unit it strikes burning
+## (StatusEffects.FIRE_ARROW_BURN_TICKS) as well as lighting the ground.
+##
 ## RNG draws, in projectile id order: an arrow striking a body draws a block
-## roll (front arc of a shielded target only) then its damage variance; a
+## roll (front arc of a shielded target that isn't paralyzed only) then its
+## damage variance; a
 ## fire arrow landing then draws its flame's fizzle roll (only when the
 ## chance isn't zero); a fuse burning down draws the fizzle roll.
 
@@ -215,17 +219,23 @@ func _strike(world: World, p: Projectile, target: Unit) -> void:
 	var hit: ProjectileEvent = ProjectileEvent.about(ProjectileEvent.Kind.HIT, p)
 	hit.unit_id = target.id
 	world.projectile_events.append(hit)
-	var block: int = target.type.shield_block_permille
-	if aspect == MeleeCombat.Aspect.FRONT and block > 0 and world.rng.randi_range(0, PERMILLE - 1) < block:
+	if (
+		MeleeCombat.can_block(world, target, aspect)
+		and world.rng.randi_range(0, PERMILLE - 1) < target.type.shield_block_permille
+	):
 		world.combat_events.append(CombatEvent.new(CombatEvent.Kind.BLOCK, p.owner_id, target.id, aspect))
 	else:
 		var variance: int = world.rng.randi_range(-DAMAGE_VARIANCE_PERMILLE, DAMAGE_VARIANCE_PERMILLE)
 		var damage: int = maxi(1, FixedMath.div_round(p.type.impact_damage * (PERMILLE + variance), PERMILLE))
 		Damage.apply(world, target, damage, from_x, from_z, p.owner_id, aspect)
 	# Over water there is nothing to light, so no roll for the flame either.
+	# A flame that holds sets the unit alight as well as the ground.
 	var dry: bool = world.terrain.water_depth_at(target.x, target.z) == 0
 	if p.type.marks_fire and dry and not _flame_goes_out(world, p, false):
 		world.ignite(target.x, target.z, p.instigator_id)
+		StatusEffects.apply(
+			world, target, StatusEffects.Kind.BURNING, StatusEffects.FIRE_ARROW_BURN_TICKS, p.instigator_id
+		)
 	world.remove_projectile(p)
 
 

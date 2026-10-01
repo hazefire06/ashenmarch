@@ -38,6 +38,7 @@ var units: Array[Unit] = []
 ## Every arrow, grenade, and charge in the world, in ascending id order (a
 ## subset of entities). Removed ones stay flagged until the end of the tick.
 var projectiles: Array[Projectile] = []
+var statuses: StatusEffects = StatusEffects.new()
 var combat: MeleeCombat = MeleeCombat.new()
 var ranged: RangedCombat = RangedCombat.new()
 var movement: UnitMovement = UnitMovement.new()
@@ -81,15 +82,17 @@ func enqueue(command: SimCommand) -> bool:
 ## Simulates one tick:
 ## 1. apply this tick's commands in enqueue order;
 ## 2. advance the weather (ramps, snow cover, wetness);
-## 3. melee (targets, chases, blows, deaths);
-## 4. ranged (targets, draws, shots leaving);
-## 5. steer the units, which sets their velocities (knockback included);
-## 6. integrate the units;
-## 7. move the projectiles against the units' new positions: hits, bounces,
+## 3. status effects (wear-offs, water putting out the burning, burns);
+## 4. melee (targets, chases, blows, deaths);
+## 5. ranged (targets, draws, shots leaving);
+## 6. steer the units, which sets their velocities (knockback included);
+## 7. integrate the units;
+## 8. move the projectiles against the units' new positions: hits, bounces,
 ##    fuses, fire arrows lighting fires;
-## 8. resolve the explosions that brings;
-## 9. burn: fires go out, spread, burn out, hurt units, and catch explosives;
-## 10. drop removed projectiles.
+## 9. resolve the explosions that brings;
+## 10. burn: fires go out, spread, burn out, set units alight, and catch
+##     explosives;
+## 11. drop removed projectiles.
 func step() -> void:
 	combat_events.clear()
 	projectile_events.clear()
@@ -98,6 +101,7 @@ func step() -> void:
 	_apply_commands()
 	weather.update(tick)
 	if terrain != null:
+		statuses.update(self)
 		combat.update(self)
 		ranged.update(self)
 		movement.update(self)
