@@ -198,9 +198,9 @@ func test_the_fords_escort_is_the_villagers_own_waypoints_and_its_route_is_ford_
 func test_rivesides_route_is_read_from_its_rules_not_retyped() -> void:
 	var mission: MissionDef = _campaign.missions[0]
 	var route: Array[Vector2] = PlaytestRoutes.route(mission)
-	var at_ford: TriggerSpec = mission.rules.triggers[mission.rules.trigger_index(&"at_ford")]
-	assert_eq(roundi(route[0].x * M), at_ford.area[0])
-	assert_eq(roundi(route[0].y * M), at_ford.area[1])
+	var in_ford: TriggerSpec = mission.rules.triggers[mission.rules.trigger_index(&"in_ford")]
+	assert_eq(roundi(route[0].x * M), in_ford.area[0])
+	assert_eq(roundi(route[0].y * M), in_ford.area[1])
 	for pair: Array in [[1, &"field_patrol_w"], [3, &"field_patrol_e"]]:
 		var waypoints: PackedInt32Array = mission.rules.groups[mission.rules.group_index(pair[1])].waypoints
 		var sum: Vector2 = Vector2.ZERO

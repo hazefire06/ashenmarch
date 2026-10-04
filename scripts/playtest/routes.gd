@@ -39,7 +39,7 @@ static func generator(mission_id: StringName) -> GDScript:
 
 
 ## The route a pilot marches, in meters, in order. Riverside: the ford (the
-## middle of the `at_ford` trigger), the ground of the two field patrols (the
+## middle of the `in_ford` trigger), the ground of the two field patrols (the
 ## centroids of their waypoints), the sand road, the village square, then the
 ## sweep (see sweep_from). The Ford: the ford (the `crossing` trigger), the north
 ## landing (`north`), the gate (`home`): where a person leads a squad that has
@@ -52,7 +52,7 @@ static func route(mission: MissionDef) -> Array[Vector2]:
 			var g: Dictionary = constants(&"riverside")
 			var road: PackedVector2Array = g["FORD_ROAD"]
 			var out: Array[Vector2] = [
-				trigger_center(mission, &"at_ford"), group_centroid(mission, &"field_patrol_w"), road[0],
+				trigger_center(mission, &"in_ford"), group_centroid(mission, &"field_patrol_w"), road[0],
 				group_centroid(mission, &"field_patrol_e"), road[road.size() - 1], g["VILLAGE_SQUARE"],
 			]
 			out.append_array(riverside_sweep())
