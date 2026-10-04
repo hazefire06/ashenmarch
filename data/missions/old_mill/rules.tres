@@ -62,103 +62,136 @@
 ;                  and no wave takes the edge it took a tier before (the east
 ;                  one wades the stream, so the wave that comes that way
 ;                  arrives strung out and late).
+; The edge matters most for the Stormcallers, who need a clear line up a ramp
+; to the soldiers holding its head: measured at tier 2 (Phase 8 balance pass),
+; their wave cost a squad that holds the ramp heads 7 soldiers from the south,
+; 4 from the north or the east, and 1 from the west. So the storm comes from
+; the north at tiers 0 and 1, the south at tier 2 (with one Stormcaller), the
+; west at tier 3 and the south again at tier 4 (with two): the hardest tier
+; gets the worst approach. (Tier 4 used to send it from the north, which made
+; tier 4 easier than tier 2.)
 ; The waves are drawn in order of difficulty (draw `ordered`): the pool below
 ; is listed easiest first, so wave 1 is the easiest of the four drawn.
+;
+; Sizes (Phase 8 balance pass): a squad that holds the two ramp heads over its
+; satchels, with grenades and the Longbows on the high ground, cuts down
+; Husks, Blightbags and Drifters on the ramps almost for free; what they test
+; is a squad that leaves the plateau to fight in the open, which they now
+; outnumber. The Rippers and the Stormcallers are what a held ramp pays for.
 
 ; ---- unit entries ----
+; Each wave has its own entries, so one wave's numbers can change alone.
 
-[sub_resource type="Resource" id="Entry_husk_wave"]
+[sub_resource type="Resource" id="Entry_husks_husk"]
 script = ExtResource("3_ent01")
 type_id = &"husk"
-counts = PackedInt32Array(10, 12, 14, 16, 18)
+counts = PackedInt32Array(24, 30, 40, 42, 44)
 
-[sub_resource type="Resource" id="Entry_husk_6"]
-script = ExtResource("3_ent01")
-type_id = &"husk"
-counts = PackedInt32Array(6)
-
-[sub_resource type="Resource" id="Entry_husk_8"]
-script = ExtResource("3_ent01")
-type_id = &"husk"
-counts = PackedInt32Array(8)
-
-[sub_resource type="Resource" id="Entry_ripper_6"]
+[sub_resource type="Resource" id="Entry_rippers_ripper"]
 script = ExtResource("3_ent01")
 type_id = &"ripper"
+counts = PackedInt32Array(8, 10, 12, 13, 14)
+
+[sub_resource type="Resource" id="Entry_rippers_husk"]
+script = ExtResource("3_ent01")
+type_id = &"husk"
 counts = PackedInt32Array(6)
 
-[sub_resource type="Resource" id="Entry_blightbag_4"]
+[sub_resource type="Resource" id="Entry_bags_blightbag"]
 script = ExtResource("3_ent01")
 type_id = &"blightbag"
-counts = PackedInt32Array(4)
+counts = PackedInt32Array(6, 7, 8, 8, 9)
 
-[sub_resource type="Resource" id="Entry_drifter_6"]
+[sub_resource type="Resource" id="Entry_bags_husk"]
+script = ExtResource("3_ent01")
+type_id = &"husk"
+counts = PackedInt32Array(12, 14, 16, 17, 18)
+
+[sub_resource type="Resource" id="Entry_drifters_husk"]
+script = ExtResource("3_ent01")
+type_id = &"husk"
+counts = PackedInt32Array(8, 10, 12, 13, 14)
+
+[sub_resource type="Resource" id="Entry_drifters_drifter"]
 script = ExtResource("3_ent01")
 type_id = &"drifter"
-counts = PackedInt32Array(6)
+counts = PackedInt32Array(8, 10, 12, 13, 14)
 
-[sub_resource type="Resource" id="Entry_stormcaller_2"]
+[sub_resource type="Resource" id="Entry_storm_husk"]
+script = ExtResource("3_ent01")
+type_id = &"husk"
+counts = PackedInt32Array(10, 13, 16, 16, 16)
+
+[sub_resource type="Resource" id="Entry_storm_stormcaller"]
 script = ExtResource("3_ent01")
 type_id = &"stormcaller"
-counts = PackedInt32Array(2)
+counts = PackedInt32Array(1, 1, 1, 2, 2)
 
 ; ---- groups: the wave pool ----
 ; behavior 3 = HUNT for every wave: each marches at the nearest Light unit from
 ; the moment it spawns, and so up a ramp. spawn_at_start stays false.
 
-; The easiest: Husks alone, 10 at tier 0 up to 18 at tier 4. From the edge by
-; tier: north, north, north, west, east.
+; The easiest for a squad on the ramps: Husks alone, a horde of them, 24 at
+; tier 0 up to 44 at tier 4 (40 at tier 2). From the edge by tier: north,
+; north, north, west, east.
 [sub_resource type="Resource" id="Group_wave_husks"]
 script = ExtResource("2_grp01")
 name = &"wave_husks"
-units = Array[ExtResource("3_ent01")]([SubResource("Entry_husk_wave")])
+units = Array[ExtResource("3_ent01")]([SubResource("Entry_husks_husk")])
 spawns = PackedInt32Array(150000, 14000, 14000, 170000, 150000, 306000, 306000, 210000)
 spawn_by_tier = PackedInt32Array(0, 0, 0, 1, 3)
 spawn_at_start = false
 behavior = 3
 
-; Six fast Rippers with six Husks behind them, who go for the Longbows and the
-; Sappers. From the edge by tier: north, north, south, east, south.
+; Fast Rippers (8 at tier 0 up to 14 at tier 4, 12 at tier 2) with six Husks
+; behind them, who go for the Longbows and the Sappers. From the edge by tier:
+; north, north, south, east, north.
 [sub_resource type="Resource" id="Group_wave_rippers"]
 script = ExtResource("2_grp01")
 name = &"wave_rippers"
-units = Array[ExtResource("3_ent01")]([SubResource("Entry_ripper_6"), SubResource("Entry_husk_6")])
+units = Array[ExtResource("3_ent01")]([SubResource("Entry_rippers_ripper"), SubResource("Entry_rippers_husk")])
 spawns = PackedInt32Array(150000, 14000, 14000, 170000, 150000, 306000, 306000, 210000)
-spawn_by_tier = PackedInt32Array(0, 0, 2, 3, 2)
+spawn_by_tier = PackedInt32Array(0, 0, 2, 3, 0)
 spawn_at_start = false
 behavior = 3
 
-; Four Blightbags in front, eight Husks behind: the walking bombs that gas a
-; whole block. From the edge by tier: north, north, north, south, west.
+; Blightbags in front (6 at tier 0 up to 9 at tier 4, 8 at tier 2), Husks
+; behind (12 up to 18, 16 at tier 2): the walking bombs that gas a whole
+; block. From the edge by tier: north, north, north, south, west.
 [sub_resource type="Resource" id="Group_wave_bags"]
 script = ExtResource("2_grp01")
 name = &"wave_bags"
-units = Array[ExtResource("3_ent01")]([SubResource("Entry_blightbag_4"), SubResource("Entry_husk_8")])
+units = Array[ExtResource("3_ent01")]([SubResource("Entry_bags_blightbag"), SubResource("Entry_bags_husk")])
 spawns = PackedInt32Array(150000, 14000, 14000, 170000, 150000, 306000, 306000, 210000)
 spawn_by_tier = PackedInt32Array(0, 0, 0, 2, 1)
 spawn_at_start = false
 behavior = 3
 
-; Six Husks in front of six Drifters, who stand off and shoot up the plateau.
-; From the edge by tier: north, north, west, north, east.
+; Husks in front of as many Drifters (8 each at tier 0 up to 14 at tier 4, 12
+; at tier 2), who stand off and shoot up the plateau where they can find a
+; line over the lip, and come up a ramp where they can't. From the edge by
+; tier: north, north, west, north, east.
 [sub_resource type="Resource" id="Group_wave_drifters"]
 script = ExtResource("2_grp01")
 name = &"wave_drifters"
-units = Array[ExtResource("3_ent01")]([SubResource("Entry_husk_6"), SubResource("Entry_drifter_6")])
+units = Array[ExtResource("3_ent01")]([SubResource("Entry_drifters_husk"), SubResource("Entry_drifters_drifter")])
 spawns = PackedInt32Array(150000, 14000, 14000, 170000, 150000, 306000, 306000, 210000)
 spawn_by_tier = PackedInt32Array(0, 0, 1, 0, 3)
 spawn_at_start = false
 behavior = 3
 
-; The hardest: eight Husks in front of two Stormcallers, whose lightning
-; reaches 40 m and cannot hit anything inside 8 m. From the edge by tier:
-; north, north, south, west, north.
+; The hardest: Husks (10 at tier 0 up to 16 from tier 2) in front of
+; Stormcallers, one at tiers 0 to 2 and two at tiers 3 and 4, whose lightning
+; reaches 40 m, strikes everyone along its line and cannot hit anything inside
+; 8 m. Two from the south at tier 2 cost a held ramp 7 soldiers, every other
+; wave together 1, so tier 2 has one. From the edge by tier: north, north,
+; south, west, south.
 [sub_resource type="Resource" id="Group_wave_storm"]
 script = ExtResource("2_grp01")
 name = &"wave_storm"
-units = Array[ExtResource("3_ent01")]([SubResource("Entry_husk_8"), SubResource("Entry_stormcaller_2")])
+units = Array[ExtResource("3_ent01")]([SubResource("Entry_storm_husk"), SubResource("Entry_storm_stormcaller")])
 spawns = PackedInt32Array(150000, 14000, 14000, 170000, 150000, 306000, 306000, 210000)
-spawn_by_tier = PackedInt32Array(0, 0, 2, 1, 0)
+spawn_by_tier = PackedInt32Array(0, 0, 2, 1, 2)
 spawn_at_start = false
 behavior = 3
 

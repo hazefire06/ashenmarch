@@ -762,19 +762,27 @@ func test_old_mill_has_the_designed_waves() -> void:
 		assert_eq(group.behavior, AiGroupSpec.Behavior.HUNT)
 		assert_eq(group.spawns.size(), 8, "%s has the four edge zones" % group.name)
 		assert_eq(group.spawn_by_tier.size(), Difficulty.TIERS, "%s picks an edge per tier" % group.name)
-	assert_eq(_per_tier(_group(MILL, &"wave_husks"), &"husk"), PackedInt32Array([10, 12, 14, 16, 18]))
+	assert_eq(_per_tier(_group(MILL, &"wave_husks"), &"husk"), PackedInt32Array([24, 30, 40, 42, 44]))
 	assert_eq(_type_ids(_group(MILL, &"wave_husks")), [&"husk"])
+	# The balance pass's sizes (Phase 8, Task 10), per tier.
 	var mixed: Dictionary[StringName, Array] = {
-		&"wave_rippers": [&"ripper", 6], &"wave_bags": [&"blightbag", 4], &"wave_drifters": [&"drifter", 6], &"wave_storm": [&"stormcaller", 2],
+		&"wave_rippers": [&"ripper", [8, 10, 12, 13, 14]], &"wave_bags": [&"blightbag", [6, 7, 8, 8, 9]],
+		&"wave_drifters": [&"drifter", [8, 10, 12, 13, 14]], &"wave_storm": [&"stormcaller", [1, 1, 1, 2, 2]],
 	}
-	var husks: Dictionary[StringName, int] = {&"wave_rippers": 6, &"wave_bags": 8, &"wave_drifters": 6, &"wave_storm": 8}
+	var husks: Dictionary[StringName, Array] = {
+		&"wave_rippers": [6, 6, 6, 6, 6], &"wave_bags": [12, 14, 16, 17, 18],
+		&"wave_drifters": [8, 10, 12, 13, 14], &"wave_storm": [10, 13, 16, 16, 16],
+	}
 	for wave: StringName in mixed:
 		var group: AiGroupSpec = _group(MILL, wave)
 		var special: StringName = mixed[wave][0]
-		var count: int = mixed[wave][1]
-		assert_eq(_per_tier(group, special), PackedInt32Array([count, count, count, count, count]), "%s %s" % [wave, special])
-		assert_eq(_per_tier(group, &"husk"), PackedInt32Array([husks[wave], husks[wave], husks[wave], husks[wave], husks[wave]]), "%s Husks" % wave)
+		assert_eq(_per_tier(group, special), PackedInt32Array(mixed[wave][1]), "%s %s" % [wave, special])
+		assert_eq(_per_tier(group, &"husk"), PackedInt32Array(husks[wave]), "%s Husks" % wave)
 		assert_eq(_type_ids(group).size(), 2)
+	# Every tier is at least as big as the one below it, wave by wave.
+	for group: AiGroupSpec in rules.groups:
+		for tier: int in range(1, Difficulty.TIERS):
+			assert_gte(group.unit_count(tier), group.unit_count(tier - 1), "%s grows with the tier" % group.name)
 	# Husks stand in front of the ranged waves (listed first).
 	assert_eq(_type_ids(_group(MILL, &"wave_storm"))[0], &"husk", "the Stormcallers stand behind their Husks")
 	assert_eq(_type_ids(_group(MILL, &"wave_drifters"))[0], &"husk")
@@ -825,6 +833,10 @@ func test_each_waves_edge_by_tier_follows_the_designed_scheme() -> void:
 	for group: AiGroupSpec in rules.groups:
 		assert_ne(group.spawn_by_tier[2], group.spawn_by_tier[3], "%s changes edge from tier 2 to 3" % group.name)
 		assert_ne(group.spawn_by_tier[3], group.spawn_by_tier[4], "%s changes edge from tier 3 to 4" % group.name)
+	# The Stormcallers' worst approach (the south, up the south-east ramp's axis)
+	# is the middle tier's and the hardest tier's.
+	assert_eq(_group(MILL, &"wave_storm").spawn_point(2), Vector2i(150000, 306000))
+	assert_eq(_group(MILL, &"wave_storm").spawn_point(4), Vector2i(150000, 306000))
 	# The four zones are listed north, west, south, east.
 	var gen: Dictionary = _generators[MILL]
 	var zones: Array[Vector2] = [gen["SPAWN_N"], gen["SPAWN_W"], gen["SPAWN_S"], gen["SPAWN_E"]]
