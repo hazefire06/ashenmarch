@@ -60,6 +60,7 @@ scripts/        # dev tooling (sim purity check)
 - Friendly fire on everything: arrows, explosions, fire, lightning, gas.
 - Melee has no rock-paper-scissors counters. Outcomes come from numbers, flanking, surrounding, and terrain.
 - Losses are permanent within a campaign. No respawns, no healing between missions except via healer units during play.
+- The campaign darkens mission by mission toward a hellscape: each mission's Atmosphere (data/atmospheres) grades sky, light, fog, and ground further than the last.
 
 ### Terrain and physics
 - Projectiles are simulated objects under gravity. Grenades arc, bounce, may fizzle, and can roll back downhill onto the thrower.
@@ -101,7 +102,7 @@ Later roster (not v1): mortar, invisible scout, giant, fireball/confusion caster
 
 ### Missions, v1 (three maps)
 1. **Riverside** (bug hunt, tutorial): clear a village of roaming Husks and a few Rippers. Introduces selection, formations, grenades, fire arrows. Clear weather, shallow creek with one ford.
-2. **The Ford** (escort): escort a non-controllable villager across a river to a gate. Husks hide in deep water at the crossing, Drifters patrol, Rippers flank late. Introduces water depth, carryover.
+2. **The Ford** (escort): escort a non-controllable villager across a river to a gate. Husks hide in deep water at the crossing, Drifters patrol, a Ripper pack comes up behind the escort as it wades, and more Rippers flank late. Introduces water depth, carryover.
 3. **Old Mill** (hold the line): defend a raised mill against 4 of 5 randomly chosen waves (Husks, Rippers, Blightbags, Drifters, Stormcallers). Rain starts mid-mission. Introduces weather, satchel traps, healer management.
 
 Mission framework must be data-driven so more missions are added as map data plus a script, not engine changes.
