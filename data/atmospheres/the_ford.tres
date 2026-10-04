@@ -17,10 +17,13 @@ ambient_energy = 0.55
 sun_color = Color(0.82, 0.86, 0.8, 1)
 sun_energy = 0.6
 sun_pitch_degrees = -50.0
-; Light fog, a little thicker than a haze (0.01), grey-green.
+; Mist along the valley, grey-green. Tuned by eye in a window (Phase 8, Task 7):
+; Godot's exponential fog takes 1 - e^(-density * distance) of the view, so at the
+; camera's usual 75 m 0.0035 is about a quarter fog, which grays the far bank and
+; keeps the river and the road readable; the first guess, 0.008, took nearly half.
 fog_enabled = true
 fog_color = Color(0.55, 0.6, 0.55, 1)
-fog_density = 0.008
+fog_density = 0.0035
 ; The ground: a greenish cast, then 0.35 of the colour drained out.
 terrain_tint = Color(0.92, 0.95, 0.88, 1)
 terrain_desaturation = 0.35

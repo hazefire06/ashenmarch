@@ -18,10 +18,14 @@ ambient_energy = 0.32
 sun_color = Color(1, 0.55, 0.25, 1)
 sun_energy = 0.75
 sun_pitch_degrees = -12.0
-; Red-brown fog, thick enough that the far fields are gone (a light haze is 0.01).
+; Red-brown fog, the thickest of the three. Tuned by eye in a window (Phase 8, Task
+; 7): Godot's exponential fog takes 1 - e^(-density * distance) of the view, so at
+; the camera's usual 75 m 0.005 is about a third fog, which sinks the far fields
+; and still shows the plateau, its cliff and the ramps the squad holds; the first
+; guess, 0.014, was two thirds fog and the whole map was one brown.
 fog_enabled = true
 fog_color = Color(0.38, 0.18, 0.1, 1)
-fog_density = 0.014
+fog_density = 0.005
 ; The ground: a warm dark tint, then 0.55 of the colour drained out.
 terrain_tint = Color(0.85, 0.65, 0.55, 1)
 terrain_desaturation = 0.55

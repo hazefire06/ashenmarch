@@ -19,6 +19,12 @@ extends Node3D
 ## Wind is passed in m/s for the tilt of the rain, and its drift is
 ## integrated here, because TIME times a changing wind would jerk every drop.
 ##
+## Ash (Phase 8) is a third kind, drawn like snow but dark, small, and slow: a
+## mission's Atmosphere sets how thick it falls (set_ash), and the sim never
+## knows of it, so it neither piles up nor changes a fizzle chance. Its layer
+## is made the first time there is any ash, so a world with none has the two
+## layers it always had. It drifts with the sim's wind like the rest.
+##
 ## View-side randomness (the placement) is fine: nothing here is sim state.
 ## The instance nodes are top-level, so wherever this node sits they are in
 ## world space, which is what the shader assumes.
@@ -27,6 +33,7 @@ const SHADER: Shader = preload("res://view/weather/precipitation.gdshader")
 ## Most instances of each kind, shown at full intensity (1000 permille).
 const RAIN_MAX: int = 6000
 const SNOW_MAX: int = 4000
+const ASH_MAX: int = 4000
 ## The box around the camera focus, meters: x and z wide, y tall.
 const BOX_SIZE: Vector3 = Vector3(60.0, 30.0, 60.0)
 ## How far the box reaches below the focus, so drops land in the ground
@@ -35,16 +42,19 @@ const BOX_BELOW: float = 3.0
 ## Meters per second, straight down. Each drop is up to 25% off.
 const RAIN_FALL_SPEED: float = 9.0
 const SNOW_FALL_SPEED: float = 1.2
+const ASH_FALL_SPEED: float = 0.8
 const RAIN_COLOR: Color = Color(0.72, 0.8, 0.92, 0.5)
 const SNOW_COLOR: Color = Color(1.0, 1.0, 1.0, 0.9)
 ## A rain streak's width and length, and a flake's size (in x), meters, up
 ## close. Farther away the shader keeps them a few pixels big.
 const RAIN_SIZE: Vector2 = Vector2(0.03, 0.9)
 const SNOW_SIZE: Vector2 = Vector2(0.07, 0.07)
+const ASH_SIZE: Vector2 = Vector2(0.05, 0.05)
 ## Seeds for where the instances sit: fixed, so the weather looks the same
 ## every run, and different so the rain and the snow aren't the same lattice.
 const RAIN_SEED: int = 1
 const SNOW_SEED: int = 2
+const ASH_SEED: int = 3
 ## Floats per instance in the MultiMesh buffer: a 3x4 transform, then custom
 ## data (a vec4).
 const INSTANCE_FLOATS: int = 16
@@ -53,6 +63,11 @@ var _world: World
 var _camera: RtsCamera
 var _rain: MultiMeshInstance3D
 var _snow: MultiMeshInstance3D
+## The ash layer, or null until there has been ash to show.
+var _ash: MultiMeshInstance3D
+## How thick the ash is, 0..1, and its color, as set_ash() last had them.
+var _ash_fall: float = 0.0
+var _ash_color: Color = Color(0.25, 0.23, 0.22, 1.0)
 ## Wind, m/s, as last read from the weather.
 var _wind: Vector2 = Vector2.ZERO
 ## Meters the wind has carried everything, kept in 0..BOX_SIZE since the
@@ -71,6 +86,24 @@ func setup(world: World, camera: RtsCamera) -> void:
 		child.queue_free()
 	_rain = _make_layer("Rain", RAIN_MAX, RAIN_SEED, false)
 	_snow = _make_layer("Snow", SNOW_MAX, SNOW_SEED, true)
+	_ash = null
+	if _ash_fall > 0.0:
+		_ash = _make_ash_layer()
+	_update(0.0)
+
+
+## Sets how thick the falling ash is (0 none, 1 a storm of it; clamped) and its
+## color. Nothing to do with the sim's weather: it falls whether it rains or
+## not. Works before setup() too, and survives it.
+func set_ash(fall: float, color: Color) -> void:
+	_ash_fall = clampf(fall, 0.0, 1.0)
+	_ash_color = color
+	if _rain == null:
+		return
+	if _ash == null and _ash_fall > 0.0:
+		_ash = _make_ash_layer()
+	if _ash != null:
+		(_ash.material_override as ShaderMaterial).set_shader_parameter("tint", _ash_color)
 	_update(0.0)
 
 
@@ -111,6 +144,11 @@ func snow_count() -> int:
 	return _snow.multimesh.visible_instance_count
 
 
+## Ash flakes currently drawn.
+func ash_count() -> int:
+	return 0 if _ash == null else _ash.multimesh.visible_instance_count
+
+
 ## The wind the shader is given, m/s along x and z.
 func wind() -> Vector2:
 	return _wind
@@ -141,6 +179,8 @@ func _update(delta: float) -> void:
 		_box_origin = Vector3(focus.x - BOX_SIZE.x * 0.5, focus.y - BOX_BELOW, focus.z - BOX_SIZE.z * 0.5)
 	_update_layer(_rain, RAIN_MAX, weather.rain)
 	_update_layer(_snow, SNOW_MAX, weather.snow)
+	if _ash != null:
+		_update_layer(_ash, ASH_MAX, roundi(_ash_fall * 1000.0))
 
 
 # Shows the share of a layer that the intensity calls for, hiding the whole
@@ -159,6 +199,16 @@ func _update_layer(layer: MultiMeshInstance3D, max_count: int, intensity: int) -
 	# The shader places everything itself, so the instances' own bounds are
 	# meaningless. Streaks stick out of the box a little at its faces.
 	layer.multimesh.custom_aabb = AABB(_box_origin - Vector3.ONE * 2.0, BOX_SIZE + Vector3.ONE * 4.0)
+
+
+# The ash layer: a snow-style layer, slower, smaller, and in the ash's color.
+func _make_ash_layer() -> MultiMeshInstance3D:
+	var layer: MultiMeshInstance3D = _make_layer("Ash", ASH_MAX, ASH_SEED, true)
+	var material: ShaderMaterial = layer.material_override as ShaderMaterial
+	material.set_shader_parameter("fall_speed", ASH_FALL_SPEED)
+	material.set_shader_parameter("tint", _ash_color)
+	material.set_shader_parameter("size", ASH_SIZE)
+	return layer
 
 
 # One kind of precipitation: count instances, none showing yet.

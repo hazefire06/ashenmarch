@@ -31,6 +31,8 @@ const ZOOM_SMOOTH_RATE: float = 12.0
 const HEIGHT_SMOOTH_RATE: float = 8.0
 ## The camera never sinks closer than this to the ground beneath it.
 const MIN_CLEARANCE: float = 2.0
+## Edge scroll: how close to a window edge (pixels) the mouse must be to pan.
+const EDGE_SCROLL_MARGIN: float = 12.0
 
 ## Point the camera looks at. y is the smoothed terrain height beneath it.
 var focus: Vector3 = Vector3.ZERO
@@ -38,10 +40,18 @@ var focus: Vector3 = Vector3.ZERO
 var yaw: float = 0.0
 ## Meters from the focus to the camera.
 var distance: float = DEFAULT_DISTANCE
+## Whether the camera pans when the mouse is within EDGE_SCROLL_MARGIN pixels
+## of a window edge, as WASD does (the Settings toggle), except over a HUD
+## control. Off by default: it needs a window the mouse can't stray out of,
+## and a dev who drags a window around shouldn't lose the map.
+var edge_scroll: bool = false
 
 var _terrain: Terrain
 var _camera: Camera3D
 var _target_distance: float = DEFAULT_DISTANCE
+## False while the mouse is outside the window, so a cursor that left through
+## the edge zone doesn't leave the camera panning there.
+var _mouse_in_window: bool = true
 
 
 func _ready() -> void:
@@ -92,6 +102,32 @@ func set_pose(point: Vector2, new_yaw: float, new_distance: float) -> void:
 	_target_distance = distance
 	focus = Vector3(clamped.x, _ground_height(clamped.x, clamped.y), clamped.y)
 	_apply_transform()
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_MOUSE_EXIT:
+		_mouse_in_window = false
+	elif what == NOTIFICATION_WM_MOUSE_ENTER:
+		_mouse_in_window = true
+
+
+## The pan direction a mouse at `mouse` asks for when the window is `size`
+## pixels across: x +1 right and -1 left, y +1 forward (the top edge) and -1
+## back (the bottom edge), 0 away from the edges. A corner asks for both. A
+## mouse outside the window (`size`'s rectangle) asks for nothing.
+static func edge_direction(mouse: Vector2, size: Vector2, margin: float = EDGE_SCROLL_MARGIN) -> Vector2:
+	if not Rect2(Vector2.ZERO, size).has_point(mouse):
+		return Vector2.ZERO
+	var out: Vector2 = Vector2.ZERO
+	if mouse.x < margin:
+		out.x -= 1.0
+	elif mouse.x > size.x - margin:
+		out.x += 1.0
+	if mouse.y < margin:
+		out.y += 1.0
+	elif mouse.y > size.y - margin:
+		out.y -= 1.0
+	return out
 
 
 func _process(delta: float) -> void:
@@ -155,7 +191,12 @@ func _move(delta: float) -> void:
 	var input: Vector2 = Vector2(
 		Input.get_axis(InputBindings.CAM_LEFT, InputBindings.CAM_RIGHT),
 		Input.get_axis(InputBindings.CAM_BACK, InputBindings.CAM_FORWARD),
-	).limit_length(1.0)
+	)
+	# Not over a HUD control: the control bar fills the bottom edge, and
+	# reaching for its lowest buttons shouldn't drag the map back.
+	if edge_scroll and _mouse_in_window and not _mouse_over_hud():
+		input += edge_direction(_mouse_position(), get_viewport().get_visible_rect().size)
+	input = input.limit_length(1.0)
 	if input == Vector2.ZERO:
 		return
 	var forward: Vector2 = -_offset_xz(1.0)
@@ -166,6 +207,16 @@ func _move(delta: float) -> void:
 	var clamped: Vector2 = _clamp_to_map(Vector2(focus.x, focus.z))
 	focus.x = clamped.x
 	focus.z = clamped.y
+
+
+# Where the mouse is, and whether a HUD control is under it. Methods of their
+# own so a test can say where the mouse is: the headless window has none.
+func _mouse_position() -> Vector2:
+	return get_viewport().get_mouse_position()
+
+
+func _mouse_over_hud() -> bool:
+	return get_viewport().gui_get_hovered_control() != null
 
 
 func _apply_transform() -> void:

@@ -11,6 +11,8 @@ extends Node3D
 ## update_fire() keeps a texel per sample in step with the sim's fire
 ## (burning cells glow, burnt ones are charred), and set_weather() passes on
 ## how wet and snow-covered the ground is. Both survive rebuild_region().
+## set_grade() (Phase 8) passes on a mission's look for the ground and water;
+## it survives build() and rebuild_region() too, and unset it changes nothing.
 
 const TERRAIN_SHADER: Shader = preload("res://view/terrain/terrain.gdshader")
 ## Fire texel value (R8) by Fire.Cell.
@@ -25,6 +27,12 @@ var _fire_image: Image
 var _fire_texture: ImageTexture
 ## Cells burning at the last update_fire().
 var _burning_seen: int = 0
+## The grade set_grade() last passed on, kept so build() can give a new
+## material the same one. The defaults are "no change".
+var _grade_tint: Color = Color.WHITE
+var _grade_desaturation: float = 0.0
+var _grade_recolor: PackedColorArray = _no_recolor()
+var _grade_water: Color = Color(0.0, 0.0, 0.0, 0.0)
 
 
 ## Replaces any existing chunks with meshes for this terrain.
@@ -100,6 +108,35 @@ func set_weather(weather: Weather) -> void:
 	_material.set_shader_parameter("snow_cover", weather.snow_cover() / 1000.0)
 
 
+## Grades the ground and water for the mission's look (Atmosphere):
+## - tint multiplies the ground color, so white changes nothing;
+## - desaturation (0..1) drains it toward gray, 0 changes nothing;
+## - recolor is a color per Terrain.Ground (Terrain.GROUND_COUNT of them, its
+##   alpha how much it takes over), or empty for none;
+## - water_grade is blended over the water's own tint by its alpha, so alpha 0
+##   changes nothing.
+## All of it reaches the shader in one go and applies to terrain built later
+## too. The defaults, a white tint, 0, empty, and an alpha-0 color, are the
+## ungraded look.
+func set_grade(tint: Color, desaturation: float, recolor: Array[Color], water_grade: Color) -> void:
+	_grade_tint = tint
+	_grade_desaturation = desaturation
+	_grade_recolor = _no_recolor()
+	if recolor.size() == Terrain.GROUND_COUNT:
+		_grade_recolor = PackedColorArray(recolor)
+	elif not recolor.is_empty():
+		push_error("TerrainView.set_grade: recolor needs %d colors, not %d" % [Terrain.GROUND_COUNT, recolor.size()])
+	_grade_water = water_grade
+	if _material != null:
+		_apply_grade(_material)
+
+
+## The shader parameter `uniform` as the shared material holds it, for tests.
+## Null before build().
+func shader_parameter(uniform: StringName) -> Variant:
+	return null if _material == null else _material.get_shader_parameter(uniform)
+
+
 ## The fire texel (R8) at sample (i, j), for tests.
 func fire_texel(i: int, j: int) -> int:
 	return _fire_image.get_pixel(i, j).r8
@@ -134,6 +171,8 @@ func _make_material(terrain: Terrain) -> ShaderMaterial:
 	material.set_shader_parameter("water_tint", ImageTexture.create_from_image(_water_tint_image(terrain)))
 	material.set_shader_parameter("ground_tint", ImageTexture.create_from_image(_ground_tint_image(terrain)))
 	material.set_shader_parameter("blocked_map", ImageTexture.create_from_image(_blocked_image(terrain)))
+	material.set_shader_parameter("ground_kind", ImageTexture.create_from_image(_ground_kind_image(terrain)))
+	_apply_grade(material)
 	material.set_shader_parameter(
 		"blocked_tint", Vector2(TerrainPalette.BLOCKED_DARKEN, TerrainPalette.BLOCKED_DESATURATE)
 	)
@@ -148,6 +187,27 @@ func _make_material(terrain: Terrain) -> ShaderMaterial:
 	material.set_shader_parameter("cell_size", terrain.cell_size / mm_per_m)
 	material.set_shader_parameter("sample_count", Vector2(terrain.size_x, terrain.size_z))
 	return material
+
+
+func _apply_grade(material: ShaderMaterial) -> void:
+	material.set_shader_parameter("grade_tint", _grade_tint)
+	material.set_shader_parameter("grade_desaturation", _grade_desaturation)
+	material.set_shader_parameter("ground_recolor", _grade_recolor)
+	material.set_shader_parameter("water_grade", _grade_water)
+
+
+## One transparent color per Terrain.Ground: the shader's "no recolor".
+static func _no_recolor() -> PackedColorArray:
+	var none: PackedColorArray = PackedColorArray()
+	none.resize(Terrain.GROUND_COUNT)
+	none.fill(Color(0.0, 0.0, 0.0, 0.0))
+	return none
+
+
+## R8, one texel per sample: its Terrain.Ground, so the shader can recolor each
+## ground type. The sim never changes a sample's ground, so it is written once.
+func _ground_kind_image(terrain: Terrain) -> Image:
+	return Image.create_from_data(terrain.size_x, terrain.size_z, false, Image.FORMAT_R8, terrain.ground)
 
 
 ## RGBA8, one texel per sample: TerrainPalette.ground_tint of its ground.
