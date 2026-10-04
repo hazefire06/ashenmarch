@@ -7,6 +7,9 @@ extends SceneTree
 ##   creek, so it is a firebreak; rock on the high crests and steep ground;
 ##   copses of wood and patches of brush; grass everywhere else. The creek
 ##   bed is sand too, though water never burns anyway.
+## - a village on the south bank east of the ford (Phase 8): eight wooden
+##   houses round an open square, sand lanes, and a road heading for the ford.
+##   Raised and blocked houses stop projectiles and path as solid.
 ##
 ## Run with `make maps`. The PNGs it writes are the source of truth and are
 ## committed. Floats and FastNoiseLite are fine here because this runs
@@ -59,6 +62,69 @@ const BRUSH_SEED: int = 1731
 const BRUSH_FREQUENCY: float = 1.0 / 28.0
 const BRUSH_THRESHOLD: float = 0.22
 
+## The south-bank village (Phase 8): the settlement the tutorial mission
+## clears. It is hand-placed, constants not noise, so its layout is readable
+## and stable: eight wooden houses round an open square, sand lanes between
+## them, and a sand road heading for the ford. The houses stand inside x 405 to
+## 485 m, z 335 to 415 m, 25 m or more from the creek. They are raised and
+## blocked (MapBuilder.house), so they stop arrows and grenades and pathing
+## treats them as solid; the view draws them darker.
+## The village and its road keep 10 m clear of every point of
+## data/missions/riverside_ai.tres and of the spots earlier tests pin (listed
+## in tests/sim/test_map_builder.gd), and change nothing but themselves.
+const VILLAGE_SQUARE: Vector2 = Vector2(445.0, 375.0)
+## Open walkable ground round the square's center. The nearest house sample is
+## 17.8 m away, and the nearest unwalkable one (the steep ring the sim leaves
+## round every house) 17 m, so 13 m has room to spare.
+const VILLAGE_SQUARE_RADIUS_M: float = 13.0
+## The packed sand plaza at the square's heart.
+const VILLAGE_PLAZA_RADIUS_M: float = 7.0
+## Houses as (center x, center z, width, depth) in meters, 3 m tall. Clockwise
+## from the north; the gap in the north-west is where the lane comes in. The
+## last is an outbuilding off to the south-east.
+const VILLAGE_HOUSES: Array[Vector4] = [
+	Vector4(447.0, 355.0, 7.0, 6.0),
+	Vector4(463.0, 360.0, 6.0, 6.0),
+	Vector4(466.0, 377.0, 6.0, 8.0),
+	Vector4(459.0, 392.0, 7.0, 6.0),
+	Vector4(443.0, 396.0, 8.0, 6.0),
+	Vector4(428.0, 390.0, 6.0, 7.0),
+	Vector4(425.0, 372.0, 6.0, 8.0),
+	Vector4(478.0, 398.0, 8.0, 5.0),
+]
+const VILLAGE_HOUSE_HEIGHT_M: float = 3.0
+## Lanes (polylines in meters): the main one in from the north-west, then a
+## short spur from the plaza toward each side.
+const LANE_MAIN: PackedVector2Array = [
+	Vector2(410.0, 343.0), Vector2(421.0, 353.0), Vector2(431.0, 363.0), Vector2(439.0, 370.0),
+]
+const LANE_EAST: PackedVector2Array = [Vector2(449.0, 376.0), Vector2(459.0, 377.0)]
+const LANE_SOUTH: PackedVector2Array = [Vector2(445.0, 380.0), Vector2(445.0, 389.0)]
+const LANE_WEST: PackedVector2Array = [Vector2(441.0, 375.0), Vector2(431.0, 374.0)]
+const LANE_NORTH: PackedVector2Array = [Vector2(445.0, 371.0), Vector2(446.0, 361.0)]
+const VILLAGE_LANES: Array[PackedVector2Array] = [LANE_MAIN, LANE_EAST, LANE_SOUTH, LANE_WEST, LANE_NORTH]
+const LANE_MAIN_WIDTH_M: float = 3.0
+const LANE_SPUR_WIDTH_M: float = 2.0
+## The road toward the ford: it meets the main lane at the village's north-west
+## corner and runs back north-west to stop 24 m short of the mission's nearest
+## point, because the patrols and the ambush around the ford landing keep their
+## ground as it was. Ground only (SAND); it moves no height or passability.
+const FORD_ROAD: PackedVector2Array = [
+	Vector2(352.0, 293.0), Vector2(372.0, 304.0), Vector2(392.0, 322.0), Vector2(410.0, 343.0),
+]
+const FORD_ROAD_WIDTH_M: float = 3.0
+## Wood and brush patches in and round the village: (center x, center z,
+## radius) in meters, each taking its ground type wherever Riverside's own wood
+## or brush noise, with this threshold instead of its usual one, is high.
+const VILLAGE_WOOD_PATCHES: Array[Vector3] = [
+	Vector3(415.0, 398.0, 9.0), Vector3(478.0, 376.0, 6.0),
+]
+const VILLAGE_BRUSH_PATCHES: Array[Vector3] = [
+	Vector3(476.0, 348.0, 8.0), Vector3(437.0, 407.0, 7.0), Vector3(413.0, 368.0, 6.0),
+]
+const VILLAGE_PATCH_THRESHOLD: float = -0.1
+
+
 
 func _initialize() -> void:
 	var noise: FastNoiseLite = FastNoiseLite.new()
@@ -78,10 +144,28 @@ func _initialize() -> void:
 		func(x: float, z: float, height_m: float, slope: float) -> int:
 			return _ground_type(wood, brush, x, z, height_m, slope)
 	)
+	_build_village(map, wood, brush)
 	var info: MapInfo = map.save(OUT_DIR, "riverside", "Riverside", HERB_PLANTS)
 	if info != null:
 		map.report(info)
 	quit(0 if info != null else 1)
+
+
+## Stamps the village (see VILLAGE_SQUARE). Order matters: patches first, so a
+## house or lane overwrites them, then the houses, then the sand, which skips
+## the blocked house samples.
+func _build_village(map: MapBuilder, wood: FastNoiseLite, brush: FastNoiseLite) -> void:
+	for spot: Vector3 in VILLAGE_WOOD_PATCHES:
+		map.patch(Vector2(spot.x, spot.y), spot.z, wood, VILLAGE_PATCH_THRESHOLD, Terrain.Ground.WOOD)
+	for spot: Vector3 in VILLAGE_BRUSH_PATCHES:
+		map.patch(Vector2(spot.x, spot.y), spot.z, brush, VILLAGE_PATCH_THRESHOLD, Terrain.Ground.BRUSH)
+	for house: Vector4 in VILLAGE_HOUSES:
+		map.house(house.x, house.y, house.z, house.w, VILLAGE_HOUSE_HEIGHT_M)
+	# A one-point polyline is a disc.
+	map.road(PackedVector2Array([VILLAGE_SQUARE, VILLAGE_SQUARE]), VILLAGE_PLAZA_RADIUS_M * 2.0)
+	for lane: PackedVector2Array in VILLAGE_LANES:
+		map.road(lane, LANE_MAIN_WIDTH_M if lane == LANE_MAIN else LANE_SPUR_WIDTH_M)
+	map.road(FORD_ROAD, FORD_ROAD_WIDTH_M)
 
 
 ## (ground height, water depth) in meters at (x, z) meters.

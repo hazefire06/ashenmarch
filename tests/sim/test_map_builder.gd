@@ -2,13 +2,44 @@ extends GutTest
 ## MapBuilder (scripts/mapgen/map_builder.gd), the shared offline map
 ## generator: each stamp does what its doc says on a small synthetic map, read
 ## back through the PNG codec and Terrain.from_png the way the game loads a
-## map.
+## map. Then the shipped Riverside village (Phase 8): its houses, its open
+## square, its lanes, and that nothing outside its zone moved.
 
 const M: int = 1000
 const SIZE: int = 64
 const MAX_HEIGHT_M: float = 40.0
 const SLOPE_LIMIT: int = 1000
 const LIVING: Terrain.Mobility = Terrain.Mobility.LIVING
+const GENERATOR_PATH: String = "res://scripts/gen_riverside.gd"
+const MAP_PATH: String = "res://maps/riverside/riverside.tres"
+## The ground Riverside had before the village (Phase 7): SHA-256 over the
+## heights, water, blocked flags, and ground types of every sample outside the
+## village's zone (the box its houses stand in, and the corridor of the road
+## toward the ford). Taken from the committed Phase 7 PNGs (git show
+## 73befd1:maps/riverside/height.png and mask.png). Moving the generator's
+## FORD_ROAD changes which samples count as outside, so this needs retaking
+## from those PNGs, with the new corridor.
+const PHASE_7_OUTSIDE_VILLAGE_HASH: String = "8df9a5635f83b2a10bfe6c56bbc7417529fa628f177712a9abfa3f8a73f444e3"
+## The village's box: x 405..485 m, z 335..415 m.
+const VILLAGE_BOX: Rect2 = Rect2(405.0, 335.0, 80.0, 80.0)
+## Samples within this many meters of the road's centerline are the road's
+## (its half-width plus margin).
+const ROAD_CORRIDOR_M: float = 3.0
+## Where earlier tests pin Riverside (meters): the village keeps 10 m clear.
+const PINNED_SPOTS: Array[Vector2] = [
+	Vector2(250.0, 275.0), Vector2(250.0, 290.0), Vector2(250.0, 305.0),
+	Vector2(340.0, 320.0), Vector2(380.0, 440.0), Vector2(380.0, 404.0),
+	Vector2(390.0, 120.0), Vector2(392.0, 122.0), Vector2(392.0, 162.0),
+	Vector2(110.0, 160.0), Vector2(150.0, 400.0), Vector2(150.0, 430.0),
+	Vector2(442.0, 271.0),
+]
+## Every point data/missions/riverside_ai.tres puts on the map (spawns,
+## waypoints, retreat point, trigger area), in meters.
+const MISSION_SPOTS: Array[Vector2] = [
+	Vector2(296.0, 248.0), Vector2(330.0, 252.0), Vector2(314.0, 264.0), Vector2(284.0, 222.0),
+	Vector2(340.0, 272.0), Vector2(250.0, 275.0), Vector2(250.0, 305.0), Vector2(270.0, 262.0),
+	Vector2(246.0, 232.0), Vector2(262.0, 238.0), Vector2(278.0, 242.0), Vector2(300.0, 227.0),
+]
 
 
 ## A flat grass map at height_m with no water.
@@ -108,7 +139,7 @@ func test_the_rasters_round_trip_through_terrain_from_png() -> void:
 		func(x: float, z: float) -> Vector2: return Vector2(5.0 + 0.1 * x + 0.05 * z, 0.0 if x < 32.0 else 1.0),
 		func(x: float, z: float, _h: float, _s: float) -> int: return int(x + z) % Terrain.GROUND_COUNT
 	)
-	map.house(40.0, 40.0, 4.0, 4.0)
+	map.house(16.0, 40.0, 4.0, 4.0)
 	var t: Terrain = _load(map)
 	assert_eq([t.size_x, t.size_z], [SIZE, SIZE])
 	for k: int in SIZE * SIZE:
@@ -341,3 +372,239 @@ func test_a_patch_takes_a_ground_type_only_where_its_noise_is_high_and_it_is_fre
 	assert_eq(t.sample_ground(50, 30), Terrain.Ground.GRASS, "nor out of reach")
 	map.patch(Vector2(10.0, 10.0), 5.0, noise, 2.0, Terrain.Ground.WOOD)
 	assert_eq(_load(map).sample_ground(10, 10), Terrain.Ground.GRASS, "a threshold above the noise takes nothing")
+
+
+# ---- the Riverside village (Phase 8) ----
+
+var _riverside: Terrain
+var _pathing: Pathing
+var _generator: Dictionary
+
+
+func _load_riverside() -> void:
+	if _riverside != null:
+		return
+	_riverside = Terrain.load_map(load(MAP_PATH) as MapInfo)
+	_pathing = Pathing.new(_riverside)
+	_generator = (load(GENERATOR_PATH) as GDScript).get_script_constant_map()
+
+
+## The generator's house rows: (center x, center z, width, depth) in meters.
+func _houses() -> Array[Vector4]:
+	_load_riverside()
+	var houses: Array[Vector4] = []
+	houses.assign(_generator["VILLAGE_HOUSES"])
+	return houses
+
+
+## The samples a house covers, by MapBuilder.house()'s documented rule: those
+## whose position lies in [center - size / 2, center + size / 2).
+func _footprint(h: Vector4) -> Rect2i:
+	var i0: int = ceili(h.x - h.z / 2.0)
+	var j0: int = ceili(h.y - h.w / 2.0)
+	return Rect2i(i0, j0, ceili(h.x + h.z / 2.0) - i0, ceili(h.y + h.w / 2.0) - j0)
+
+
+## Meters from sample (i, j) to the nearest point of a footprint.
+func _gap_to(rect: Rect2i, i: int, j: int) -> float:
+	var dx: float = maxf(maxf(rect.position.x - i, i - (rect.end.x - 1)), 0.0)
+	var dz: float = maxf(maxf(rect.position.y - j, j - (rect.end.y - 1)), 0.0)
+	return Vector2(dx, dz).length()
+
+
+func test_the_village_has_seven_to_nine_houses_of_five_to_eight_meters() -> void:
+	var houses: Array[Vector4] = _houses()
+	assert_between(houses.size(), 7, 9)
+	for h: Vector4 in houses:
+		assert_between(h.z, 5.0, 8.0, "width of the house at (%d, %d)" % [h.x, h.y])
+		assert_between(h.w, 5.0, 8.0, "depth")
+		assert_true(VILLAGE_BOX.encloses(Rect2(h.x - h.z / 2.0, h.y - h.w / 2.0, h.z, h.w)), "inside the box")
+	assert_eq(_generator["VILLAGE_HOUSE_HEIGHT_M"], 3.0)
+
+
+func test_every_house_is_blocked_wood_and_three_meters_tall() -> void:
+	var covered: int = 0
+	for h: Vector4 in _houses():
+		var rect: Rect2i = _footprint(h)
+		assert_gte(rect.size.x, 5, "house at (%d, %d)" % [h.x, h.y])
+		assert_gte(rect.size.y, 5)
+		var roof: float = _riverside.sample_height(rect.position.x, rect.position.y) / 1000.0
+		for j: int in range(rect.position.y, rect.end.y):
+			for i: int in range(rect.position.x, rect.end.x):
+				covered += 1
+				assert_eq(_riverside.blocked[j * _riverside.size_x + i], 1, "house at (%d, %d): (%d, %d) blocked" % [h.x, h.y, i, j])
+				assert_eq(_riverside.sample_ground(i, j), Terrain.Ground.WOOD, "wood at (%d, %d)" % [i, j])
+				assert_almost_eq(_riverside.sample_height(i, j) / 1000.0, roof, 0.002, "flat roof at (%d, %d)" % [i, j])
+		# The ground two samples out all round is open. The roof is 3 m over
+		# the highest ground under the house, so it stands 3 m over the highest
+		# ground round it, less what the slope climbs in the sample between,
+		# and higher over the low side.
+		var highest: float = -INF
+		var lowest: float = INF
+		for j: int in range(rect.position.y - 2, rect.end.y + 2):
+			for i: int in range(rect.position.x - 2, rect.end.x + 2):
+				if rect.grow(2).has_point(Vector2i(i, j)) and not rect.grow(1).has_point(Vector2i(i, j)):
+					assert_eq(_riverside.blocked[j * _riverside.size_x + i], 0, "open ground beside the house at (%d, %d)" % [h.x, h.y])
+					var ground: float = _riverside.sample_height(i, j) / 1000.0
+					highest = maxf(highest, ground)
+					lowest = minf(lowest, ground)
+		assert_between(roof - highest, 2.0, 3.5, "the house at (%d, %d) stands 3 m over its high side" % [h.x, h.y])
+		assert_lt(roof - lowest, 7.0, "and not absurdly over its low side")
+	assert_eq(_riverside.blocked.count(1), covered, "and nothing else on the map is blocked")
+
+
+func test_no_house_is_within_25_meters_of_water() -> void:
+	for h: Vector4 in _houses():
+		var rect: Rect2i = _footprint(h)
+		var near: Rect2i = rect.grow(26).intersection(Rect2i(0, 0, _riverside.size_x, _riverside.size_z))
+		var nearest: float = INF
+		for j: int in range(near.position.y, near.end.y):
+			for i: int in range(near.position.x, near.end.x):
+				if _riverside.sample_water_depth(i, j) > 0:
+					nearest = minf(nearest, _gap_to(rect, i, j))
+		assert_gte(nearest, 25.0, "house at (%d, %d): water is %.1f m away" % [h.x, h.y, nearest])
+
+
+func test_the_square_is_open_and_walkable() -> void:
+	_load_riverside()
+	var center: Vector2 = _generator["VILLAGE_SQUARE"]
+	var radius: float = _generator["VILLAGE_SQUARE_RADIUS_M"]
+	assert_gte(radius, 12.0)
+	assert_lt(center.distance_to(Vector2(445.0, 375.0)), 5.0, "near (445, 375)")
+	var open: int = 0
+	for j: int in range(floori(center.y - radius), ceili(center.y + radius) + 1):
+		for i: int in range(floori(center.x - radius), ceili(center.x + radius) + 1):
+			if Vector2(i, j).distance_to(center) > radius:
+				continue
+			open += 1
+			assert_true(_walkable(_riverside, i, j), "(%d, %d) is walkable" % [i, j])
+			assert_eq(_riverside.sample_water_depth(i, j), 0, "and dry")
+	assert_gt(open, 500, "a real square")
+
+
+func test_the_square_joins_the_north_bank_through_the_ford() -> void:
+	_load_riverside()
+	var center: Vector2 = _generator["VILLAGE_SQUARE"]
+	var target: Vector2i = Vector2i(roundi(center.x * M), roundi(center.y * M))
+	var deploy: int = _pathing.component_at(290 * M, 180 * M, LIVING)
+	assert_ne(deploy, PathLayer.NO_COMPONENT, "the north bank deploy point is walkable")
+	assert_eq(_pathing.component_at(target.x, target.y, LIVING), deploy, "same LIVING component as the square")
+	var path: PackedInt64Array = _pathing.find_path(290 * M, 180 * M, target.x, target.y, LIVING)
+	assert_eq([path[path.size() - 2], path[path.size() - 1]], [target.x, target.y], "and a path reaches it")
+	# Walk the path a meter at a time: it is wet only at the ford.
+	var at: Vector2 = Vector2(290.0, 180.0)
+	var wet: int = 0
+	var wet_away_from_the_ford: int = 0
+	for k: int in range(0, path.size(), 2):
+		var to: Vector2 = Vector2(path[k] / float(M), path[k + 1] / float(M))
+		for step: int in ceili(at.distance_to(to)):
+			var p: Vector2 = at.move_toward(to, step)
+			if _riverside.water_depth_at(roundi(p.x) * M, roundi(p.y) * M) > 0:
+				wet += 1
+				wet_away_from_the_ford += 1 if absf(p.x - 300.0) > 12.0 else 0
+		at = to
+	assert_gt(wet, 0, "the path wades")
+	assert_eq(wet_away_from_the_ford, 0, "only at the ford")
+
+
+func test_each_house_can_be_reached_on_foot() -> void:
+	_load_riverside()
+	var center: Vector2 = _generator["VILLAGE_SQUARE"]
+	var home: int = _pathing.component_at(roundi(center.x * M), roundi(center.y * M), LIVING)
+	for h: Vector4 in _houses():
+		var rect: Rect2i = _footprint(h)
+		var reachable: bool = false
+		for j: int in range(rect.position.y - 3, rect.end.y + 3):
+			for i: int in range(rect.position.x - 3, rect.end.x + 3):
+				if _gap_to(rect, i, j) < 4.0 and _pathing.component_at(i * M, j * M, LIVING) == home:
+					reachable = true
+		assert_true(reachable, "a walkable way to the house at (%d, %d)" % [h.x, h.y])
+
+
+func test_the_lanes_are_open_sand() -> void:
+	_load_riverside()
+	var lanes: Array = _generator["VILLAGE_LANES"]
+	assert_gte(lanes.size(), 4)
+	for lane: PackedVector2Array in lanes:
+		for k: int in lane.size() - 1:
+			for step: int in ceili(lane[k].distance_to(lane[k + 1])) + 1:
+				var p: Vector2 = lane[k].move_toward(lane[k + 1], step)
+				var i: int = roundi(p.x)
+				var j: int = roundi(p.y)
+				assert_eq(_riverside.sample_ground(i, j), Terrain.Ground.SAND, "lane at %s is sand" % p)
+				assert_true(_walkable(_riverside, i, j), "and open at %s" % p)
+
+
+func test_the_plaza_is_sand_at_the_squares_heart() -> void:
+	_load_riverside()
+	var center: Vector2 = _generator["VILLAGE_SQUARE"]
+	var radius: float = _generator["VILLAGE_PLAZA_RADIUS_M"]
+	assert_lt(radius, _generator["VILLAGE_SQUARE_RADIUS_M"])
+	for angle: int in range(0, 360, 20):
+		var p: Vector2 = center + Vector2.from_angle(deg_to_rad(angle)) * (radius - 1.0)
+		assert_eq(_riverside.sample_ground(roundi(p.x), roundi(p.y)), Terrain.Ground.SAND, "plaza at %d degrees" % angle)
+
+
+func test_the_road_runs_from_the_village_back_toward_the_ford() -> void:
+	_load_riverside()
+	var road: PackedVector2Array = _generator["FORD_ROAD"]
+	var lanes: Array = _generator["VILLAGE_LANES"]
+	var main: PackedVector2Array = lanes[0]
+	assert_lt(road[road.size() - 1].distance_to(main[0]), 1.0, "it ends where the main lane starts")
+	assert_lt(road[0].x, 360.0, "and heads back toward the ford (x = 300)")
+	for k: int in road.size() - 1:
+		for step: int in ceili(road[k].distance_to(road[k + 1])) + 1:
+			var p: Vector2 = road[k].move_toward(road[k + 1], step)
+			assert_eq(_riverside.sample_ground(roundi(p.x), roundi(p.y)), Terrain.Ground.SAND, "road at %s" % p)
+			assert_eq(_riverside.sample_water_depth(roundi(p.x), roundi(p.y)), 0, "dry")
+
+
+## Meters from p to the village's zone: its box, or the road's corridor.
+func _distance_to_zone(p: Vector2) -> float:
+	var gap: Vector2 = Vector2(
+		maxf(maxf(VILLAGE_BOX.position.x - p.x, p.x - VILLAGE_BOX.end.x), 0.0),
+		maxf(maxf(VILLAGE_BOX.position.y - p.y, p.y - VILLAGE_BOX.end.y), 0.0)
+	)
+	var nearest: float = gap.length()
+	var road: PackedVector2Array = _generator["FORD_ROAD"]
+	for k: int in road.size() - 1:
+		var closest: Vector2 = Geometry2D.get_closest_point_to_segment(p, road[k], road[k + 1])
+		nearest = minf(nearest, p.distance_to(closest))
+	return nearest
+
+
+func test_nothing_outside_the_village_zone_changed() -> void:
+	_load_riverside()
+	var ctx: HashingContext = HashingContext.new()
+	ctx.start(HashingContext.HASH_SHA256)
+	var kept: int = 0
+	for j: int in _riverside.size_z:
+		for i: int in _riverside.size_x:
+			if _distance_to_zone(Vector2(i, j)) <= ROAD_CORRIDOR_M:
+				continue
+			var k: int = j * _riverside.size_x + i
+			ctx.update(PackedInt32Array([_riverside.heights[k]]).to_byte_array())
+			ctx.update(PackedByteArray([_riverside.water[k], _riverside.blocked[k], _riverside.ground[k]]))
+			kept += 1
+	gut.p("%d samples outside the village zone" % kept)
+	assert_gt(kept, 250000, "the zone is a small part of the map")
+	assert_eq(ctx.finish().hex_encode(), PHASE_7_OUTSIDE_VILLAGE_HASH, "the creek, the ford, and the rest are as Phase 7 left them")
+
+
+func test_the_village_keeps_ten_meters_from_the_pinned_and_mission_spots() -> void:
+	_load_riverside()
+	for spot: Vector2 in PINNED_SPOTS + MISSION_SPOTS:
+		assert_gte(_distance_to_zone(spot), 10.0, "spot %s" % spot)
+
+
+func test_the_road_changes_ground_only() -> void:
+	_load_riverside()
+	# Heights, water, and blocked samples differ from Phase 7 only inside the
+	# box: the hash above covers the rest, and the road cannot move any of them.
+	var road: PackedVector2Array = _generator["FORD_ROAD"]
+	for k: int in road.size() - 1:
+		var mid: Vector2 = road[k].lerp(road[k + 1], 0.5)
+		if VILLAGE_BOX.has_point(mid):
+			continue
+		assert_true(_walkable(_riverside, roundi(mid.x), roundi(mid.y)), "road at %s is plain walkable ground" % mid)
+		assert_eq(_riverside.blocked[roundi(mid.y) * _riverside.size_x + roundi(mid.x)], 0)

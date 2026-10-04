@@ -740,6 +740,18 @@ The environment changes tactics:
   - it also proves every bank sample is sand and that no 8-connected run of flammable ground crosses the creek.
 - **Synthetic terrains:** `Terrain.new`'s new trailing `ground_types` defaults to all grass. `TestTerrains.from_ascii` takes `b` (brush), `w` (wood), `s` (sand), and `r` (rock).
 
+### Map: the Riverside village (Phase 8)
+- **What:** a south-bank village the tutorial mission clears, stamped by `scripts/gen_riverside.gd` through `MapBuilder` after the base fill. It is hand-placed constants, not noise, so the layout reads and stays put.
+  - Eight wooden houses (5–8 m footprints, 3 m tall) ring an open square centered on (445, 375) m. The nearest house sample is 17.8 m from the center and the nearest unwalkable one 17 m, so the 13 m of clear, walkable, dry ground it promises has room to spare. The gap in the north-west is where the lane comes in.
+  - A sand plaza (7 m) sits at the square's heart, with a main lane in from the north-west, four spurs, and a 3 m sand road that runs back toward the ford.
+  - Brush and wood patches go in first, so houses and lanes overwrite them.
+- **Where:** the houses stand inside x 405–485 m, z 335–415 m, 25 m or more from the creek. The road is ground only and stops 24 m short of the mission's nearest point, because the patrols and the ambush around the ford landing keep their ground as it was.
+- **What it changes:** 346 blocked, WOOD samples. Counts are now grass 162,258, brush 49,528, wood 31,163, sand 16,270, rock 2,925.
+  - Houses stop arrows and grenades, because projectile contact reads the height field, and pathing treats them as solid. They burn.
+  - The sim's per-sample slope takes the steeper edge, so every house also leaves a one-sample ring of unwalkable ground.
+  - The roof is the highest ground under the footprint plus 3 m, so on a slope the low side stands taller.
+- **What it must not change:** `test_map_builder.gd` pins a SHA-256 of every sample outside the village's box and the road's corridor to Phase 7's, so the creek, the ford, the herb plants, and every point of `riverside_ai.tres` are as they were. It also keeps the village 10 m from the spots earlier tests pin, proves the square is walkable and in the same `LIVING` component as the north-bank deploy point (290, 180) m through the ford, and that every house can be reached on foot. `PHASE_1_SHAPE_HASH` in `test_riverside_map.gd` was updated for the houses.
+
 ### View
 - **Terrain:**
   - Ground types tint the height bands, on the terrain and the overhead map alike, so firebreaks read before anything is lit.

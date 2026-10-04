@@ -125,21 +125,25 @@ func house(cx_m: float, cz_m: float, w_m: float, d_m: float, height_m: float = 3
 		for i: int in range(rect.position.x, rect.end.x):
 			top = maxf(top, heights_m[j * size_x + i])
 	top += height_m
+	var wet: int = 0
 	for j: int in range(rect.position.y, rect.end.y):
 		for i: int in range(rect.position.x, rect.end.x):
 			var k: int = j * size_x + i
-			_warn_if_wet(k, "house")
+			wet += 1 if levels[k] != 0 else 0
 			heights_m[k] = top
 			blocked[k] = 1
 			grounds[k] = Terrain.Ground.WOOD
+	_warn_if_wet(wet, "house at (%.1f, %.1f)" % [cx_m, cz_m])
 	return rect.get_area()
 
 
-## A wall along a polyline, thickness_m wide, height_m above the ground under
-## each sample (so it follows the land), blocked, ROCK. gaps are open
-## stretches (gates): each a Vector2(start_m, end_m) measured along the
-## polyline from its first point. Keep a gate at least 4 m wide: the samples
-## beside a wall end are steep, so a narrower one leaves no walkable core.
+## A wall along a polyline, height_m above the ground under each sample (so it
+## follows the land), blocked, ROCK. A sample is in it if it lies within
+## thickness_m / 2 of the line, so a line along a sample row is 1 sample thick
+## at 1 m, 3 at 2 or 3 m, 5 at 4 or 5 m. gaps are open stretches (gates), each
+## a Vector2(start_m, end_m) measured along the polyline from its first point.
+## Keep a gate at least 4 m wide: the samples beside a wall end are steep, so a
+## narrower one leaves no walkable core.
 func wall(points_m: PackedVector2Array, thickness_m: float, height_m: float, gaps: Array = []) -> void:
 	for gap: Vector2 in gaps:
 		if gap.y - gap.x < 4.0:
@@ -156,11 +160,13 @@ func wall(points_m: PackedVector2Array, thickness_m: float, height_m: float, gap
 			if not _in_gap(start + a.distance_to(_closest_on_segment(p, a, b)), gaps):
 				solid[k] = true
 		start += a.distance_to(b)
+	var wet: int = 0
 	for k: int in solid:
-		_warn_if_wet(k, "wall")
+		wet += 1 if levels[k] != 0 else 0
 		heights_m[k] += height_m
 		blocked[k] = 1
 		grounds[k] = Terrain.Ground.ROCK
+	_warn_if_wet(wet, "wall from %s" % points_m[0])
 
 
 ## A raised area: a flat top at top_height_m out to radius_m of center_m, then
@@ -379,13 +385,14 @@ func _raise(
 	var on_top: PackedByteArray = PackedByteArray()
 	on_top.resize(size_x * size_z)
 	var gentlest_rise: float = INF
+	var wet: int = 0
 	for j: int in range(rect.position.y, rect.end.y):
 		for i: int in range(rect.position.x, rect.end.x):
 			var d: float = distance.call(i * cell_m, j * cell_m)
 			if d > cliff_width_m:
 				continue
 			var k: int = j * size_x + i
-			_warn_if_wet(k, "plateau")
+			wet += 1 if levels[k] != 0 else 0
 			if d <= 0.0:
 				heights_m[k] = top_m
 				on_top[k] = 1
@@ -393,6 +400,7 @@ func _raise(
 				heights_m[k] = lerpf(top_m, heights_m[k], d / cliff_width_m)
 				grounds[k] = Terrain.Ground.ROCK
 				gentlest_rise = minf(gentlest_rise, (top_m - before_heights[k]) / cliff_width_m)
+	_warn_if_wet(wet, "plateau")
 	if gentlest_rise <= max_walkable_slope / 1000.0:
 		push_warning(
 			"plateau cliff is only %.2f m per m at its gentlest; the walkable limit is %.2f"
@@ -433,9 +441,11 @@ func _ramp(
 		grounds[k] = before_grounds[k]
 
 
-func _warn_if_wet(k: int, what: String) -> void:
-	if levels[k] != 0:
-		push_warning("%s stamped on water at sample (%d, %d)" % [what, k % size_x, k / size_x])
+# A structure belongs on dry land: water depth is independent of height, so a
+# stamp on water leaves a house standing in the creek.
+func _warn_if_wet(wet_samples: int, what: String) -> void:
+	if wet_samples > 0:
+		push_warning("%s stands on %d samples of water" % [what, wet_samples])
 
 
 func _write_text(path: String, text: String) -> bool:
