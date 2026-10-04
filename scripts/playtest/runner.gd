@@ -177,6 +177,10 @@ func _fill(
 		if unit.faction == UnitType.Faction.DARK and unit.is_alive():
 			alive.append(unit)
 	result.dark_alive = alive.size()
+	for unit: Unit in alive:
+		var group_name: String = String(group_of(world, unit)).trim_prefix("wave_")
+		if group_name != "" and not result.alive_groups.has(group_name):
+			result.alive_groups.append(group_name)
 	_fill_waves(result, world)
 	_fill_notes(result, world, alive)
 
@@ -229,6 +233,14 @@ static func trace_line(world: World, pilot: PlaytestPilot) -> String:
 	return "t=%ds route %d at (%.0f, %.0f) | light %s | dark %s" % [
 		roundi(world.tick / float(World.TICK_RATE)), pilot.route_index, centre.x, centre.y, light, dark,
 	]
+
+
+## The name of the AI group a unit belongs to, or &"" for none.
+static func group_of(world: World, unit: Unit) -> StringName:
+	for group: AiGroup in world.ai.groups:
+		if group.members.has(unit.id):
+			return group.spec.name
+	return &""
 
 
 ## One line on where a unit stands and what it is doing: type and id, place in

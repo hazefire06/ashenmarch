@@ -8,8 +8,12 @@ extends RefCounted
 ## spawned (The Ford's villager), which it only looks at.
 ##
 ## Two pilots, so the numbers bracket what a real player does:
-## - NAIVE attack-moves every soldier at the next point of the route and does
-##   nothing else: no formation play, no specials, no healing, no holding.
+## - NAIVE attack-moves every soldier at the next point of the route, advancing
+##   when the army's centroid arrives (stragglers are not waited for); once the
+##   route is done it attack-moves at the nearest visible enemy, again at every
+##   think. On The Ford, whose hint says the villager walks only while soldiers
+##   are near, it walks everyone back to him when he is LOST_VILLAGER_M from every
+##   soldier. Nothing else: no formation play, no specials, no healing, no holding.
 ## - COMPETENT plays like a careful person who knows the map:
 ##   - the melee (Shieldmen and Reavers) attack-moves in a short line at the
 ##     route point, or at the nearest visible enemy while one is within
@@ -68,6 +72,9 @@ const LINE_CLEAR_M: float = 1.5
 ## many meters of the Warden.
 const HEAL_BELOW_PERCENT: int = 60
 const HEAL_REACH_M: float = 15.0
+## Naive pilot, The Ford: everyone is walked back to the villager when the
+## nearest soldier is this far (meters) from him.
+const LOST_VILLAGER_M: float = 25.0
 ## Meters between the groups that stand side by side (the ranged and the
 ## Wardens behind the melee; on The Ford, to either side of the villager).
 const BESIDE_M: float = 3.0
@@ -106,8 +113,13 @@ const CHARGE_PATIENCE: int = 60 * World.TICK_RATE
 ## how much farther in the ranged stand behind it.
 const HEAD_INSET_M: float = 3.0
 const HEAD_BEHIND_M: float = 6.0
-## Old Mill: how far (meters) from a ramp's head an enemy counts as on it.
-const RAMP_REACH_M: float = 5.0
+## Old Mill: an enemy counts as at a ramp's head, and is fought, within this many
+## meters of the ramp's top down the ramp (kept well short of the first charges,
+## CHARGE_FIRST_M - CHARGE_SIDE_M down, so the melee never walks into the field
+## the Sappers laid) and as far back up it, and within RAMP_HALF_WIDTH_M of its
+## axis (the ramp is 8 m wide).
+const RAMP_HEAD_DEPTH_M: float = 4.0
+const RAMP_HALF_WIDTH_M: float = 4.0
 ## Competent pilot: a fight that has gone quiet this long (ticks with nobody's
 ## hit points changing and the nearest enemy neither coming nearer nor going
 ## off, by more than STALL_GAP_M) while an enemy is still in sight is walked out
@@ -133,6 +145,8 @@ var record: bool = false
 var recorded: Array[SimCommand] = []
 ## Where the pilot is on its route (an index into PlaytestRoutes.route).
 var route_index: int = 0
+## Naive pilot: the army has reached the route's last point, and hunts from now on.
+var route_done: bool = false
 ## Old Mill: the tick the last Sapper laid its last charge, or -1 while some
 ## charge is still to lay.
 var charges_done_tick: int = -1
@@ -246,11 +260,9 @@ func _scan() -> void:
 	_foes.clear()
 	_friends.clear()
 	_wards.clear()
-	var hp_total: int = 0
 	for unit: Unit in _world.units:
 		if not unit.is_alive():
 			continue
-		hp_total += unit.hp
 		if unit.faction == LIGHT:
 			_friends.append(unit)
 			if _world.ai.controls(unit.id):
@@ -269,6 +281,14 @@ func _scan() -> void:
 						_melee.append(unit)
 		elif Visibility.seen_by(_world, unit, LIGHT):
 			_foes.append(unit)
+	# How the fight is going is judged from what the pilot can see: his own and the
+	# enemies in sight (not a Husk lying submerged, whose hit points a player
+	# can't watch).
+	var hp_total: int = 0
+	for unit: Unit in _mine:
+		hp_total += unit.hp
+	for unit: Unit in _foes:
+		hp_total += unit.hp
 	var gap: float = _gap_between_the_sides()
 	if hp_total != _last_hp_total or absf(gap - _last_gap) > STALL_GAP_M or not gap < INF:
 		_last_hp_total = hp_total
@@ -290,9 +310,30 @@ func _gap_between_the_sides() -> float:
 
 func _think_naive() -> void:
 	var here: Vector2 = _centroid(_mine)
-	if route_index < _route.size() - 1 and here.distance_to(_route[route_index]) <= ARRIVED_M:
-		route_index += 1
-	_order_group(&"all", _mine, _route[route_index], true)
+	var goal: Vector2 = _route[route_index]
+	if not _wards.is_empty() and _gap_to_soldiers(_wards[0]) >= LOST_VILLAGER_M:
+		# The hint says he walks only while soldiers are near: back to him.
+		goal = _pos(_wards[0])
+	else:
+		if not route_done and here.distance_to(goal) <= ARRIVED_M:
+			if route_index < _route.size() - 1:
+				route_index += 1
+				goal = _route[route_index]
+			else:
+				route_done = true
+		if route_done:
+			if _foes.is_empty():
+				return
+			goal = _pos(_nearest(_foes, here))
+	_order_group(&"all", _mine, goal, true)
+
+
+# Meters from `unit` to the nearest of the soldiers.
+func _gap_to_soldiers(unit: Unit) -> float:
+	var gap: float = INF
+	for soldier: Unit in _mine:
+		gap = minf(gap, _pos(soldier).distance_to(_pos(unit)))
+	return gap
 
 
 # ---- the competent pilot: the march (Riverside, and any mission without a plan) ----
@@ -458,21 +499,24 @@ func _ramp_head(ramp: int, center: Vector2) -> Vector2:
 	return top + (center - top).normalized() * HEAD_INSET_M
 
 
-# Visible enemies on the plateau or at the head of a ramp: not farther down it
-# than the charges, which are the Sappers' to set off (a soldier who follows an
-# enemy into the field he laid walks into his own blast).
+# Visible enemies on the plateau or at the head of a ramp (RAMP_HEAD_DEPTH_M
+# down it: not as far as the charges, which are the Sappers' to set off; a
+# soldier who follows an enemy into the field he laid walks into his own blast).
 func _invaders(center: Vector2) -> Array[Unit]:
 	var out: Array[Unit] = []
 	var radius: float = PlaytestRoutes.mill_plateau_radius()
 	for foe: Unit in _foes:
 		var p: Vector2 = _pos(foe)
-		var on_ramp: bool = false
+		var at_a_head: bool = false
 		for ramp: Dictionary in _ramps:
 			var top: Vector2 = ramp["top"]
-			var head_end: Vector2 = top + (Vector2(ramp["foot"]) - top).normalized() * (CHARGE_FIRST_M - 3.0)
-			var line: Vector2 = Geometry2D.get_closest_point_to_segment(p, top, head_end)
-			on_ramp = on_ramp or p.distance_to(line) <= RAMP_REACH_M
-		if on_ramp or p.distance_to(center) <= radius:
+			var down: Vector2 = (Vector2(ramp["foot"]) - top).normalized()
+			var along: float = (p - top).dot(down)
+			var across: float = absf((p - top).dot(Vector2(-down.y, down.x)))
+			at_a_head = at_a_head or (
+				along <= RAMP_HEAD_DEPTH_M and along >= -RAMP_HEAD_DEPTH_M and across <= RAMP_HALF_WIDTH_M
+			)
+		if at_a_head or p.distance_to(center) <= radius:
 			out.append(foe)
 	return out
 
@@ -666,6 +710,11 @@ func _fire_target(archer: Unit) -> Vector2:
 # to the same one.
 func _heal() -> void:
 	var taken: Dictionary[int, bool] = {}
+	# Whoever a Warden is already on his way to is taken, or two would go to him
+	# one think apart.
+	for warden: Unit in _wardens:
+		if warden.order == Unit.Order.INTERACT:
+			taken[warden.interact_id] = true
 	for warden: Unit in _wardens:
 		if warden.special_left <= 0 or warden.order == Unit.Order.INTERACT:
 			continue

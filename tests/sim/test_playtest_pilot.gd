@@ -167,6 +167,7 @@ func test_every_route_point_is_ground_a_soldier_can_stand_on() -> void:
 	for mission: MissionDef in _campaign.missions:
 		var terrain: Terrain = Terrain.load_map(mission.map)
 		var points: Array[Vector2] = PlaytestRoutes.route(mission)
+		points.append_array(PlaytestRoutes.escort(mission))
 		assert_gt(points.size(), 0, "%s has a route" % mission.id)
 		for point: Vector2 in points:
 			assert_true(
@@ -175,14 +176,39 @@ func test_every_route_point_is_ground_a_soldier_can_stand_on() -> void:
 			)
 
 
-func test_the_fords_route_is_the_villagers_own_waypoints() -> void:
+func test_the_fords_escort_is_the_villagers_own_waypoints_and_its_route_is_ford_landing_gate() -> void:
 	var mission: MissionDef = _campaign.missions[1]
 	var villager: AiGroupSpec = mission.rules.groups[mission.rules.group_index(&"villager")]
+	var escort: Array[Vector2] = PlaytestRoutes.escort(mission)
+	assert_eq(escort.size() * 2, villager.waypoints.size())
+	for k: int in escort.size():
+		assert_eq(roundi(escort[k].x * M), villager.waypoints[2 * k])
+		assert_eq(roundi(escort[k].y * M), villager.waypoints[2 * k + 1])
 	var route: Array[Vector2] = PlaytestRoutes.route(mission)
-	assert_eq(route.size() * 2, villager.waypoints.size())
-	for k: int in route.size():
-		assert_eq(roundi(route[k].x * M), villager.waypoints[2 * k])
-		assert_eq(roundi(route[k].y * M), villager.waypoints[2 * k + 1])
+	assert_eq(route.size(), 3, "the ford, the north landing, the gate")
+	var crossing: TriggerSpec = mission.rules.triggers[mission.rules.trigger_index(&"crossing")]
+	var north: TriggerSpec = mission.rules.triggers[mission.rules.trigger_index(&"north")]
+	var home: TriggerSpec = mission.rules.triggers[mission.rules.trigger_index(&"home")]
+	for k: int in 3:
+		var area: PackedInt32Array = [crossing, north, home][k].area
+		assert_eq(roundi(route[k].x * M), area[0], "point %d is the trigger's x" % k)
+		assert_eq(roundi(route[k].y * M), area[1], "point %d is the trigger's z" % k)
+
+
+func test_rivesides_route_is_read_from_its_rules_not_retyped() -> void:
+	var mission: MissionDef = _campaign.missions[0]
+	var route: Array[Vector2] = PlaytestRoutes.route(mission)
+	var at_ford: TriggerSpec = mission.rules.triggers[mission.rules.trigger_index(&"at_ford")]
+	assert_eq(roundi(route[0].x * M), at_ford.area[0])
+	assert_eq(roundi(route[0].y * M), at_ford.area[1])
+	for pair: Array in [[1, &"field_patrol_w"], [3, &"field_patrol_e"]]:
+		var waypoints: PackedInt32Array = mission.rules.groups[mission.rules.group_index(pair[1])].waypoints
+		var sum: Vector2 = Vector2.ZERO
+		for k: int in range(0, waypoints.size() - 1, 2):
+			sum += Vector2(waypoints[k], waypoints[k + 1])
+		var centroid: Vector2 = sum / float(waypoints.size() >> 1) / float(M)
+		assert_almost_eq(route[pair[0]].x, centroid.x, 0.001, "%s: x" % pair[1])
+		assert_almost_eq(route[pair[0]].y, centroid.y, 0.001, "%s: z" % pair[1])
 
 
 # ---- a run is repeatable from its seed ----
@@ -375,9 +401,28 @@ func test_two_wardens_heal_two_different_friends() -> void:
 	var pilot: PlaytestPilot = _think(w)
 	var a: Array[SimCommand] = _commands_of(pilot, HealCommand, first.id)
 	var b: Array[SimCommand] = _commands_of(pilot, HealCommand, second.id)
-	assert_eq(a.size() + b.size(), 2)
-	assert_eq((a[0] as HealCommand).target_id, worst.id, "the lower id takes the worst hurt")
-	assert_eq((b[0] as HealCommand).target_id, next.id, "and the other goes to the next")
+	assert_eq(a.size(), 1, "the first Warden is sent")
+	assert_eq(b.size(), 1, "and so is the second")
+	if a.size() == 1 and b.size() == 1:
+		assert_eq((a[0] as HealCommand).target_id, worst.id, "the lower id takes the worst hurt")
+		assert_eq((b[0] as HealCommand).target_id, next.id, "and the other goes to the next")
+
+
+func test_a_second_warden_is_not_sent_to_a_patient_the_first_is_already_walking_to() -> void:
+	var w: World = _bare()
+	var first: Unit = _spawn(w, &"warden", LIGHT, 20, 20)
+	var second: Unit = _spawn(w, &"warden", LIGHT, 21, 20)
+	var patient: Unit = _spawn(w, &"shieldman", LIGHT, 25, 20)
+	patient.hp = 10
+	var pilot: PlaytestPilot = PlaytestPilot.new(PlaytestPilot.Kind.COMPETENT, _tiny_mission())
+	pilot.record = true
+	pilot.think(w)
+	assert_eq(_commands_of(pilot, HealCommand, first.id).size(), 1, "the first goes")
+	assert_eq(_commands_of(pilot, HealCommand, second.id).size(), 0, "the second has no one else to go to")
+	w.step()
+	assert_eq(first.order, Unit.Order.INTERACT, "the first is on his way")
+	pilot.think(w)
+	assert_eq(_commands_of(pilot, HealCommand, second.id).size(), 0, "a think later he still isn't sent")
 
 
 func test_a_longbow_nocks_its_fire_arrow_and_aims_it_at_a_cluster_on_brush() -> void:
@@ -447,6 +492,71 @@ func test_the_naive_pilot_only_attack_moves_everyone_and_nothing_else() -> void:
 	assert_eq((pilot.recorded[0].get(&"unit_ids") as PackedInt32Array).size(), 3)
 
 
+func test_the_naive_pilot_hunts_the_nearest_visible_enemy_once_the_route_is_done() -> void:
+	# The tiny mission's route is its deploy point, (60, 60) m.
+	var w: World = _bare()
+	_spawn(w, &"shieldman", LIGHT, 58, 58)
+	var husk: Unit = _spawn(w, &"husk", DARK, 100, 60)
+	var pilot: PlaytestPilot = PlaytestPilot.new(PlaytestPilot.Kind.NAIVE, _tiny_mission())
+	pilot.record = true
+	pilot.think(w)
+	assert_true(pilot.route_done, "he is at the last point of the route")
+	var march: AttackMoveCommand = pilot.recorded[0] as AttackMoveCommand
+	assert_almost_eq(float(march.x) / M, 100.0, 1.0, "and goes for the Husk, 40 m off")
+	# The Husk moves 10 m: the next think follows it.
+	husk.x += 10 * M
+	w.step()
+	pilot.think(w)
+	assert_eq(pilot.recorded.size(), 2, "the order is repeated for the new spot")
+	assert_almost_eq(float((pilot.recorded[1] as AttackMoveCommand).x) / M, 110.0, 1.0)
+	# With nothing in sight he stands where he is.
+	husk.kill()
+	w.step()
+	pilot.think(w)
+	assert_eq(pilot.recorded.size(), 2, "no enemy, no order")
+
+
+func test_the_naive_pilot_does_not_hunt_before_the_route_is_done() -> void:
+	var w: World = _bare()
+	_spawn(w, &"shieldman", LIGHT, 20, 20)
+	_spawn(w, &"husk", DARK, 40, 20)
+	var pilot: PlaytestPilot = _think(w, PlaytestPilot.Kind.NAIVE)
+	assert_false(pilot.route_done)
+	assert_almost_eq(float((pilot.recorded[0] as AttackMoveCommand).x) / M, 60.0, 1.0, "he marches for the route point")
+
+
+func test_the_naive_pilot_walks_everyone_back_to_a_villager_left_25_meters_behind() -> void:
+	var ford: MissionDef = _campaign.missions[1]
+	for gap: int in [30, 10]:
+		var w: World = _bare(TestTerrains.flat(250, 250))
+		var spec: AiGroupSpec = AiGroupSpec.new()
+		spec.name = &"villager"
+		spec.faction = LIGHT
+		spec.units.append(MissionFixtures.entry(&"villager", PackedInt32Array([1])))
+		spec.spawns = PackedInt32Array([80 * M, 20 * M])
+		w.ai.spawn_group(w, spec, 0, 2)
+		_spawn(w, &"shieldman", LIGHT, 80 - gap, 20)
+		var pilot: PlaytestPilot = PlaytestPilot.new(PlaytestPilot.Kind.NAIVE, ford)
+		pilot.record = true
+		pilot.think(w)
+		var march: AttackMoveCommand = pilot.recorded[0] as AttackMoveCommand
+		if gap > 25:
+			assert_almost_eq(float(march.x) / M, 80.0, 1.0, "30 m behind him: back to the villager")
+			assert_almost_eq(float(march.z) / M, 20.0, 1.0)
+		else:
+			assert_gt(float(march.x) / M, 150.0, "10 m from him: on with the route (the ford is at x = 192)")
+
+
+func test_a_naive_run_of_the_ford_follows_the_ford_the_landing_and_the_gate() -> void:
+	var runner: PlaytestRunner = _runner()
+	assert_not_null(_play(runner, 1, PlaytestPilot.Kind.NAIVE, 90))
+	var route: Array[Vector2] = PlaytestRoutes.route(_campaign.missions[1])
+	var march: AttackMoveCommand = runner.last_pilot.recorded[0] as AttackMoveCommand
+	assert_almost_eq(float(march.x) / M, route[0].x, 1.0, "the first leg is the ford")
+	assert_almost_eq(float(march.z) / M, route[0].y, 1.0)
+	runner.release()
+
+
 func test_orders_are_not_repeated_until_the_goal_moves() -> void:
 	var w: World = _bare()
 	_spawn(w, &"shieldman", LIGHT, 20, 20)
@@ -458,6 +568,89 @@ func test_orders_are_not_repeated_until_the_goal_moves() -> void:
 	w.step()
 	pilot.think(w)
 	assert_eq(pilot.commands_issued, first, "the same goal gives no new order")
+
+
+# ---- Old Mill: the melee holds the heads and stays out of the charge field ----
+
+# Plays the first second of Old Mill with one idle Husk standing `along` m down
+# the north-west ramp from its top and `across` m off its axis, and returns the
+# melee soldiers' attack-move targets (meters) with the ramps' heads.
+func _melee_targets_with_a_husk_on_the_ramp(along: float, across: float) -> Array[Vector2]:
+	var ramp: Dictionary = PlaytestRoutes.mill_ramps()[0]
+	var top: Vector2 = ramp["top"]
+	var down: Vector2 = (Vector2(ramp["foot"]) - top).normalized()
+	var husk_at: Vector2 = top + down * along + Vector2(-down.y, down.x) * across
+	var mission: MissionDef = _campaign.missions[2].duplicate() as MissionDef
+	var groups: Array[AiGroupSpec] = [MissionFixtures.group(&"husks", 1, roundi(husk_at.x), roundi(husk_at.y))]
+	var triggers: Array[TriggerSpec] = []
+	mission.rules = MissionFixtures.script(groups, triggers)
+	var runner: PlaytestRunner = _runner()
+	var state: CampaignState = CampaignState.new_campaign(SEED, TIER)
+	assert_not_null(runner.play(mission, 2, state, PlaytestPilot.Kind.COMPETENT, 20))
+	var targets: Array[Vector2] = []
+	for command: SimCommand in runner.last_pilot.recorded:
+		var march: AttackMoveCommand = command as AttackMoveCommand
+		if march == null:
+			continue
+		var first: Unit = runner.last_world.get_unit(march.unit_ids[0])
+		if first.type.id == &"shieldman" or first.type.id == &"reaver":
+			targets.append(Vector2(march.x, march.z) / float(M))
+	runner.release()
+	return targets
+
+
+func test_the_melee_does_not_go_out_to_an_enemy_in_the_charge_field() -> void:
+	var center: Vector2 = PlaytestRoutes.mill_center()
+	var heads: Array[Vector2] = []
+	for ramp: Dictionary in PlaytestRoutes.mill_ramps():
+		var top: Vector2 = ramp["top"]
+		heads.append(top + (center - top).normalized() * PlaytestPilot.HEAD_INSET_M)
+	# On the first pair of charges (9 m down, 2 m off the axis) and a little short
+	# of them (7 m down, where a soldier's 5 m blast would reach the charges).
+	for along: float in [PlaytestPilot.CHARGE_FIRST_M, PlaytestPilot.CHARGE_FIRST_M - PlaytestPilot.CHARGE_SIDE_M]:
+		var targets: Array[Vector2] = _melee_targets_with_a_husk_on_the_ramp(along, PlaytestPilot.CHARGE_SIDE_M)
+		assert_gt(targets.size(), 0, "%.0f m down: the melee was ordered" % along)
+		for target: Vector2 in targets:
+			var nearest_head: float = minf(target.distance_to(heads[0]), target.distance_to(heads[1]))
+			assert_lt(nearest_head, 2.0, "%.0f m down: they hold a head, %s is not one" % [along, target])
+
+
+func test_the_melee_does_go_out_to_an_enemy_at_the_head_of_a_ramp() -> void:
+	var ramp: Dictionary = PlaytestRoutes.mill_ramps()[0]
+	var top: Vector2 = ramp["top"]
+	var down: Vector2 = (Vector2(ramp["foot"]) - top).normalized()
+	var husk_at: Vector2 = top + down * 2.0
+	var targets: Array[Vector2] = _melee_targets_with_a_husk_on_the_ramp(2.0, 0.0)
+	var close: int = 0
+	for target: Vector2 in targets:
+		if target.distance_to(husk_at) < 2.0:
+			close += 1
+	assert_gt(close, 0, "2 m down the ramp, he is fought")
+
+
+func test_the_charge_field_starts_beyond_the_head_zone_with_room_for_a_blast() -> void:
+	# The geometry the two tests above lean on: the zone stops short of the first
+	# charges by more than a soldier's width and the satchels' 5 m blast.
+	assert_lt(PlaytestPilot.RAMP_HEAD_DEPTH_M, PlaytestPilot.CHARGE_FIRST_M - PlaytestPilot.CHARGE_SIDE_M)
+	assert_lte(PlaytestPilot.RAMP_HEAD_DEPTH_M + 5.0, PlaytestPilot.CHARGE_FIRST_M)
+
+
+func test_a_husk_lying_submerged_changing_hit_points_is_not_news_to_the_pilot() -> void:
+	var rows: Array[String] = []
+	for j: int in 120:
+		rows.append(".".repeat(40) + "4".repeat(30) + ".".repeat(50))
+	var w: World = _bare(TestTerrains.from_ascii(rows))
+	_spawn(w, &"shieldman", LIGHT, 20, 20)
+	var lurker: Unit = _spawn(w, &"husk", DARK, 50, 20)
+	_spawn(w, &"husk", DARK, 100, 100)
+	assert_true(Visibility.is_submerged(w.terrain, lurker))
+	var pilot: PlaytestPilot = PlaytestPilot.new(PlaytestPilot.Kind.COMPETENT, _tiny_mission())
+	pilot.think(w)
+	for _t: int in 5:
+		w.step()
+	lurker.hp = 40
+	pilot.think(w)
+	assert_eq(pilot._last_change_tick, 0, "nothing visible changed, so the fight is no less quiet")
 
 
 # ---- the results and their tables ----
@@ -512,6 +705,27 @@ func test_the_table_counts_wins_losses_and_timeouts_per_group() -> void:
 	assert_string_contains(river, "| 1 | 100% | 0% | 0% |")
 	assert_lt(text.find("| riverside |"), text.find("| old_mill |"), "the campaign's order, not the order of arrival")
 	assert_string_contains(text, "1 of 4 timed out", "the anomalies name the timeout")
+
+
+func test_a_timeout_names_the_wave_still_standing_not_the_last_to_spawn() -> void:
+	var stale: PlaytestResult = _result(&"old_mill", PlaytestResult.TIMEOUT, 25.0, 3, 20)
+	stale.waves = PackedStringArray(["rippers", "bags", "drifters", "storm"])
+	stale.waves_spawned = 4
+	stale.alive_groups = PackedStringArray(["drifters"])
+	var results: Array[PlaytestResult] = [stale]
+	var text: String = PlaytestReport.markdown(results, "T")
+	assert_string_contains(text, "timeout with drifters left 1")
+	assert_eq(text.find("timeout in wave 4"), -1, "and not wave 4 (storm)")
+
+
+func test_the_table_gives_the_median_minutes_of_wins_alone() -> void:
+	var results: Array[PlaytestResult] = [
+		_result(&"riverside", PlaytestResult.WON, 2.0, 0, 14),
+		_result(&"riverside", PlaytestResult.WON, 4.0, 0, 14),
+		_result(&"riverside", PlaytestResult.LOST, 20.0, 14, 14),
+	]
+	var text: String = PlaytestReport.markdown(results, "T")
+	assert_string_contains(text, "| 3 | 67% | 33% | 0% | 4.0 | 20.0 | 3.0 |", "all runs' median 4.0, p90 20.0, the wins' median 3.0")
 
 
 func test_the_fords_and_old_mills_tables_say_what_went_wrong() -> void:

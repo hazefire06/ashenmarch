@@ -36,6 +36,8 @@ const DEFAULT_TIER: int = 2
 const DEFAULT_MAX_MINUTES: int = 25
 
 var _raw: FileAccess
+# Runs whose world could not be built: the exit code is 1 if there were any.
+var _unbuilt: int = 0
 
 
 func _initialize() -> void:
@@ -104,8 +106,7 @@ func _play() -> int:
 		tiers, _pilot_names(pilots), "survivors carried over (CHAIN)" if chain else "fresh recruits each mission",
 		base, base + seeds - 1, max_minutes, wall_s, float(wall_ms) / maxf(1.0, float(ticks)),
 	]
-	_finish(results, preamble)
-	return 0
+	return _finish(results, preamble)
 
 
 # A whole campaign for one seed: each mission in order with the last one's
@@ -119,6 +120,8 @@ func _play_campaign(
 		var mission: MissionDef = campaign.missions[index]
 		var result: PlaytestResult = runner.play(mission, state.mission_index, state, pilot, max_ticks, true)
 		if result == null:
+			printerr("playtest: a world could not be built")
+			_unbuilt += 1
 			return
 		var won: bool = result.won()
 		if won:
@@ -134,6 +137,7 @@ func _record(result: PlaytestResult, runner: PlaytestRunner, results: Array[Play
 	runner.release()
 	if result == null:
 		printerr("playtest: a world could not be built")
+		_unbuilt += 1
 		return
 	results.append(result)
 	print(result.line())
@@ -165,23 +169,25 @@ func _merge(paths: PackedStringArray) -> int:
 	var files: PackedStringArray = PackedStringArray()
 	for path: String in paths:
 		files.append(path.get_file())
-	_finish(results, "%d runs merged from %s." % [results.size(), ", ".join(files)])
-	return 0
+	return _finish(results, "%d runs merged from %s." % [results.size(), ", ".join(files)])
 
 
-# Prints the tables, and writes them to OUT if it is set.
-func _finish(results: Array[PlaytestResult], preamble: String) -> void:
+# Prints the tables, and writes them to OUT if it is set. The exit code: 0, or 1
+# if OUT could not be written or a world could not be built.
+func _finish(results: Array[PlaytestResult], preamble: String) -> int:
 	var text: String = PlaytestReport.markdown(results, "Playtest results", preamble)
 	print("")
 	print(text)
+	var code: int = 1 if _unbuilt > 0 else 0
 	var out_path: String = _env("OUT", "")
 	if out_path == "":
-		return
+		return code
 	var file: FileAccess = FileAccess.open(out_path, FileAccess.WRITE)
 	if file == null:
 		printerr("playtest: can't write %s" % out_path)
-		return
+		return 1
 	file.store_string(text)
+	return code
 
 
 # ---- settings ----

@@ -35,6 +35,10 @@ var friendly_fire: int = 0
 var kills: int = 0
 ## Dark units still standing at the end (the ones a timeout couldn't clear).
 var dark_alive: int = 0
+## The AI groups the Dark units still standing belong to, by name, once each,
+## in the order their first unit stands in the world (Old Mill: the wave a
+## stalemate was left by, with the "wave_" dropped).
+var alive_groups: PackedStringArray = PackedStringArray()
 ## Units, of either side, that spent STUCK_TICKS walking without getting nearer
 ## their waypoint at some point of the run (PlaytestRunner counts each once).
 var stuck_units: int = 0
@@ -102,7 +106,7 @@ func to_dict() -> Dictionary:
 		"mission": String(mission_id), "tier": tier, "pilot": pilot,
 		"campaign_seed": str(campaign_seed), "world_seed": str(world_seed), "chain": chain,
 		"outcome": outcome, "end_tick": end_tick, "roster": roster, "losses": losses,
-		"friendly_fire": friendly_fire, "kills": kills, "dark_alive": dark_alive, "stuck_units": stuck_units,
+		"friendly_fire": friendly_fire, "kills": kills, "dark_alive": dark_alive, "alive_groups": Array(alive_groups), "stuck_units": stuck_units,
 		"ambushes_sprung": ambushes_sprung, "villager_lowest_percent": villager_lowest_percent, "villager_died": villager_died, "villager_killer": villager_killer,
 		"waves": Array(waves), "waves_spawned": waves_spawned, "charges_done_tick": charges_done_tick, "stall_breaks": stall_breaks,
 		"state_hash": state_hash, "commands": commands, "wall_ms": wall_ms, "notes": Array(notes),
@@ -132,6 +136,7 @@ static func from_dict(d: Variant) -> PlaytestResult:
 	r.friendly_fire = int(data.get("friendly_fire", 0))
 	r.kills = int(data.get("kills", 0))
 	r.dark_alive = int(data.get("dark_alive", 0))
+	r.alive_groups = PackedStringArray(data.get("alive_groups", []))
 	r.stuck_units = int(data.get("stuck_units", 0))
 	r.ambushes_sprung = int(data.get("ambushes_sprung", 0))
 	r.villager_lowest_percent = int(data.get("villager_lowest_percent", 100))

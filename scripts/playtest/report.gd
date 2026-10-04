@@ -114,12 +114,13 @@ static func _mission_rank(mission_id: StringName) -> int:
 
 static func _main_table(results: Array[PlaytestResult]) -> PackedStringArray:
 	var rows: PackedStringArray = PackedStringArray([
-		"| mission | tier | pilot | runs | win | lose | timeout | min (median) | min (p90) | losses/run | losses % of roster | losses/win | kills/run | friendly-fire deaths/run | stuck units/run |",
-		"|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|",
+		"| mission | tier | pilot | runs | win | lose | timeout | min (median) | min (p90) | min (median of wins) | losses/run | losses % of roster | losses/win | kills/run | friendly-fire deaths/run | stuck units/run |",
+		"|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|",
 	])
 	for g: Dictionary in groups(results):
 		var runs: Array[PlaytestResult] = g["runs"]
 		var minutes: Array[float] = []
+		var won_minutes: Array[float] = []
 		var won: int = 0
 		var lost: int = 0
 		var timeouts: int = 0
@@ -134,6 +135,7 @@ static func _main_table(results: Array[PlaytestResult]) -> PackedStringArray:
 			match r.outcome:
 				PlaytestResult.WON:
 					won += 1
+					won_minutes.append(r.minutes())
 					win_losses += r.losses
 				PlaytestResult.LOST:
 					lost += 1
@@ -145,9 +147,10 @@ static func _main_table(results: Array[PlaytestResult]) -> PackedStringArray:
 			friendly += r.friendly_fire
 			stuck += r.stuck_units
 		var n: float = runs.size()
-		rows.append("| %s | %d | %s | %d | %s | %s | %s | %.1f | %.1f | %.1f | %.0f%% | %s | %.1f | %.2f | %.2f |" % [
+		rows.append("| %s | %d | %s | %d | %s | %s | %s | %.1f | %.1f | %s | %.1f | %.0f%% | %s | %.1f | %.2f | %.2f |" % [
 			g["label"], g["tier"], g["pilot"], runs.size(), _pct(won, runs.size()), _pct(lost, runs.size()),
-			_pct(timeouts, runs.size()), median(minutes), percentile(minutes, 90.0), losses / n,
+			_pct(timeouts, runs.size()), median(minutes), percentile(minutes, 90.0),
+			("%.1f" % median(won_minutes)) if won > 0 else "n/a", losses / n,
 			losses_pct / n, ("%.1f" % (win_losses / won)) if won > 0 else "n/a", kills / n, friendly / n, stuck / n,
 		])
 	return rows
@@ -195,11 +198,17 @@ static func _mill_table(results: Array[PlaytestResult]) -> PackedStringArray:
 			breaks += r.stall_breaks
 			for wave: String in r.waves:
 				drawn[wave] = drawn.get(wave, 0) + 1
-			if not r.won() and not r.waves.is_empty():
-				var key: String = "%s in %s" % [
-					r.outcome, "no wave" if r.waves_spawned == 0 else "wave %d (%s)" % [r.waves_spawned, r.waves[r.waves_spawned - 1]],
-				]
+			if r.outcome == PlaytestResult.LOST and not r.waves.is_empty():
+				# A loss is the wave on the field when it happened (the last to spawn).
+				var key: String = "lost in %s" % (
+					"no wave" if r.waves_spawned == 0 else "wave %d (%s)" % [r.waves_spawned, r.waves[r.waves_spawned - 1]]
+				)
 				ended_in[key] = ended_in.get(key, 0) + 1
+			elif r.outcome == PlaytestResult.TIMEOUT and not r.waves.is_empty():
+				# A stalemate is whatever is still standing, which need not be the last wave.
+				var left: String = "+".join(r.alive_groups) if not r.alive_groups.is_empty() else "nothing found"
+				var stale: String = "timeout with %s left" % left
+				ended_in[stale] = ended_in.get(stale, 0) + 1
 			if r.charges_done_tick >= 0:
 				charges.append(float(r.charges_done_tick) / World.TICK_RATE)
 		if rows.is_empty():

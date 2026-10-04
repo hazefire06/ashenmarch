@@ -3,27 +3,19 @@ extends RefCounted
 ## Where the playtest pilots go on each shipped mission: the small table a
 ## player who knows the map carries in his head. Every point is in meters (the
 ## pilots think in floats; the commands they emit are converted to integer
-## milli-units), and wherever a map generator names a place (scripts/gen_*.gd)
-## it is read from the generator's constants rather than retyped, so a moved
-## village or ford moves the route with it. The few points the generators
-## don't name (the ford's middle, the places the field patrols walk) are
-## literals, with where they come from; test_playtest_pilot.gd checks that
-## every point is ground a living soldier can stand on.
+## milli-units). Nothing is retyped from the mission data or a generator:
+## places a map generator names (scripts/gen_*.gd) come from its constants, and
+## the rest (the ford's middle, the ground the field patrols walk, the villager's
+## landing and gate) from the mission's own rules, the same way the escort route
+## is, so a patrol or a trigger moved in the data moves the route with it.
+## test_playtest_pilot.gd checks that every point is ground a living soldier can
+## stand on.
 
 const GENERATORS: Dictionary[StringName, String] = {
 	&"riverside": "res://scripts/gen_riverside.gd",
 	&"the_ford": "res://scripts/gen_the_ford.gd",
 	&"old_mill": "res://scripts/gen_old_mill.gd",
 }
-
-## The middle of Riverside's ford, where the creek is shallow: the centre of
-## the `at_ford` trigger in data/missions/riverside/rules.tres.
-const RIVERSIDE_FORD: Vector2 = Vector2(300.0, 226.0)
-## Where the west field patrol loops, just south of the ford's landing: the
-## centroid of its three waypoints in the same rules file.
-const RIVERSIDE_WEST_PATROL: Vector2 = Vector2(286.7, 257.3)
-## Where the east field patrol loops, on the sand road to the village.
-const RIVERSIDE_EAST_PATROL: Vector2 = Vector2(358.7, 308.0)
 
 # Constant maps of the generator scripts, loaded once: reading a script's
 # constants compiles it, and the pilots ask for them every run.
@@ -46,29 +38,59 @@ static func generator(mission_id: StringName) -> GDScript:
 	return _scripts[mission_id]
 
 
-## The route a pilot marches, in meters, in order. Riverside: the ford, the two
-## field patrols' ground, the sand road, the village square, then the sweep
-## (see sweep_from). The Ford: the
-## villager's own waypoints. Old Mill: the mill yard, where the squad deploys
-## and stays. A mission this table doesn't know gets its deploy point, so a
-## pilot on a future mission holds where it starts.
+## The route a pilot marches, in meters, in order. Riverside: the ford (the
+## middle of the `at_ford` trigger), the ground of the two field patrols (the
+## centroids of their waypoints), the sand road, the village square, then the
+## sweep (see sweep_from). The Ford: the ford (the `crossing` trigger), the north
+## landing (`north`), the gate (`home`): where a person leads a squad that has
+## been told to take a villager to the gate. Old Mill: the mill yard, where the
+## squad deploys and stays. A mission this table doesn't know gets its deploy
+## point, so a pilot on a future mission holds where it starts.
 static func route(mission: MissionDef) -> Array[Vector2]:
 	match mission.id:
 		&"riverside":
 			var g: Dictionary = constants(&"riverside")
 			var road: PackedVector2Array = g["FORD_ROAD"]
 			var out: Array[Vector2] = [
-				RIVERSIDE_FORD, RIVERSIDE_WEST_PATROL, road[0], RIVERSIDE_EAST_PATROL,
-				road[road.size() - 1], g["VILLAGE_SQUARE"],
+				trigger_center(mission, &"at_ford"), group_centroid(mission, &"field_patrol_w"), road[0],
+				group_centroid(mission, &"field_patrol_e"), road[road.size() - 1], g["VILLAGE_SQUARE"],
 			]
 			out.append_array(riverside_sweep())
 			return out
 		&"the_ford":
-			return escort(mission)
+			return [
+				trigger_center(mission, &"crossing"), trigger_center(mission, &"north"),
+				trigger_center(mission, &"home"),
+			]
 		&"old_mill":
 			var g: Dictionary = constants(&"old_mill")
 			return [g["YARD_CENTER"]]
 	return [deploy(mission)]
+
+
+## The middle of the area of the mission's trigger of this name, in meters. The
+## deploy point, after push_error, for a mission without it.
+static func trigger_center(mission: MissionDef, trigger_name: StringName) -> Vector2:
+	var i: int = mission.rules.trigger_index(trigger_name)
+	if i < 0 or mission.rules.triggers[i].area.size() < 2:
+		push_error("PlaytestRoutes: %s has no trigger area called %s" % [mission.id, trigger_name])
+		return deploy(mission)
+	var area: PackedInt32Array = mission.rules.triggers[i].area
+	return Vector2(area[0], area[1]) / 1000.0
+
+
+## The centroid of the waypoints of the mission's group of this name, in meters.
+## The deploy point, after push_error, for a mission without it.
+static func group_centroid(mission: MissionDef, group_name: StringName) -> Vector2:
+	var i: int = mission.rules.group_index(group_name)
+	if i < 0 or mission.rules.groups[i].waypoints.size() < 2:
+		push_error("PlaytestRoutes: %s has no patrol called %s" % [mission.id, group_name])
+		return deploy(mission)
+	var points: PackedInt32Array = mission.rules.groups[i].waypoints
+	var sum: Vector2 = Vector2.ZERO
+	for k: int in range(0, points.size() - 1, 2):
+		sum += Vector2(points[k], points[k + 1])
+	return sum / float(points.size() >> 1) / 1000.0
 
 
 ## Where a pilot goes once it has walked the whole route and Dark units remain
