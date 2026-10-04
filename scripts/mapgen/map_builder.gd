@@ -111,6 +111,21 @@ static func patches(noise_seed: int, frequency: float) -> FastNoiseLite:
 	return n
 
 
+## Linear interpolation through keys, each a Vector2(position, value) in
+## increasing position; outside the keys it holds the end values. For the
+## depth profile of a river, pond, or stream in a fill callable, where a
+## smooth bed matters because the sim's slope limit applies to the undead
+## units that wade through deep water.
+static func profile(keys: Array[Vector2], at: float) -> float:
+	if at <= keys[0].x:
+		return keys[0].y
+	for k: int in range(1, keys.size()):
+		if at <= keys[k].x:
+			var from: Vector2 = keys[k - 1]
+			return lerpf(from.y, keys[k].y, (at - from.x) / (keys[k].x - from.x))
+	return keys[keys.size() - 1].y
+
+
 ## A house: the footprint, w_m by d_m centered on (cx_m, cz_m), is raised to
 ## the highest ground under it plus height_m (a flat roof), blocked, and made
 ## WOOD, so it burns and stops projectiles. A sample belongs to the footprint

@@ -106,6 +106,8 @@ A map is a folder `maps/<name>/` holding three files.
     - `plateau(center, radius, top, cliff_width, ramps)` and `plateau_polygon(...)`: a flat top, a ROCK cliff band steeper than the walkable limit, and graded ramps up.
     - `road(points, width)`: SAND, which can't burn.
     - `patch(center, radius, noise, threshold, type)`: a ground type where its noise is high.
+  - There is no water stamp: a stamp can't carve water after the fill, so a river, pond, or stream goes into the `height_and_depth` callable. `MapBuilder.profile(keys, at)` is the piecewise-linear helper for a smooth bed (the sim's slope limit applies to the undead units that wade through deep water), and `level_depths_m` takes a fourth threshold for a depth-4 core.
+  - A generator runs as `godot --headless -s scripts/gen_<map>.gd`, checks that the saved map reloads (`quit(1)` if not), and takes an optional `-- --out=<dir>` so the tests can regenerate into a scratch directory and compare bytes.
   - `save(dir, name, display_name, herb_plants)` writes both PNGs, their keep-importer files (before the PNGs, so Godot never imports them as textures), and the `MapInfo`. `report()` reloads the result through the sim and prints what is in it.
   - **Raised structures leave a steep ring.** The sim's per-sample slope takes the steeper edge to a neighbor, so a 3 m step to a house makes the sample beside it unwalkable too. A gate in a wall, or a ramp, needs about four samples of width to keep a walkable core; the builder warns about narrower ones.
 
@@ -751,6 +753,24 @@ The environment changes tactics:
   - The sim's per-sample slope takes the steeper edge, so every house also leaves a one-sample ring of unwalkable ground.
   - The roof is the highest ground under the footprint plus 3 m, so on a slope the low side stands taller.
 - **What it must not change:** `test_map_builder.gd` pins a SHA-256 of every sample outside the village's box and the road's corridor to Phase 7's, so the creek, the ford, the herb plants, and every point of `riverside_ai.tres` are as they were. It also keeps the village 10 m from the spots earlier tests pin, proves the square is walkable and in the same `LIVING` component as the north-bank deploy point (290, 180) m through the ford, and that every house can be reached on foot. `PHASE_1_SHAPE_HASH` in `test_riverside_map.gd` was updated for the houses.
+
+### Maps: The Ford and Old Mill (Phase 8)
+- **What:** the two other campaign maps, written by `scripts/gen_the_ford.gd` and `scripts/gen_old_mill.gd` through `MapBuilder`. Every layout number is a constant in the generator (the mission data and `tests/sim/test_campaign_maps.gd` read them), so a coordinate lives in one place.
+- **The Ford** (`maps/the_ford/`, 384², 30 m height range): an escort across a wide river.
+  - **Plain:** gentle rolling ground, 3 to 10 m, further into the blight than Riverside: grass 46%, brush 22%, sand 20%, rock 5%, wood 6%, against Riverside's 62%, 19%, 6%, 1%, 12%.
+  - **River:** west to east, centerline `z = 192 + 8 sin(2 pi x / 300)`, 44 m of water. Depth level 4 within 6 m of the centerline, 3 to 11 m, 2 to 16 m, 1 to 22 m, sand within 4 m of the water. The bed is a smooth profile (under 0.2 m per m), so Husks can cross it.
+  - **The ford** (x 186 to 198): the depth is capped at level 2 across the whole channel and at level 1 within x 189 to 195, relaxing to full depth by x 180 and 204 (under 0.4 m per m). The whole channel is capped, not just the middle, and nothing else on the map is shallower than level 3 across the river, so it is the only crossing for living units: the test shuts x 180 to 204 and a flood from the deploy area can't reach the north bank.
+  - **Ambush pools:** two beds a few meters off the centerline (west `(166, 196)` on the south shoulder, east `(218, 178)` on the north), forced to level 4 within 7 m of the center and shelving to dry at 14 m. A living unit can't stand in them; they join the undead component that includes the landing.
+  - **Road and hamlet:** a 4 m sand road from the deploy area north across the ford, bending north-east to a hamlet. Its palisade is a ring 30 m in radius (2 m thick, 3 m tall, ROCK, blocked) round `(255, 60)`, with a 7 m gate gap on the south-west side where the road arrives, five wooden houses inside, and a flat pad under all of it so the wall stands level. The gate area, where the escort ends, is 4 m inside the gap with a 7 m radius, so it reaches out through the gap.
+  - **East woods:** wood and dead brush over x 280 to 360, z 100 to 185 with a ragged edge. The Rippers spawn there and walk to the landing without crossing the river.
+- **Old Mill** (`maps/old_mill/`, 320², 30 m height range): a raised mill to hold.
+  - **Plain:** 3 to 6 m, mostly grass, with brush fields (the wheat) in a ring 35 to 75 m from the plateau's center, cut by six grass lanes (the two ramps and the four compass directions), and scorched patches of rock and sand beyond 38 m.
+  - **Plateau:** its top is flat at 12 m with a radius of 28 m wandering between 24 and 30 m round the compass. A 4 m ROCK band, at least 1.5 m per m, falls to the plain all round. The only ways up are two 8 m ramps, north-west and south-east, each about 27 m long and climbing 0.28 and 0.32 m per m. A test shuts both ramps and floods from the plain, and every walkable sample at cliff height must lie on a ramp strip.
+  - **Mill and yard:** a 10 by 10 m wooden house 6 m tall (blocked, so it stops arrows), and an open yard of 7 m radius south of it, starting one sample clear of the mill because the sim treats the ring round a raised structure as unwalkable.
+  - **Water:** a millstream (6 m, depth 1 to 2, sand banks) from the north edge through a pond (18 m radius, depth 3 in the middle) to the south edge. The stream can be waded (depth 2 at most), so it is a firebreak and a slowdown, not a wall; the pond core is the one place a living unit can't go. The east edge spawn is across it. The pond is 22 m from the cliff.
+  - **Spawns and deploy:** four edge spawn zones (N, W, S, E) all in the plateau's single `LIVING` component, the deploy point on the top south-west of the mill.
+- **Connectivity:** each map is one `LIVING` component and one `UNDEAD` component, so nothing can spawn somewhere it can't leave.
+- **Determinism:** every noise has a fixed seed. The tests regenerate each map in a second process and compare the PNGs byte for byte.
 
 ### View
 - **Terrain:**

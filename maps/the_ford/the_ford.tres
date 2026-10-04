@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="MapInfo" format=3]
+
+[ext_resource type="Script" path="res://sim/map_info.gd" id="1_nt4og"]
+
+[resource]
+script = ExtResource("1_nt4og")
+display_name = "The Ford"
+heightmap_path = "res://maps/the_ford/height.png"
+mask_path = "res://maps/the_ford/mask.png"
+cell_size = 1000
+max_height = 30000
+max_walkable_slope = 1000
+herb_plants = PackedInt32Array(196000, 240000, 188000, 262000, 196000, 154000, 188000, 136000)
