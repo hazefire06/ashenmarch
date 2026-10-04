@@ -17,6 +17,10 @@ const THINK_TICKS: int = 15
 var groups: Array[AiGroup] = []
 
 var _next_group_id: int = 1
+## Every unit id any group ever spawned, so controls() is a lookup instead of a
+## scan of every group's spawned_ids. It holds nothing the groups don't, so it
+## isn't hashed (the groups' spawned_ids are).
+var _controlled: Dictionary[int, bool] = {}
 
 
 ## Spawns one instance of spec, the tier's units laid out in the spec's
@@ -44,6 +48,7 @@ func spawn_group(world: World, spec: AiGroupSpec, spec_index: int, tier: int) ->
 			type_indices[i], spec.faction, slots[i].x, slots[i].z, slots[i].facing_x, slots[i].facing_z
 		)
 		group.spawned_ids.append(unit.id)
+		_controlled[unit.id] = true
 		group.members.append(unit.id)
 		group.ordered_x.append(unit.x)
 		group.ordered_z.append(unit.z)
@@ -54,6 +59,13 @@ func spawn_group(world: World, spec: AiGroupSpec, spec_index: int, tier: int) ->
 	groups.append(group)
 	world.ai_events.append(AiEvent.new(AiEvent.Kind.SPAWNED, group.id, at.x, at.y, type_indices.size()))
 	return group
+
+
+## True if a group ever had this unit: the AI spawned it, as opposed to a unit
+## the player commands. Once AI, always AI: a unit that dies, is despawned, or
+## changes side is still the one a group spawned. O(1).
+func controls(unit_id: int) -> bool:
+	return _controlled.has(unit_id)
 
 
 ## Gives the group a new behavior with a clean slate: the old plan's progress
