@@ -10,13 +10,18 @@ extends RefCounted
 ## target to the unit, the shortest walk; then the line swung 22.5 degrees
 ## either way, then 45. So a friend in the line, or an enemy near the first
 ## spot, sends the unit round rather than through. A spot will do if:
-## - it is on the map, in the pathing component the unit stands in;
+## - it is on the map, in the pathing component the unit stands in, and
+##   farther from the unit than a move's arrival radius (one nearer is where
+##   it stands, and a move there goes nowhere);
 ## - no enemy the unit's side can see is inside its dead zone there
 ##   (ranged_min_range + DEAD_ZONE_MARGIN), the target included;
 ## - the target is within the unit's range from there, shortened uphill;
 ## - and the line is clear: for a bolt, the check RangedCombat makes before it
 ##   casts (Lightning.is_clear_from, careful); for anything else, no friend
-##   within FRIEND_CORRIDOR of the straight line to the target.
+##   within FRIEND_CORRIDOR of the straight line to the target, and the check
+##   RangedCombat makes before it takes a target (clear_launch_from, careful):
+##   a launch from the spot that reaches the target with its flight clear of
+##   the ground, a cliff's lip or a wall included, and of friends' bodies.
 
 ## Binary angles (1024 to a turn) the line from the target is swung by, in
 ## the order tried: straight back, 22.5 degrees each way, then 45.
@@ -26,9 +31,11 @@ const ANGLES: Array[int] = [0, 64, -64, 128, -128]
 ## the unit gets there.
 const DEAD_ZONE_MARGIN: int = 2000
 ## Milli-units from a friend's center to the straight line from a spot to its
-## target within which an archer or thrower won't take the spot. RangedCombat
-## checks the real flight before it shoots; this keeps the AI from choosing a
-## spot that puts a friend in the way to begin with.
+## target within which an archer or thrower won't take the spot. The real
+## flight is checked too (as RangedCombat checks it before it shoots), but
+## an arc passes over a friend in the middle that a step aside would bring
+## into it; this keeps the AI from choosing a spot with a friend in the line
+## to begin with.
 const FRIEND_CORRIDOR: int = 1500
 ## ai_standoff_permille is in parts per this many.
 const PERMILLE: int = 1000
@@ -55,6 +62,12 @@ static func find(world: World, unit: Unit, target: Unit) -> PackedInt64Array:
 		var x: int = target.x + offset.x
 		var z: int = target.z + offset.y
 		if not world.terrain.contains(x, z) or world.pathing.component_at(x, z, t.mobility) != component:
+			continue
+		if FixedMath.length(x - unit.x, z - unit.z) <= UnitMovement.ARRIVE_RADIUS:
+			# Where it stands already: a move there ends before it starts, so
+			# a unit that can't shoot from here would be sent here at every
+			# think and never get a shot (on a cliff face a hand's breadth
+			# can lift the launch over the lip).
 			continue
 		if _fits(world, unit, target, enemies, x, z, radius):
 			return PackedInt64Array([x, z])
@@ -109,7 +122,13 @@ static func _fits(
 			continue
 		if Lightning.distance_to_segment(other.x, 0, other.z, a, b) <= FRIEND_CORRIDOR:
 			return false
-	return true
+	# As RangedCombat aims at a target it picks: a launch from the spot that
+	# reaches the chest (or the feet, for a bouncing throw) with its flight
+	# clear of the ground and of friends. Without it a unit at the foot of a
+	# cliff holds a spot in range whose every flight hits the lip.
+	var aim_y: int = chest if RangedCombat.aims_at_chest(p) else ground
+	var launch: FlightState = FlightState.at_mm(x, from_y, z, 0, 0, 0)
+	return RangedCombat.clear_launch_from(world, unit, launch, p, target.x, aim_y, target.z, true).ok
 
 
 # True if one of enemies stands within radius of (x, z), center to center.

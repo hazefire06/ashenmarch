@@ -358,6 +358,43 @@ func test_with_no_spot_it_attack_moves_unless_it_already_has_a_shot() -> void:
 	assert_eq(caster.order, Unit.Order.NONE)
 
 
+func test_a_bowman_under_a_cliff_lip_backs_off_until_its_arrows_clear_it() -> void:
+	# A plain at 0 m, a cliff rising 2 m per m from x = 50 m to a plateau 6 m
+	# up from x = 53 m. The bowman spawns 2 m short of the foot with the target
+	# 32 m off on the plateau: in range, but every arrow from there meets the
+	# cliff. It used to hold there for ever without a shot (Old Mill's west
+	# cliff); now it walks back to where its arrows clear the lip, and shoots.
+	var size_x: int = 100
+	var heights: PackedInt32Array = PackedInt32Array()
+	var water: PackedByteArray = PackedByteArray()
+	var blocked: PackedByteArray = PackedByteArray()
+	heights.resize(size_x * 40)
+	water.resize(size_x * 40)
+	blocked.resize(size_x * 40)
+	for j: int in 40:
+		for i: int in size_x:
+			heights[j * size_x + i] = clampi((i - 50) * 2 * M, 0, 6 * M)
+	var world: World = _world(Terrain.new(
+		size_x, 40, TestTerrains.CELL, heights, water, blocked, TestTerrains.WALKABLE_SLOPE
+	))
+	var group: AiGroup = _group(world, [[&"bowman", 1]], 48, 20, AiGroupSpec.Behavior.HUNT)
+	var bowman: Unit = group.living(world)[0]
+	var dummy: Unit = world.spawn_unit(DUMMY, LIGHT, 80 * M, 20 * M, -1, 0)
+	var shots: int = 0
+	var first_shot_x: int = -1
+	while world.tick < 600:
+		world.step()
+		for e: ProjectileEvent in world.projectile_events:
+			if e.kind == ProjectileEvent.Kind.LAUNCH and e.unit_id == bowman.id:
+				shots += 1
+				if first_shot_x < 0:
+					first_shot_x = bowman.x
+	gut.p("bowman under a cliff: %d arrows by tick 600, the first from x = %d mm" % [shots, first_shot_x])
+	assert_gt(shots, 0, "it gets a shot")
+	assert_lt(first_shot_x, 47 * M, "from back on the plain, not the foot")
+	assert_lt(dummy.hp, dummy.type.max_hp, "and the arrows land")
+
+
 # --- bodyguards -------------------------------------------------------------
 
 

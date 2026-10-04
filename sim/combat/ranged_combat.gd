@@ -322,7 +322,7 @@ func _aim_at_unit(world: World, unit: Unit, target: Unit, x: int, z: int, carefu
 	var p: ProjectileType = world.catalog.projectile_types[type_index]
 	var ground: int = world.terrain.height_at(x, z)
 	var y: int = ground
-	if p.behavior != ProjectileType.Behavior.BOUNCES or p.impact_damage > 0:
+	if aims_at_chest(p):
 		# At the aim point, which is where a walker is led to: leading an enemy
 		# into our own line would put the arrow on the line. (A bolt checks
 		# its whole line for friends instead.)
@@ -347,15 +347,40 @@ func _aim_at_ground(world: World, unit: Unit, x: int, z: int) -> AimSolution:
 func _aim(
 	world: World, unit: Unit, p: ProjectileType, x: int, y: int, z: int, avoid_friends: bool
 ) -> AimSolution:
-	var t: UnitType = unit.type
 	var from: FlightState = launch_point(unit)
-	var dist: int = FixedMath.length(x - unit.x, z - unit.z)
-	var spread: int = spread_for(unit, y - FlightState.to_mm(from.py), dist)
 	if p.behavior == ProjectileType.Behavior.BOLT:
+		var dist: int = FixedMath.length(x - unit.x, z - unit.z)
+		var spread: int = spread_for(unit, y - FlightState.to_mm(from.py), dist)
 		var bolt: AimSolution = AimSolution.new()
 		var reach: int = effective_max_range(unit, world.terrain.height_at(x, z) - FlightState.to_mm(from.py), dist)
 		bolt.ok = Lightning.is_clear(world, unit, p, x, y, z, avoid_friends, PATH_MARGIN, spread, reach)
 		return bolt
+	return clear_launch_from(world, unit, from, p, x, y, z, avoid_friends)
+
+
+## True if a shot of p at a unit aims for its chest (anything that strikes:
+## an arrow, a bolt, a throw that hurts on impact), false if for its feet (a
+## throw that bounces on to where it bursts).
+static func aims_at_chest(p: ProjectileType) -> bool:
+	return p.behavior != ProjectileType.Behavior.BOUNCES or p.impact_damage > 0
+
+
+## The launch of p (not a bolt: Lightning.is_clear_from) from `from`, a launch
+## point in micrometres, that reaches (x, y, z) (milli-units) along a clear
+## path: the unit's own aim style, then the other, the first whose flight
+## misses the ground short of the target and, if avoid_friends, the bodies of
+## the unit's friends, across the aim cone. Failed if none does. This is the
+## check a unit makes before it takes a target or looses, from its
+## launch_point; the AI asks it of a spot the unit isn't standing on
+## (StandoffSpot), so it would never send a unit where a cliff's lip or a
+## wall is in the way. The unit's own body is never in the way.
+static func clear_launch_from(
+	world: World, unit: Unit, from: FlightState, p: ProjectileType,
+	x: int, y: int, z: int, avoid_friends: bool
+) -> AimSolution:
+	var t: UnitType = unit.type
+	var dist: int = FixedMath.length(x - FlightState.to_mm(from.px), z - FlightState.to_mm(from.pz))
+	var spread: int = spread_for(unit, y - FlightState.to_mm(from.py), dist)
 	var tx: int = x * FlightState.SUB
 	var ty: int = y * FlightState.SUB
 	var tz: int = z * FlightState.SUB

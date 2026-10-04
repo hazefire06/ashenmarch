@@ -1331,10 +1331,10 @@ The AI and the triggers run inside `World.step()`. They draw no random numbers, 
 - **Bodyguard rule.** The threats to a group's casters are the visible enemies within 10 m of any living STANDOFF member. The ASSAULT buckets go for the one their leader ranks best before anything else. Inside GUARD only threats within the leash of the anchor count.
 - **STANDOFF** (Stormcaller, Drifter) holds where it can shoot from, using `StandoffSpot`.
   - **A spot** is on the circle of `ai_standoff_permille` of its range about the target. Five are tried: straight back from the target along the line to the unit, then swung 22.5° and 45° either way. The first that passes wins:
-    - it is on the map and in the unit's own pathing component;
+    - it is on the map and in the unit's own pathing component, and farther from the unit than a move's arrival radius (`UnitMovement.ARRIVE_RADIUS`, 0.25 m): a move to a nearer one ends before it starts, so a unit that can't shoot from where it stands would be sent there at every think and never move (Phase 8: a Drifter on Old Mill's west cliff face, where 18 cm up the slope lifted its launch over the lip);
     - no visible enemy is within the dead zone there (minimum range + 2 m);
     - the target is in range from it, shortened uphill;
-    - the line is clear. For a bolt that is the check `RangedCombat` makes before it casts (`Lightning.is_clear_from`, from the spot; `Lightning.is_clear` now calls it with the launch point, no behavior change). For other projectiles it is no friend within 1.5 m of the line.
+    - the line is clear. For a bolt that is the check `RangedCombat` makes before it casts (`Lightning.is_clear_from`, from the spot; `Lightning.is_clear` now calls it with the launch point, no behavior change). For other projectiles it is no friend within 1.5 m of the line, and (Phase 8) the check `RangedCombat` makes before it takes a target: `RangedCombat.clear_launch_from`, from the spot's launch point, the unit's own aim style then the other, the flight clear of the ground (a cliff's lip, a wall) and of friends' bodies, at the chest (the feet for a bouncing throw). `RangedCombat._aim` calls it with the unit's launch point, no behavior change. Before it, a Drifter at the foot of Old Mill's west cliff held a spot in range from which every arrow met the lip, and its wave never cleared.
   - **Each think, per member** (`AiTactics.standoff`):
     - An enemy inside its dead zone: it finds a spot and goes, busy or not, dropping a cast or a fight. With no spot it stays.
     - Otherwise a busy member is left alone.
@@ -1493,6 +1493,6 @@ Positions are meters on the Riverside map: the ford is at x = 300, shallow (dept
 - **Units don't path around fire,** the AI's included. It was Phase 7's in the Phase 5 notes and has moved to a later phase. A GUARD group burning with no intruder inside its radius reads the fire as an attack from outside and switches to `on_alert`.
 - **Random wave selection.** Old Mill picks 4 of its 5 waves per seed (Phase 8), and neither the AI nor a trigger draws dice. Phase 8 has to decide where that roll lives.
 - **The AI has no sight range.** It knows every enemy on the map that isn't submerged. A skirmish AI (Phase 9) may want fog.
-- **STANDOFF** checks only a 1.5 m friend corridor for non-bolt projectiles (a Drifter's arrows), with no terrain or walls, which matters on walled maps. It ignores ammo.
+- **STANDOFF** ignores ammo. (Its spot check for arrows was range and a friend corridor only, with no terrain; Phase 8 added the real flight, above.) With no spot at all, a member holding with an enemy in range (`AiTactics._has_shot`, range only, no line) stays where it is, shot or no shot: rarer now that a spot needs a real flight, but a unit penned where every spot fails could still wait for ever.
 - **A FLANK's `SIDE_MARGIN`** is sized for a box of up to about ten members. A wider group needs a margin that scales with its width.
 - **Conversion.** A converted unit leaves its group when it is pruned, but UNIT_DIES and GROUP_CLEARED still count it as standing. Decide that when the converter exists.
