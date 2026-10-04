@@ -44,6 +44,11 @@ var _marker_material: StandardMaterial3D
 var _marker_color: Color = MARKER_COLOR
 var _marker_age: float = MARKER_LIFETIME
 var _viewer: UnitType.Faction = UnitType.Faction.LIGHT
+## True while the sim isn't stepping (paused, or the mission is decided): the
+## sprites stand at the latest tick instead of interpolating toward a next one
+## that never comes, which the physics frames' fraction would otherwise swing
+## them back and forth to.
+var frozen: bool = false
 
 
 ## gibs may be null, in which case bodies are never destroyed.
@@ -126,7 +131,7 @@ func show_marker(point: Vector3, kind: MarkerKind) -> void:
 
 
 func _process(delta: float) -> void:
-	var alpha: float = Engine.get_physics_interpolation_fraction()
+	var alpha: float = 1.0 if frozen else Engine.get_physics_interpolation_fraction()
 	for unit_id: int in _sprites:
 		_sprites[unit_id].position = _previous[unit_id].lerp(_current[unit_id], alpha)
 	if _marker != null and _marker.visible:

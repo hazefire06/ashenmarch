@@ -45,8 +45,12 @@ const GROUND_ATTACK: StringName = &"unit_ground_attack"
 ## nocks its fire arrow).
 const ABILITY: StringName = &"unit_ability"
 const STOP: StringName = &"unit_stop"
-## Esc: cancel an order armed from the control bar.
+## Esc: cancel an order armed from the control bar; with none armed, open or
+## close the pause menu (PauseMenu).
 const CANCEL: StringName = &"cancel"
+## P: pause or resume without the menu (MainView). The sim stops stepping; the
+## camera, selection, and HUD keep working.
+const PAUSE: StringName = &"pause_game"
 ## Debug: switch which side the mouse commands. The AI keeps driving its
 ## groups whichever side that is.
 const SWITCH_SIDE: StringName = &"debug_switch_side"
@@ -117,6 +121,7 @@ static func _default_events() -> Dictionary[StringName, InputEvent]:
 	events[ABILITY] = _key(KEY_T)
 	events[STOP] = _key(KEY_H)
 	events[CANCEL] = _key(KEY_ESCAPE)
+	events[PAUSE] = _key(KEY_P)
 	events[SWITCH_SIDE] = _key(KEY_F9)
 	events[CYCLE_WEATHER] = _key(KEY_F6)
 	events[CYCLE_STATUS] = _key(KEY_F8)

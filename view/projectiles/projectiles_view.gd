@@ -49,6 +49,11 @@ const LABEL_RANGE: float = 35.0
 ## Pixels around a loose object's center that still count as pointing at it.
 const PICK_RADIUS: float = 14.0
 
+## True while the sim isn't stepping (paused, or the mission is decided): the
+## nodes stand at the latest tick instead of interpolating toward a next one
+## that never comes (see UnitsView.frozen).
+var frozen: bool = false
+
 var _world: World
 ## One root node per live projectile, keyed by entity id, and the positions
 ## of its last two ticks.
@@ -149,7 +154,7 @@ static func aim_basis(direction: Vector3) -> Basis:
 
 
 func _process(_delta: float) -> void:
-	var alpha: float = Engine.get_physics_interpolation_fraction()
+	var alpha: float = 1.0 if frozen else Engine.get_physics_interpolation_fraction()
 	for projectile_id: int in _nodes:
 		_nodes[projectile_id].position = _previous[projectile_id].lerp(_current[projectile_id], alpha)
 

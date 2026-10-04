@@ -6,8 +6,14 @@ extends PanelContainer
 ## selection, how many units are alive on each side, the side being
 ## controlled); and the orders: Stop, Move, Attack-move and Ground attack (each
 ## arms that order for the next left click on the ground, once), Ability (the
-## selection's special), and Switch side. All actions go through the
-## SelectionController, so keys and buttons can't drift apart.
+## selection's special), Switch side (debug; the campaign hides it), and Menu
+## (the pause menu, which Esc opens too; it is how a mouse alone reaches it).
+## All actions go through the SelectionController, so keys and buttons can't
+## drift apart. While the game is paused the order buttons are disabled:
+## nothing would be enqueued, and a greyed button says so.
+
+## The Menu button was pressed: open the pause menu (MainView connects it).
+signal menu_requested
 
 const GROUP_LABELS: Array[String] = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"]
 
@@ -19,6 +25,9 @@ var _set_toggle: Button
 var _move_toggle: Button
 var _attack_move_toggle: Button
 var _ground_attack_toggle: Button
+## Stop, the three order toggles, and Ability: the buttons that give orders.
+var _order_buttons: Array[Button] = []
+var _side_button: Button
 var _status: Label
 ## Living units per side, recounted when the tick changes.
 var _light_alive: int = 0
@@ -80,21 +89,25 @@ func _build() -> void:
 	stop.tooltip_text = "Halt the selection (H)"
 	stop.pressed.connect(_controller.stop_selected)
 	orders.add_child(stop)
+	_order_buttons.append(stop)
 	_move_toggle = _arm_button(
 		"Move", SelectionController.ArmedOrder.MOVE,
 		"Then left-click the ground to move there (or just right-click)"
 	)
 	orders.add_child(_move_toggle)
+	_order_buttons.append(_move_toggle)
 	_attack_move_toggle = _arm_button(
 		"Attack-move", SelectionController.ArmedOrder.ATTACK_MOVE,
 		"Then left-click the ground to attack-move there (or Cmd/Ctrl + right-click)"
 	)
 	orders.add_child(_attack_move_toggle)
+	_order_buttons.append(_attack_move_toggle)
 	_ground_attack_toggle = _arm_button(
 		"Ground attack", SelectionController.ArmedOrder.GROUND_ATTACK,
 		"Then left-click the ground to bombard it with the selected archers and grenadiers (or Cmd/Ctrl + left-click)"
 	)
 	orders.add_child(_ground_attack_toggle)
+	_order_buttons.append(_ground_attack_toggle)
 	var ability: Button = _button("Ability (T)")
 	ability.tooltip_text = (
 		"Use the selection's special (T): a Sapper drops a satchel charge, a Longbow nocks its fire arrow, "
@@ -102,14 +115,42 @@ func _build() -> void:
 	)
 	ability.pressed.connect(_controller.use_special_selected)
 	orders.add_child(ability)
-	var side: Button = _button("Switch side")
-	side.tooltip_text = "Debug: command the other side (F9)"
-	side.pressed.connect(_controller.switch_side)
-	orders.add_child(side)
+	_order_buttons.append(ability)
+	_side_button = _button("Switch side")
+	_side_button.tooltip_text = "Debug: command the other side (F9)"
+	_side_button.pressed.connect(_controller.switch_side)
+	orders.add_child(_side_button)
+	var menu: Button = _button("Menu")
+	menu.tooltip_text = "Pause and open the menu (Esc)"
+	menu.pressed.connect(menu_requested.emit)
+	orders.add_child(menu)
 	rows.add_child(orders)
 
 	set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE, Control.PRESET_MODE_MINSIZE)
 	grow_vertical = Control.GROW_DIRECTION_BEGIN
+
+
+## Shows or hides the debug Switch side button. The campaign hides it.
+func set_switch_side_visible(shown: bool) -> void:
+	_side_button.visible = shown
+
+
+## Whether Switch side is on show.
+func is_switch_side_visible() -> bool:
+	return _side_button.visible
+
+
+## The status line as drawn: the selection, how many are alive on each side, and
+## which side is controlled.
+func status_text() -> String:
+	return _status.text
+
+
+## Disables the order buttons while the game is paused and enables them again
+## after. Formations and groups stay on: they are selection state.
+func set_paused(paused: bool) -> void:
+	for button: Button in _order_buttons:
+		button.disabled = paused
 
 
 func _process(_delta: float) -> void:
@@ -158,7 +199,8 @@ func _arm_button(text: String, order: SelectionController.ArmedOrder, tip: Strin
 	return b
 
 
-# Counts each side's living units, once per tick rather than every frame.
+# Counts each side's living units, once per tick rather than every frame. The
+# Light count is the player's: units the AI drives (an escort) aren't theirs.
 func _recount_alive() -> void:
 	if _world.tick == _counted_tick:
 		return
@@ -169,7 +211,8 @@ func _recount_alive() -> void:
 		if not unit.is_alive():
 			continue
 		if unit.faction == UnitType.Faction.LIGHT:
-			_light_alive += 1
+			if not _world.ai.controls(unit.id):
+				_light_alive += 1
 		else:
 			_dark_alive += 1
 

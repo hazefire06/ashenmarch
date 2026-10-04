@@ -25,12 +25,19 @@ extends Control
 ##   group; Option/Alt+1..0 recall it. H stops. F9 (debug) switches sides.
 ##   F8 (debug) paralyzes, confuses, or sets alight the selection, in turn.
 ##
-## Only living units of the controlled side can be selected. Selection is view
-## state; orders go to the sim as commands for the next tick, the same stream
-## multiplayer will send. unit_at() also picks units that can't be selected
-## (either side, dead or alive), for the hover tooltip. This node covers the
-## screen to draw the drag box but ignores the mouse, so HUD controls above it
-## get clicks first.
+## Only living units of the controlled side that the AI doesn't drive can be
+## selected: a Light escort the mission leads (the Ford's villager) is never
+## the player's to order. Selection is view state; orders go to the sim as
+## commands for the next tick, the same stream multiplayer will send. unit_at()
+## also picks units that can't be selected (either side, dead or alive), for the
+## hover tooltip. This node covers the screen to draw the drag box but ignores
+## the mouse, so HUD controls above it get clicks first.
+##
+## While `paused` the sim isn't stepping, so no order is given: selection,
+## formations, and groups still work, but nothing is enqueued and nothing can
+## be armed. Esc cancels an armed order and is consumed doing it; with none
+## armed it passes on, which is how the pause menu (earlier in the HUD's
+## tree, so later in the unhandled input order) gets it.
 
 signal formation_changed(kind: Formations.Kind)
 signal side_changed(side: UnitType.Faction)
@@ -64,6 +71,17 @@ var side: UnitType.Faction = UnitType.Faction.LIGHT
 ## The order the next left click places, if any. It clears itself once the
 ## order is given. Change it with arm().
 var armed_order: ArmedOrder = ArmedOrder.NONE
+## True while the game is paused (MainView sets it). Giving an order does
+## nothing and arming one is refused; pausing drops an armed order.
+var paused: bool = false:
+	set(value):
+		paused = value
+		if paused and armed_order != ArmedOrder.NONE:
+			arm(ArmedOrder.NONE)
+## Whether F9 (and switch_side()) hands the mouse to the other side. The
+## campaign turns it off: it is a debug cheat, and the control bar hides its
+## button.
+var switch_side_enabled: bool = true
 
 var _world: World
 var _units: UnitsView
@@ -110,7 +128,7 @@ func set_formation(kind: Formations.Kind) -> void:
 ## disarmed. Always emits armed_order_changed, so a bar button pressed with
 ## nothing selected pops back up. The cursor is a crosshair while armed.
 func arm(order: ArmedOrder) -> void:
-	if selection.is_empty():
+	if selection.is_empty() or paused:
 		order = ArmedOrder.NONE
 	armed_order = order
 	Input.set_default_cursor_shape(
@@ -128,7 +146,7 @@ func recall_group(slot: int) -> void:
 
 
 func stop_selected() -> void:
-	if not selection.is_empty():
+	if not selection.is_empty() and not paused:
 		_world.enqueue(StopUnitsCommand.new(_world.tick, selection.ids()))
 
 
@@ -137,7 +155,7 @@ func stop_selected() -> void:
 ## Warden's needs a patient, so with one that has herbs selected this arms
 ## Heal for the next click on a unit.
 func use_special_selected() -> void:
-	if selection.is_empty():
+	if selection.is_empty() or paused:
 		return
 	_world.enqueue(UseSpecialCommand.new(_world.tick, selection.ids()))
 	if _has_healer():
@@ -147,15 +165,18 @@ func use_special_selected() -> void:
 ## Debug (F8): the next of paralysis, confusion, and burning on the selection,
 ## for DEBUG_STATUS_TICKS.
 func cycle_debug_status() -> void:
-	if selection.is_empty():
+	if selection.is_empty() or paused:
 		return
 	var kind: StatusEffects.Kind = DEBUG_STATUSES[_debug_status]
 	_debug_status = (_debug_status + 1) % DEBUG_STATUSES.size()
 	_world.enqueue(ApplyStatusCommand.new(_world.tick, selection.ids(), kind, DEBUG_STATUS_TICKS))
 
 
-## Debug: hands the mouse to the other side. Clears the selection.
+## Debug: hands the mouse to the other side. Clears the selection. Does
+## nothing where switch_side_enabled is false.
 func switch_side() -> void:
+	if not switch_side_enabled:
+		return
 	side = UnitType.Faction.DARK if side == UnitType.Faction.LIGHT else UnitType.Faction.LIGHT
 	selection.clear()
 	side_changed.emit(side)
@@ -262,7 +283,7 @@ func _handle_keys(event: InputEvent) -> bool:
 	if event.is_action_pressed(InputBindings.ABILITY, false, true):
 		use_special_selected()
 		return true
-	if event.is_action_pressed(InputBindings.SWITCH_SIDE):
+	if switch_side_enabled and event.is_action_pressed(InputBindings.SWITCH_SIDE):
 		switch_side()
 		return true
 	if event.is_action_pressed(InputBindings.CYCLE_STATUS):
@@ -338,6 +359,8 @@ func _place_armed_order(at: Vector2) -> void:
 # there. Giving an order disarms any armed order; a click that gives none
 # (nothing selected, or off the map) leaves it armed.
 func _order_move(at: Vector2, attack: bool) -> void:
+	if paused:
+		return
 	var hit: Vector3 = _pick_ground(at)
 	if hit == Vector3.INF:
 		return
@@ -357,6 +380,8 @@ func _order_move(at: Vector2, attack: bool) -> void:
 # Orders the selection's ranged units to bombard the ground under the screen
 # point. Disarms like _order_move.
 func _order_ground_attack(at: Vector2) -> void:
+	if paused:
+		return
 	var hit: Vector3 = _pick_ground(at)
 	if hit == Vector3.INF:
 		return
@@ -371,6 +396,8 @@ func _order_ground_attack(at: Vector2) -> void:
 # Sends the nearest selected Warden with herbs to heal the living unit under
 # the screen point, either side. A click on no one leaves Heal armed.
 func _order_heal(at: Vector2) -> void:
+	if paused:
+		return
 	var target_id: int = unit_at(at, false)
 	var target: Unit = _world.get_unit(target_id) if target_id >= 0 else null
 	if target == null or not target.is_alive():
@@ -384,7 +411,7 @@ func _order_heal(at: Vector2) -> void:
 # or a body that someone selected can do something with. Sends that order
 # and returns true; false if there is no such thing under the point.
 func _order_interact(at: Vector2) -> bool:
-	if selection.is_empty():
+	if selection.is_empty() or paused:
 		return false
 	var target_id: int = -1
 	if _plants != null:
@@ -484,7 +511,7 @@ func _screen_rect(sprite: UnitSprite) -> Rect2:
 
 func _selectable(unit_id: int) -> bool:
 	var unit: Unit = _world.get_unit(unit_id)
-	return unit != null and unit.is_alive() and unit.faction == side
+	return unit != null and unit.is_alive() and unit.faction == side and not _world.ai.controls(unit_id)
 
 
 func _drag_rect() -> Rect2:
