@@ -707,7 +707,7 @@ The environment changes tactics:
 - The grid is allocated on the first fire, so a world that never burns carries none.
 
 ### Visibility
-- **`Visibility.is_submerged`** is `MeleeCombat.is_hidden` moved, unchanged in Phase 5. Phase 7 adds one exception: a unit with `Unit.surfaced` set is never submerged. Submerged units can't be targeted or hit by anyone.
+- **`Visibility.is_submerged`** is `MeleeCombat.is_hidden` moved, unchanged in Phase 5. Phase 7 adds one exception: a unit with `Unit.surfaced` set is never submerged. Submerged units can't be targeted or hit by anyone (blasts excepted).
 - **`Visibility.seen_by(world, unit, side)`** is for the view. A side sees:
   - its own units;
   - anything not submerged;
@@ -1009,7 +1009,7 @@ The bolt queue and `projectile_pass_begun` are always empty or false between tic
 - **`UnitInfoPanel`** is docked above the control bar's left end and hidden with nothing selected.
   - One unit: its name, a health bar, and its details.
   - Several: the counts by type, and a cell per unit (up to 24) in its type's color, with a health bar and a frame tinted by status. Click a cell to select just that unit; shift-click to drop it.
-- **MainView** adds 3 Wardens, 3 Blightbags, and 2 Stormcallers to the test squads, and plants Riverside's herbs.
+- **MainView** adds 3 Wardens to the Light test squad and (until Phase 7) 3 Blightbags and 2 Stormcallers to the Dark one, and plants Riverside's herbs.
 
 ### Decisions
 - **Tim chose** (plan approval):
@@ -1039,7 +1039,8 @@ The bolt queue and `projectile_pass_begun` are always empty or false between tic
 |---|---|
 | Full-roster ford battle, 42 units with herbs, a plant, heals, confusion, gas, lightning, and scavenging; 1500 ticks, two worlds (`test_roster_lockstep`) | Hash-identical. 1.40 ms/tick per world, worst 5.4 ms after tick 0 (tick 0 builds three pathing layers) |
 | `make demo-abilities` at 3× (windowed) | Every event plays out; the finale ends Light 9/37, Dark 0/36 |
-| Test suite | 598 tests, about 45 s |
+| The same since Phase 7's final fix wave, headless | Every event plays out. The finale ends Light 19/37, Dark 0/36 at 3×, and Light 8/37, Dark 0/36 at 30×. The demo now turns the AI mission off and stands its own Dark squad at the finale, where MainView used to (see Phase 7's Demo). It waits on wall-clock timers between events, so its numbers move with speed and frame timing |
+| Test suite | 598 tests, about 45 s, when this row was measured; Phase 6 merged with 602, Phase 7's baseline |
 
 ### Not yet
 - AI that uses the new units well. Phase 7 did two of the four:
@@ -1057,7 +1058,7 @@ The Dark side now plays, and a mission is data:
 - **Groups:** squads that patrol, guard, hunt, flank, lie in ambush, or fall back when they are losing.
 - **Tactics:** Stormcallers hold at range where their line is clear, Blightbags walk at the thickest knot of enemies, and a caster's escorts go for whatever threatens it.
 - **Triggers:** a mission's rules (a unit enters an area, a timer runs out, a group is cleared) spawn groups, change the weather, set the objective, switch a group's behavior, and decide the outcome.
-- **Riverside:** its Dark side is `data/missions/riverside_ai.tres`, hand-written. The game shows the objective and a Victory or Defeat banner, and F7 shows what the AI is doing.
+- **Riverside:** its Dark side is `data/missions/riverside_ai.tres`, hand-written. The game shows the objective and a Victory or Defeat banner, and F5 shows what the AI is doing.
 
 The AI and the triggers run inside `World.step()`. They draw no random numbers, and they order units through `UnitOrders`, the way a player's commands do.
 
@@ -1077,7 +1078,7 @@ The AI and the triggers run inside `World.step()`. They draw no random numbers, 
 | `sim/ai/ai_flank.gd`, `flank_route.gd` | FLANK: the plan, and the route's geometry |
 | `data/missions/riverside_ai.tres` | The Dark side of Riverside |
 | `view/hud/mission_hud.gd` | `MissionHud`: the objective and the banner |
-| `view/ai/ai_debug_view.gd` | `AiDebugView`: the F7 overlay |
+| `view/ai/ai_debug_view.gd` | `AiDebugView`: the F5 overlay |
 | `scripts/demo_ai.gd` | `make demo-ai` |
 
 ### Tick order
@@ -1103,10 +1104,11 @@ The AI and the triggers run inside `World.step()`. They draw no random numbers, 
 
 ### Data
 - **Everything is a `.tres` `Resource`**, like `UnitType` and `WeatherChange`, with a `validate()` that lists every problem.
+  - That includes an enum field holding a value outside its enum: a group's `behavior`, `faction`, `patrol_mode`, `formation`, and `on_alert`; a trigger's `condition` and `faction`; an action's `kind` and `behavior`. A hand-written `.tres` can hold any integer there, and an unknown value would fall through every `match` without a word.
   - Specs are read-only at runtime, because `load()` hands every world the same instance. A group's progress lives in `AiGroup`, a mission's in `MissionRuntime`, and both feed `state_hash()`.
   - `riverside_ai.tres` is written by hand with `;` comments. The editor drops them if it re-saves the file.
 - **`MissionScript`** holds `groups: Array[AiGroupSpec]` and `triggers: Array[TriggerSpec]`.
-  - `World.start_mission(mission_script, tier)` creates the `MissionRuntime`. It refuses, with a `push_error` and `false`, in a world with no terrain or catalog, one that has already stepped or started a mission, a tier outside 0..4, or a script that doesn't validate. Nothing spawns until the first step.
+  - `World.start_mission(mission_script, tier)` creates the `MissionRuntime`. It refuses, with a `push_error` and `false`, in a world with no terrain or catalog, one that has already stepped or started a mission, a null script, a tier outside 0..4, or a script that doesn't validate. Nothing spawns until the first step.
   - The parameter is `mission_script`, not `script`: `script` is a native `Object` property and won't compile as a member name.
 - **`AiGroupSpec`** (`faction` defaults to DARK; a LIGHT group is driven the same way):
 
@@ -1120,20 +1122,20 @@ The AI and the triggers run inside `World.step()`. They draw no random numbers, 
 | `behavior` | What it does from the moment it spawns |
 | `waypoints`, `patrol_mode` | PATROL: x, z pairs; LOOP or PING_PONG |
 | `guard_radius` | GUARD: how far from its anchor it chases |
-| `alert_radius`, `on_alert` | PATROL: an enemy this close switches it to `on_alert` (0 never). AMBUSH: the spring radius, which must be above 0. `on_alert` is GUARD, HUNT (default), or FLANK |
+| `alert_radius`, `on_alert` | PATROL: an enemy this close switches it to `on_alert` (0 never). AMBUSH: the spring radius, which must be above 0. GUARD: hurt from outside `guard_radius`, it switches to `on_alert` (see Behaviors). `on_alert` is GUARD, HUNT (default), or FLANK |
 | `flank_roles` | Role bits FLANK goes after (default 6: ranged and support) |
 | `retreat_below_permille`, `retreat_point` | Fall back below this share of its starting health (0 never); where to (default: its spawn point) |
 
   - `Behavior` is IDLE, PATROL, GUARD, HUNT, FLANK, AMBUSH, RETREAT. The order is the hash order, so only append. RETREAT can't be a starting behavior or a SET_BEHAVIOR target: the AI enters it.
-  - A behavior needs its parameters: PATROL two or more waypoints, GUARD a radius, AMBUSH an `alert_radius`, FLANK at least one role. `params_errors(b)` is public because a SET_BEHAVIOR action is checked against its target group with it.
+  - A behavior needs its parameters: PATROL two or more waypoints, GUARD a radius, AMBUSH an `alert_radius`, FLANK at least one role. `params_errors(b)` is public because a SET_BEHAVIOR action is checked against its target group with it. `on_alert` needs its parameters too in a group that starts as PATROL, AMBUSH, or GUARD, the three that can switch to it.
   - Several defaults are non-zero on purpose (faction, formation, `on_alert`, `flank_roles`; `TriggerSpec` faction LIGHT, `min_count` and `count` 1, `ticks` [0]), like `WeatherChange`: they are the common case, and `validate()` checks every field that has a range.
   - **List melee entries before ranged.** A group spawns front to back in the order the entries are listed, and a STANDOFF group marches its casters 6 m behind the rest, so melee that starts behind them has to squeeze past (see Tactics).
 - **Difficulty tiers.** Five, 0 (easiest) to 4. Anything that varies by tier is a `PackedInt32Array` of 1 entry (used at every tier) or 5, so a mission only spells out the tiers it changes (`Difficulty.is_valid`, `Difficulty.pick`).
   - Per tier: each entry's unit counts (a harder tier can add a type an easier one lacks), the spawn point (`spawn_by_tier` indexes `spawns`), and a TIMER's `ticks`.
   - A tier where a group has no units still creates the (empty) group, so GROUP_CLEARED sees it spawned. Validation rejects a group that spawns nothing at any tier.
   - `MainView` plays tier 2 until Phase 8 adds a difficulty select.
-- **`UnitType` AI fields** (an `AI` group at the end of the exports): `ai_tactic` (`ASSAULT` default, `STANDOFF`, `CLUSTER`) and `ai_standoff_permille`.
-  - STANDOFF needs a ranged attack and a permille of 1..1000. Any other tactic needs 0.
+- **`UnitType` AI fields** (an `AI` export group, after Veterancy and before View): `ai_tactic` (`ASSAULT` default, `STANDOFF`, `CLUSTER`) and `ai_standoff_permille`.
+  - STANDOFF needs a ranged attack and a permille of 1..950 (`UnitType.MAX_STANDOFF_PERMILLE`). At 1000 a unit walking to its spot overshoots by up to 250 mm, fails `holds`' range check where it stops, and is sent to a new spot at every think. Any other tactic needs 0.
   - No unit type was added, so catalog indices don't move.
 
 | Unit | Tactic |
@@ -1180,13 +1182,14 @@ The AI and the triggers run inside `World.step()`. They draw no random numbers, 
   - An alert (`AiBehaviors.switch_to`) plans under the new behavior in the same call and spends the request.
   - A freshly spawned group doesn't ask for a plan. Its first think is on its staggered tick.
 - **Free members.** Only a free member gets a new order (`AiOrders.is_free`): alive, not confused, not on an errand, no target, not standing to fight or shoot, no draw or wind-up under way, and not waiting on a path. `UnitOrders.move` drops fights, casts, and swings and replaces an errand's order, and a pending path solve would be thrown away. A busy member carries on and is sent once it is free.
-  - Four things override that, on purpose: a retreat, a leg's retry, the GUARD leash recall, and a STANDOFF member's dead-zone escape.
+  - Four things override that, on purpose: a retreat's first march, the GUARD leash recall, a STANDOFF member's dead-zone escape, and an ambush spring. The spring surfaces every living member, busy or not, but issues no orders itself: the behavior it switches to orders only free members.
+  - A leg's retry is a forced march too, but it only happens once every member has finished and is free, so it overrides the already-sent filter, not anyone's fight.
   - Every order goes through `AiOrders.send`, which first ends the unit's errand (see Decisions).
 - **Buckets.** `engage` and `march` order members in buckets: the members of one tactic and type standing in one pathing component (`AiOrders._bucket_key`, the one definition). Keys ascend, so ASSAULT buckets go first, then STANDOFF, then CLUSTER. Each bucket gets one `UnitOrders.move` and one ORDER event.
   - **Per type**, because `UnitOrders.move` caps a group at its slowest member's speed. A bucket of Rippers and Husks would march at a Husk's pace.
   - **Per component**, because a bucket's leader (its lowest id) picks the objective and every member must be able to walk to it. A member across the river from its leader would be sent at something it can never reach, stop on its own bank, and be sent again at every think.
 - **Objectives (ASSAULT).** The leader picks among the candidates it can walk to or already reach in melee (`AiOrders.reachable`, so a Shieldman on the bank counts a Husk in the shallows beside it). `Targeting.pick` ranks them as melee does: a preferred role first (Rippers go for ranged and support), then the nearest body edge, then the lower id. The bucket attack-moves to the pick in one order. Ahead of that ranking come a threat to one of the group's casters (the bodyguard rule) and then a FLANK's focus.
-- **Hysteresis and the A\* budget.** Every ordered member queues an A* solve, and `UnitMovement` runs at most 6 a tick (Phase 2). At that rate 40 members take 7 ticks to get their paths, so an AI that re-ordered everyone at every think would keep them waiting on paths for up to half of each 15-tick interval. It orders sparingly:
+- **Hysteresis and the A\* budget.** Every ordered member that can't walk straight to its goal (`Pathing.can_walk_straight`) queues an A* solve, and `UnitMovement` runs at most 6 a tick (Phase 2). At that rate 40 members take 7 ticks to get their paths, so an AI that re-ordered everyone at every think would keep them waiting on paths for up to half of each 15-tick interval. It orders sparingly:
   - one move per bucket, not per unit;
   - only members the plan changed for: the recorded goal or objective differs from the new one;
   - a member already sent after an objective is re-sent only if the objective has drifted from where the member was sent by more than a quarter of the member's distance to it (at least 4 m, `REORDER_MIN`), or if the member finished its order farther than its `acquire_radius` from the objective. Inside the acquire radius `MeleeCombat`'s own chase re-paths every metre of drift, so the AI doesn't;
@@ -1204,8 +1207,8 @@ The AI and the triggers run inside `World.step()`. They draw no random numbers, 
 | Behavior | What it does |
 |---|---|
 | IDLE | Nothing. The members hold where they stand and fight what comes adjacent |
-| PATROL | Walks the waypoints one leg at a time, attack-moving, so it fights what it meets and walks on. LOOP wraps; PING_PONG turns round at either end. An enemy within `alert_radius` of any member (center to center) switches it to `on_alert` |
-| GUARD | Holds its anchor (the spawn point, or a retreat point) and engages enemies within `guard_radius` of it. See the leash below |
+| PATROL | Walks the waypoints one leg at a time, attack-moving, so it fights what it meets and walks on. LOOP wraps; PING_PONG turns round at either end. An enemy within `alert_radius` of any member (center to center) switches it to `on_alert`; into GUARD, it guards where it was alerted (below) |
+| GUARD | Holds its anchor (the spawn point, a retreat point, or where a patrol was alerted) and engages enemies within `guard_radius` of it. Hurt from outside the radius, it switches to `on_alert`. See the leash and the provoked rule below |
 | HUNT | Engages every enemy it can see |
 | FLANK | Goes after the roles in `flank_roles`, round the end of any melee screening them. See below |
 | AMBUSH | Lies still: a free member that has an order is told to hold where it stands. Switches to `on_alert` when disturbed: a visible enemy within `alert_radius` of any member, hit points lost since the last think (a blast reaches units under the water; a member dying counts), or any member fighting |
@@ -1216,15 +1219,25 @@ The AI and the triggers run inside `World.step()`. They draw no random numbers, 
   - Intruders are visible enemies within the radius of the anchor. With none, or none the group can get at, free members outside the radius attack-move back.
   - Busy members farther than 1.5 × the radius (`GUARD_LEASH_PERMILLE`) are recalled with a forced plain move to the anchor. A recalled member is left alone until its walk home ends, even while an intruder is still inside the radius: re-engaging at the edge picked the outside enemy up again and cycled.
   - STANDOFF members are exempt from the recall while there are intruders, and the bodyguard rule only counts threats within the leash of the anchor (see Decisions).
+- **GUARD provoked.** A GUARD group whose hit points dropped since its last think (a member dying counts), with no intruder inside its radius at this think or at the one before, is being hit from outside the radius: archers, a Sapper's grenades, a Stormcaller's bolts, a fire. Holding the post would only let it bleed, so it switches to `on_alert` (`switch_to`), one way, like an ambush springing, and plans under it at once.
+  - Not a group that has `retreated`: it fell back to hold that post, and holds it, bleeding or not.
+  - Not when `on_alert` is GUARD: the group stays as it is, with no BEHAVIOR event.
+  - **The think before must have had no intruder too.** `AiGroup.phase` is 1 when the last think saw intruders. Without that, an intruder that landed a blow and died between two thinks left the guard hurt with nobody inside, read as fire from outside, and sent it off its post: in a probe of one melee intruder against 1 to 4 guards, 40 of 144 fights ended that way. With it, none did.
+  - Before this rule, Riverside's storm camp lost 4 Husks to Longbows 48 m away without giving an order.
+- **The anchor after an alert.** A PATROL whose `on_alert` is GUARD makes its members' centroid the anchor before it switches, so it guards where it was alerted. It used to keep its spawn point and walk home first. A trigger's SET_BEHAVIOR GUARD leaves the anchor alone: the spawn point, or the retreat point of a group that has retreated.
 - **RETREAT.** Before anything else, whatever the group is doing (an AMBUSH springs first), a group that has not retreated, whose spec sets a threshold, falls back if:
   - its hit points are below `retreat_below_permille` of what it spawned with, and
-  - the visible enemies within 20 m of its centroid (`RETREAT_THREAT_RADIUS`) have more hit points between them than it has left. Hidden ones don't count, and a group losing to nothing in particular stands.
+  - the enemies against it have more hit points between them than it has left (`AiBehaviors._threat`). Those are, each counted once:
+    - every visible enemy within 20 m (`RETREAT_THREAT_RADIUS`, center to center) of any living member;
+    - every living enemy, seen or not, whose melee target (`target_id`) or shot target (`shot_target_id`) is a living member, wherever it stands.
+
+    A group losing to nothing in particular stands. The radius used to be measured from the group's centroid, with no shooters, so a group losing to archers, or reduced to its STANDOFF casters 36 m from the enemy, never retreated: the storm camp bled to 14 % with a threat of 0 at every think. A hidden enemy still doesn't count for standing near, only for fighting or shooting a member.
 
   The first think forces a plain move for every member to the retreat point, dropping the fights they are in. Then it is a leg. Whether it arrives or fails, the point becomes the anchor and the group guards it. `retreated` stays set, so it never retreats twice.
 - **FLANK** (`AiFlank`, `FlankRoute`) has three phases, kept in `AiGroup.phase`:
-  - **Plan.** The focus is the nearest visible enemy (to the group's centroid) whose role is in `flank_roles` and that the group's leader can walk to or reach. It is kept while it stays one. With none, the group hunts that think.
+  - **Plan.** The focus is the nearest visible enemy (to the group's centroid) whose role is in `flank_roles` and that the group's leader can walk to or reach. Once picked it is kept while it is alive, seen, of such a role, and any member, not only the leader, can walk to or reach it. With none, the group hunts that think.
     - The screen is the visible enemy melee units within 30 m of the focus, other than the focus. It blocks if one stands within 6 m (`CLEARANCE`) of the straight line from the group's centroid to the focus.
-    - A group already in contact (as in the approach, below) strikes instead of planning. Not blocked: strike at once. Blocked: a route of two waypoints round the end of the screen, on the side that goes out less (the other if that side leaves the map or the group's pathing component). If neither works: strike.
+    - A group already in contact (as in the approach, below) strikes instead of planning. Not blocked: strike at once. Blocked: a route of two waypoints round the end of the screen, on the side that goes out less. Each waypoint is clamped onto the map, and a side is rejected only if a clamped waypoint lies outside the group's pathing component; then the other side is tried. If neither works: strike.
     - W1 is `SIDE_MARGIN` short of the screen's front and out past its end by `SIDE_MARGIN`. W2 is level with the focus and the same distance out. Each is a FLANK_WAYPOINT event.
   - **Approach.** One leg per waypoint with plain moves, so nothing on the way stops it to fight. It plans again if the focus moves more than 8 m from where it stood at planning, and strikes early on **contact**: any visible enemy within 3 m (edge to edge) of a member. Hit points lost don't count.
   - **Strike.** `engage` every visible enemy, the ASSAULT buckets going for the focus first. If the focus dies the group plans again.
@@ -1242,7 +1255,10 @@ The AI and the triggers run inside `World.step()`. They draw no random numbers, 
     - Otherwise a busy member is left alone.
     - Where it stands will do (`holds`): left alone. An attack-mover is stopped there so `RangedCombat` shoots. One walking a plain move is left to arrive.
     - Otherwise it is sent to a spot. With none it attack-moves at the objective, which `RangedCombat` halts in range, unless it already has a shot. It is re-sent only for a new objective or one that has drifted, not for having stopped.
-  - **A march** stops STANDOFF members 6 m short of the goal on the line from the group's centroid, behind the rest. A leg judges arrival by the others. A group of nothing but STANDOFF units marches to the goal itself: with nobody in front the offset would leave its centroid beyond the arrival radius and fail every leg.
+  - **An attack march** (a PATROL leg, a GUARD's stray return) stops STANDOFF members 6 m short of the goal, on the line from the centroid of the members marched in that call, so they come up behind the rest. A leg judges arrival by the others.
+    - **A plain move** (a retreat, a GUARD recall, a FLANK's approach legs) sends them to the goal itself. Nobody is fighting there to stand behind, and in a retreat the side the group came from is the enemy's: stopped short of the retreat point, the casters stood on the enemy side of it.
+    - **The centroid is of the members marched,** not of the whole group. A member marched on its own (freed from a fight, recalled) would otherwise stop on whatever side the rest of the group stood, which can be through the goal from itself.
+    - The goal itself too when that centroid is the goal, and for a group of nothing but STANDOFF units: with nobody in front the offset would leave its centroid beyond the arrival radius and fail every leg.
   - It tries only five spots, so a unit cornered against a map edge may have none. It ignores `ammo_left`, which no v1 STANDOFF type runs out of.
 - **CLUSTER** (Blightbag) walks at the thickest knot (`ClusterFinder`) of the enemies it can walk to: the one with the most enemies within 5 m (itself included; ties go to the one nearer the Blightbag, then the lower id), at the mean position of that neighborhood. Beyond its `acquire_radius` it takes a plain move, so nothing on the way stops it, and is re-sent when the knot drifts more than 3 m or it stopped short. Within it, one attack-move: melee picks a body in the knot and the burst does the rest.
 
@@ -1255,7 +1271,7 @@ The AI and the triggers run inside `World.step()`. They draw no random numbers, 
 - The AI and the triggers draw no random numbers. Nothing under `sim/ai` or `sim/missions` touches `world.rng`. What would be a coin flip is a rule: nearest, then lower id. Every sort ends in an id tie-break, and every loop runs in ascending unit id, group creation order, or sorted bucket keys.
 - So no RNG draw-order table gains a row, and the tables above stand. A world with no mission plays out exactly as before; only its state hash differs (see Hash).
 - **Why:** the AI's choices are then a function of sim state alone. A peer or a replay can recompute them from the state without sharing draws, and the draw-order tables stay valid.
-- `make check-sim` bans the global random calls but not `world.rng`, so this rule is kept by review (see Not yet).
+- `make check-sim` enforces it: besides the global random calls it bans anywhere in `sim/`, it fails if any code line under `sim/ai` or `sim/missions` mentions `rng` (comment lines are ignored, as for its other checks).
 
 ### Hash
 `state_hash()` gains, after the weather and before the terrain scars:
@@ -1269,7 +1285,7 @@ The AI and the triggers run inside `World.step()`. They draw no random numbers, 
 
 ### View and HUD
 - **`MissionHud`** (`view/hud/mission_hud.gd`) shows the objective at the top centre, below the stats label's two lines, and a large Victory (green) or Defeat (red) banner in the middle once the mission has an outcome. It is hidden in a world with no mission. `MainView` calls `show_world` after each step, a label is only touched when its text changes, and it takes no mouse input, so it can't block a click. The banner pauses nothing (see Not yet).
-- **`AiDebugView`** (`view/ai/ai_debug_view.gd`) is the F7 overlay (`InputBindings.TOGGLE_AI_DEBUG`). It is hidden until toggled, redraws after every step while shown, and only reads the world. Its lines are floats in metres, which `view/` may use.
+- **`AiDebugView`** (`view/ai/ai_debug_view.gd`) is the F5 overlay (`InputBindings.TOGGLE_AI_DEBUG`). It was F7 until Phase 9's plan claimed F7 for the scoreboard; nothing else binds F5. It is hidden until toggled, redraws after every step while shown, and only reads the world. Its lines are floats in metres, which `view/` may use.
   - A camera-facing label over each group with living members, at the centroid: "name: BEHAVIOR", colored by behavior.
   - Lines 0.3 m above the ground, unshaded and drawn over everything, cut into 4 m pieces so they follow hills:
     - a PATROL's waypoints as a loop or a polyline, only while the group is PATROL;
@@ -1280,7 +1296,7 @@ The AI and the triggers run inside `World.step()`. They draw no random numbers, 
 - **`MainView`:**
   - `mission_path` (default `riverside_ai.tres`; empty starts none) is read in `_ready`, and the mission starts at tier 2 before the first step. The Light test squad and the herb plants stay as tick-0 commands.
   - The Dark test squads and the weather schedule are gone. The groups spawn inside the first step, and the triggers bring the rain.
-  - F6 and F9 still work. The stats line ends with "(F6 weather, F7 AI overlay)".
+  - F6 and F9 still work. The stats line ends with "(F5 AI overlay, F6 weather)".
 
 ### The Riverside AI mission (`data/missions/riverside_ai.tres`)
 Positions are meters on the Riverside map: the ford is at x = 300, shallow (depth 1) from z = 218 to 234, the Light squad starts on the north bank around (290, 185), and the ground south of z = 236 is dry.
@@ -1299,12 +1315,13 @@ Positions are meters on the Riverside map: the ford is at x = 300, shallow (dept
   - `ford`: a Light unit within 15 m of the middle of the ford sets "Hold the ford" and `ford_ambush` to HUNT, which springs it.
   - `raid`: a TIMER of 2700 (90 s) spawns `raiders`, ramps rain to 700 ‰ over 150 ticks (with a light wind, which only the view reads), and sets "Raiders on the flank".
   - `raid_over`: `raiders` cleared sets "Clear the south bank".
-  - `win` and `lose`: FACTION_ELIMINATED for Dark and for Light.
+  - `win`: FACTION_ELIMINATED for Dark, `after` `raid`. Without the gate a straight assault won at tick 2539, before the raid at 2700, and skipped the raiders, the rain, and the last objective. Once the raid has fired the raiders are on the map, so `win` can't come before they are dead either.
+  - `lose`: FACTION_ELIMINATED for Light.
 - At tier 2 it spawns 29 Dark units at the start (18 Husks, 2 Stormcallers, 3 Blightbags, 6 Drifters) and 5 Rippers at 90 s.
-- `test_riverside_ai_mission` checks that it validates against the shipped catalog; that every spawn point, waypoint, and retreat point is passable for its group's mobilities; that the ambush's whole ±3 m neighborhood is depth 3+, 12 to 20 m west of the ford; that every trigger area is on the map; that `ford` fires for a Light unit at the ford and not for one 40 m off; and that the raid timer fires on tick 2700.
+- `test_riverside_ai_mission` checks that it validates against the shipped catalog; that every spawn point, waypoint, and retreat point is passable for its group's mobilities; that the ambush's whole ±3 m neighborhood is depth 3+, 12 to 20 m west of the ford; that every trigger area is on the map; that `ford` fires for a Light unit at the ford and not for one 40 m off; that the raid timer fires on tick 2700; and that `win` waits for the raid (every Dark unit killed at tick 1 gives no victory).
 
 ### Demo (`make demo-ai`)
-- Seven captioned stages on Riverside, with F7 on throughout: a patrol, an ambush, a flank, a standoff, a cluster, a retreat, and a trigger-driven finale (objective text, a Dark line, reinforcements and rain, a Victory banner). `DEMO_SPEED=2` runs it faster, `DEMO_STAGE=3` runs one stage alone (group ids differ, so a solo stage can play slightly differently), and `DEMO_CAPTURE=<dir>` saves a screenshot at each result.
+- Seven captioned stages on Riverside, with F5 on throughout: a patrol, an ambush, a flank, a standoff, a cluster, a retreat, and a trigger-driven finale (objective text, a Dark line, reinforcements and rain, a Victory banner). `DEMO_SPEED=2` runs it faster, `DEMO_STAGE=3` runs one stage alone (group ids differ, so a solo stage can play slightly differently), and `DEMO_CAPTURE=<dir>` saves a screenshot at each result.
 - **Light is driven by commands**, exactly like player input. **Dark is the AI:** stages 1 to 6 spawn each group with `AiDirector.spawn_group` and switch behavior with `set_behavior`, and the finale runs on the demo's own `MissionScript`, so its triggers are real.
 - **Every wait counts sim ticks**, and each stage starts on a whole second of ticks. Wall-clock waits made the finale flip between Victory and Defeat with frame timing. Now two runs print identical result lines.
 - **The mission seam.** `MainView.mission_path` is set to empty before the scene enters the tree, and the demo calls `World.start_mission` on the fresh world, between `MainView._ready` and the first step. The first version set `world.mission = null` to get rid of the game's mission, which pokes a world field the demo shouldn't touch.
@@ -1319,10 +1336,19 @@ Positions are meters on the Riverside map: the ford is at x = 300, shallow (dept
   - **The AI isn't in the command stream.** It runs inside `World.step()` as a function of sim state, so a lockstep peer or a replay recomputes the same orders from the same state, and only a human's commands have to cross the wire or be recorded. The cost: the AI's code and the mission data become part of what must match. Peers and replays need the same build, the same mission file, and the same tier. Triggers are the same, which is why SET_WEATHER calls `change_to()` instead of enqueuing a `SetWeatherCommand`.
   - **No RNG** (see above).
   - **Orders go out in buckets** of one tactic, type, and pathing component. The plan said by type. The component came from review of the first AI task, and the tactic with the tactics. See AI groups for why.
-  - **Only free members get orders.** The overrides are a retreat, a leg's retry, the GUARD leash, and a STANDOFF member's dead-zone escape.
+  - **Only free members get orders.** The overrides are a retreat, the GUARD leash, a STANDOFF member's dead-zone escape, and an ambush spring (which surfaces busy members but orders nobody). A leg's retry forces a march only once everyone is free.
   - **Triggers evaluate in two passes**, so no trigger's effects leak into another's condition on the same tick and the result doesn't depend on the order they are listed in. A trigger first checks one tick after its `after` fired, so a chain takes a tick a link and never zero. A defeat outranks a victory on the same tick. Nothing is evaluated after an outcome.
   - **Stormcaller 900 ‰, Drifter 850 ‰** (`ai_standoff_permille`), so a unit that stands back doesn't sit at the very edge of its reach, where one step of the target out of range would stop it shooting.
-  - **Warden auto-heal and Ripper fetch priority are deferred.** A Warden still heals only when told (`HealCommand`), and a Ripper still scavenges on its own as in Phase 6 (nearest first, within 8 m). The AI doesn't cut an errand short for an ordinary order: a unit on one isn't free.
+  - **Warden auto-heal and Ripper fetch priority are deferred.** A Warden still heals only when told (`HealCommand`), and a Ripper still scavenges on its own as in Phase 6 (nearest first, within 8 m). The AI doesn't cut an errand short for an ordinary order: a unit on one isn't free. The reasons recorded at plan approval:
+    - Warden auto-heal is player-side: Wardens are Light, so it is a question of how the player's units behave, not of the enemy AI, and Old Mill is meant to teach healer management, which a Warden that heals on its own would take away.
+    - Ripper fetch priority (what a Ripper chooses to pick up) was outside the Phase 7 prompt's scope, so Phase 6's nearest-first rule stays.
+- **Rulings in the final fix wave** (from the whole-branch review), each with its reason:
+  - **RETREAT counts enemies near any member and anyone fighting or shooting a member.** See RETREAT. The cost: a hidden enemy that has a member as its target counts, though the group can't see it. It is plainly fighting the group.
+  - **GUARD hurt from outside its radius switches to `on_alert`,** unless it has retreated or `on_alert` is GUARD. See GUARD provoked. The ruling was the hit-point drop with no intruder now; the check that the think before had none either was added in the implementation, with a regression test, because the bare rule sent a guard that had just killed its intruder off hunting (40 of 144 probe fights). The cost: a guard standing in a brush fire, or hit by a blast it can't see the source of, also switches. In `make demo-ai` the finale's GUARD line is now provoked into HUNT about 15 s after it appears and charges the Light force (it used to stand and bleed), and stage 4's guard is provoked into HUNT partway through, after which its Stormcaller is no longer walked back to the post.
+  - **STANDOFF members stop short only on attack marches,** measured from the members marched. See Tactics.
+  - **A PATROL alerted into GUARD guards where it was alerted;** a trigger's SET_BEHAVIOR GUARD keeps the anchor. A trigger names a post on purpose (the spawn point, or the retreat point); an alert happens wherever the patrol was.
+  - **`ai_standoff_permille` is capped at 950,** not given a tolerance in `holds`, so the range check stays the one `RangedCombat` makes.
+  - **The AI overlay is F5,** not F7, which Phase 9's plan reserves for the scoreboard.
 - **Rulings during the build,** each with its reason:
   - **FLANK's `SIDE_MARGIN` is 6 m, not the 4 m first specified.** A group walks the route with its center on the line, so its nearest member passes the end of the screen at the margin less two body radii and half the group's width. At 4 m that was about 2.5 m edge to edge for three raiders, inside the 3 m contact distance, so every flank was found out by the end unit of the screen it was rounding and cut the corner (a measured 83 mm from a screen unit). At 6 m, equal to `CLEARANCE`, a box of five Rippers keeps 3.8 m by the arithmetic.
   - **A FLANK strikes early on contact only, not when it loses hit points.** Archers always shoot a flank on its way round, so a group that broke off at the first arrow charged the screen it was rounding (demo stage 3). The cost: a flank under heavy fire takes the long way and may arrive weaker instead of charging. AMBUSH's hit-point spring and RETREAT are unchanged.
@@ -1334,13 +1360,14 @@ Positions are meters on the Riverside map: the ford is at x = 300, shallow (dept
   - **STANDOFF members are exempt from the leash while there are intruders.** A firing spot 28 to 36 m out is usually past the leash. Recalled, the caster dropped its cast, walked home, was engaged again, and walked out again. The cost: a caster may stand up to about its range beyond the guard zone during a fight. They come home through the stray return once no intruder is left.
   - **A STANDOFF member walking a plain move isn't stopped when its position would do.** Stopping it at once parks it at 40,000 mm, the very edge of its range, which defeats `ai_standoff_permille`, and an escaping caster stopped at the edge of its dead zone with the enemy a step behind.
   - **`AiOrders.send` ends the errand of every unit it orders, and `is_free` doesn't read `act_left` alone.** A forced move left a mid-pickup scavenger with `act_left > 0` and a dead errand. It was never free again, and a retreating group wedged in RETREAT. `act_left` only counts down during INTERACT, which `is_free` already excludes.
-  - **An ambush's spot is a sample whose whole ±3 m neighborhood is depth 3+.** A single deep sample left a BOX of Husks partly in depth 1 to 2, visible, and shot by Longbows, so the ambush sprang before its trigger. Riverside's is (284, 222) m, and the mission test asserts it.
+  - **An ambush's spot is a sample whose whole ±3 m neighborhood is depth 3+.** A single deep sample left a BOX of Husks partly in depth 1 to 2, visible, and shot by Longbows, so the ambush sprang before its trigger. Riverside ships (284, 222) m; the mission test asserts that its whole ±3 m neighborhood is depth 3+ and that it lies 12 to 20 m from the ford, not the coordinates themselves. (280, 221) m is `test_ai_determinism`'s own spot, which that test finds by scanning west from x = 280 m, not the shipped one.
 
 ### Behavior changes to earlier phases
 - **A sprung ambusher stays surfaced.** Phase 3's targeting rule and Phase 5's `Visibility.is_submerged` each gained the exception, and both sections say so.
 - **`MainView` no longer spawns the Dark test squads or enqueues the weather schedule.** The Riverside AI mission does both. F6 now lasts until the mission's next weather change, and F9 stays.
 - **`Lightning.is_clear` calls the new `Lightning.is_clear_from`,** which takes the launch point as a parameter. No behavior change: the Phase 6 lightning tests pass unmodified.
 - **Every world hashes the director,** so hash values from before Phase 7 aren't comparable.
+- **The combat, projectile, and abilities demos turn the AI mission off.** They load `main.tscn`, which now starts the Riverside AI mission, and its 29 AI units hunted across every staged event. Each sets `MainView.mission_path` to empty before the scene enters the tree, as `demo-ai` does, and its finale spawns the Dark test squad its phase had, where MainView used to stand it (`demo` Husks and Rippers; `demo-projectiles` those and Drifters; `demo-abilities` the whole roster). `demo`'s finale took MainView's first 50 units, which assumed the Dark squads; it takes the Shieldmen and Reavers now. Headless at `DEMO_SPEED=30` their finales end Light 23/25 vs Dark 0/25, Light 34/37 vs Dark 0/31, and Light 8/37 vs Dark 0/36 (19/37 at 3×; see Phase 6's Measured).
 - No earlier test changed: the 602 tests that existed when Phase 7 started pass unmodified.
 
 ### Measured (M4 Max, headless)
@@ -1353,7 +1380,8 @@ Positions are meters on the Riverside map: the ford is at x = 300, shallow (dept
 | The same caster with a slow walker closing | The walker gets within 9.5 m once, the caster escapes once and never spends a tick inside 8 m, and the walker is dead on tick 654 |
 | A Blightbag with a decoy 14 m off and a knot of 5 about 33 m off | Bursts on tick 884, 2.7 m from the knot's center, after two orders; the decoy is untouched |
 | 3 raiders flank a screen of 9 with two archers behind it | Route (30.2, 23.5) then (29.9, 33.7) m. They stay at least 2.6 m (edge to edge; 2.4 m for five raiders) from every screen unit until the first swing, which is at an archer on tick 633. Without the screen the first swing is on tick 421 |
-| Test suite | 906 tests (602 before Phase 7), 65 to 97 s depending on load |
+| The shipped Riverside AI mission in `MainView`, tier 2, against the 37-unit Light test squad (final review) | The whole sim about 1.5 to 1.65 ms/tick. The AI's own orders never put more than 1 path on the A* queue; the player's attack-move of all 37 Light units peaks it at 31 |
+| Test suite | 932 tests (602 before Phase 7; 906 before the final fix wave), 65 to 97 s depending on load |
 
 `make demo-ai` prints these result lines, the same on every run (headless, at `DEMO_SPEED=30`):
 
@@ -1362,26 +1390,23 @@ Positions are meters on the Riverside map: the ford is at x = 300, shallow (dept
 | 1 Patrol | 3 waypoints in 26 s. It spotted the Shieldmen 7 s after they set out and switched to HUNT. Shieldmen 3/4, Husks 0/5 |
 | 2 Ambush | Sprang 6.9 s after the Shieldmen set out, as the first reached the ford; 6/6 Husks surfaced. Shieldmen 8/8, Husks 0/6 |
 | 3 Flank | A 2-waypoint route round the line, struck 16 s after setting out: 37 swings at Wardens, 0 at Shieldmen. Wardens 0/3, Shieldmen 8/8, Rippers 5/5 |
-| 4 Standoff | 2 bolts and 26 moves to a new firing spot. After 43 s the Stormcaller is dead, Husks 0/6, Reavers 5/6 |
+| 4 Standoff | 2 bolts and 58 moves to a new firing spot. After 60 s the Stormcaller is alive, Husks 0/6, Reavers 5/6. (Before the final fix wave: 26 moves, dead after 43 s. Its group is now provoked into HUNT partway through, hit from outside its 45 m radius, so the stray return no longer walks the caster back to the post) |
 | 5 Cluster | 3/3 Blightbags burst, the nearest 2.8 m from the knot's middle and 16.9 m from the straggler. 3 of the knot killed, 7 paralyzed, the straggler untouched |
 | 6 Retreat | Fell back 12 s after the Shieldmen set out with 2/4 left and 45 % of their starting health, walked to the point 36 m from the post, and is guarding it. Shieldmen 10/10 |
-| 7 Finale | Victory banner after 52 s. Rain and reinforcements came at 24 s. Light 15/20 standing, Dark 15/15 down |
+| 7 Finale | Victory banner after 43 s. Rain and reinforcements came at 24 s. Light 20/20 standing, Dark 15/15 down. (Before the final fix wave: after 52 s, Light 15/20. The GUARD line, hit from outside its radius, is now provoked into HUNT and charges instead of standing to bleed) |
 
 ### Not yet
 - **Balance is untuned.** It is all data (`riverside_ai.tres`, unit stats), for Phase 8's playtest pass:
   - In a scripted run, 37 attack-moving Light units wore the Dark side down to 3 to 8 units by tick 2400.
   - The Blightbags walk at 1.1 m/s, so they take about 75 s to cross and start hunting well before the player arrives.
-  - The demo finale is a knife-edge: with 16 Light units they lose, with 18 they win with 14 left, with the shipped 20 they win with 15, with 22 they win with 20.
+  - Before the final fix wave the demo finale was a knife-edge: with 16 Light units they lost, with 18 they won with 14 left, with the shipped 20 with 15, with 22 with 20. With GUARD now provoked by fire, the shipped 20 win with all 20; the sweep hasn't been re-run.
   - Three Longbows kill all five Rippers on their way round (7 swings at the Longbows, none lost), which is why demo stage 3 uses Wardens.
-- **A Stormcaller vs faster melee** re-spots at almost every think and rarely casts (demo stage 4: 26 moves to a new spot for 2 bolts). A lone caster circling 36 m out from standing Reavers made 40 re-spots for 1 bolt in 60 s. A STANDOFF unit whose target never closes keeps looking for a spot instead of casting.
+- **A Stormcaller vs faster melee** re-spots at almost every think and rarely casts (demo stage 4: 58 moves to a new spot for 2 bolts in 60 s; 26 in 43 s before the final fix wave). A lone caster circling 36 m out from standing Reavers made 40 re-spots for 1 bolt in 60 s. A STANDOFF unit whose target never closes keeps looking for a spot instead of casting.
 - **`riverside_ai`'s objective can go backwards.** `ford` fires the first time Light reaches the ford, which can be after `raid` has set "Raiders on the flank", and it overwrites that. An `after` gate would fix it, in Phase 8's pass over the data.
-- **`ai_standoff_permille` of 1000 passes validation** but a unit that arrives at the very edge of its range overshoots by up to 250 mm and fails `holds`' range check, so it would be re-sent at every think. Cap it at about 950 or add a tolerance. The shipped 900 and 850 are unaffected.
 - **The banner doesn't pause anything.** After Victory or Defeat the triggers stop, but the world keeps stepping and input still works. End screens are Phase 8's.
 - **Warden auto-heal and Ripper fetch priority** (see Decisions).
-- **Units don't path around fire,** the AI's included. It was Phase 7's in the Phase 5 notes and has moved to a later phase.
+- **Units don't path around fire,** the AI's included. It was Phase 7's in the Phase 5 notes and has moved to a later phase. A GUARD group burning with no intruder inside its radius reads the fire as an attack from outside and switches to `on_alert`.
 - **Random wave selection.** Old Mill picks 4 of its 5 waves per seed (Phase 8), and neither the AI nor a trigger draws dice. Phase 8 has to decide where that roll lives.
-- **Phase 9's scoreboard wants F7,** which is now the AI overlay.
-- **No automatic check that `sim/ai` and `sim/missions` stay RNG-free.** `make check-sim` bans the global calls, not `world.rng`.
 - **The AI has no sight range.** It knows every enemy on the map that isn't submerged. A skirmish AI (Phase 9) may want fog.
 - **STANDOFF** checks only a 1.5 m friend corridor for non-bolt projectiles (a Drifter's arrows), with no terrain or walls, which matters on walled maps. It ignores ammo.
 - **A FLANK's `SIDE_MARGIN`** is sized for a box of up to about ten members. A wider group needs a margin that scales with its width.
