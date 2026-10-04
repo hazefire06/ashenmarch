@@ -270,6 +270,29 @@ func test_old_mills_sappers_lay_all_their_charges_on_the_ramps_within_forty_seco
 	assert_gt(near[1], 0, "and the south-east one")
 
 
+func test_a_stand_off_that_goes_quiet_for_a_minute_sends_the_melee_out_to_finish_it() -> void:
+	# Old Mill with nothing coming but one idle Husk at the foot of the plateau's
+	# west cliff: in sight, reachable, and not on the plateau, so a pilot that
+	# only holds would wait for it forever.
+	var mission: MissionDef = _campaign.missions[2].duplicate() as MissionDef
+	var husks: AiGroupSpec = MissionFixtures.group(&"husks", 1, 130, 160)
+	var groups: Array[AiGroupSpec] = [husks]
+	var triggers: Array[TriggerSpec] = []
+	mission.rules = MissionFixtures.script(groups, triggers)
+	var runner: PlaytestRunner = _runner()
+	var state: CampaignState = CampaignState.new_campaign(SEED, TIER)
+	var result: PlaytestResult = runner.play(mission, 2, state, PlaytestPilot.Kind.COMPETENT, 2500)
+	assert_eq(result.stall_breaks, 1, "the pilot went out once")
+	var sortie: int = -1
+	for command: SimCommand in runner.last_pilot.recorded:
+		var march: AttackMoveCommand = command as AttackMoveCommand
+		if march != null and Vector2(march.x, march.z).distance_to(Vector2(130.0 * M, 160.0 * M)) < 3.0 * M:
+			sortie = command.tick
+			break
+	assert_gt(sortie, PlaytestPilot.STALL_TICKS, "it was ordered at the Husk, and not before the minute was up")
+	runner.release()
+
+
 # ---- the pilot's rules, one decision at a time ----
 
 func test_a_sapper_throws_at_a_cluster_of_three_in_range() -> void:
@@ -501,9 +524,9 @@ func test_the_fords_and_old_mills_tables_say_what_went_wrong() -> void:
 	mill.waves_spawned = 3
 	var results: Array[PlaytestResult] = [ford, ok, mill]
 	var text: String = PlaytestReport.markdown(results, "T")
-	assert_string_contains(text, "| 2 | competent | 2 | 50% | drifter 1 |")
+	assert_string_contains(text, "| 2 | competent | 2 | 50% | drifter 1 | 100 / 100 |")
 	assert_string_contains(text, "bags 1, husks 1, rippers 1, storm 1")
-	assert_string_contains(text, "wave 3 (bags) 1")
+	assert_string_contains(text, "lost in wave 3 (bags) 1")
 
 
 func test_a_chained_campaign_is_tabled_by_how_far_it_got() -> void:

@@ -21,6 +21,10 @@ const MAX_DESCRIBED: int = 8
 ## (UnitMovement.GIVE_UP_TICKS), and the runner looks every 30, so this catches
 ## each one at least twice.
 const STUCK_TICKS: int = 120
+## ...if it is also more than this far (milli-units) from the goal it was sent
+## to: a unit waiting its turn for a crowded slot is a couple of meters off and
+## no pathing fault, and a patrol or a formation does that every time it stops.
+const STUCK_FAR: int = 4000
 ## How many stuck units a run describes in its notes.
 const MAX_STUCK_NOTED: int = 4
 
@@ -70,13 +74,18 @@ func play(
 	world.step()
 	stats.begin(world)
 	stats.observe(world)
+	# The AI-led Light units (The Ford's villager) exist after it too: watched.
+	var wards: Array[Unit] = []
+	for unit: Unit in world.units:
+		if unit.faction == UnitType.Faction.LIGHT and world.ai.controls(unit.id):
+			wards.append(unit)
 	while world.mission.outcome == MissionRuntime.Outcome.NONE and world.tick < max_ticks:
 		if world.tick == 1 or world.tick % PlaytestPilot.THINK_TICKS == 0:
 			_watch_for_stuck_units(world, result, stuck)
 			pilot.think(world)
 		world.step()
 		stats.observe(world)
-		_watch_the_villager(world, result)
+		_watch_the_villager(world, result, wards)
 		for event: AiEvent in world.ai_events:
 			if event.kind == AiEvent.Kind.AMBUSH_SPRUNG:
 				result.ambushes_sprung += 1
@@ -84,7 +93,7 @@ func play(
 			print("    " + trace_line(world, pilot))
 	stats.finish(world)
 	_fill(result, mission, state, pilot, world, plan, stats, world_seed, chain)
-	result.wall_ms = (Time.get_ticks_usec() - started_us) / 1000
+	result.wall_ms = roundi((Time.get_ticks_usec() - started_us) / 1000.0)
 	last_world = world
 	last_plan = plan
 	last_stats = stats
@@ -106,14 +115,21 @@ func _watch_for_stuck_units(world: World, result: PlaytestResult, seen: Dictiona
 	for unit: Unit in world.units:
 		if not unit.is_alive() or unit.state != Unit.State.MOVING or unit.stuck_ticks < STUCK_TICKS or seen.has(unit.id):
 			continue
+		if FixedMath.length(unit.goal_x - unit.x, unit.goal_z - unit.z) <= STUCK_FAR:
+			continue
 		seen[unit.id] = true
 		result.stuck_units += 1
 		if result.stuck_units <= MAX_STUCK_NOTED:
 			result.notes.append("stuck at tick %d: %s" % [world.tick, describe(world, unit)])
 
 
-# Notes what killed the escorted villager, from the step's KILL events.
-func _watch_the_villager(world: World, result: PlaytestResult) -> void:
+# Notes how low the escorted villager's hit points got, and what killed him
+# (from the step's KILL events).
+func _watch_the_villager(world: World, result: PlaytestResult, wards: Array[Unit]) -> void:
+	for unit: Unit in wards:
+		result.villager_lowest_percent = mini(
+			result.villager_lowest_percent, roundi(100.0 * unit.hp / unit.type.max_hp)
+		)
 	for event: CombatEvent in world.combat_events:
 		if event.kind != CombatEvent.Kind.KILL:
 			continue
@@ -211,7 +227,7 @@ static func trace_line(world: World, pilot: PlaytestPilot) -> String:
 	if soldiers > 0:
 		centre /= soldiers
 	return "t=%ds route %d at (%.0f, %.0f) | light %s | dark %s" % [
-		world.tick / World.TICK_RATE, pilot.route_index, centre.x, centre.y, light, dark,
+		roundi(world.tick / float(World.TICK_RATE)), pilot.route_index, centre.x, centre.y, light, dark,
 	]
 
 

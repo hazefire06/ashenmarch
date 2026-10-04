@@ -162,18 +162,21 @@ static func _ford_table(results: Array[PlaytestResult]) -> PackedStringArray:
 		var died: int = 0
 		var sprung: int = 0
 		var killers: Dictionary[String, int] = {}
+		var lowest: Array[float] = []
 		for r: PlaytestResult in runs:
+			lowest.append(r.villager_lowest_percent)
 			if r.ambushes_sprung > 0:
 				sprung += 1
 			if r.villager_died:
 				died += 1
 				killers[r.villager_killer] = killers.get(r.villager_killer, 0) + 1
 		if rows.is_empty():
-			rows.append("| mode | tier | pilot | runs | villager died | killed by | pool ambush sprung |")
-			rows.append("|---|---|---|---|---|---|---|")
-		rows.append("| %s | %d | %s | %d | %s | %s | %s |" % [
+			rows.append("| mode | tier | pilot | runs | villager died | killed by | his lowest hp, median / worst (%) | pool ambush sprung |")
+			rows.append("|---|---|---|---|---|---|---|---|")
+		rows.append("| %s | %d | %s | %d | %s | %s | %.0f / %.0f | %s |" % [
 			"chain" if g["chain"] else "fresh", g["tier"], g["pilot"], runs.size(),
-			_pct(died, runs.size()), _counts_text(killers), _pct(sprung, runs.size()),
+			_pct(died, runs.size()), _counts_text(killers), median(lowest), percentile(lowest, 0.0),
+			_pct(sprung, runs.size()),
 		])
 	return rows
 
@@ -187,23 +190,25 @@ static func _mill_table(results: Array[PlaytestResult]) -> PackedStringArray:
 		var drawn: Dictionary[String, int] = {}
 		var ended_in: Dictionary[String, int] = {}
 		var charges: Array[float] = []
+		var breaks: int = 0
 		for r: PlaytestResult in runs:
+			breaks += r.stall_breaks
 			for wave: String in r.waves:
 				drawn[wave] = drawn.get(wave, 0) + 1
 			if not r.won() and not r.waves.is_empty():
-				var key: String = "none spawned" if r.waves_spawned == 0 else "wave %d (%s)" % [
-					r.waves_spawned, r.waves[r.waves_spawned - 1],
+				var key: String = "%s in %s" % [
+					r.outcome, "no wave" if r.waves_spawned == 0 else "wave %d (%s)" % [r.waves_spawned, r.waves[r.waves_spawned - 1]],
 				]
 				ended_in[key] = ended_in.get(key, 0) + 1
 			if r.charges_done_tick >= 0:
 				charges.append(float(r.charges_done_tick) / World.TICK_RATE)
 		if rows.is_empty():
-			rows.append("| mode | tier | pilot | runs | waves drawn (runs) | lost or timed out during | charges laid by (median s) |")
-			rows.append("|---|---|---|---|---|---|---|")
-		rows.append("| %s | %d | %s | %d | %s | %s | %s |" % [
+			rows.append("| mode | tier | pilot | runs | waves drawn (runs) | ended badly in | charges laid by (median s) | sorties to finish a stand-off |")
+			rows.append("|---|---|---|---|---|---|---|---|")
+		rows.append("| %s | %d | %s | %d | %s | %s | %s | %d |" % [
 			"chain" if g["chain"] else "fresh", g["tier"], g["pilot"], runs.size(), _counts_text(drawn),
 			_counts_text(ended_in) if not ended_in.is_empty() else "-",
-			("%.0f" % median(charges)) if not charges.is_empty() else "n/a",
+			("%.0f" % median(charges)) if not charges.is_empty() else "n/a", breaks,
 		])
 	return rows
 
