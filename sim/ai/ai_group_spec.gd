@@ -35,6 +35,11 @@ enum Behavior {
 	## and the enemies against it (near any member, or fighting or shooting
 	## one) outweigh it; a script can't set it.
 	RETREAT,
+	## Walks its waypoints only while a friend (one of the player's units) is
+	## within escort_radius of it, and waits where it stands when the friend
+	## falls behind or an enemy comes within alert_radius (a villager led
+	## across a ford). It never switches on an alert and never retreats.
+	ESCORT,
 }
 
 ## How a PATROL walks its waypoints.
@@ -69,7 +74,7 @@ enum PatrolMode {
 @export var spawn_at_start: bool = false
 ## What it does from the moment it spawns.
 @export var behavior: Behavior = Behavior.IDLE
-## PATROL: the route, as x, z pairs.
+## PATROL or ESCORT: the route, as x, z pairs.
 @export var waypoints: PackedInt32Array = PackedInt32Array()
 ## PATROL: how it walks the waypoints, round in a loop or out and back.
 @export var patrol_mode: PatrolMode = PatrolMode.LOOP
@@ -77,7 +82,8 @@ enum PatrolMode {
 @export var guard_radius: int = 0
 ## PATROL: an enemy this close (center to center, to any member) switches the
 ## group to on_alert; 0 never does. AMBUSH: the radius that springs it, which
-## must be above 0.
+## must be above 0. ESCORT: a visible enemy this close makes it wait (it never
+## switches); 0 means enemies never stop it.
 @export var alert_radius: int = 0
 ## What a PATROL or AMBUSH becomes when it spots an enemy, and what a GUARD
 ## becomes when it is hurt with no enemy inside guard_radius (fire from
@@ -94,6 +100,11 @@ enum PatrolMode {
 @export var retreat_below_permille: int = 0
 ## Where RETREAT falls back to, one x, z pair. Empty: its spawn point.
 @export var retreat_point: PackedInt32Array = PackedInt32Array()
+## ESCORT: how close (center to center) a friend must be to any member for the
+## group to walk, in milli-units. Must be above 0 for an ESCORT. A group that
+## is already walking tolerates the friend 2 m farther before it waits
+## (AiBehaviors.ESCORT_HYSTERESIS).
+@export var escort_radius: int = 0
 
 
 ## The spawn point this tier uses.
@@ -151,8 +162,14 @@ func validate(catalog: UnitCatalog) -> PackedStringArray:
 		errors.append(prefix + "alert_radius can't be negative")
 	if guard_radius < 0:
 		errors.append(prefix + "guard_radius can't be negative")
+	if escort_radius < 0:
+		errors.append(prefix + "escort_radius can't be negative")
 	if retreat_below_permille < 0 or retreat_below_permille > 1000:
 		errors.append(prefix + "retreat_below_permille must be 0..1000")
+	if behavior == Behavior.ESCORT and retreat_below_permille != 0:
+		# RETREAT would walk the group to its retreat point and leave it there
+		# guarding it, abandoning the escort for good.
+		errors.append(prefix + "an ESCORT can't have retreat_below_permille: a retreat would abandon the escort")
 	if retreat_point.size() != 0 and retreat_point.size() != 2:
 		errors.append(prefix + "retreat_point must be empty or one x, z pair")
 	if flank_roles & ~UnitType.ALL_ROLES_MASK != 0:
@@ -188,6 +205,13 @@ func _param_problems(b: Behavior) -> PackedStringArray:
 		Behavior.FLANK:
 			if flank_roles == 0:
 				problems.append("FLANK needs flank_roles to name at least one role")
+		Behavior.ESCORT:
+			if waypoints.size() % 2 != 0:
+				problems.append("ESCORT needs waypoints as x, z pairs")
+			elif waypoints.size() < 2:
+				problems.append("ESCORT needs at least 1 waypoint")
+			if escort_radius <= 0:
+				problems.append("ESCORT needs escort_radius > 0")
 		Behavior.RETREAT:
 			problems.append("RETREAT is entered by the AI, not set")
 	return problems

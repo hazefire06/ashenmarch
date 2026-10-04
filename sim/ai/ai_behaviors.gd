@@ -25,6 +25,10 @@ extends RefCounted
 ##   to anyone fighting or shooting a member, falls back, once, to its
 ##   retreat point (or its spawn point) and then guards it. think() sends it:
 ##   see _should_retreat.
+## - ESCORT: walks its waypoints (plain moves, so it never stops to fight)
+##   only while one of the player's units is near, and waits where it stands
+##   while the friend is far or a visible enemy is close (a villager led
+##   across a river).
 
 ## What a leg (one march to one goal) came to.
 enum LegResult {
@@ -50,6 +54,12 @@ const DEFAULT_GUARD_RADIUS: int = 10000
 ## still count against it in a retreat, in milli-units (center to center). An
 ## enemy fighting or shooting a member counts wherever it stands.
 const RETREAT_THREAT_RADIUS: int = 20000
+## An escort's radii give a little at the margin, so a friend or an enemy
+## standing right at one doesn't make it stop and set off every think: a
+## walking group allows the friend this much beyond escort_radius, and a
+## waiting one needs the enemy this much beyond alert_radius, before it
+## changes its mind. Milli-units.
+const ESCORT_HYSTERESIS: int = 2000
 
 
 ## Plans the group's next step under its behavior and notes its members'
@@ -138,6 +148,8 @@ static func _run(world: World, group: AiGroup, units: Array[Unit]) -> void:
 			_ambush(world, group, units)
 		AiGroupSpec.Behavior.RETREAT:
 			_retreat(world, group, units)
+		AiGroupSpec.Behavior.ESCORT:
+			_escort(world, group, units)
 
 
 # Every member has finished, is free, and was last sent to (x, z).
@@ -314,9 +326,13 @@ static func _disturbed(world: World, group: AiGroup, units: Array[Unit]) -> bool
 # spec sets a threshold, its members' hit points are below that share of what
 # it spawned with, and the enemies against it (_threat) have more hit points
 # between them than it has left. A group losing to nothing in particular
-# stands.
+# stands. An escort never falls back: it would be abandoning what it escorts,
+# and a spec that starts as one has no threshold (AiGroupSpec.validate), so
+# this is for a group a trigger switched to ESCORT that does.
 static func _should_retreat(world: World, group: AiGroup, units: Array[Unit]) -> bool:
-	if group.behavior == AiGroupSpec.Behavior.RETREAT or group.retreated:
+	if group.behavior == AiGroupSpec.Behavior.RETREAT or group.behavior == AiGroupSpec.Behavior.ESCORT:
+		return false
+	if group.retreated:
 		return false
 	var permille: int = group.spec.retreat_below_permille
 	if permille <= 0:
@@ -377,6 +393,83 @@ static func _retreat(world: World, group: AiGroup, units: Array[Unit]) -> void:
 	group.anchor_x = goal.x
 	group.anchor_z = goal.y
 	world.ai.set_behavior(world, group, AiGroupSpec.Behavior.GUARD)
+
+
+# ESCORT, in AiGroup.phase: 0 walking, 1 waiting, 2 arrived (the members hold).
+# Walking, it waits if no friend is within escort_radius of any member, or a
+# visible enemy is within alert_radius of any member (0: never). It stops the
+# members where they stand (UnitOrders.stop) and reports ESCORT_WAIT. Each
+# member's recorded order is reset to where it stands too: AiOrders.march skips
+# a member already sent to the leg's goal, so without that the next leg, to
+# the same waypoint, would send nobody. A waiting group walks again once a
+# friend is within escort_radius and no enemy is within alert_radius, and
+# reports ESCORT_GO. The pause ended the old leg, retry and all, so the leg
+# that follows starts afresh. Each limit gives way a little once the group is
+# in the state it would leave (ESCORT_HYSTERESIS): a walking group tolerates a
+# friend that far past escort_radius, and a waiting one wants the enemy that
+# far past alert_radius. Walking is a plain-move leg to the current waypoint,
+# so nothing on the way stops it to fight. ARRIVED reports the waypoint and
+# goes on to the next, or after the last arrives and holds, the index staying
+# on the last waypoint. FAILED reports it and does not advance: the next think
+# starts a new leg at the same waypoint, because skipping one could send the
+# group the long way round whatever it was led to cross.
+static func _escort(world: World, group: AiGroup, units: Array[Unit]) -> void:
+	if group.phase == 2:
+		return
+	var spec: AiGroupSpec = group.spec
+	var waiting: bool = group.phase == 1
+	var friend_radius: int = spec.escort_radius + (0 if waiting else ESCORT_HYSTERESIS)
+	var enemy_radius: int = spec.alert_radius + (ESCORT_HYSTERESIS if waiting else 0)
+	var held_up: bool = (
+		not _friend_within(world, group, units, friend_radius)
+		or (spec.alert_radius > 0 and _enemy_within(world, group.faction, units, enemy_radius))
+	)
+	var i: int = group.waypoint_index
+	if waiting:
+		if held_up:
+			return
+		group.phase = 0
+		var to: Vector2i = Vector2i(spec.waypoints[2 * i], spec.waypoints[2 * i + 1])
+		world.ai_events.append(AiEvent.new(AiEvent.Kind.ESCORT_GO, group.id, to.x, to.y, i))
+	elif held_up:
+		var ids: PackedInt32Array = PackedInt32Array()
+		for unit: Unit in units:
+			ids.append(unit.id)
+			group.record_order(unit.id, unit.x, unit.z, 0)
+		UnitOrders.stop(world, ids)
+		group.leg_active = false
+		group.phase = 1
+		var c: Vector2i = AiOrders.centroid(units)
+		world.ai_events.append(AiEvent.new(AiEvent.Kind.ESCORT_WAIT, group.id, c.x, c.y, i))
+		return
+	var result: LegResult = leg(world, group, units, spec.waypoints[2 * i], spec.waypoints[2 * i + 1], false)
+	if result == LegResult.RUNNING:
+		return
+	var kind: AiEvent.Kind = (
+		AiEvent.Kind.WAYPOINT_REACHED if result == LegResult.ARRIVED else AiEvent.Kind.WAYPOINT_FAILED
+	)
+	world.ai_events.append(AiEvent.new(kind, group.id, spec.waypoints[2 * i], spec.waypoints[2 * i + 1], i))
+	if result == LegResult.FAILED:
+		return
+	if i + 1 >= spec.waypoints.size() >> 1:
+		group.phase = 2
+		return
+	group.waypoint_index = i + 1
+	leg(world, group, units, spec.waypoints[2 * i + 2], spec.waypoints[2 * i + 3], false)
+
+
+# True if a friend stands within radius (center to center) of any of units: a
+# living unit on the group's side that the AI doesn't drive, so one of the
+# player's. The group's own members and every other AI unit are driven, so
+# controls() already leaves them out.
+static func _friend_within(world: World, group: AiGroup, units: Array[Unit], radius: int) -> bool:
+	for friend: Unit in world.units:
+		if not friend.is_alive() or friend.faction != group.faction or world.ai.controls(friend.id):
+			continue
+		for unit: Unit in units:
+			if _distance(unit, friend.x, friend.z) <= radius:
+				return true
+	return false
 
 
 # True if an enemy of faction stands within radius (center to center) of

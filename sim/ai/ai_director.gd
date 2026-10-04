@@ -30,23 +30,17 @@ var _controlled: Dictionary[int, bool] = {}
 ## spec must have passed MissionScript.validate().
 func spawn_group(world: World, spec: AiGroupSpec, spec_index: int, tier: int) -> AiGroup:
 	var type_indices: Array[int] = []
-	var largest_radius: int = 0
 	for entry: AiUnitEntry in spec.units:
 		var type_index: int = world.catalog.index_of(entry.type_id)
 		for _n: int in Difficulty.pick(entry.counts, tier):
 			type_indices.append(type_index)
-			largest_radius = maxi(largest_radius, world.catalog.types[type_index].body_radius)
 	var at: Vector2i = spec.spawn_point(tier)
 	var group: AiGroup = AiGroup.new(_next_group_id, spec_index, spec, spec.faction, at.x, at.y)
 	_next_group_id += 1
-	var slots: Array[FormationSlot] = Formations.slots(
-		spec.formation, type_indices.size(), at.x, at.y, spec.facing_x, spec.facing_z,
-		Formations.spacing_for(largest_radius)
+	var block: Array[Unit] = world.spawn_block(
+		type_indices, spec.faction, at.x, at.y, spec.facing_x, spec.facing_z, spec.formation
 	)
-	for i: int in type_indices.size():
-		var unit: Unit = world.spawn_unit(
-			type_indices[i], spec.faction, slots[i].x, slots[i].z, slots[i].facing_x, slots[i].facing_z
-		)
+	for unit: Unit in block:
 		group.spawned_ids.append(unit.id)
 		_controlled[unit.id] = true
 		group.members.append(unit.id)

@@ -261,6 +261,34 @@ func spawn_unit(
 	return unit
 
 
+## Spawns a block of units on one side laid out in a formation: type_indices
+## (catalog indices, which must all be valid) in order, front to back, on the
+## formation's slots centered on (x, z) and facing (facing_x, facing_z), zero
+## meaning north. Spacing follows the largest body in the block
+## (Formations.spacing_for), so a block of one type packs the same whoever
+## spawns it. The units are returned in list order and numbered in it, so the
+## layout and the entity ids are the same for an AI group (AiDirector) and for
+## a campaign roster (DeployCommand). Spawns nothing without a terrain and a
+## catalog, or for an empty list.
+func spawn_block(
+	type_indices: Array[int], side: UnitType.Faction, x: int, z: int, facing_x: int, facing_z: int,
+	formation: Formations.Kind
+) -> Array[Unit]:
+	var block: Array[Unit] = []
+	if terrain == null or catalog == null:
+		return block
+	var largest_radius: int = 0
+	for type_index: int in type_indices:
+		largest_radius = maxi(largest_radius, catalog.types[type_index].body_radius)
+	var slots: Array[FormationSlot] = Formations.slots(
+		formation, type_indices.size(), x, z, facing_x, facing_z, Formations.spacing_for(largest_radius)
+	)
+	for i: int in type_indices.size():
+		var slot: FormationSlot = slots[i]
+		block.append(spawn_unit(type_indices[i], side, slot.x, slot.z, slot.facing_x, slot.facing_z))
+	return block
+
+
 ## Creates a projectile of catalog type type_index in flight, launched by
 ## owner_id (0 for none). Returns null for a bad index.
 func spawn_projectile(type_index: int, flight: FlightState, owner_id: int) -> Projectile:

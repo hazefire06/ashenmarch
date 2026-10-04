@@ -51,7 +51,8 @@ var behavior: AiGroupSpec.Behavior
 ## FLANK: 0 plan, 1 approach, 2 strike (AiFlank). RETREAT: 1 once the forced
 ## march is out. GUARD: 1 if there were intruders at the last think, so a
 ## loss with none now isn't read as fire from outside when an intruder that
-## dealt it has just died.
+## dealt it has just died. ESCORT: 0 walking, 1 waiting for its friend or
+## for an enemy to go, 2 arrived.
 var phase: int = 0
 ## Asks the AI to plan at the next update instead of waiting for its interval.
 var think_now: bool = false
@@ -68,8 +69,8 @@ var anchor_x: int
 ## See anchor_x.
 var anchor_z: int
 
-## PATROL: the waypoint being walked to (pair index) and which way the index
-## advances (1 or -1).
+## PATROL or ESCORT: the waypoint being walked to (pair index) and, for a
+## PATROL, which way the index advances (1 or -1).
 var waypoint_index: int = 0
 ## See waypoint_index.
 var waypoint_step: int = 1
