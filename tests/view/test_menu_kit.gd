@@ -39,6 +39,13 @@ func test_a_type_that_never_improves_shows_a_dash_not_zero() -> void:
 	assert_eq(MenuKit.bonus_text(0, 0), "-")
 
 
+func test_a_scroll_area_follows_the_keyboard_focus() -> void:
+	var scroll: ScrollContainer = MenuKit.scroller()
+	assert_true(scroll.follow_focus, "tabbing into a row that is off screen brings it into view")
+	assert_eq(scroll.horizontal_scroll_mode, ScrollContainer.SCROLL_MODE_DISABLED)
+	scroll.free()
+
+
 func test_the_bonus_text_never_disagrees_with_the_sim() -> void:
 	for kills: int in [0, 1, 3, 4, 9, 40]:
 		var permille: int = Veterancy.bonus_permille(250, kills)

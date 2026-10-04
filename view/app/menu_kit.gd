@@ -180,8 +180,11 @@ static func style_selected(toggle: Button) -> void:
 
 
 ## A vertical scroll area that fills what it is given and never scrolls sideways.
+## It follows the keyboard focus, so Tab or the arrows into a row that is off
+## screen (a bench box in the reserve list) bring that row into view.
 static func scroller() -> ScrollContainer:
 	var scroll: ScrollContainer = ScrollContainer.new()
+	scroll.follow_focus = true
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL

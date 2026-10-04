@@ -562,6 +562,53 @@ func test_retry_keeps_who_was_benched() -> void:
 	assert_eq(again.plan().soldier_ids, PackedInt32Array([2]))
 
 
+## Two missions: the first is won, the second is lost, each on its first step.
+func _won_then_lost() -> CampaignDef:
+	var missions: Array[MissionDef] = [_mission(WON), _mission(LOST, &"second")]
+	return CampaignFixtures.campaign(missions)
+
+
+func test_retry_does_not_trust_another_campaigns_save() -> void:
+	# A New Campaign whose autosave failed leaves the file as an older campaign's.
+	var app: App = _app(_tiny(LOST))
+	_into_the_mission(app)
+	_decide(app)
+	var seed_before: int = app.state.campaign_seed
+	var elsewhere: CampaignState = CampaignState.new_campaign(seed_before + 1, 2)
+	elsewhere.soldiers.append(CampaignFixtures.soldier(1, SHIELDMAN, 9))
+	elsewhere.next_soldier_id = 2
+	_store().save(elsewhere)
+	_press(app, "RetryButton")
+	assert_eq(app.state.campaign_seed, seed_before, "the player's own campaign")
+	assert_eq(app.state.soldiers.size(), 0, "not the other one's roster")
+	assert_true(app.current_screen() is Briefing)
+	var rewritten: CampaignState = _store().load()
+	assert_eq(rewritten.campaign_seed, seed_before, "the file is made good")
+	assert_eq(rewritten.to_dict(), app.state.to_dict())
+
+
+func test_retry_does_not_roll_back_to_an_older_point_of_the_same_campaign() -> void:
+	# A victory whose autosave failed leaves the file one mission behind.
+	var app: App = _app(_won_then_lost())
+	_into_the_mission(app)
+	_decide(app)
+	var old_file: CampaignState = _store().load()
+	assert_eq(old_file.mission_index, 0, "the file as it stands before the first victory")
+	_press(app, "ContinueButton")
+	assert_eq(app.state.mission_index, 1)
+	assert_eq(app.state.soldiers.size(), 1)
+	_press(app, "StartButton")
+	_decide(app)
+	assert_false((app.current_screen() as Results).is_victory(), "the second mission is lost")
+	_store().save(old_file)
+	_press(app, "RetryButton")
+	assert_eq(app.state.mission_index, 1, "still at the second mission")
+	assert_eq(app.state.soldiers.size(), 1, "and the survivor is still on the roll")
+	assert_eq(_store().load().mission_index, 1, "the file is brought forward again")
+	var briefing: Briefing = app.current_screen() as Briefing
+	assert_true(MenuFixtures.says(briefing, "Mission 2 of 2"))
+
+
 func test_retry_with_a_save_that_has_gone_past_the_end_uses_the_state_in_memory() -> void:
 	var app: App = _app(_tiny(LOST))
 	_into_the_mission(app)
@@ -713,10 +760,68 @@ func test_changing_the_screen_closes_an_open_overlay() -> void:
 	assert_null(app.current_overlay())
 
 
-func test_a_notice_shows_for_a_while_then_goes() -> void:
+## An App whose window mode is recorded instead of applied: the list of what it
+## was asked for, in order.
+func _recording_app(calls: Array[bool]) -> App:
+	var app: App = (load("res://view/app/app.tscn") as PackedScene).instantiate() as App
+	app.store = _store()
+	app.settings_path = _settings_path()
+	app.apply_window_mode = func(enabled: bool) -> void: calls.append(enabled)
+	add_child_autofree(app)
+	return app
+
+
+func _tick(app: App, check_name: String, on: bool) -> void:
+	(MenuFixtures.named(app.current_overlay(), check_name) as CheckBox).button_pressed = on
+
+
+func test_the_window_mode_changes_only_when_fullscreen_itself_is_flipped() -> void:
+	var calls: Array[bool] = []
+	var app: App = _recording_app(calls)
+	assert_eq(calls, [] as Array[bool], "windowed at boot: nothing to apply")
+	app.open_settings()
+	_tick(app, "EdgeScrollCheck", true)
+	_tick(app, "EdgeScrollCheck", false)
+	assert_eq(calls, [] as Array[bool], "Edge scroll never touches the window")
+	_tick(app, "FullscreenCheck", true)
+	assert_eq(calls, [true] as Array[bool])
+	_tick(app, "EdgeScrollCheck", true)
+	assert_eq(calls, [true] as Array[bool], "and flipping it in fullscreen doesn't drop out of it")
+	_tick(app, "FullscreenCheck", false)
+	assert_eq(calls, [true, false] as Array[bool])
+
+
+func test_a_saved_fullscreen_choice_is_applied_once_at_boot_and_edge_scroll_leaves_it_be() -> void:
+	GameSettings.set_fullscreen(true, _settings_path())
+	var calls: Array[bool] = []
+	var app: App = _recording_app(calls)
+	assert_eq(calls, [true] as Array[bool], "put in fullscreen at boot")
+	app.open_settings()
+	_tick(app, "EdgeScrollCheck", true)
+	assert_eq(calls, [true] as Array[bool], "still only the one call")
+
+
+func test_a_notice_shows_then_goes_when_its_time_is_up() -> void:
 	var app: App = _app()
+	app.notice_seconds = 0.1
 	var notice: Label = app.find_child("NoticeLabel", true, false) as Label
 	assert_false(notice.visible)
 	app.show_notice("Something happened")
 	assert_true(notice.visible)
 	assert_eq(notice.text, "Something happened")
+	await get_tree().create_timer(0.3).timeout
+	assert_false(notice.visible, "gone after its time")
+
+
+func test_an_older_notices_timer_does_not_hide_a_newer_notice() -> void:
+	var app: App = _app()
+	app.notice_seconds = 0.3
+	var notice: Label = app.find_child("NoticeLabel", true, false) as Label
+	app.show_notice("First")
+	await get_tree().create_timer(0.2).timeout
+	app.show_notice("Second")
+	await get_tree().create_timer(0.2).timeout
+	assert_true(notice.visible, "the first one's timer ran out, the second's hasn't")
+	assert_eq(notice.text, "Second")
+	await get_tree().create_timer(0.3).timeout
+	assert_false(notice.visible)

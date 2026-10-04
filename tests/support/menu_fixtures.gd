@@ -49,7 +49,10 @@ static func named(root: Node, node_name: String) -> Node:
 ## Presses a button the way a click ends: the `pressed` signal.
 static func press(root: Node, button_name: String) -> void:
 	var button: Button = named(root, button_name) as Button
-	assert(button != null, "no button called %s" % button_name)
+	if button == null:
+		# Not assert(): under the debugger that hangs instead of failing the test.
+		push_error("MenuFixtures.press: no button called %s" % button_name)
+		return
 	button.pressed.emit()
 
 

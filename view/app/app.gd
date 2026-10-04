@@ -21,7 +21,9 @@ extends Node
 ## - Retry reloads the save (which is the state before the mission) and shows
 ##   that mission's briefing again, with the same soldiers benched, so the
 ##   player can change the roster or just press Start; the seed is the same, so
-##   the waves come the same. The pause menu's Restart mission, which skips the
+##   the waves come the same. A file that isn't that same campaign at that same
+##   point (a failed autosave left it so) is not trusted: the state in memory is
+##   written back instead. The pause menu's Restart mission, which skips the
 ##   briefing, replays the same launch at once.
 ##
 ## MainView's signals are wired here: mission_ended -> Results, restart_requested
@@ -53,6 +55,11 @@ var catalog: UnitCatalog
 var store: CampaignStore
 ## Where the settings are kept; likewise.
 var settings_path: String = GameSettings.DEFAULT_PATH
+## How long a notice stays up, in real seconds; public so a test can shorten it.
+var notice_seconds: float = NOTICE_SECONDS
+## What puts the window in or out of fullscreen; GameSettings' by default. A
+## seam so a test can see when it is called (headless there is no window).
+var apply_window_mode: Callable = GameSettings.apply_window_mode
 ## The view's own dice, for a new campaign's seed (the sim never sees this).
 var rng: RandomNumberGenerator = RandomNumberGenerator.new()
 ## The campaign in play: loaded by Continue, made by New Campaign, advanced by a
@@ -66,6 +73,10 @@ var _overlay: MenuScreen
 var _notice_layer: CanvasLayer
 var _notice: Label
 var _notice_serial: int = 0
+# The fullscreen choice the window was last put in line with, so Settings only
+# touches the window when that choice itself changes (flipping Edge scroll must
+# not drop the player out of fullscreen).
+var _fullscreen_applied: bool = false
 # Where the keyboard was when an overlay opened, so closing it puts it back.
 var _focus_before_overlay: Control
 # The roster the current mission was launched with, and who is benched in it:
@@ -93,8 +104,9 @@ func _ready() -> void:
 	_build_notice()
 	# Only fullscreen needs asking for: the window starts windowed, and a
 	# command-line --fullscreen shouldn't be undone by a default.
-	if GameSettings.fullscreen(settings_path):
-		GameSettings.apply_window_mode(true)
+	_fullscreen_applied = GameSettings.fullscreen(settings_path)
+	if _fullscreen_applied:
+		apply_window_mode.call(true)
 	show_main_menu()
 
 
@@ -225,7 +237,7 @@ func show_notice(text: String) -> void:
 	var serial: int = _notice_serial
 	_notice.text = text
 	_notice.visible = true
-	get_tree().create_timer(NOTICE_SECONDS).timeout.connect(func() -> void:
+	get_tree().create_timer(notice_seconds).timeout.connect(func() -> void:
 		if serial == _notice_serial:
 			_notice.visible = false
 	)
@@ -314,11 +326,16 @@ func _on_results_continue() -> void:
 
 func _on_results_retry() -> void:
 	_drop_result()
-	# The save is the state as it stood before the mission: a defeat is never
-	# applied. Reload it, as the brief has it; if it can't be read, the state in
-	# memory is the same by construction, so write it back and carry on.
+	# The save should be the state as it stood before the mission: a defeat is
+	# never applied, and a mission never changes `state`. Reload it, as the
+	# brief has it, but only if it IS that: the same campaign at the same point.
+	# A failed autosave (the App carries on after one) can leave the file
+	# older (a victory not recorded) or another campaign's (a New Campaign that
+	# couldn't replace it); reloading that would roll the player back or swap
+	# his campaign. Then the state in memory, which is right, is written back.
 	var saved: CampaignState = store.load()
-	if saved != null and saved.mission_index < campaign.missions.size():
+	if saved != null and saved.campaign_seed == state.campaign_seed \
+			and saved.tier == state.tier and saved.mission_index == state.mission_index:
 		state = saved
 	else:
 		_autosave()
@@ -408,7 +425,11 @@ func _hold_mission(held: bool) -> void:
 
 
 func _on_settings_changed() -> void:
-	GameSettings.apply_window_mode(GameSettings.fullscreen(settings_path))
+	var wanted: bool = GameSettings.fullscreen(settings_path)
+	if wanted == _fullscreen_applied:
+		return
+	_fullscreen_applied = wanted
+	apply_window_mode.call(wanted)
 
 
 func _build_notice() -> void:
