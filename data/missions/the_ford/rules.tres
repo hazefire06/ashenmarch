@@ -55,7 +55,7 @@ counts = PackedInt32Array(1)
 [sub_resource type="Resource" id="Entry_husk_pool"]
 script = ExtResource("3_ent01")
 type_id = &"husk"
-counts = PackedInt32Array(4, 4, 5, 6, 7)
+counts = PackedInt32Array(4, 5, 6, 6, 7)
 
 [sub_resource type="Resource" id="Entry_husk_landing"]
 script = ExtResource("3_ent01")
@@ -70,7 +70,12 @@ counts = PackedInt32Array(3, 4, 4, 5, 6)
 [sub_resource type="Resource" id="Entry_ripper"]
 script = ExtResource("3_ent01")
 type_id = &"ripper"
-counts = PackedInt32Array(3, 3, 4, 5, 6)
+counts = PackedInt32Array(3, 4, 6, 6, 7)
+
+[sub_resource type="Resource" id="Entry_ripper_rear"]
+script = ExtResource("3_ent01")
+type_id = &"ripper"
+counts = PackedInt32Array(3, 4, 6, 6, 7)
 
 ; ---- groups ----
 
@@ -99,9 +104,12 @@ escort_radius = 12000
 ; The west pool's ambush: Husks lying in the depth-4 water on the south shoulder
 ; of the river, 26 m west of the ford (behavior 5 = AMBUSH). Every sample
 ; within 3 m of the spawn point is depth 3 or more, so the whole group is
-; hidden (Husks hide in depth 3+). They spring when a Light unit comes within
-; 8 m, or one of them is hurt or fought, and then hunt (on_alert HUNT, the
-; default).
+; hidden (Husks hide in depth 3+). They spring when the villager reaches the
+; ford (the `crossing` trigger sets them hunting), or before that if a Light
+; unit comes within 12 m (onto the pool's shallow shelf, which shelves to dry
+; 14 m out), or one of them is hurt or fought, and then hunt (on_alert HUNT,
+; the default). The road is 26 m off, so it is the trigger that springs them
+; in a straight escort.
 [sub_resource type="Resource" id="Group_pool_w"]
 script = ExtResource("2_grp01")
 name = &"pool_w"
@@ -109,7 +117,7 @@ units = Array[ExtResource("3_ent01")]([SubResource("Entry_husk_pool")])
 spawns = PackedInt32Array(166000, 196000)
 spawn_at_start = true
 behavior = 5
-alert_radius = 8000
+alert_radius = 12000
 
 ; The east pool's ambush: the same, on the north shoulder, 26 m east of the
 ; ford.
@@ -120,7 +128,7 @@ units = Array[ExtResource("3_ent01")]([SubResource("Entry_husk_pool")])
 spawns = PackedInt32Array(218000, 178000)
 spawn_at_start = true
 behavior = 5
-alert_radius = 8000
+alert_radius = 12000
 
 ; The north landing's guard: Husks on the dry sand where the road comes out of
 ; the water, 19 m north of the river's edge at the ford (behavior 2 = GUARD).
@@ -157,15 +165,34 @@ patrol_mode = 1
 alert_radius = 25000
 
 ; The Rippers out of the east woods (behavior 4 = FLANK), spawned by the
-; `flank` trigger. flank_roles 6 = RANGED (2) and SUPPORT (4): they go for the
-; Longbows, Sappers, Wardens, and the villager itself (a support unit), round
-; the end of any melee screening them. The spawn is (330, 140) m, 138 m east of
-; the landing on the same north bank.
+; `flank` trigger, late: once the villager has landed. flank_roles 6 = RANGED
+; (2) and SUPPORT (4): they go for the Longbows, Sappers, Wardens, and the
+; villager itself (a support unit), round the end of any melee screening them.
+; The spawn is (330, 140) m, 138 m east of the landing on the same north bank.
+; Six at tier 2 (3 at tier 0 up to 7 at tier 4).
 [sub_resource type="Resource" id="Group_rippers"]
 script = ExtResource("2_grp01")
 name = &"rippers"
 units = Array[ExtResource("3_ent01")]([SubResource("Entry_ripper")])
 spawns = PackedInt32Array(330000, 140000)
+spawn_at_start = false
+behavior = 4
+flank_roles = 6
+
+; The pack that has been shadowing the escort on the south bank (FLANK, the
+; same roles), spawned by the `rear` trigger three seconds after the villager
+; reaches the ford: out of the grass at (130, 250) m, 75 m south-west of where
+; the road enters the water, so it comes up behind the escort while it is still
+; in the water and fighting the pools. Rippers can't swim, so it crosses at the
+; ford like everyone else. Six at tier 2 (3 at tier 0 up to 7 at tier 4). It is
+; what a squad that marches ahead and leaves the villager to trail behind it
+; pays for. Its timing is the point: from 20 m farther off (or 3 s later) it
+; arrives once the squad is out of the water and is little more than a nuisance.
+[sub_resource type="Resource" id="Group_rippers_rear"]
+script = ExtResource("2_grp01")
+name = &"rippers_rear"
+units = Array[ExtResource("3_ent01")]([SubResource("Entry_ripper_rear")])
+spawns = PackedInt32Array(130000, 250000)
 spawn_at_start = false
 behavior = 4
 flank_roles = 6
@@ -199,6 +226,11 @@ script = ExtResource("5_act01")
 kind = 2
 text = "Mind the deep water either side."
 
+[sub_resource type="Resource" id="Action_say_rear"]
+script = ExtResource("5_act01")
+kind = 2
+text = "Rippers on the south bank, behind you!"
+
 [sub_resource type="Resource" id="Action_say_flank"]
 script = ExtResource("5_act01")
 kind = 2
@@ -225,11 +257,30 @@ script = ExtResource("5_act01")
 kind = 8
 objective = &"escort"
 
+; Kind 5 = SET_BEHAVIOR, behavior 3 = HUNT: a pool's ambush springs (its Husks
+; surface) and they come for the nearest of the living.
+[sub_resource type="Resource" id="Action_spring_pool_w"]
+script = ExtResource("5_act01")
+kind = 5
+group = &"pool_w"
+behavior = 3
+
+[sub_resource type="Resource" id="Action_spring_pool_e"]
+script = ExtResource("5_act01")
+kind = 5
+group = &"pool_e"
+behavior = 3
+
 ; Kind 0 = SPAWN_GROUP.
 [sub_resource type="Resource" id="Action_spawn_rippers"]
 script = ExtResource("5_act01")
 kind = 0
 group = &"rippers"
+
+[sub_resource type="Resource" id="Action_spawn_rear"]
+script = ExtResource("5_act01")
+kind = 0
+group = &"rippers_rear"
 
 ; Kind 3 = WIN, 4 = LOSE.
 [sub_resource type="Resource" id="Action_win"]
@@ -255,7 +306,8 @@ actions = Array[ExtResource("5_act01")]([SubResource("Action_say_start")])
 
 ; The villager within 12 m of the middle of the ford, (192, 186) m (condition
 ; 0 = AREA_ENTERED; `names` makes it count only the villager's own group, not
-; every Light unit).
+; every Light unit): the dead in both pools rise as the living pass, whether
+; or not anyone has strayed within their own alert radius.
 [sub_resource type="Resource" id="Trigger_crossing"]
 script = ExtResource("4_trg01")
 name = &"crossing"
@@ -263,7 +315,18 @@ condition = 0
 area = PackedInt32Array(192000, 186000, 12000)
 min_count = 1
 names = Array[StringName]([&"villager"])
-actions = Array[ExtResource("5_act01")]([SubResource("Action_say_crossing")])
+actions = Array[ExtResource("5_act01")]([SubResource("Action_say_crossing"), SubResource("Action_spring_pool_w"), SubResource("Action_spring_pool_e")])
+
+; Three seconds after the villager reaches the ford (condition 2 = TIMER, 90
+; ticks after `crossing`, so its warning follows the crossing's on the message
+; line): the rear pack comes out of the brush behind the escort.
+[sub_resource type="Resource" id="Trigger_rear"]
+script = ExtResource("4_trg01")
+name = &"rear"
+after = &"crossing"
+condition = 2
+ticks = PackedInt32Array(90)
+actions = Array[ExtResource("5_act01")]([SubResource("Action_spawn_rear"), SubResource("Action_say_rear")])
 
 ; The villager within 15 m of the landing guard's post, (192, 145) m, which is
 ; the last waypoint of the first leg ashore: the optional objective appears.
@@ -326,6 +389,6 @@ actions = Array[ExtResource("5_act01")]([SubResource("Action_lose")])
 
 [resource]
 script = ExtResource("1_msc01")
-groups = Array[ExtResource("2_grp01")]([SubResource("Group_villager"), SubResource("Group_pool_w"), SubResource("Group_pool_e"), SubResource("Group_landing"), SubResource("Group_drifters"), SubResource("Group_rippers")])
-triggers = Array[ExtResource("4_trg01")]([SubResource("Trigger_start"), SubResource("Trigger_crossing"), SubResource("Trigger_north"), SubResource("Trigger_flank_timer"), SubResource("Trigger_flank"), SubResource("Trigger_home"), SubResource("Trigger_villager_dead"), SubResource("Trigger_lose")])
+groups = Array[ExtResource("2_grp01")]([SubResource("Group_villager"), SubResource("Group_pool_w"), SubResource("Group_pool_e"), SubResource("Group_landing"), SubResource("Group_drifters"), SubResource("Group_rippers"), SubResource("Group_rippers_rear")])
+triggers = Array[ExtResource("4_trg01")]([SubResource("Trigger_start"), SubResource("Trigger_crossing"), SubResource("Trigger_rear"), SubResource("Trigger_north"), SubResource("Trigger_flank_timer"), SubResource("Trigger_flank"), SubResource("Trigger_home"), SubResource("Trigger_villager_dead"), SubResource("Trigger_lose")])
 objectives = Array[ExtResource("6_obj01")]([SubResource("Objective_escort"), SubResource("Objective_hold")])

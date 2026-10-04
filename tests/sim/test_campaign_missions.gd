@@ -40,6 +40,7 @@ const FAIL: TriggerAction.Kind = TriggerAction.Kind.FAIL_OBJECTIVE
 const WIN: TriggerAction.Kind = TriggerAction.Kind.WIN
 const LOSE: TriggerAction.Kind = TriggerAction.Kind.LOSE
 const WEATHER: TriggerAction.Kind = TriggerAction.Kind.SET_WEATHER
+const BEHAVE: TriggerAction.Kind = TriggerAction.Kind.SET_BEHAVIOR
 ## Ticks of the determinism run, and how often its hashes are compared.
 const DETERMINISM_TICKS: int = 3000
 const HASH_EVERY: int = 500
@@ -408,6 +409,7 @@ func test_the_numeric_enums_in_the_data_mean_what_the_comments_say() -> void:
 			&"villager": AiGroupSpec.Behavior.ESCORT, &"pool_w": AiGroupSpec.Behavior.AMBUSH,
 			&"pool_e": AiGroupSpec.Behavior.AMBUSH, &"landing": AiGroupSpec.Behavior.GUARD,
 			&"drifters": AiGroupSpec.Behavior.PATROL, &"rippers": AiGroupSpec.Behavior.FLANK,
+			&"rippers_rear": AiGroupSpec.Behavior.FLANK,
 		},
 		{
 			&"wave_husks": AiGroupSpec.Behavior.HUNT, &"wave_rippers": AiGroupSpec.Behavior.HUNT,
@@ -437,6 +439,7 @@ func test_the_numeric_enums_in_the_data_mean_what_the_comments_say() -> void:
 		},
 		{
 			&"start": TriggerSpec.Condition.TIMER, &"crossing": TriggerSpec.Condition.AREA_ENTERED,
+			&"rear": TriggerSpec.Condition.TIMER,
 			&"north": TriggerSpec.Condition.AREA_ENTERED, &"flank_timer": TriggerSpec.Condition.TIMER,
 			&"flank": TriggerSpec.Condition.TRIGGERS_FIRED, &"home": TriggerSpec.Condition.AREA_ENTERED,
 			&"villager_dead": TriggerSpec.Condition.UNIT_DIES, &"lose": TriggerSpec.Condition.PLAYER_ELIMINATED,
@@ -465,6 +468,10 @@ func test_the_numeric_enums_in_the_data_mean_what_the_comments_say() -> void:
 	# The Ripper groups go for ranged and support: 2 | 4.
 	assert_eq(_group(RIVERSIDE, &"raiders").flank_roles, (1 << UnitType.Role.RANGED) | (1 << UnitType.Role.SUPPORT))
 	assert_eq(_group(FORD, &"rippers").flank_roles, (1 << UnitType.Role.RANGED) | (1 << UnitType.Role.SUPPORT))
+	assert_eq(_group(FORD, &"rippers_rear").flank_roles, (1 << UnitType.Role.RANGED) | (1 << UnitType.Role.SUPPORT))
+	# The crossing springs both pools into HUNT (3).
+	for k: int in [1, 2]:
+		assert_eq(_trigger(FORD, &"crossing").actions[k].behavior, AiGroupSpec.Behavior.HUNT)
 
 
 func test_the_action_kinds_of_every_trigger() -> void:
@@ -475,7 +482,8 @@ func test_the_action_kinds_of_every_trigger() -> void:
 			&"lose": [LOSE],
 		},
 		{
-			&"start": [SAY], &"crossing": [SAY], &"north": [SHOW], &"flank_timer": [], &"flank": [SPAWN, SAY],
+			&"start": [SAY], &"crossing": [SAY, BEHAVE, BEHAVE], &"rear": [SPAWN, SAY], &"north": [SHOW],
+			&"flank_timer": [], &"flank": [SPAWN, SAY],
 			&"home": [DONE, DONE, WIN], &"villager_dead": [FAIL, LOSE], &"lose": [LOSE],
 		},
 		{
@@ -603,7 +611,7 @@ func test_the_raiders_come_from_the_villages_far_south_east_side() -> void:
 
 func test_the_ford_has_the_designed_groups_counts_and_objectives() -> void:
 	var rules: MissionScript = _rules(FORD)
-	assert_eq(_names_of(rules.groups), [&"villager", &"pool_w", &"pool_e", &"landing", &"drifters", &"rippers"])
+	assert_eq(_names_of(rules.groups), [&"villager", &"pool_w", &"pool_e", &"landing", &"drifters", &"rippers", &"rippers_rear"])
 	var villager: AiGroupSpec = _group(FORD, &"villager")
 	assert_eq(_per_tier(villager, &"villager"), PackedInt32Array([1, 1, 1, 1, 1]))
 	assert_eq(villager.escort_radius, 12000)
@@ -611,15 +619,17 @@ func test_the_ford_has_the_designed_groups_counts_and_objectives() -> void:
 	assert_eq(villager.retreat_below_permille, 0, "an escort never retreats")
 	assert_true(villager.spawn_at_start)
 	for pool: StringName in [&"pool_w", &"pool_e"]:
-		assert_eq(_per_tier(_group(FORD, pool), &"husk"), PackedInt32Array([4, 4, 5, 6, 7]), "%s Husks per tier" % pool)
-		assert_eq(_group(FORD, pool).alert_radius, 8000)
+		assert_eq(_per_tier(_group(FORD, pool), &"husk"), PackedInt32Array([4, 5, 6, 6, 7]), "%s Husks per tier" % pool)
+		assert_eq(_group(FORD, pool).alert_radius, 12000, "a soldier on the pool's shelf springs it")
 		assert_true(_group(FORD, pool).spawn_at_start)
 	assert_eq(_per_tier(_group(FORD, &"landing"), &"husk"), PackedInt32Array([5, 6, 6, 7, 8]))
 	assert_eq(_group(FORD, &"landing").guard_radius, 15000)
 	assert_eq(_per_tier(_group(FORD, &"drifters"), &"drifter"), PackedInt32Array([3, 4, 4, 5, 6]))
 	assert_eq(_group(FORD, &"drifters").alert_radius, 25000)
-	assert_eq(_per_tier(_group(FORD, &"rippers"), &"ripper"), PackedInt32Array([3, 3, 4, 5, 6]))
+	assert_eq(_per_tier(_group(FORD, &"rippers"), &"ripper"), PackedInt32Array([3, 4, 6, 6, 7]))
 	assert_false(_group(FORD, &"rippers").spawn_at_start, "the flank trigger spawns the Rippers")
+	assert_eq(_per_tier(_group(FORD, &"rippers_rear"), &"ripper"), PackedInt32Array([3, 4, 6, 6, 7]))
+	assert_false(_group(FORD, &"rippers_rear").spawn_at_start, "the rear trigger spawns the rear pack")
 	assert_true(rules.draws.is_empty())
 	assert_eq(_names_of(rules.objectives), [&"escort", &"hold"])
 	assert_eq(rules.objectives[0].text, "Bring the villager to the gate")
@@ -637,6 +647,13 @@ func test_the_fords_triggers_do_what_the_design_says() -> void:
 	var crossing: TriggerSpec = _trigger(FORD, &"crossing")
 	assert_eq(crossing.names, [&"villager"])
 	assert_eq(crossing.area[2], 12000)
+	assert_eq(crossing.actions[1].group, &"pool_w", "the villager at the ford springs both pools")
+	assert_eq(crossing.actions[2].group, &"pool_e")
+	var rear: TriggerSpec = _trigger(FORD, &"rear")
+	assert_eq(rear.after, &"crossing")
+	assert_eq(rear.ticks, PackedInt32Array([90]), "3 s after the crossing, so its warning follows")
+	assert_eq(rear.actions[0].group, &"rippers_rear")
+	assert_eq(_message(FORD, &"rear"), "Rippers on the south bank, behind you!")
 	var north: TriggerSpec = _trigger(FORD, &"north")
 	assert_eq(north.names, [&"villager"])
 	assert_eq(north.area[2], 15000)
@@ -717,6 +734,21 @@ func test_the_ripper_spawn_is_in_the_east_woods_and_walks_to_the_landing() -> vo
 	assert_eq(
 		_pathings[FORD].component_at(spawn.x, spawn.y, LIVING),
 		_pathings[FORD].component_at(landing.x, landing.y, LIVING)
+	)
+
+
+func test_the_rear_pack_comes_from_the_south_bank_behind_the_ford() -> void:
+	var spawn: Vector2i = _pair(_group(FORD, &"rippers_rear").spawns)
+	var deploy: Vector2i = _pair(_mission(FORD).deploy)
+	var ford: Vector2i = _pair(_trigger(FORD, &"crossing").area)
+	# South of the river (the south bank's water edge is at about z 207 m at the
+	# ford), west of the road, and nearer the ford than the deploy point is.
+	assert_gt(spawn.y, 215 * M, "on the south bank")
+	assert_lt(spawn.x, ford.x, "west of the road")
+	assert_lt(Vector2(spawn - ford).length(), Vector2(deploy - ford).length(), "nearer the ford than the squad starts")
+	assert_eq(
+		_pathings[FORD].component_at(spawn.x, spawn.y, LIVING),
+		_pathings[FORD].component_at(ford.x, ford.y, LIVING), "it can follow the escort over the ford"
 	)
 
 
