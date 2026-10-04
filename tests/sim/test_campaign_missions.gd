@@ -403,7 +403,8 @@ func test_the_numeric_enums_in_the_data_mean_what_the_comments_say() -> void:
 		{
 			&"field_patrol_w": AiGroupSpec.Behavior.PATROL, &"field_patrol_e": AiGroupSpec.Behavior.PATROL,
 			&"village_patrol": AiGroupSpec.Behavior.PATROL, &"village_guard": AiGroupSpec.Behavior.GUARD,
-			&"raiders": AiGroupSpec.Behavior.FLANK,
+			&"raiders": AiGroupSpec.Behavior.FLANK, &"field_roamers_s": AiGroupSpec.Behavior.PATROL,
+			&"field_roamers_w": AiGroupSpec.Behavior.PATROL,
 		},
 		{
 			&"villager": AiGroupSpec.Behavior.ESCORT, &"pool_w": AiGroupSpec.Behavior.AMBUSH,
@@ -423,7 +424,7 @@ func test_the_numeric_enums_in_the_data_mean_what_the_comments_say() -> void:
 		for group_name: StringName in want:
 			assert_eq(_group(i, group_name).behavior, want[group_name], "%s %s behavior" % [MISSION_IDS[i], group_name])
 	assert_eq(_group(FORD, &"drifters").patrol_mode, AiGroupSpec.PatrolMode.PING_PONG)
-	for patrol: StringName in [&"field_patrol_w", &"field_patrol_e", &"village_patrol"]:
+	for patrol: StringName in [&"field_patrol_w", &"field_patrol_e", &"village_patrol", &"field_roamers_s", &"field_roamers_w"]:
 		assert_eq(_group(RIVERSIDE, patrol).patrol_mode, AiGroupSpec.PatrolMode.LOOP, "%s loops" % patrol)
 	# Only the villager is Light.
 	for i: int in MISSION_IDS.size():
@@ -433,7 +434,8 @@ func test_the_numeric_enums_in_the_data_mean_what_the_comments_say() -> void:
 		{
 			&"hello": TriggerSpec.Condition.TIMER, &"hint_formation": TriggerSpec.Condition.TIMER,
 			&"at_ford": TriggerSpec.Condition.AREA_ENTERED, &"hint_grenade": TriggerSpec.Condition.AREA_ENTERED,
-			&"hint_fire": TriggerSpec.Condition.TIMER, &"raid": TriggerSpec.Condition.UNIT_DIES,
+			&"hint_fire": TriggerSpec.Condition.TIMER, &"stirring": TriggerSpec.Condition.TIMER,
+			&"raid": TriggerSpec.Condition.UNIT_DIES,
 			&"raid_over": TriggerSpec.Condition.GROUP_CLEARED, &"win": TriggerSpec.Condition.FACTION_ELIMINATED,
 			&"lose": TriggerSpec.Condition.PLAYER_ELIMINATED,
 		},
@@ -478,7 +480,8 @@ func test_the_action_kinds_of_every_trigger() -> void:
 	var kinds: Array[Dictionary] = [
 		{
 			&"hello": [SAY], &"hint_formation": [SAY], &"at_ford": [DONE, SAY], &"hint_grenade": [SAY],
-			&"hint_fire": [SAY], &"raid": [SPAWN, SHOW, SAY], &"raid_over": [DONE], &"win": [DONE, WIN],
+			&"hint_fire": [SAY], &"stirring": [BEHAVE, BEHAVE, SAY], &"raid": [SPAWN, SHOW, SAY], &"raid_over": [DONE],
+			&"win": [DONE, WIN],
 			&"lose": [LOSE],
 		},
 		{
@@ -503,12 +506,19 @@ func test_the_action_kinds_of_every_trigger() -> void:
 
 func test_riverside_has_the_designed_groups_counts_and_objectives() -> void:
 	var rules: MissionScript = _rules(RIVERSIDE)
-	assert_eq(_names_of(rules.groups), [&"field_patrol_w", &"field_patrol_e", &"village_patrol", &"village_guard", &"raiders"])
+	assert_eq(
+		_names_of(rules.groups),
+		[&"field_patrol_w", &"field_patrol_e", &"village_patrol", &"village_guard", &"raiders", &"field_roamers_s", &"field_roamers_w"]
+	)
 	for patrol: StringName in [&"field_patrol_w", &"field_patrol_e", &"village_patrol"]:
 		assert_eq(_type_ids(_group(RIVERSIDE, patrol)), [&"husk"])
-		assert_eq(_per_tier(_group(RIVERSIDE, patrol), &"husk"), PackedInt32Array([5, 5, 5, 5, 5]), "%s has 5 Husks" % patrol)
-	assert_eq(_per_tier(_group(RIVERSIDE, &"village_guard"), &"husk"), PackedInt32Array([6, 7, 8, 9, 10]))
-	assert_eq(_per_tier(_group(RIVERSIDE, &"raiders"), &"ripper"), PackedInt32Array([2, 3, 3, 4, 5]))
+		assert_eq(_per_tier(_group(RIVERSIDE, patrol), &"husk"), PackedInt32Array([7, 7, 7, 7, 7]), "%s has 7 Husks" % patrol)
+	assert_eq(_per_tier(_group(RIVERSIDE, &"village_guard"), &"husk"), PackedInt32Array([6, 8, 10, 11, 12]))
+	assert_eq(_per_tier(_group(RIVERSIDE, &"raiders"), &"ripper"), PackedInt32Array([2, 3, 5, 6, 7]))
+	for band: StringName in [&"field_roamers_s", &"field_roamers_w"]:
+		assert_eq(_type_ids(_group(RIVERSIDE, band)), [&"husk"])
+		assert_eq(_per_tier(_group(RIVERSIDE, band), &"husk"), PackedInt32Array([4, 5, 6, 7, 8]), "%s per tier" % band)
+		assert_eq(_group(RIVERSIDE, band).alert_radius, 12000)
 	assert_eq(_group(RIVERSIDE, &"field_patrol_w").alert_radius, 12000)
 	assert_eq(_group(RIVERSIDE, &"field_patrol_e").alert_radius, 12000)
 	assert_eq(_group(RIVERSIDE, &"village_patrol").alert_radius, 10000)
@@ -531,7 +541,7 @@ func test_riverside_triggers_run_in_tutorial_order_with_the_designed_hints() -> 
 	var rules: MissionScript = _rules(RIVERSIDE)
 	assert_eq(
 		_names_of(rules.triggers),
-		[&"hello", &"hint_formation", &"at_ford", &"hint_grenade", &"hint_fire", &"raid", &"raid_over", &"win", &"lose"]
+		[&"hello", &"hint_formation", &"at_ford", &"hint_grenade", &"hint_fire", &"stirring", &"raid", &"raid_over", &"win", &"lose"]
 	)
 	assert_eq(_message(RIVERSIDE, &"hello"), "Select soldiers: click one, or drag a box. Shift adds.")
 	assert_eq(_message(RIVERSIDE, &"hint_formation"), "Pick a formation with 1-0, then right-click the ground to march.")
@@ -539,6 +549,14 @@ func test_riverside_triggers_run_in_tutorial_order_with_the_designed_hints() -> 
 	assert_eq(_message(RIVERSIDE, &"hint_grenade"), "Sappers: Cmd-click (Ctrl-click) the ground to throw. Mind your own men.")
 	assert_eq(_message(RIVERSIDE, &"hint_fire"), "Longbows: press T to nock the fire arrow. Brush and houses burn.")
 	assert_eq(_message(RIVERSIDE, &"raid"), "Rippers! They go for your archers and sappers.")
+	assert_eq(_message(RIVERSIDE, &"stirring"), "The dead in the fields have heard you. They are coming.")
+	var stirring: TriggerSpec = _trigger(RIVERSIDE, &"stirring")
+	assert_eq(stirring.after, &"hint_grenade", "40 s after the squad reaches the village")
+	assert_eq(stirring.ticks, PackedInt32Array([1200]))
+	assert_eq(stirring.actions[0].group, &"field_roamers_s")
+	assert_eq(stirring.actions[1].group, &"field_roamers_w")
+	assert_eq(stirring.actions[0].behavior, AiGroupSpec.Behavior.HUNT)
+	assert_eq(stirring.actions[1].behavior, AiGroupSpec.Behavior.HUNT)
 	assert_eq(_trigger(RIVERSIDE, &"hello").ticks, PackedInt32Array([0]))
 	assert_eq(_trigger(RIVERSIDE, &"hint_formation").after, &"hello")
 	assert_eq(_trigger(RIVERSIDE, &"hint_formation").ticks, PackedInt32Array([300]))
@@ -553,8 +571,8 @@ func test_riverside_triggers_run_in_tutorial_order_with_the_designed_hints() -> 
 	assert_eq(grenade.area[2], 40000, "within 40 m of the square")
 	assert_eq(grenade.min_count, 1)
 	var raid: TriggerSpec = _trigger(RIVERSIDE, &"raid")
-	assert_eq(raid.names, [&"field_patrol_w", &"field_patrol_e", &"village_patrol", &"village_guard"])
-	assert_eq(raid.count, 11)
+	assert_eq(raid.names, [&"field_roamers_s", &"field_roamers_w"], "the raid comes as the field dead fall")
+	assert_eq(raid.count, 6)
 	assert_eq(raid.actions[0].group, &"raiders")
 	assert_eq(raid.actions[1].objective, &"raid")
 	assert_eq(_trigger(RIVERSIDE, &"raid_over").names, [&"raiders"])
@@ -563,7 +581,7 @@ func test_riverside_triggers_run_in_tutorial_order_with_the_designed_hints() -> 
 	assert_eq(win.after, &"raid", "a straight assault can't win before the raid")
 	assert_eq(win.actions[0].objective, &"clear")
 	# Every hint is a message short enough for the line.
-	for hint: StringName in [&"hello", &"hint_formation", &"at_ford", &"hint_grenade", &"hint_fire", &"raid"]:
+	for hint: StringName in [&"hello", &"hint_formation", &"at_ford", &"hint_grenade", &"hint_fire", &"stirring", &"raid"]:
 		assert_lt(_message(RIVERSIDE, hint).length(), 100, "%s fits the message line" % hint)
 
 

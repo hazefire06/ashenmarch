@@ -36,27 +36,40 @@
 ; for its units, and each field patrol's alert radius stays clear of the north
 ; bank (tests/sim/test_campaign_missions.gd checks both), so nobody is alerted
 ; before the squad is across the ford.
+;
+; The shape (Phase 8 balance pass): the ford, two Husk patrols on the way, the
+; village's patrol and guard; then, once the squad has been in the village a
+; while, the dead roaming the far fields hear it and come in from the south
+; and the south-west, and when they start to fall the Rippers come out of the
+; dry ground beyond the village. It used to be over in 2.3 minutes with a
+; squad that met five Husks at a time; now it is about four, and the last
+; fight is the one that tests the line.
 
 ; ---- unit entries ----
 
-[sub_resource type="Resource" id="Entry_husk_5"]
+[sub_resource type="Resource" id="Entry_husk_patrol"]
 script = ExtResource("3_ent01")
 type_id = &"husk"
-counts = PackedInt32Array(5)
+counts = PackedInt32Array(7)
 
 [sub_resource type="Resource" id="Entry_husk_guard"]
 script = ExtResource("3_ent01")
 type_id = &"husk"
-counts = PackedInt32Array(6, 7, 8, 9, 10)
+counts = PackedInt32Array(6, 8, 10, 11, 12)
+
+[sub_resource type="Resource" id="Entry_husk_roamers"]
+script = ExtResource("3_ent01")
+type_id = &"husk"
+counts = PackedInt32Array(4, 5, 6, 7, 8)
 
 [sub_resource type="Resource" id="Entry_ripper_raid"]
 script = ExtResource("3_ent01")
 type_id = &"ripper"
-counts = PackedInt32Array(2, 3, 3, 4, 5)
+counts = PackedInt32Array(2, 3, 5, 6, 7)
 
 ; ---- groups ----
 
-; Five Husks looping a triangle just south-west of where the ford comes ashore,
+; Seven Husks looping a triangle just south-west of where the ford comes ashore,
 ; 16 to 31 m from the landing and 38 m or more from the north bank, so the
 ; squad meets them only once it is across (behavior 1 = PATROL, patrol_mode 0 =
 ; LOOP). A Light unit within 12 m of any of them sends the lot hunting (on_alert
@@ -64,7 +77,7 @@ counts = PackedInt32Array(2, 3, 3, 4, 5)
 [sub_resource type="Resource" id="Group_field_patrol_w"]
 script = ExtResource("2_grp01")
 name = &"field_patrol_w"
-units = Array[ExtResource("3_ent01")]([SubResource("Entry_husk_5")])
+units = Array[ExtResource("3_ent01")]([SubResource("Entry_husk_patrol")])
 spawns = PackedInt32Array(278000, 252000)
 spawn_at_start = true
 behavior = 1
@@ -72,14 +85,14 @@ waypoints = PackedInt32Array(278000, 252000, 296000, 254000, 286000, 266000)
 patrol_mode = 0
 alert_radius = 12000
 
-; Five Husks looping a triangle among the trees on the way to the village,
+; Seven Husks looping a triangle among the trees on the way to the village,
 ; where the sand road bends south-east, 50 m or more from the creek (PATROL,
 ; LOOP, alert 12 m). They are the second fight, on the march between the ford
 ; and the village.
 [sub_resource type="Resource" id="Group_field_patrol_e"]
 script = ExtResource("2_grp01")
 name = &"field_patrol_e"
-units = Array[ExtResource("3_ent01")]([SubResource("Entry_husk_5")])
+units = Array[ExtResource("3_ent01")]([SubResource("Entry_husk_patrol")])
 spawns = PackedInt32Array(350000, 300000)
 spawn_at_start = true
 behavior = 1
@@ -87,14 +100,14 @@ waypoints = PackedInt32Array(350000, 300000, 368000, 306000, 358000, 318000)
 patrol_mode = 0
 alert_radius = 12000
 
-; Five Husks walking the village's own lanes, out to the end of each spur and
+; Seven Husks walking the village's own lanes, out to the end of each spur and
 ; back round the square (PATROL, LOOP, alert 10 m). The lane ends are the
 ; ones in scripts/gen_riverside.gd, pulled a metre or two inside so the
 ; steep ring round every house is clear of them.
 [sub_resource type="Resource" id="Group_village_patrol"]
 script = ExtResource("2_grp01")
 name = &"village_patrol"
-units = Array[ExtResource("3_ent01")]([SubResource("Entry_husk_5")])
+units = Array[ExtResource("3_ent01")]([SubResource("Entry_husk_patrol")])
 spawns = PackedInt32Array(431000, 363000)
 spawn_at_start = true
 behavior = 1
@@ -102,8 +115,9 @@ waypoints = PackedInt32Array(431000, 363000, 446000, 365000, 457000, 377000, 445
 patrol_mode = 0
 alert_radius = 10000
 
-; The square's guard: 6 Husks at tier 0 up to 10 at tier 4, holding the sand
-; plaza (behavior 2 = GUARD) and chasing anything that comes within 18 m of it.
+; The square's guard: 6 Husks at tier 0 up to 12 at tier 4 (10 at tier 2),
+; holding the sand plaza (behavior 2 = GUARD) and chasing anything that comes
+; within 18 m of it.
 [sub_resource type="Resource" id="Group_village_guard"]
 script = ExtResource("2_grp01")
 name = &"village_guard"
@@ -113,19 +127,48 @@ spawn_at_start = true
 behavior = 2
 guard_radius = 18000
 
-; The raid: Rippers (2 at tier 0, 5 at tier 4) that come out of the dry
-; ground behind the village, on its far south-east side, once the `raid`
-; trigger spawns them (behavior 4 = FLANK, spawn_at_start false). They go for
-; the roles in flank_roles, the default of ranged and support (6): the Longbows
-; and the Sappers.
+; The raid: a few Rippers (2 at tier 0, 5 at tier 2, 7 at tier 4) that come
+; out of the dry ground behind the village, at its far south-east corner,
+; (505, 505) m, 143 m from the square, once the `raid` trigger spawns them
+; (behavior 4 = FLANK, spawn_at_start false). They go for the roles in
+; flank_roles, the default of ranged and support (6): the Longbows and the
+; Sappers.
 [sub_resource type="Resource" id="Group_raiders"]
 script = ExtResource("2_grp01")
 name = &"raiders"
 units = Array[ExtResource("3_ent01")]([SubResource("Entry_ripper_raid")])
-spawns = PackedInt32Array(492000, 405000)
+spawns = PackedInt32Array(505000, 505000)
 spawn_at_start = false
 behavior = 4
 flank_roles = 6
+
+; The dead roaming the fields: two bands of Husks (4 at tier 0 up to 8 at tier
+; 4, 6 at tier 2) looping wide triangles in the far fields, one 100 to 115 m
+; south of the square, (420, 490) to (470, 490), and one 90 to 120 m
+; south-west of it, (350, 480) to (360, 440) (PATROL, LOOP, alert 12 m: far
+; off the squad's road). The `stirring` trigger sets them hunting 40 s after
+; the squad reaches the village, so they come in over the next minute or so.
+[sub_resource type="Resource" id="Group_field_roamers_s"]
+script = ExtResource("2_grp01")
+name = &"field_roamers_s"
+units = Array[ExtResource("3_ent01")]([SubResource("Entry_husk_roamers")])
+spawns = PackedInt32Array(440000, 485000)
+spawn_at_start = true
+behavior = 1
+waypoints = PackedInt32Array(420000, 490000, 470000, 490000, 445000, 470000)
+patrol_mode = 0
+alert_radius = 12000
+
+[sub_resource type="Resource" id="Group_field_roamers_w"]
+script = ExtResource("2_grp01")
+name = &"field_roamers_w"
+units = Array[ExtResource("3_ent01")]([SubResource("Entry_husk_roamers")])
+spawns = PackedInt32Array(360000, 470000)
+spawn_at_start = true
+behavior = 1
+waypoints = PackedInt32Array(350000, 480000, 380000, 470000, 360000, 440000)
+patrol_mode = 0
+alert_radius = 12000
 
 ; ---- objectives ----
 
@@ -175,6 +218,11 @@ script = ExtResource("5_act01")
 kind = 2
 text = "Longbows: press T to nock the fire arrow. Brush and houses burn."
 
+[sub_resource type="Resource" id="Action_say_stirring"]
+script = ExtResource("5_act01")
+kind = 2
+text = "The dead in the fields have heard you. They are coming."
+
 [sub_resource type="Resource" id="Action_say_raid"]
 script = ExtResource("5_act01")
 kind = 2
@@ -200,6 +248,20 @@ objective = &"raid"
 script = ExtResource("5_act01")
 kind = 6
 objective = &"raid"
+
+; Kind 5 = SET_BEHAVIOR, behavior 3 = HUNT: a band of roamers comes for the
+; nearest of the squad.
+[sub_resource type="Resource" id="Action_rouse_roamers_s"]
+script = ExtResource("5_act01")
+kind = 5
+group = &"field_roamers_s"
+behavior = 3
+
+[sub_resource type="Resource" id="Action_rouse_roamers_w"]
+script = ExtResource("5_act01")
+kind = 5
+group = &"field_roamers_w"
+behavior = 3
 
 ; Kind 0 = SPAWN_GROUP.
 [sub_resource type="Resource" id="Action_spawn_raiders"]
@@ -269,15 +331,26 @@ condition = 2
 ticks = PackedInt32Array(450)
 actions = Array[ExtResource("5_act01")]([SubResource("Action_say_fire")])
 
-; Eleven Husks dead across the four Husk groups (condition 1 = UNIT_DIES):
-; about half of them at tier 0, a third at tier 4, whichever the squad cut down
-; first. The raiders arrive and their objective appears.
+; Forty seconds after the squad reaches the village (1200 ticks after
+; `hint_grenade`, so the grenade and fire hints have had their turn): the
+; roaming bands start for it.
+[sub_resource type="Resource" id="Trigger_stirring"]
+script = ExtResource("4_trg01")
+name = &"stirring"
+after = &"hint_grenade"
+condition = 2
+ticks = PackedInt32Array(1200)
+actions = Array[ExtResource("5_act01")]([SubResource("Action_rouse_roamers_s"), SubResource("Action_rouse_roamers_w"), SubResource("Action_say_stirring")])
+
+; Six of the roamers dead (condition 1 = UNIT_DIES, across both bands, which
+; have 8 between them at tier 0 and 16 at tier 4): the raiders arrive while
+; the last of the field dead are still coming in, and their objective appears.
 [sub_resource type="Resource" id="Trigger_raid"]
 script = ExtResource("4_trg01")
 name = &"raid"
 condition = 1
-names = Array[StringName]([&"field_patrol_w", &"field_patrol_e", &"village_patrol", &"village_guard"])
-count = 11
+names = Array[StringName]([&"field_roamers_s", &"field_roamers_w"])
+count = 6
 actions = Array[ExtResource("5_act01")]([SubResource("Action_spawn_raiders"), SubResource("Action_show_raid"), SubResource("Action_say_raid")])
 
 ; The raiders are all down (condition 3 = GROUP_CLEARED).
@@ -310,6 +383,6 @@ actions = Array[ExtResource("5_act01")]([SubResource("Action_lose")])
 
 [resource]
 script = ExtResource("1_msc01")
-groups = Array[ExtResource("2_grp01")]([SubResource("Group_field_patrol_w"), SubResource("Group_field_patrol_e"), SubResource("Group_village_patrol"), SubResource("Group_village_guard"), SubResource("Group_raiders")])
-triggers = Array[ExtResource("4_trg01")]([SubResource("Trigger_hello"), SubResource("Trigger_hint_formation"), SubResource("Trigger_at_ford"), SubResource("Trigger_hint_grenade"), SubResource("Trigger_hint_fire"), SubResource("Trigger_raid"), SubResource("Trigger_raid_over"), SubResource("Trigger_win"), SubResource("Trigger_lose")])
+groups = Array[ExtResource("2_grp01")]([SubResource("Group_field_patrol_w"), SubResource("Group_field_patrol_e"), SubResource("Group_village_patrol"), SubResource("Group_village_guard"), SubResource("Group_raiders"), SubResource("Group_field_roamers_s"), SubResource("Group_field_roamers_w")])
+triggers = Array[ExtResource("4_trg01")]([SubResource("Trigger_hello"), SubResource("Trigger_hint_formation"), SubResource("Trigger_at_ford"), SubResource("Trigger_hint_grenade"), SubResource("Trigger_hint_fire"), SubResource("Trigger_stirring"), SubResource("Trigger_raid"), SubResource("Trigger_raid_over"), SubResource("Trigger_win"), SubResource("Trigger_lose")])
 objectives = Array[ExtResource("6_obj01")]([SubResource("Objective_cross"), SubResource("Objective_clear"), SubResource("Objective_raid")])
