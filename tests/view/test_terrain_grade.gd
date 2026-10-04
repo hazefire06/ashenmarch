@@ -93,10 +93,9 @@ func test_the_ground_texture_holds_every_type_the_terrain_has() -> void:
 	var view: TerrainView = _view(shipped)
 	var kind: Image = (view.shader_parameter(&"ground_kind") as ImageTexture).get_image()
 	var seen: Dictionary[int, bool] = {}
-	for k: int in shipped.size_x * shipped.size_z:
-		seen[kind.get_pixel(k % shipped.size_x, k / shipped.size_x).r8] = true
-		if k > 20000:
-			break
+	for j: int in shipped.size_z:
+		for i: int in shipped.size_x:
+			seen[kind.get_pixel(i, j).r8] = true
 	assert_true(seen.has(Terrain.Ground.GRASS))
 	for ground: int in seen:
 		assert_lt(ground, Terrain.GROUND_COUNT)

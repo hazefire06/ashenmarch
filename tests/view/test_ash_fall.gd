@@ -6,6 +6,8 @@ extends GutTest
 ## of the sim's snow; and it survives the view being set up again.
 
 const MAP_SIZE: int = 80
+## Half the ash instances: what an ash fall of 0.5 shows.
+const HALF: int = PrecipitationView.ASH_MAX >> 1
 
 var _world: World
 var _camera: RtsCamera
@@ -34,7 +36,7 @@ func test_with_no_ash_there_is_no_ash_layer() -> void:
 
 func test_ash_shows_a_share_of_its_instances() -> void:
 	_view.set_ash(0.5, Color(0.3, 0.26, 0.24))
-	assert_eq(_view.ash_count(), PrecipitationView.ASH_MAX / 2)
+	assert_eq(_view.ash_count(), HALF)
 	assert_true(_ash_node().visible)
 	_view.set_ash(1.0, Color(0.3, 0.26, 0.24))
 	assert_eq(_view.ash_count(), PrecipitationView.ASH_MAX)
@@ -86,13 +88,13 @@ func test_ash_set_before_setup_survives_it() -> void:
 	fresh.set_ash(0.5, Color.GRAY)
 	assert_eq(fresh.ash_count(), 0, "nothing to draw it on yet")
 	fresh.setup(_world, _camera)
-	assert_eq(fresh.ash_count(), PrecipitationView.ASH_MAX / 2)
+	assert_eq(fresh.ash_count(), HALF)
 
 
 func test_setup_again_keeps_the_ash() -> void:
 	_view.set_ash(0.5, Color.GRAY)
 	_view.setup(_world, _camera)
-	assert_eq(_view.ash_count(), PrecipitationView.ASH_MAX / 2)
+	assert_eq(_view.ash_count(), HALF)
 	await get_tree().process_frame
 	assert_eq(_view.get_child_count(), 3, "rain, snow, and ash, once each")
 

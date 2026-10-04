@@ -49,12 +49,12 @@ func _screen_of(unit: Unit) -> Vector2:
 	return _camera.unproject_position(Vector3(unit.x, 0.0, unit.z) / float(M))
 
 
-func _click(at: Vector2, double: bool = false) -> void:
+func _click(at: Vector2, is_double: bool = false) -> void:
 	var event: InputEventMouseButton = InputEventMouseButton.new()
 	event.button_index = MOUSE_BUTTON_LEFT
 	event.pressed = true
 	event.position = at
-	event.double_click = double
+	event.double_click = is_double
 	_controller._unhandled_input(event)
 	var release: InputEventMouseButton = InputEventMouseButton.new()
 	release.button_index = MOUSE_BUTTON_LEFT
