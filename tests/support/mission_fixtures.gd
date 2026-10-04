@@ -155,8 +155,11 @@ static func script(
 ## (World.roll_bindings) follows from `world_seed`.
 static func world(mission_script: MissionScript, tier: int = 0, world_seed: int = 1) -> World:
 	var w: World = World.new(world_seed, TestTerrains.flat(60, 60), catalog())
-	var accepted: bool = w.start_mission(mission_script, tier)
-	assert(accepted, "the script should be accepted")
+	# Not assert(): under the debugger that hangs instead of failing the test. A
+	# push_error fails the running test, and the world is returned without a
+	# mission so what the test checks next fails by name rather than crashing.
+	if not w.start_mission(mission_script, tier):
+		push_error("MissionFixtures.world: the script should be accepted")
 	return w
 
 
@@ -165,7 +168,11 @@ static func world(mission_script: MissionScript, tier: int = 0, world_seed: int 
 static func world_bound(mission_script: MissionScript, bindings: PackedInt32Array, tier: int = 0) -> World:
 	var w: World = World.new(1, TestTerrains.flat(60, 60), catalog())
 	var errors: PackedStringArray = mission_script.validate(w.catalog)
-	assert(errors.is_empty(), "invalid test script: %s" % [errors])
+	if not errors.is_empty():
+		# Not assert() (see world()). An invalid script isn't run: the world
+		# gets an empty one, so the test fails on the error and on what it expects.
+		push_error("MissionFixtures.world_bound: invalid test script: %s" % [errors])
+		mission_script = MissionScript.new()
 	w.mission = MissionRuntime.new(mission_script, tier, w.tick, bindings)
 	return w
 

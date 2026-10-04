@@ -872,14 +872,17 @@ func test_a_notice_shows_then_goes_when_its_time_is_up() -> void:
 
 
 func test_an_older_notices_timer_does_not_hide_a_newer_notice() -> void:
+	# Real-time timers, so the checks sit in the middle of the gaps (0.25 s
+	# from each timer running out) rather than near an edge: the first notice
+	# runs out at 0.8 s, the second, shown at 0.5 s, at 1.3 s; look at 1.05 s.
 	var app: App = _app()
-	app.notice_seconds = 0.3
+	app.notice_seconds = 0.8
 	var notice: Label = app.find_child("NoticeLabel", true, false) as Label
 	app.show_notice("First")
-	await get_tree().create_timer(0.2).timeout
+	await get_tree().create_timer(0.5).timeout
 	app.show_notice("Second")
-	await get_tree().create_timer(0.2).timeout
+	await get_tree().create_timer(0.55).timeout
 	assert_true(notice.visible, "the first one's timer ran out, the second's hasn't")
 	assert_eq(notice.text, "Second")
-	await get_tree().create_timer(0.3).timeout
-	assert_false(notice.visible)
+	await get_tree().create_timer(0.5).timeout
+	assert_false(notice.visible, "the second one's has now")

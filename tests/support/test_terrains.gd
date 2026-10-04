@@ -19,6 +19,10 @@ const GROUND_LETTERS: Dictionary[String, int] = {
 ## at z = 0: '.' dry grass, 'b' brush, 'w' wood, 's' sand, 'r' rock, '#'
 ## blocked, '1'..'4' water of that depth.
 static func from_ascii(rows: Array[String]) -> Terrain:
+	if rows.is_empty():
+		# Not assert(): under the debugger that hangs instead of failing the test.
+		push_error("TestTerrains.from_ascii: no rows")
+		return flat(2, 2)
 	var size_z: int = rows.size()
 	var size_x: int = rows[0].length()
 	var heights: PackedInt32Array = PackedInt32Array()
@@ -30,9 +34,11 @@ static func from_ascii(rows: Array[String]) -> Terrain:
 	blocked.resize(size_x * size_z)
 	ground.resize(size_x * size_z)
 	for j: int in size_z:
-		assert(rows[j].length() == size_x, "row %d has the wrong width" % j)
+		if rows[j].length() != size_x:
+			push_error("TestTerrains.from_ascii: row %d has the wrong width" % j)
 		for i: int in size_x:
-			var c: String = rows[j][i]
+			# A short row reads as dry grass past its end, so nothing crashes.
+			var c: String = rows[j][i] if i < rows[j].length() else "."
 			var k: int = j * size_x + i
 			if c == "#":
 				blocked[k] = 1
