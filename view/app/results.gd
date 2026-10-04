@@ -6,17 +6,18 @@ extends MenuScreen
 ## made of him, how he stands, and whether he lived).
 ##
 ## It shows a finished mission and decides nothing: Continue (after a victory),
-## Retry (after a defeat) and Main menu are signals, and the App commits the
-## victory (CampaignState.apply_victory) or drops the defeat. Everything is
+## Retry (after a defeat) and Main menu are signals. The App has already
+## committed a victory (CampaignState.apply_victory, saved) as this screen
+## came up, so no button decides whether it counts. Everything is
 ## read from what the mission left: `stats` for time, kills, losses and
 ## friendly fire; `world` for each soldier's final health and the objectives'
 ## final states; `plan` for who he is and what he deployed with.
 
-## After a victory, Continue: apply it, save, and go on.
+## After a victory, Continue: on to the next briefing (the victory is already applied and saved).
 signal continue_pressed
 ## After a defeat, Retry: from the saved campaign, with the same seed.
 signal retry_pressed
-## Main menu, either way. After a victory the App applies and saves first.
+## Main menu, either way. Nothing more is saved: a victory was recorded when this screen appeared.
 signal main_menu_pressed
 
 ## The soldier table's columns, and the two notes under the title.

@@ -399,16 +399,31 @@ func test_a_mission_leaves_one_screen_not_two() -> void:
 # --- victory ------------------------------------------------------------------
 
 
-func test_a_victory_shows_results_and_applies_nothing_until_the_player_leaves_them() -> void:
-	var app: App = _app(_tiny())
+func test_a_victory_is_applied_and_saved_as_results_appear() -> void:
+	var app: App = _app(_tiny(WON, true))
 	_into_the_mission(app)
 	var saved_before: String = _file(_store().path)
 	_decide(app)
 	var results: Results = app.current_screen() as Results
 	assert_not_null(results)
 	assert_true(results.is_victory())
-	assert_eq(app.state.mission_index, 0, "not yet")
-	assert_eq(_file(_store().path), saved_before, "nor saved")
+	assert_eq(app.state.mission_index, 1, "applied before the player leaves Results")
+	assert_eq(app.state.soldiers.size(), 1, "the recruit joined the roll")
+	assert_ne(_file(_store().path), saved_before, "and saved: closing the game here loses nothing")
+	assert_eq(_store().load().to_dict(), app.state.to_dict())
+
+
+func test_continue_after_the_victory_was_applied_does_not_apply_it_again() -> void:
+	var app: App = _app(_tiny(WON, true))
+	_into_the_mission(app)
+	_decide(app)
+	var saved_on_results: String = _file(_store().path)
+	_press(app, "ContinueButton")
+	assert_eq(app.state.mission_index, 1, "once")
+	assert_eq(app.state.history.size(), 1)
+	assert_eq(app.state.soldiers.size(), 1)
+	assert_eq(_file(_store().path), saved_on_results, "no second save")
+	assert_true(app.current_screen() is Briefing)
 
 
 func test_continue_applies_the_victory_saves_and_goes_to_the_next_briefing() -> void:
@@ -462,7 +477,7 @@ func test_main_menu_after_a_victory_applies_and_saves_too() -> void:
 	assert_true(app.current_screen() is MainMenu)
 	assert_eq(app.state.mission_index, 1)
 	var saved: CampaignState = _store().load()
-	assert_eq(saved.mission_index, 1, "progress is never lost")
+	assert_eq(saved.mission_index, 1, "applied once, saved")
 	assert_eq(saved.soldiers.size(), 1)
 
 
@@ -626,7 +641,6 @@ func test_main_menu_after_a_defeat_changes_nothing() -> void:
 	var app: App = _app(_tiny(LOST))
 	_into_the_mission(app)
 	var saved_before: String = _file(_store().path)
-	_decide(app)
 	_press(app, "MainMenuButton")
 	assert_true(app.current_screen() is MainMenu)
 	assert_eq(_file(_store().path), saved_before)
@@ -635,6 +649,8 @@ func test_main_menu_after_a_defeat_changes_nothing() -> void:
 
 
 # --- pause menu: restart, quit, settings ---------------------------------------
+	_decide(app)
+	assert_eq(app.state.mission_index, 1, "applied as Results appeared")
 
 
 func test_restart_asks_and_keep_playing_keeps_the_mission() -> void:

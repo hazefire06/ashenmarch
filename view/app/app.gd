@@ -16,8 +16,9 @@ extends Node
 ##   (mission_index), deploy = the plan's command, tier = state.tier.
 ## - A victory is applied with the SAME plan that built the deploy
 ##   (CampaignState.apply_victory refuses a stale one), then saved (the second
-##   autosave), when the player leaves Results by Continue or by Main menu, so
-##   progress is never lost. A defeat is never applied.
+##   autosave), the moment Results appears, so closing the window on that
+##   screen loses nothing; Continue and Main menu then only navigate. A defeat
+##   is never applied.
 ## - Retry reloads the save (which is the state before the mission) and shows
 ##   that mission's briefing again, with the same soldiers benched, so the
 ##   player can change the roster or just press Start; the seed is the same, so
@@ -83,7 +84,8 @@ var _focus_before_overlay: Control
 # what apply_victory must be given, and what a Retry's briefing starts from.
 var _plan: DeployPlan
 var _benched: PackedInt32Array = PackedInt32Array()
-# A finished mission waiting for the player to leave Results.
+# A finished mission, held while its Results are up (a victory is applied and
+# dropped at once; a defeat is dropped when the player leaves).
 var _result_outcome: MissionRuntime.Outcome = MissionRuntime.Outcome.NONE
 var _result_stats: MissionStats
 var _result_world: World
@@ -184,8 +186,11 @@ func start_mission(plan: DeployPlan, benched: PackedInt32Array) -> void:
 	_launch_mission()
 
 
-## The results of a mission that just ended. Kept until the player leaves them:
-## a victory is applied then, not before.
+## The results of a mission that just ended. A victory is applied and saved
+## here, after the screen is built (it is built from the state as it stood
+## before), so the player can't lose it by closing the game on this screen;
+## the result is dropped once applied, so the buttons never apply it again. A
+## defeat is kept only until the player leaves (Retry needs nothing from it).
 func show_results(outcome: MissionRuntime.Outcome, stats: MissionStats, world: World) -> void:
 	_result_outcome = outcome
 	_result_stats = stats
@@ -196,6 +201,7 @@ func show_results(outcome: MissionRuntime.Outcome, stats: MissionStats, world: W
 	results.retry_pressed.connect(_on_results_retry)
 	results.main_menu_pressed.connect(_on_results_main_menu)
 	show_screen(results)
+	_commit_victory()
 
 
 ## The end of the campaign, from `state`.
@@ -317,7 +323,6 @@ func _on_quit_to_menu() -> void:
 
 
 func _on_results_continue() -> void:
-	_commit_victory()
 	if state.is_complete(campaign):
 		show_complete()
 	else:
@@ -343,15 +348,13 @@ func _on_results_retry() -> void:
 
 
 func _on_results_main_menu() -> void:
-	if _result_outcome == MissionRuntime.Outcome.WON:
-		_commit_victory()
-	else:
-		_drop_result()
+	_drop_result()
 	show_main_menu()
 
 
 # Applies the won mission to the campaign, with the plan that built it, and
-# saves. Does nothing a second time: the result is dropped once applied.
+# saves. Run as the victory's Results appear. Does nothing for a defeat or a
+# second time: the result is dropped once applied (or refused).
 func _commit_victory() -> void:
 	if _result_world == null or _result_outcome != MissionRuntime.Outcome.WON:
 		return
