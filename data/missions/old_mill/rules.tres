@@ -1,0 +1,443 @@
+[gd_resource type="Resource" script_class="MissionScript" format=3]
+
+[ext_resource type="Script" path="res://sim/missions/mission_script.gd" id="1_msc01"]
+[ext_resource type="Script" path="res://sim/ai/ai_group_spec.gd" id="2_grp01"]
+[ext_resource type="Script" path="res://sim/ai/ai_unit_entry.gd" id="3_ent01"]
+[ext_resource type="Script" path="res://sim/missions/trigger_spec.gd" id="4_trg01"]
+[ext_resource type="Script" path="res://sim/missions/trigger_action.gd" id="5_act01"]
+[ext_resource type="Script" path="res://sim/missions/objective_spec.gd" id="6_obj01"]
+[ext_resource type="Script" path="res://sim/missions/mission_draw.gd" id="7_drw01"]
+[ext_resource type="Script" path="res://sim/weather_change.gd" id="8_wch01"]
+
+; Old Mill, mission three: hold the line. The squad deploys on a rock plateau
+; round a mill and holds it against four waves out of five, drawn by the
+; world's seed (a Retry rolls the same four). Nothing spawns at start. The
+; script is hand-written; the editor drops these comments if it re-saves it.
+; Positions are milli-units (1000 = 1 m) on maps/old_mill/old_mill.tres, and
+; every coordinate that comes from the map's generator (scripts/gen_old_mill.gd)
+; is read back against it by tests/sim/test_campaign_missions.gd:
+;   - the plateau is 12 m high round (160, 150) m, ringed by rock cliffs, with
+;     two 8 m ramps, north-west (foot (122, 108), top (140, 128)) and
+;     south-east (foot (198, 192), top (179, 171)): the only ways up, and
+;     where the satchels go;
+;   - the squad deploys at (156, 158) m, the mill is the blocked 10 m house at
+;     (166, 144), and the mill yard is the open ground south of it, centred
+;     (166, 157) m with radius 7 m;
+;   - the four edge spawn zones are north (150, 14), west (14, 170), south
+;     (150, 306), and east (306, 210) m, in that order below, all on the
+;     plateau's walkable component; the east one wades the millstream.
+;
+; Enum values used below, from the scripts that declare them (append-only, so
+; these numbers never move). The tests check each one against its name.
+;   AiGroupSpec.Behavior   0 IDLE, 1 PATROL, 2 GUARD, 3 HUNT, 4 FLANK,
+;                          5 AMBUSH, 6 RETREAT, 7 ESCORT
+;   UnitType.Faction       0 LIGHT, 1 DARK
+;   TriggerSpec.Condition  0 AREA_ENTERED, 1 UNIT_DIES, 2 TIMER,
+;                          3 GROUP_CLEARED, 4 FACTION_ELIMINATED,
+;                          5 TRIGGERS_FIRED, 6 PLAYER_ELIMINATED
+;   TriggerAction.Kind     0 SPAWN_GROUP, 1 SET_WEATHER, 2 SET_OBJECTIVE
+;                          (the message line), 3 WIN, 4 LOSE, 5 SET_BEHAVIOR,
+;                          6 SHOW_OBJECTIVE, 7 COMPLETE_OBJECTIVE,
+;                          8 FAIL_OBJECTIVE
+;
+; Counts that differ by tier list five values (tiers 0 to 4); the rest are one
+; value for every tier. A wave spawns front to back in the order its entries
+; are listed: Husks first where the rest shoot (Drifters, Stormcallers), so the
+; Husks walk in front of them; the Rippers and the Blightbags first in their
+; own waves, because those are the front rank.
+;
+; The waves. Five groups are in the pool and none spawns at start. Each is
+; named by its own `spawns`: the four edge zones, always in the order north,
+; west, south, east (indices 0, 1, 2, 3), and `spawn_by_tier` picks which one
+; a wave uses at each tier. How the picks run (the generator's two ramps are
+; north-west and south-east, so north and west meet the first, south and east
+; the second):
+;   tiers 0 and 1  every wave comes from the north edge: one approach, one
+;                  ramp to mine, the layout to learn;
+;   tier 2         two approaches: the husks and the bags from the north, the
+;                  drifters from the west, the rippers and the storm from the
+;                  south, so both ramps matter and the waves are not all
+;                  from one side;
+;   tiers 3 and 4  all four edges are in play, each wave from its own side,
+;                  and no wave takes the edge it took a tier before (the east
+;                  one wades the stream, so the wave that comes that way
+;                  arrives strung out and late).
+; The waves are drawn in order of difficulty (draw `ordered`): the pool below
+; is listed easiest first, so wave 1 is the easiest of the four drawn.
+
+; ---- unit entries ----
+
+[sub_resource type="Resource" id="Entry_husk_wave"]
+script = ExtResource("3_ent01")
+type_id = &"husk"
+counts = PackedInt32Array(10, 12, 14, 16, 18)
+
+[sub_resource type="Resource" id="Entry_husk_6"]
+script = ExtResource("3_ent01")
+type_id = &"husk"
+counts = PackedInt32Array(6)
+
+[sub_resource type="Resource" id="Entry_husk_8"]
+script = ExtResource("3_ent01")
+type_id = &"husk"
+counts = PackedInt32Array(8)
+
+[sub_resource type="Resource" id="Entry_ripper_6"]
+script = ExtResource("3_ent01")
+type_id = &"ripper"
+counts = PackedInt32Array(6)
+
+[sub_resource type="Resource" id="Entry_blightbag_4"]
+script = ExtResource("3_ent01")
+type_id = &"blightbag"
+counts = PackedInt32Array(4)
+
+[sub_resource type="Resource" id="Entry_drifter_6"]
+script = ExtResource("3_ent01")
+type_id = &"drifter"
+counts = PackedInt32Array(6)
+
+[sub_resource type="Resource" id="Entry_stormcaller_2"]
+script = ExtResource("3_ent01")
+type_id = &"stormcaller"
+counts = PackedInt32Array(2)
+
+; ---- groups: the wave pool ----
+; behavior 3 = HUNT for every wave: each marches at the nearest Light unit from
+; the moment it spawns, and so up a ramp. spawn_at_start stays false.
+
+; The easiest: Husks alone, 10 at tier 0 up to 18 at tier 4. From the edge by
+; tier: north, north, north, west, east.
+[sub_resource type="Resource" id="Group_wave_husks"]
+script = ExtResource("2_grp01")
+name = &"wave_husks"
+units = Array[ExtResource("3_ent01")]([SubResource("Entry_husk_wave")])
+spawns = PackedInt32Array(150000, 14000, 14000, 170000, 150000, 306000, 306000, 210000)
+spawn_by_tier = PackedInt32Array(0, 0, 0, 1, 3)
+spawn_at_start = false
+behavior = 3
+
+; Six fast Rippers with six Husks behind them, who go for the Longbows and the
+; Sappers. From the edge by tier: north, north, south, east, south.
+[sub_resource type="Resource" id="Group_wave_rippers"]
+script = ExtResource("2_grp01")
+name = &"wave_rippers"
+units = Array[ExtResource("3_ent01")]([SubResource("Entry_ripper_6"), SubResource("Entry_husk_6")])
+spawns = PackedInt32Array(150000, 14000, 14000, 170000, 150000, 306000, 306000, 210000)
+spawn_by_tier = PackedInt32Array(0, 0, 2, 3, 2)
+spawn_at_start = false
+behavior = 3
+
+; Four Blightbags in front, eight Husks behind: the walking bombs that gas a
+; whole block. From the edge by tier: north, north, north, south, west.
+[sub_resource type="Resource" id="Group_wave_bags"]
+script = ExtResource("2_grp01")
+name = &"wave_bags"
+units = Array[ExtResource("3_ent01")]([SubResource("Entry_blightbag_4"), SubResource("Entry_husk_8")])
+spawns = PackedInt32Array(150000, 14000, 14000, 170000, 150000, 306000, 306000, 210000)
+spawn_by_tier = PackedInt32Array(0, 0, 0, 2, 1)
+spawn_at_start = false
+behavior = 3
+
+; Six Husks in front of six Drifters, who stand off and shoot up the plateau.
+; From the edge by tier: north, north, west, north, east.
+[sub_resource type="Resource" id="Group_wave_drifters"]
+script = ExtResource("2_grp01")
+name = &"wave_drifters"
+units = Array[ExtResource("3_ent01")]([SubResource("Entry_husk_6"), SubResource("Entry_drifter_6")])
+spawns = PackedInt32Array(150000, 14000, 14000, 170000, 150000, 306000, 306000, 210000)
+spawn_by_tier = PackedInt32Array(0, 0, 1, 0, 3)
+spawn_at_start = false
+behavior = 3
+
+; The hardest: eight Husks in front of two Stormcallers, whose lightning
+; reaches 40 m and cannot hit anything inside 8 m. From the edge by tier:
+; north, north, south, west, north.
+[sub_resource type="Resource" id="Group_wave_storm"]
+script = ExtResource("2_grp01")
+name = &"wave_storm"
+units = Array[ExtResource("3_ent01")]([SubResource("Entry_husk_8"), SubResource("Entry_stormcaller_2")])
+spawns = PackedInt32Array(150000, 14000, 14000, 170000, 150000, 306000, 306000, 210000)
+spawn_by_tier = PackedInt32Array(0, 0, 2, 1, 0)
+spawn_at_start = false
+behavior = 3
+
+; ---- the draw ----
+
+; Four of the five waves, bound to wave1 to wave4 in pool order: the easiest of
+; the four drawn is wave1, the hardest wave4. Every trigger names a wave only
+; through these aliases.
+[sub_resource type="Resource" id="Draw_waves"]
+script = ExtResource("7_drw01")
+slots = Array[StringName]([&"wave1", &"wave2", &"wave3", &"wave4"])
+pool = Array[StringName]([&"wave_husks", &"wave_rippers", &"wave_bags", &"wave_drifters", &"wave_storm"])
+ordered = true
+
+; ---- weather ----
+
+; The rain that starts once the third wave is on the field: 600 permille,
+; ramping in over ten seconds (300 ticks), with a light wind from the west.
+; tick must be 0 (the change starts when its trigger fires). Rain makes burning
+; arrows fizzle; the Longbows' one fire arrow stops being a sure thing.
+[sub_resource type="Resource" id="Weather_rain"]
+script = ExtResource("8_wch01")
+rain = 600
+wind_x = 2000
+wind_z = 500
+ramp_ticks = 300
+
+; ---- objectives ----
+
+[sub_resource type="Resource" id="Objective_hold"]
+script = ExtResource("6_obj01")
+name = &"hold"
+text = "Hold the mill"
+
+[sub_resource type="Resource" id="Objective_waves"]
+script = ExtResource("6_obj01")
+name = &"waves"
+text = "Survive four waves"
+
+; ---- trigger actions ----
+
+; Kind 2 = SET_OBJECTIVE, the message line.
+[sub_resource type="Resource" id="Action_say_setup"]
+script = ExtResource("5_act01")
+kind = 2
+text = "Set satchel charges on the ramps (Sapper: T). The first wave comes in a minute."
+
+[sub_resource type="Resource" id="Action_say_wave1"]
+script = ExtResource("5_act01")
+kind = 2
+text = "Wave 1 of 4."
+
+[sub_resource type="Resource" id="Action_say_wave2"]
+script = ExtResource("5_act01")
+kind = 2
+text = "Wave 2 of 4."
+
+[sub_resource type="Resource" id="Action_say_wave3"]
+script = ExtResource("5_act01")
+kind = 2
+text = "Wave 3 of 4."
+
+[sub_resource type="Resource" id="Action_say_wave4"]
+script = ExtResource("5_act01")
+kind = 2
+text = "Wave 4 of 4."
+
+; Kind 0 = SPAWN_GROUP, naming the aliases.
+[sub_resource type="Resource" id="Action_spawn_wave1"]
+script = ExtResource("5_act01")
+kind = 0
+group = &"wave1"
+
+[sub_resource type="Resource" id="Action_spawn_wave2"]
+script = ExtResource("5_act01")
+kind = 0
+group = &"wave2"
+
+[sub_resource type="Resource" id="Action_spawn_wave3"]
+script = ExtResource("5_act01")
+kind = 0
+group = &"wave3"
+
+[sub_resource type="Resource" id="Action_spawn_wave4"]
+script = ExtResource("5_act01")
+kind = 0
+group = &"wave4"
+
+; Kind 1 = SET_WEATHER.
+[sub_resource type="Resource" id="Action_rain"]
+script = ExtResource("5_act01")
+kind = 1
+weather = SubResource("Weather_rain")
+
+; Kind 7 = COMPLETE_OBJECTIVE, 8 = FAIL_OBJECTIVE.
+[sub_resource type="Resource" id="Action_done_hold"]
+script = ExtResource("5_act01")
+kind = 7
+objective = &"hold"
+
+[sub_resource type="Resource" id="Action_done_waves"]
+script = ExtResource("5_act01")
+kind = 7
+objective = &"waves"
+
+[sub_resource type="Resource" id="Action_fail_hold"]
+script = ExtResource("5_act01")
+kind = 8
+objective = &"hold"
+
+; Kind 3 = WIN, 4 = LOSE.
+[sub_resource type="Resource" id="Action_win"]
+script = ExtResource("5_act01")
+kind = 3
+
+[sub_resource type="Resource" id="Action_lose"]
+script = ExtResource("5_act01")
+kind = 4
+
+; ---- triggers: the pacing ----
+; All conditions are checked before any trigger fires on a tick, so a trigger
+; that waits on another (`after`, or TRIGGERS_FIRED) opens the tick after it,
+; never the same one. The chain for each wave after the first:
+;   w{k-1}_clear  (gate: wave k-1 is wiped out)
+;     -> w{k}_breather  (a 25 s rest, 750 ticks, once it is)
+;   w{k-1} -> w{k}_late  (the deadline: 150 s at tier 2, 5400 to 3300 ticks by
+;                         tier, after the wave before it spawned)
+;   w{k}  (whichever of the two fires first spawns the wave)
+; so a squad that kills fast gets a breather and one that doesn't gets the next
+; wave on top of it. The gates have no actions of their own.
+
+; Tick 0 (condition 2 = TIMER, ticks 0): what to do with the first minute.
+[sub_resource type="Resource" id="Trigger_setup"]
+script = ExtResource("4_trg01")
+name = &"setup"
+condition = 2
+ticks = PackedInt32Array(0)
+actions = Array[ExtResource("5_act01")]([SubResource("Action_say_setup")])
+
+; Wave 1: 60 s at tier 2 (1800 ticks; 2400, 2100, 1800, 1500, 1200 by tier).
+[sub_resource type="Resource" id="Trigger_w1"]
+script = ExtResource("4_trg01")
+name = &"w1"
+condition = 2
+ticks = PackedInt32Array(2400, 2100, 1800, 1500, 1200)
+actions = Array[ExtResource("5_act01")]([SubResource("Action_spawn_wave1"), SubResource("Action_say_wave1")])
+
+; Condition 3 = GROUP_CLEARED: every unit of the wave that was drawn for the
+; alias is dead (and it has spawned).
+[sub_resource type="Resource" id="Trigger_w1_clear"]
+script = ExtResource("4_trg01")
+name = &"w1_clear"
+condition = 3
+names = Array[StringName]([&"wave1"])
+
+; Wave 2.
+[sub_resource type="Resource" id="Trigger_w2_breather"]
+script = ExtResource("4_trg01")
+name = &"w2_breather"
+after = &"w1_clear"
+condition = 2
+ticks = PackedInt32Array(750)
+
+[sub_resource type="Resource" id="Trigger_w2_late"]
+script = ExtResource("4_trg01")
+name = &"w2_late"
+after = &"w1"
+condition = 2
+ticks = PackedInt32Array(5400, 4950, 4500, 3900, 3300)
+
+; Condition 5 = TRIGGERS_FIRED, min_count 1 of two: either one spawns the wave.
+[sub_resource type="Resource" id="Trigger_w2"]
+script = ExtResource("4_trg01")
+name = &"w2"
+condition = 5
+min_count = 1
+names = Array[StringName]([&"w2_breather", &"w2_late"])
+actions = Array[ExtResource("5_act01")]([SubResource("Action_spawn_wave2"), SubResource("Action_say_wave2")])
+
+[sub_resource type="Resource" id="Trigger_w2_clear"]
+script = ExtResource("4_trg01")
+name = &"w2_clear"
+condition = 3
+names = Array[StringName]([&"wave2"])
+
+; Wave 3.
+[sub_resource type="Resource" id="Trigger_w3_breather"]
+script = ExtResource("4_trg01")
+name = &"w3_breather"
+after = &"w2_clear"
+condition = 2
+ticks = PackedInt32Array(750)
+
+[sub_resource type="Resource" id="Trigger_w3_late"]
+script = ExtResource("4_trg01")
+name = &"w3_late"
+after = &"w2"
+condition = 2
+ticks = PackedInt32Array(5400, 4950, 4500, 3900, 3300)
+
+[sub_resource type="Resource" id="Trigger_w3"]
+script = ExtResource("4_trg01")
+name = &"w3"
+condition = 5
+min_count = 1
+names = Array[StringName]([&"w3_breather", &"w3_late"])
+actions = Array[ExtResource("5_act01")]([SubResource("Action_spawn_wave3"), SubResource("Action_say_wave3")])
+
+[sub_resource type="Resource" id="Trigger_w3_clear"]
+script = ExtResource("4_trg01")
+name = &"w3_clear"
+condition = 3
+names = Array[StringName]([&"wave3"])
+
+; Wave 4.
+[sub_resource type="Resource" id="Trigger_w4_breather"]
+script = ExtResource("4_trg01")
+name = &"w4_breather"
+after = &"w3_clear"
+condition = 2
+ticks = PackedInt32Array(750)
+
+[sub_resource type="Resource" id="Trigger_w4_late"]
+script = ExtResource("4_trg01")
+name = &"w4_late"
+after = &"w3"
+condition = 2
+ticks = PackedInt32Array(5400, 4950, 4500, 3900, 3300)
+
+[sub_resource type="Resource" id="Trigger_w4"]
+script = ExtResource("4_trg01")
+name = &"w4"
+condition = 5
+min_count = 1
+names = Array[StringName]([&"w4_breather", &"w4_late"])
+actions = Array[ExtResource("5_act01")]([SubResource("Action_spawn_wave4"), SubResource("Action_say_wave4")])
+
+; The rain comes the tick after the third wave spawns (TIMER 0 after `w3`).
+[sub_resource type="Resource" id="Trigger_rain"]
+script = ExtResource("4_trg01")
+name = &"rain"
+after = &"w3"
+condition = 2
+ticks = PackedInt32Array(0)
+actions = Array[ExtResource("5_act01")]([SubResource("Action_rain")])
+
+; ---- triggers: the outcome ----
+
+; All four drawn waves are dead (and every one has spawned): the mill held.
+[sub_resource type="Resource" id="Trigger_win"]
+script = ExtResource("4_trg01")
+name = &"win"
+condition = 3
+names = Array[StringName]([&"wave1", &"wave2", &"wave3", &"wave4"])
+actions = Array[ExtResource("5_act01")]([SubResource("Action_done_hold"), SubResource("Action_done_waves"), SubResource("Action_win")])
+
+; Six or more Dark units at once inside the mill yard, a 7 m circle round
+; (166, 157) m just south of the mill (condition 0 = AREA_ENTERED, faction 1 =
+; DARK): the plateau is lost.
+[sub_resource type="Resource" id="Trigger_overrun"]
+script = ExtResource("4_trg01")
+name = &"overrun"
+condition = 0
+area = PackedInt32Array(166000, 157000, 7000)
+faction = 1
+min_count = 6
+actions = Array[ExtResource("5_act01")]([SubResource("Action_fail_hold"), SubResource("Action_lose")])
+
+; No commanded Light unit left (condition 6 = PLAYER_ELIMINATED, faction 0 =
+; Light by default).
+[sub_resource type="Resource" id="Trigger_lose"]
+script = ExtResource("4_trg01")
+name = &"lose"
+condition = 6
+actions = Array[ExtResource("5_act01")]([SubResource("Action_lose")])
+
+[resource]
+script = ExtResource("1_msc01")
+groups = Array[ExtResource("2_grp01")]([SubResource("Group_wave_husks"), SubResource("Group_wave_rippers"), SubResource("Group_wave_bags"), SubResource("Group_wave_drifters"), SubResource("Group_wave_storm")])
+triggers = Array[ExtResource("4_trg01")]([SubResource("Trigger_setup"), SubResource("Trigger_w1"), SubResource("Trigger_w1_clear"), SubResource("Trigger_w2_breather"), SubResource("Trigger_w2_late"), SubResource("Trigger_w2"), SubResource("Trigger_w2_clear"), SubResource("Trigger_w3_breather"), SubResource("Trigger_w3_late"), SubResource("Trigger_w3"), SubResource("Trigger_w3_clear"), SubResource("Trigger_w4_breather"), SubResource("Trigger_w4_late"), SubResource("Trigger_w4"), SubResource("Trigger_rain"), SubResource("Trigger_win"), SubResource("Trigger_overrun"), SubResource("Trigger_lose")])
+objectives = Array[ExtResource("6_obj01")]([SubResource("Objective_hold"), SubResource("Objective_waves")])
+draws = Array[ExtResource("7_drw01")]([SubResource("Draw_waves")])

@@ -1,0 +1,63 @@
+[gd_resource type="Resource" script_class="MissionDef" format=3]
+
+[ext_resource type="Script" path="res://sim/missions/mission_def.gd" id="1_mdf01"]
+[ext_resource type="Script" path="res://sim/missions/roster_entry.gd" id="2_ros01"]
+[ext_resource type="Resource" path="res://maps/the_ford/the_ford.tres" id="3_map01"]
+[ext_resource type="Resource" path="res://data/missions/the_ford/rules.tres" id="4_rul01"]
+[ext_resource type="Resource" path="res://data/atmospheres/the_ford.tres" id="5_atm01"]
+
+; The Ford, mission two: an escort. The grey is spreading, and the dead are in
+; the water. A hand-written MissionDef; the editor drops these comments if it
+; re-saves it. Positions are milli-units (1000 = 1 m). The fixed roster is 16
+; at tier 2. Survivors of Riverside fill the slots of their own type first (all
+; carry over); the Warden is new here, so the first Wardens are recruits.
+; Entries are listed melee first, which is the order the box lays them out
+; front to back.
+
+[sub_resource type="Resource" id="Roster_shieldman"]
+script = ExtResource("2_ros01")
+type_id = &"shieldman"
+counts = PackedInt32Array(8, 7, 6, 6, 5)
+
+[sub_resource type="Resource" id="Roster_reaver"]
+script = ExtResource("2_ros01")
+type_id = &"reaver"
+counts = PackedInt32Array(3)
+
+[sub_resource type="Resource" id="Roster_longbow"]
+script = ExtResource("2_ros01")
+type_id = &"longbow"
+counts = PackedInt32Array(4)
+
+[sub_resource type="Resource" id="Roster_sapper"]
+script = ExtResource("2_ros01")
+type_id = &"sapper"
+counts = PackedInt32Array(2)
+
+[sub_resource type="Resource" id="Roster_warden"]
+script = ExtResource("2_ros01")
+type_id = &"warden"
+counts = PackedInt32Array(2, 1, 1, 1, 1)
+
+[resource]
+script = ExtResource("1_mdf01")
+id = &"the_ford"
+display_name = "The Ford"
+briefing = "The grey has followed the river. Where the barley turned, the grass along the water has gone the colour of old ash, and a low mist lies on the valley that does not lift at noon. One villager has come down to the south bank, the last who could walk the road. The hamlet beyond the ford keeps behind its stakes and will open its gate to no one it cannot name.
+
+The dead are in the water now. They lie in the deep pools on either side of the crossing and rise when the living pass close. Walk the villager to the gate. The villager moves only while your soldiers are near, so stay close and do not outrun the road.
+
+What you lose here, you lose for good."
+map = ExtResource("3_map01")
+rules = ExtResource("4_rul01")
+roster = Array[ExtResource("2_ros01")]([SubResource("Roster_shieldman"), SubResource("Roster_reaver"), SubResource("Roster_longbow"), SubResource("Roster_sapper"), SubResource("Roster_warden")])
+; The south bank, at the road's foot: (192, 300) m, facing north (0, -1) up the
+; road toward the ford, in a box (Formations.Kind 4 = BOX). The villager starts
+; 7 m away, so the escort has a soldier in range from the first tick.
+deploy = PackedInt32Array(192000, 300000)
+deploy_facing_x = 0
+deploy_facing_z = -1
+deploy_formation = 4
+; The camera looks up the road at the river from behind the squad.
+camera_start = PackedInt32Array(192000, 255000)
+atmosphere = ExtResource("5_atm01")

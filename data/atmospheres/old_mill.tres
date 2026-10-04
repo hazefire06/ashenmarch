@@ -1,0 +1,36 @@
+[gd_resource type="Resource" script_class="Atmosphere" format=3]
+
+[ext_resource type="Script" path="res://view/atmosphere/atmosphere.gd" id="1_atm01"]
+
+; Old Mill: ash in the air, the last mill standing. About 70% of the way to the
+; campaign's end, and deliberately short of it, so the last of the dark stays
+; to be used: an ember-orange sky and a low orange sun over a dark ambient, a
+; red-brown fog, the colour drained out of the ground by 0.55 under a warm dark
+; tint and the fields burned to char, near-black water, and ash falling at 0.6.
+; Colors are linear 0..1.
+[resource]
+script = ExtResource("1_atm01")
+; The sky, the colour of a banked fire.
+background_color = Color(0.42, 0.2, 0.1, 1)
+; Dark ambient with a red cast, and a low sun the colour of an ember.
+ambient_color = Color(0.45, 0.28, 0.22, 1)
+ambient_energy = 0.32
+sun_color = Color(1, 0.55, 0.25, 1)
+sun_energy = 0.75
+sun_pitch_degrees = -12.0
+; Red-brown fog, thick enough that the far fields are gone (a light haze is 0.01).
+fog_enabled = true
+fog_color = Color(0.38, 0.18, 0.1, 1)
+fog_density = 0.014
+; The ground: a warm dark tint, then 0.55 of the colour drained out.
+terrain_tint = Color(0.85, 0.65, 0.55, 1)
+terrain_desaturation = 0.55
+; Scorched earth: one color per Terrain.Ground in order (0 GRASS, 1 BRUSH, 2 WOOD,
+; 3 SAND, 4 ROCK). Grass and brush burned to near-black, wood to char, sand and
+; rock stained.
+ground_recolor = Array[Color]([Color(0.16, 0.1, 0.07, 0.6), Color(0.1, 0.06, 0.04, 0.65), Color(0.08, 0.05, 0.04, 0.6), Color(0.28, 0.2, 0.15, 0.4), Color(0.2, 0.15, 0.13, 0.3)])
+; Near-black water, blended over by nearly all of it.
+water_tint = Color(0.03, 0.02, 0.03, 0.85)
+; Ash, 0.6 of a storm, grey-brown.
+ash_fall = 0.6
+ash_color = Color(0.3, 0.26, 0.24, 1)

@@ -1,0 +1,315 @@
+[gd_resource type="Resource" script_class="MissionScript" format=3]
+
+[ext_resource type="Script" path="res://sim/missions/mission_script.gd" id="1_msc01"]
+[ext_resource type="Script" path="res://sim/ai/ai_group_spec.gd" id="2_grp01"]
+[ext_resource type="Script" path="res://sim/ai/ai_unit_entry.gd" id="3_ent01"]
+[ext_resource type="Script" path="res://sim/missions/trigger_spec.gd" id="4_trg01"]
+[ext_resource type="Script" path="res://sim/missions/trigger_action.gd" id="5_act01"]
+[ext_resource type="Script" path="res://sim/missions/objective_spec.gd" id="6_obj01"]
+
+; Riverside, mission one: the tutorial and the campaign's quiet beginning. The
+; script is hand-written; the editor drops these comments if it re-saves it.
+; Positions are milli-units (1000 = 1 m) on maps/riverside/riverside.tres: the
+; creek runs west to east, the only ford is at x = 300 m (depth 1 from z = 218
+; to 234 m), the Light squad deploys on the north bank at (290, 180) m, and
+; everything south of z = 236 m near the ford is dry. The village (Phase 8's
+; map work, scripts/gen_riverside.gd) is south-east, round the square at
+; (445, 375) m. Weather is clear all through: nothing here sets any.
+;
+; Enum values used below, from the scripts that declare them (append-only, so
+; these numbers never move). tests/sim/test_campaign_missions.gd checks each
+; one against its name, so a wrong number here fails a test, not a playtest.
+;   AiGroupSpec.Behavior   0 IDLE, 1 PATROL, 2 GUARD, 3 HUNT, 4 FLANK,
+;                          5 AMBUSH, 6 RETREAT, 7 ESCORT
+;   AiGroupSpec.PatrolMode 0 LOOP, 1 PING_PONG
+;   UnitType.Faction       0 LIGHT, 1 DARK
+;   TriggerSpec.Condition  0 AREA_ENTERED, 1 UNIT_DIES, 2 TIMER,
+;                          3 GROUP_CLEARED, 4 FACTION_ELIMINATED,
+;                          5 TRIGGERS_FIRED, 6 PLAYER_ELIMINATED
+;   TriggerAction.Kind     0 SPAWN_GROUP, 1 SET_WEATHER, 2 SET_OBJECTIVE
+;                          (the message line), 3 WIN, 4 LOSE, 5 SET_BEHAVIOR,
+;                          6 SHOW_OBJECTIVE, 7 COMPLETE_OBJECTIVE,
+;                          8 FAIL_OBJECTIVE
+;
+; Counts that differ by tier list five values (tiers 0 to 4); the rest are one
+; value for every tier. Every spawn point and waypoint is dry, walkable ground
+; for its units, and each field patrol's alert radius stays clear of the north
+; bank (tests/sim/test_campaign_missions.gd checks both), so nobody is alerted
+; before the squad is across the ford.
+
+; ---- unit entries ----
+
+[sub_resource type="Resource" id="Entry_husk_5"]
+script = ExtResource("3_ent01")
+type_id = &"husk"
+counts = PackedInt32Array(5)
+
+[sub_resource type="Resource" id="Entry_husk_guard"]
+script = ExtResource("3_ent01")
+type_id = &"husk"
+counts = PackedInt32Array(6, 7, 8, 9, 10)
+
+[sub_resource type="Resource" id="Entry_ripper_raid"]
+script = ExtResource("3_ent01")
+type_id = &"ripper"
+counts = PackedInt32Array(2, 3, 3, 4, 5)
+
+; ---- groups ----
+
+; Five Husks looping a triangle just south-west of where the ford comes ashore,
+; 16 to 31 m from the landing and 38 m or more from the north bank, so the
+; squad meets them only once it is across (behavior 1 = PATROL, patrol_mode 0 =
+; LOOP). A Light unit within 12 m of any of them sends the lot hunting (on_alert
+; is HUNT, the default).
+[sub_resource type="Resource" id="Group_field_patrol_w"]
+script = ExtResource("2_grp01")
+name = &"field_patrol_w"
+units = Array[ExtResource("3_ent01")]([SubResource("Entry_husk_5")])
+spawns = PackedInt32Array(278000, 252000)
+spawn_at_start = true
+behavior = 1
+waypoints = PackedInt32Array(278000, 252000, 296000, 254000, 286000, 266000)
+patrol_mode = 0
+alert_radius = 12000
+
+; Five Husks looping a triangle among the trees on the way to the village,
+; where the sand road bends south-east, 50 m or more from the creek (PATROL,
+; LOOP, alert 12 m). They are the second fight, on the march between the ford
+; and the village.
+[sub_resource type="Resource" id="Group_field_patrol_e"]
+script = ExtResource("2_grp01")
+name = &"field_patrol_e"
+units = Array[ExtResource("3_ent01")]([SubResource("Entry_husk_5")])
+spawns = PackedInt32Array(350000, 300000)
+spawn_at_start = true
+behavior = 1
+waypoints = PackedInt32Array(350000, 300000, 368000, 306000, 358000, 318000)
+patrol_mode = 0
+alert_radius = 12000
+
+; Five Husks walking the village's own lanes, out to the end of each spur and
+; back round the square (PATROL, LOOP, alert 10 m). The lane ends are the
+; ones in scripts/gen_riverside.gd, pulled a metre or two inside so the
+; steep ring round every house is clear of them.
+[sub_resource type="Resource" id="Group_village_patrol"]
+script = ExtResource("2_grp01")
+name = &"village_patrol"
+units = Array[ExtResource("3_ent01")]([SubResource("Entry_husk_5")])
+spawns = PackedInt32Array(431000, 363000)
+spawn_at_start = true
+behavior = 1
+waypoints = PackedInt32Array(431000, 363000, 446000, 365000, 457000, 377000, 445000, 386000, 433000, 374000)
+patrol_mode = 0
+alert_radius = 10000
+
+; The square's guard: 6 Husks at tier 0 up to 10 at tier 4, holding the sand
+; plaza (behavior 2 = GUARD) and chasing anything that comes within 18 m of it.
+[sub_resource type="Resource" id="Group_village_guard"]
+script = ExtResource("2_grp01")
+name = &"village_guard"
+units = Array[ExtResource("3_ent01")]([SubResource("Entry_husk_guard")])
+spawns = PackedInt32Array(445000, 375000)
+spawn_at_start = true
+behavior = 2
+guard_radius = 18000
+
+; The raid: Rippers (2 at tier 0, 5 at tier 4) that come out of the dry
+; ground behind the village, on its far south-east side, once the `raid`
+; trigger spawns them (behavior 4 = FLANK, spawn_at_start false). They go for
+; the roles in flank_roles, the default of ranged and support (6): the Longbows
+; and the Sappers.
+[sub_resource type="Resource" id="Group_raiders"]
+script = ExtResource("2_grp01")
+name = &"raiders"
+units = Array[ExtResource("3_ent01")]([SubResource("Entry_ripper_raid")])
+spawns = PackedInt32Array(492000, 405000)
+spawn_at_start = false
+behavior = 4
+flank_roles = 6
+
+; ---- objectives ----
+
+[sub_resource type="Resource" id="Objective_cross"]
+script = ExtResource("6_obj01")
+name = &"cross"
+text = "Cross the ford"
+
+[sub_resource type="Resource" id="Objective_clear"]
+script = ExtResource("6_obj01")
+name = &"clear"
+text = "Clear the village"
+
+; Hidden until the raid is sprung.
+[sub_resource type="Resource" id="Objective_raid"]
+script = ExtResource("6_obj01")
+name = &"raid"
+text = "Destroy the raiders"
+shown_at_start = false
+
+; ---- trigger actions ----
+
+; The tutorial hints, one after another on the message line (kind 2 =
+; SET_OBJECTIVE).
+[sub_resource type="Resource" id="Action_say_hello"]
+script = ExtResource("5_act01")
+kind = 2
+text = "Select soldiers: click one, or drag a box. Shift adds."
+
+[sub_resource type="Resource" id="Action_say_formation"]
+script = ExtResource("5_act01")
+kind = 2
+text = "Pick a formation with 1-0, then right-click the ground to march."
+
+[sub_resource type="Resource" id="Action_say_ford"]
+script = ExtResource("5_act01")
+kind = 2
+text = "The water slows you. Keep your line tight."
+
+[sub_resource type="Resource" id="Action_say_grenade"]
+script = ExtResource("5_act01")
+kind = 2
+text = "Sappers: Cmd-click (Ctrl-click) the ground to throw. Mind your own men."
+
+[sub_resource type="Resource" id="Action_say_fire"]
+script = ExtResource("5_act01")
+kind = 2
+text = "Longbows: press T to nock the fire arrow. Brush and houses burn."
+
+[sub_resource type="Resource" id="Action_say_raid"]
+script = ExtResource("5_act01")
+kind = 2
+text = "Rippers! They go for your archers and sappers."
+
+; Kind 7 = COMPLETE_OBJECTIVE, 6 = SHOW_OBJECTIVE.
+[sub_resource type="Resource" id="Action_done_cross"]
+script = ExtResource("5_act01")
+kind = 7
+objective = &"cross"
+
+[sub_resource type="Resource" id="Action_done_clear"]
+script = ExtResource("5_act01")
+kind = 7
+objective = &"clear"
+
+[sub_resource type="Resource" id="Action_done_raid"]
+script = ExtResource("5_act01")
+kind = 7
+objective = &"raid"
+
+[sub_resource type="Resource" id="Action_show_raid"]
+script = ExtResource("5_act01")
+kind = 6
+objective = &"raid"
+
+; Kind 0 = SPAWN_GROUP.
+[sub_resource type="Resource" id="Action_spawn_raiders"]
+script = ExtResource("5_act01")
+kind = 0
+group = &"raiders"
+
+; Kind 3 = WIN, 4 = LOSE.
+[sub_resource type="Resource" id="Action_win"]
+script = ExtResource("5_act01")
+kind = 3
+
+[sub_resource type="Resource" id="Action_lose"]
+script = ExtResource("5_act01")
+kind = 4
+
+; ---- triggers, in tutorial order ----
+; All conditions are checked before any trigger fires on a tick, so the order
+; here is only the order the hints and outcomes read in, and the order the
+; hash walks them. Two triggers that gate on a prerequisite (`after`) open the
+; tick after it fires, never the same one.
+
+; Tick 0: the first hint (condition 2 = TIMER, ticks 0).
+[sub_resource type="Resource" id="Trigger_hello"]
+script = ExtResource("4_trg01")
+name = &"hello"
+condition = 2
+ticks = PackedInt32Array(0)
+actions = Array[ExtResource("5_act01")]([SubResource("Action_say_hello")])
+
+; Ten seconds after the first hint (300 ticks at 30 a second).
+[sub_resource type="Resource" id="Trigger_hint_formation"]
+script = ExtResource("4_trg01")
+name = &"hint_formation"
+after = &"hello"
+condition = 2
+ticks = PackedInt32Array(300)
+actions = Array[ExtResource("5_act01")]([SubResource("Action_say_formation")])
+
+; The first Light unit within 15 m of the middle of the ford, at the creek's
+; north shore (condition 0 = AREA_ENTERED; faction 0, Light, is the default):
+; the first objective is done.
+[sub_resource type="Resource" id="Trigger_at_ford"]
+script = ExtResource("4_trg01")
+name = &"at_ford"
+condition = 0
+area = PackedInt32Array(300000, 226000, 15000)
+min_count = 1
+actions = Array[ExtResource("5_act01")]([SubResource("Action_done_cross"), SubResource("Action_say_ford")])
+
+; Light within 40 m of the village square, (445, 375) m, the same point as
+; gen_riverside.gd's VILLAGE_SQUARE.
+[sub_resource type="Resource" id="Trigger_hint_grenade"]
+script = ExtResource("4_trg01")
+name = &"hint_grenade"
+condition = 0
+area = PackedInt32Array(445000, 375000, 40000)
+min_count = 1
+actions = Array[ExtResource("5_act01")]([SubResource("Action_say_grenade")])
+
+; Fifteen seconds after the grenade hint (450 ticks).
+[sub_resource type="Resource" id="Trigger_hint_fire"]
+script = ExtResource("4_trg01")
+name = &"hint_fire"
+after = &"hint_grenade"
+condition = 2
+ticks = PackedInt32Array(450)
+actions = Array[ExtResource("5_act01")]([SubResource("Action_say_fire")])
+
+; Eleven Husks dead across the four Husk groups (condition 1 = UNIT_DIES):
+; about half of them at tier 0, a third at tier 4, whichever the squad cut down
+; first. The raiders arrive and their objective appears.
+[sub_resource type="Resource" id="Trigger_raid"]
+script = ExtResource("4_trg01")
+name = &"raid"
+condition = 1
+names = Array[StringName]([&"field_patrol_w", &"field_patrol_e", &"village_patrol", &"village_guard"])
+count = 11
+actions = Array[ExtResource("5_act01")]([SubResource("Action_spawn_raiders"), SubResource("Action_show_raid"), SubResource("Action_say_raid")])
+
+; The raiders are all down (condition 3 = GROUP_CLEARED).
+[sub_resource type="Resource" id="Trigger_raid_over"]
+script = ExtResource("4_trg01")
+name = &"raid_over"
+condition = 3
+names = Array[StringName]([&"raiders"])
+actions = Array[ExtResource("5_act01")]([SubResource("Action_done_raid")])
+
+; Every Dark unit is down, once the raid has come (condition 4 =
+; FACTION_ELIMINATED, faction 1 = DARK): a straight assault that took the
+; village before the eleventh Husk fell would otherwise win before the raiders
+; ever spawned. The raiders count as Dark, so this waits for them too.
+[sub_resource type="Resource" id="Trigger_win"]
+script = ExtResource("4_trg01")
+name = &"win"
+after = &"raid"
+condition = 4
+faction = 1
+actions = Array[ExtResource("5_act01")]([SubResource("Action_done_clear"), SubResource("Action_win")])
+
+; The player has no commanded Light unit left (condition 6 =
+; PLAYER_ELIMINATED, faction 0 = Light by default).
+[sub_resource type="Resource" id="Trigger_lose"]
+script = ExtResource("4_trg01")
+name = &"lose"
+condition = 6
+actions = Array[ExtResource("5_act01")]([SubResource("Action_lose")])
+
+[resource]
+script = ExtResource("1_msc01")
+groups = Array[ExtResource("2_grp01")]([SubResource("Group_field_patrol_w"), SubResource("Group_field_patrol_e"), SubResource("Group_village_patrol"), SubResource("Group_village_guard"), SubResource("Group_raiders")])
+triggers = Array[ExtResource("4_trg01")]([SubResource("Trigger_hello"), SubResource("Trigger_hint_formation"), SubResource("Trigger_at_ford"), SubResource("Trigger_hint_grenade"), SubResource("Trigger_hint_fire"), SubResource("Trigger_raid"), SubResource("Trigger_raid_over"), SubResource("Trigger_win"), SubResource("Trigger_lose")])
+objectives = Array[ExtResource("6_obj01")]([SubResource("Objective_cross"), SubResource("Objective_clear"), SubResource("Objective_raid")])
