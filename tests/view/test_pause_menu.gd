@@ -2,7 +2,8 @@ extends GutTest
 ## PauseMenu: Resume, Restart mission, Settings, and Quit to main menu (which
 ## asks first), each a signal for whatever runs the game. Esc opens it, closes
 ## it, or takes the quit question back; it can be switched off; and a small
-## "Paused" label stands in for it when the game is paused without the menu.
+## "Paused (P to resume)" label stands in for it when the game is paused
+## without the menu.
 ## Esc's place in the input order (before the selection controller) is tested
 ## with the whole scene in test_main_view.gd.
 
@@ -153,6 +154,17 @@ func test_the_paused_label_is_for_a_pause_with_no_menu() -> void:
 	assert_true(_menu.is_paused_label_visible())
 	_menu.show_paused_label(false)
 	assert_false(_menu.is_paused_label_visible())
+
+
+func test_the_paused_label_says_how_to_resume() -> void:
+	_menu.show_paused_label(true)
+	var label: Label = null
+	for node: Node in _menu.find_children("*", "Label", true, false):
+		if (node as Label).text == PauseMenu.PAUSED_LABEL_TEXT:
+			label = node as Label
+	assert_not_null(label, "the label carries the constant's text")
+	assert_true(label.visible)
+	assert_string_contains(PauseMenu.PAUSED_LABEL_TEXT, "P to resume")
 
 
 func test_the_menu_takes_the_mouse_only_while_open() -> void:

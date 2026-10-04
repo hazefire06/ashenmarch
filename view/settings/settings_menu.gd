@@ -2,7 +2,8 @@ class_name SettingsMenu
 extends MenuScreen
 ## The Settings overlay: Fullscreen, Edge scroll, Back. Each toggle is saved
 ## to the settings file the moment it is flipped (GameSettings), then `changed`
-## tells the App to apply it; Back (or Esc) emits `closed`, and the App removes
+## tells the App to apply it (a write that fails is shown and undone, and
+## nothing is applied); Back (or Esc) emits `closed`, and the App removes
 ## the overlay. It is an overlay, not a screen, because it opens over the main
 ## menu and over a paused mission alike. Keybinds, volume and resolution are
 ## Phase 10's.
@@ -67,20 +68,23 @@ func _cancel() -> bool:
 
 
 func _on_fullscreen_toggled(on: bool) -> void:
-	_saved(GameSettings.set_fullscreen(on, _path))
+	_saved(GameSettings.set_fullscreen(on, _path), _fullscreen, on)
 
 
 func _on_edge_scroll_toggled(on: bool) -> void:
-	_saved(GameSettings.set_edge_scroll(on, _path))
+	_saved(GameSettings.set_edge_scroll(on, _path), _edge_scroll, on)
 
 
-# The choice is in force for this session either way; a failed write only means
-# it won't be remembered, which the player is told.
-func _saved(result: Error) -> void:
+# The settings file is the one source of truth (the App re-reads it to apply
+# anything), so a write that failed changed nothing: the box goes back to what
+# it was, the player is told, and `changed` isn't sent.
+func _saved(result: Error, box: CheckBox, flipped_to: bool) -> void:
 	_error.visible = result != OK
-	if result != OK:
-		_error.text = "Could not save the setting (%s); it applies until you quit." % error_string(result)
-	changed.emit()
+	if result == OK:
+		changed.emit()
+		return
+	box.set_pressed_no_signal(not flipped_to)
+	_error.text = "Could not save the setting (%s); the change was not applied." % error_string(result)
 
 
 static func _add_toggle(parent: Control, toggle_name: String, text: String, on: bool) -> CheckBox:

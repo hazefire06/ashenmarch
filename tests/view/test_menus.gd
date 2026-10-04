@@ -168,17 +168,38 @@ func test_settings_back_and_esc_close_it() -> void:
 	assert_signal_emit_count(menu, "closed", 2)
 
 
-func test_a_failed_save_is_told_and_the_choice_still_applies() -> void:
+func test_a_failed_save_is_told_and_the_choice_is_not_applied() -> void:
 	# A file where the directory should be, so the write fails.
 	DirAccess.make_dir_recursive_absolute(SETTINGS_DIR)
 	var blocker: FileAccess = FileAccess.open(SETTINGS_DIR + "/blocker", FileAccess.WRITE)
 	blocker.store_string("x")
 	blocker.close()
-	var menu: SettingsMenu = _settings(SETTINGS_DIR + "/blocker/settings.cfg")
+	var path: String = SETTINGS_DIR + "/blocker/settings.cfg"
+	var menu: SettingsMenu = _settings(path)
 	watch_signals(menu)
+	var edge: CheckBox = MenuFixtures.named(menu, "EdgeScrollCheck") as CheckBox
+	edge.button_pressed = true
+	var error: Label = MenuFixtures.named(menu, "SaveError") as Label
+	assert_true(error.visible)
+	assert_string_contains(error.text, "not applied")
+	assert_false(error.text.contains("until you quit"), "the old, untrue promise is gone")
+	assert_signal_emit_count(menu, "changed", 0, "nothing changed, so nothing is applied")
+	assert_false(edge.button_pressed, "the box shows what is in force: unchanged")
+	assert_false(GameSettings.edge_scroll(path), "and what the App would read")
+	# The same for Fullscreen, and a good save afterwards clears the message.
+	var full: CheckBox = MenuFixtures.named(menu, "FullscreenCheck") as CheckBox
+	full.button_pressed = true
+	assert_false(full.button_pressed)
+	assert_signal_emit_count(menu, "changed", 0)
+
+
+func test_a_good_save_after_a_failed_one_clears_the_message() -> void:
+	DirAccess.make_dir_recursive_absolute(SETTINGS_DIR)
+	var menu: SettingsMenu = _settings(SETTINGS_DIR + "/settings.cfg")
+	var error: Label = MenuFixtures.named(menu, "SaveError") as Label
+	error.visible = true
 	(MenuFixtures.named(menu, "EdgeScrollCheck") as CheckBox).button_pressed = true
-	assert_true(MenuFixtures.named(menu, "SaveError").visible)
-	assert_signal_emit_count(menu, "changed", 1, "it applies for this session")
+	assert_false(error.visible)
 
 
 # --- campaign menu ------------------------------------------------------------

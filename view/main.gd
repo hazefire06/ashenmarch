@@ -36,6 +36,11 @@ signal mission_ended(outcome: MissionRuntime.Outcome, stats: MissionStats)
 signal restart_requested
 signal settings_requested
 signal quit_requested
+## The mission could not be built (a missing map, a rules script that refuses):
+## there is no world to show. Sent once, deferred, from _ready, so the App can
+## replace this screen after it has finished entering the tree; MissionSetup has
+## said why (push_error). Nothing listens in the sandbox.
+signal build_failed
 
 const WORLD_SEED: int = 1
 const MAP_PATH: String = "res://maps/riverside/riverside.tres"
@@ -78,12 +83,12 @@ var stats: MissionStats
 var end_delay: float = MISSION_END_DELAY
 ## Whether the camera pans at the window's edges (RtsCamera.edge_scroll); the
 ## Settings toggle. Set it before the scene enters the tree or at any time
-## after.
+## after. The camera only pans while the pause menu is closed, whatever this
+## says: the menu's dim layer isn't a button, so the camera would pan behind it.
 var edge_scroll: bool = false:
 	set(value):
 		edge_scroll = value
-		if _camera != null:
-			_camera.edge_scroll = value
+		_apply_edge_scroll()
 ## True while the sim isn't being stepped. Pausing changes nothing in the sim:
 ## the view just stops calling World.step(). Set it directly, or with P or the
 ## menu. Ignored once the mission is decided.
@@ -144,6 +149,7 @@ func _ready() -> void:
 		# Nothing to step or draw without a World.
 		set_process(false)
 		set_physics_process(false)
+		build_failed.emit.call_deferred()
 		return
 	# The World's copy, which explosions scar. The views draw this one.
 	var terrain: Terrain = world.terrain
@@ -182,7 +188,7 @@ func _ready() -> void:
 	_control_bar.setup(_selection, world)
 	_info_panel.setup(_selection, world, _control_bar)
 	_tooltip.setup(_selection, world, _camera.get_camera(), _projectiles_view, _plants_view)
-	_camera.edge_scroll = edge_scroll
+	_apply_edge_scroll()
 	if _campaign():
 		# The debug keys (side switch, status, weather) are cheats: not in the campaign.
 		_selection.debug_keys_enabled = false
@@ -191,7 +197,7 @@ func _ready() -> void:
 	_pause_menu.set_app_buttons_visible(launch != null)
 	_control_bar.menu_requested.connect(_pause_menu.open)
 	_pause_menu.opened.connect(_on_pause_menu_opened)
-	_pause_menu.closed.connect(_apply_pause)
+	_pause_menu.closed.connect(_on_pause_menu_closed)
 	_pause_menu.resume_requested.connect(_on_resume_requested)
 	_pause_menu.restart_requested.connect(restart_requested.emit)
 	_pause_menu.settings_requested.connect(settings_requested.emit)
@@ -380,6 +386,19 @@ func _apply_pause() -> void:
 
 func _on_pause_menu_opened() -> void:
 	paused = true
+	_apply_edge_scroll()
+
+
+func _on_pause_menu_closed() -> void:
+	_apply_pause()
+	_apply_edge_scroll()
+
+
+# The camera's edge scroll: the setting, held off while the pause menu is up.
+func _apply_edge_scroll() -> void:
+	if _camera == null:
+		return
+	_camera.edge_scroll = edge_scroll and not (_pause_menu != null and _pause_menu.is_open())
 
 
 func _on_resume_requested() -> void:

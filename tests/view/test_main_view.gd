@@ -335,6 +335,39 @@ func test_p_pauses_without_the_menu_and_again_resumes() -> void:
 	assert_eq(main.world.tick, 3)
 
 
+func test_a_pause_with_p_says_how_to_end_it() -> void:
+	var main: MainView = _view()
+	_push(_key(KEY_P))
+	assert_true(MenuFixtures.mentions(main.pause_menu(), "P to resume"))
+
+
+func test_edge_scroll_is_held_off_while_the_pause_menu_is_open() -> void:
+	var main: MainView = _view()
+	var camera: RtsCamera = main.get_node("CameraRig") as RtsCamera
+	main.edge_scroll = true
+	assert_true(camera.edge_scroll, "on, as the setting says")
+	main.pause_menu().open()
+	assert_false(camera.edge_scroll, "the dim layer isn't a button: the map would pan behind the menu")
+	assert_true(main.edge_scroll, "the setting itself is unchanged")
+	main.edge_scroll = true
+	assert_false(camera.edge_scroll, "setting it again (the App does, as Settings closes) doesn't free it")
+	main.pause_menu().close()
+	assert_true(camera.edge_scroll, "back with the menu gone")
+	main.pause_menu().open()
+	main.edge_scroll = false
+	main.pause_menu().close()
+	assert_false(camera.edge_scroll, "and off if the setting went off meanwhile")
+
+
+func test_a_pause_with_p_leaves_edge_scroll_alone() -> void:
+	var main: MainView = _view()
+	var camera: RtsCamera = main.get_node("CameraRig") as RtsCamera
+	main.edge_scroll = true
+	_push(_key(KEY_P))
+	assert_true(main.paused)
+	assert_true(camera.edge_scroll, "no dim layer, so the player can still look about")
+
+
 func test_the_selection_controller_enqueues_nothing_while_paused() -> void:
 	var main: MainView = _view()
 	_step(main, 2)

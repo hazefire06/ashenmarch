@@ -30,7 +30,8 @@ extends Node
 ## MainView's signals are wired here: mission_ended -> Results, restart_requested
 ## -> the question then a fresh MainView, settings_requested -> the Settings
 ## overlay (with the pause menu and edge scroll switched off behind it),
-## quit_requested -> the main menu (the pause menu already asked).
+## quit_requested -> the main menu (the pause menu already asked), build_failed
+## (the mission couldn't be built) -> the main menu with a notice.
 
 ## The campaign's data and the unit catalog it plays with.
 const CAMPAIGN_PATH: String = "res://data/campaign/campaign.tres"
@@ -301,6 +302,7 @@ func _launch_mission() -> void:
 	main.restart_requested.connect(_on_restart_requested)
 	main.settings_requested.connect(open_settings)
 	main.quit_requested.connect(_on_quit_to_menu)
+	main.build_failed.connect(_on_mission_build_failed.bind(main))
 	show_screen(main)
 
 
@@ -310,6 +312,19 @@ func _on_mission_ended(outcome: MissionRuntime.Outcome, stats: MissionStats) -> 
 		return
 	# Read the world now: the screen is freed when the results replace it.
 	show_results(outcome, stats, main.world)
+
+
+# The mission couldn't be built (MissionSetup has said why): there is nothing to
+# play, so say so and go to the main menu. The campaign is as it was, so
+# Campaign > Continue offers the same mission again. Ignored if the screen has
+# already changed (the signal is deferred).
+func _on_mission_build_failed(failed: MainView) -> void:
+	if _screen != failed:
+		return
+	_drop_result()
+	_plan = null
+	show_main_menu()
+	show_notice("The mission could not be started. See the log.")
 
 
 func _on_restart_requested() -> void:

@@ -396,6 +396,47 @@ func test_a_mission_leaves_one_screen_not_two() -> void:
 	assert_eq(screens, 0, "the briefing is gone while the mission plays")
 
 
+# --- a mission that can't be built --------------------------------------------
+
+
+func test_a_mission_that_cannot_be_built_returns_to_the_main_menu_with_a_notice() -> void:
+	var def: CampaignDef = _tiny()
+	var app: App = _app(def)
+	_begin_campaign(app)
+	assert_true(app.current_screen() is Briefing)
+	var saved_before: String = _file(_store().path)
+	def.missions[0].map = null
+	_press(app, "StartButton")
+	assert_push_error("MissionSetup")
+	# The failure is sent deferred, so the App changes screens after MainView
+	# has finished entering the tree.
+	await get_tree().process_frame
+	assert_true(app.current_screen() is MainMenu, "not a blank mission screen")
+	var notice: Label = app.find_child("NoticeLabel", true, false) as Label
+	assert_true(notice.visible)
+	assert_string_contains(notice.text, "could not be started")
+	assert_eq(app.state.mission_index, 0, "the campaign is as it was")
+	assert_eq(_file(_store().path), saved_before)
+	assert_null(app.current_plan(), "no half-launched plan is kept")
+
+
+func test_the_campaign_can_be_continued_after_a_mission_failed_to_build() -> void:
+	var def: CampaignDef = _tiny()
+	var app: App = _app(def)
+	_begin_campaign(app)
+	var map: MapInfo = def.missions[0].map
+	def.missions[0].map = null
+	_press(app, "StartButton")
+	assert_push_error("MissionSetup")
+	await get_tree().process_frame
+	def.missions[0].map = map
+	_press(app, "CampaignButton")
+	_press(app, "ContinueButton")
+	assert_true(app.current_screen() is Briefing, "the same mission again")
+	_press(app, "StartButton")
+	assert_true(app.current_screen() is MainView, "and now it builds")
+
+
 # --- victory ------------------------------------------------------------------
 
 
@@ -606,9 +647,10 @@ func test_retry_does_not_roll_back_to_an_older_point_of_the_same_campaign() -> v
 	# A victory whose autosave failed leaves the file one mission behind.
 	var app: App = _app(_won_then_lost())
 	_into_the_mission(app)
-	_decide(app)
 	var old_file: CampaignState = _store().load()
 	assert_eq(old_file.mission_index, 0, "the file as it stands before the first victory")
+	_decide(app)
+	assert_eq(app.state.mission_index, 1, "applied as Results appeared")
 	_press(app, "ContinueButton")
 	assert_eq(app.state.mission_index, 1)
 	assert_eq(app.state.soldiers.size(), 1)
@@ -641,6 +683,7 @@ func test_main_menu_after_a_defeat_changes_nothing() -> void:
 	var app: App = _app(_tiny(LOST))
 	_into_the_mission(app)
 	var saved_before: String = _file(_store().path)
+	_decide(app)
 	_press(app, "MainMenuButton")
 	assert_true(app.current_screen() is MainMenu)
 	assert_eq(_file(_store().path), saved_before)
@@ -649,8 +692,6 @@ func test_main_menu_after_a_defeat_changes_nothing() -> void:
 
 
 # --- pause menu: restart, quit, settings ---------------------------------------
-	_decide(app)
-	assert_eq(app.state.mission_index, 1, "applied as Results appeared")
 
 
 func test_restart_asks_and_keep_playing_keeps_the_mission() -> void:
@@ -722,6 +763,7 @@ func test_esc_closes_settings_not_the_pause_menu_behind_it() -> void:
 	assert_true(main.paused)
 	assert_true(main.pause_menu().enabled, "and works again")
 	assert_true(main.edge_scroll, "edge scroll is back as the settings say")
+	assert_false((main.get_node("CameraRig") as RtsCamera).edge_scroll, "but the pause menu is still up, so the camera holds")
 
 
 func test_settings_closed_with_back_restores_the_mission_too() -> void:

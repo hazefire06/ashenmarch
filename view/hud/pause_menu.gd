@@ -26,8 +26,8 @@ extends Control
 ##
 ## While the menu is open a dim layer covers the screen and takes the mouse, so
 ## nothing under it is clicked. When the game is paused without the menu (P), a
-## small "Paused" label stands in (show_paused_label). In the sandbox, with no
-## App to restart or leave, those three buttons are hidden
+## small "Paused (P to resume)" label stands in (show_paused_label). In the
+## sandbox, with no App to restart or leave, those three buttons are hidden
 ## (set_app_buttons_visible).
 
 signal resume_requested
@@ -47,6 +47,9 @@ const OUTLINE_COLOR: Color = Color(0.05, 0.05, 0.05, 0.9)
 const LABEL_COLOR: Color = Color(1.0, 0.95, 0.7)
 ## The HUD's CanvasLayer is 1; the menu's is above it.
 const MENU_LAYER: int = 10
+## The label for a pause with no menu: it says how to end it, since there is no
+## Resume button to find.
+const PAUSED_LABEL_TEXT: String = "Paused (P to resume)"
 const QUIT_QUESTION: String = "Quit to the main menu?\nThis mission's progress is lost."
 
 ## While false the menu can't be opened, by Esc or open() (MainView turns it
@@ -105,7 +108,7 @@ func is_confirming() -> bool:
 	return _confirm.visible
 
 
-## Shows or hides the small "Paused" label, for a pause with no menu. Never
+## Shows or hides the small "Paused (P to resume)" label, for a pause with no menu. Never
 ## shown with the menu open: the menu says it already.
 func show_paused_label(shown: bool) -> void:
 	_paused_label.visible = shown and not is_open()
@@ -158,7 +161,7 @@ func _build() -> void:
 	_layer.layer = MENU_LAYER
 	add_child(_layer)
 	_paused_label = Label.new()
-	_paused_label.text = "Paused"
+	_paused_label.text = PAUSED_LABEL_TEXT
 	_paused_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_paused_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_paused_label.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
