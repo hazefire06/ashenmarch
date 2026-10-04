@@ -4,35 +4,44 @@
 
 ; Old Mill: ash in the air, the last mill standing. About 70% of the way to the
 ; campaign's end, and deliberately short of it, so the last of the dark stays
-; to be used: an ember-orange sky and a low orange sun over a dark ambient, a
-; red-brown fog, the colour drained out of the ground by 0.55 under a warm dark
+; to be used: an ember-orange sky and an orange sun over a dim ambient, a
+; red-brown fog, the colour drained out of the ground by 0.42 under a warm
 ; tint and the fields burned to char, near-black water, and ash falling at 0.6.
 ; Colors are linear 0..1.
+; Lifted in the balance pass (Phase 8, Task 10), by eye in a window: the first
+; look (ambient 0.32, sun 0.75 at 12 degrees, desaturation 0.55 under a dark
+; tint, grass and brush both near-black) made the whole map one red-brown and
+; the plateau, its cliff and the squad hard to read at the default zoom. The
+; plateau must read: its height colour, the rock cliff and the ramps against the
+; burned fields, and the units on top.
 [resource]
 script = ExtResource("1_atm01")
 ; The sky, the colour of a banked fire.
 background_color = Color(0.42, 0.2, 0.1, 1)
-; Dark ambient with a red cast, and a low sun the colour of an ember.
-ambient_color = Color(0.45, 0.28, 0.22, 1)
-ambient_energy = 0.32
-sun_color = Color(1, 0.55, 0.25, 1)
-sun_energy = 0.75
-sun_pitch_degrees = -12.0
+; A dim ambient with a red cast (still under Riverside's 0.5), and an ember sun
+; high enough to light the plateau's top and leave its cliff in shade.
+ambient_color = Color(0.58, 0.45, 0.38, 1)
+ambient_energy = 0.48
+sun_color = Color(1, 0.62, 0.36, 1)
+sun_energy = 1.25
+sun_pitch_degrees = -35.0
 ; Red-brown fog, the thickest of the three. Tuned by eye in a window (Phase 8, Task
 ; 7): Godot's exponential fog takes 1 - e^(-density * distance) of the view, so at
-; the camera's usual 75 m 0.005 is about a third fog, which sinks the far fields
+; the camera's usual 75 m 0.0042 is under a third fog, which sinks the far fields
 ; and still shows the plateau, its cliff and the ramps the squad holds; the first
-; guess, 0.014, was two thirds fog and the whole map was one brown.
+; guess, 0.014, was two thirds fog and the whole map was one brown, and 0.005
+; still flattened the near plain into the fog's colour (Task 10).
 fog_enabled = true
-fog_color = Color(0.38, 0.18, 0.1, 1)
-fog_density = 0.005
-; The ground: a warm dark tint, then 0.55 of the colour drained out.
-terrain_tint = Color(0.85, 0.65, 0.55, 1)
-terrain_desaturation = 0.55
+fog_color = Color(0.37, 0.19, 0.11, 1)
+fog_density = 0.0042
+; The ground: a warm tint, then 0.42 of the colour drained out.
+terrain_tint = Color(0.95, 0.86, 0.78, 1)
+terrain_desaturation = 0.42
 ; Scorched earth: one color per Terrain.Ground in order (0 GRASS, 1 BRUSH, 2 WOOD,
-; 3 SAND, 4 ROCK). Grass and brush burned to near-black, wood to char, sand and
-; rock stained.
-ground_recolor = Array[Color]([Color(0.16, 0.1, 0.07, 0.6), Color(0.1, 0.06, 0.04, 0.65), Color(0.08, 0.05, 0.04, 0.6), Color(0.28, 0.2, 0.15, 0.4), Color(0.2, 0.15, 0.13, 0.3)])
+; 3 SAND, 4 ROCK). The grass scorched brown, the brush (the wheat) burned darker
+; than it so the fields stand out from the lanes, wood to char, sand and rock
+; stained but light enough that the cliff reads against the plain.
+ground_recolor = Array[Color]([Color(0.3, 0.2, 0.12, 0.3), Color(0.14, 0.08, 0.05, 0.5), Color(0.08, 0.05, 0.04, 0.5), Color(0.42, 0.32, 0.22, 0.3), Color(0.38, 0.32, 0.28, 0.2)])
 ; Near-black water, blended over by nearly all of it.
 water_tint = Color(0.03, 0.02, 0.03, 0.85)
 ; Ash, 0.6 of a storm, grey-brown.

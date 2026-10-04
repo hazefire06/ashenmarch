@@ -307,7 +307,9 @@ func test_the_atmospheres_validate_and_darken_mission_by_mission() -> void:
 	assert_gt(mill.fog_color.r, mill.fog_color.g, "red-brown fog")
 	assert_gt(mill.fog_color.g, mill.fog_color.b)
 	assert_almost_eq(mill.ash_fall, 0.6, 0.01)
-	assert_almost_eq(mill.terrain_desaturation, 0.55, 0.01)
+	# Drained further than The Ford's, with headroom (the ordering checks below);
+	# the exact value was eased in the balance pass so the plateau reads.
+	assert_between(mill.terrain_desaturation, 0.4, 0.6)
 	assert_eq(mill.ground_recolor.size(), Terrain.GROUND_COUNT)
 	assert_lt(mill.water_tint.r + mill.water_tint.g + mill.water_tint.b, 0.3, "near-black water")
 	assert_gt(mill.water_tint.a, 0.7)
@@ -363,7 +365,7 @@ func test_the_plan_deploys_the_rosters_at_tier_two() -> void:
 func test_the_deploy_points_facings_formation_and_cameras() -> void:
 	var deploys: Array[Vector2i] = [Vector2i(290, 180), Vector2i(192, 300), Vector2i(156, 158)]
 	var facings: Array[Vector2i] = [Vector2i(0, 1), Vector2i(0, -1), Vector2i(0, -1)]
-	var cameras: Array[Vector2i] = [Vector2i(285, 240), Vector2i(192, 255), Vector2i(160, 205)]
+	var cameras: Array[Vector2i] = [Vector2i(285, 240), Vector2i(192, 285), Vector2i(160, 205)]
 	for i: int in MISSION_IDS.size():
 		var mission: MissionDef = _mission(i)
 		assert_eq(_pair(mission.deploy), deploys[i] * M, "%s deploy" % MISSION_IDS[i])

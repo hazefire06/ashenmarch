@@ -58,6 +58,8 @@ deploy = PackedInt32Array(192000, 300000)
 deploy_facing_x = 0
 deploy_facing_z = -1
 deploy_formation = 4
-; The camera looks up the road at the river from behind the squad.
-camera_start = PackedInt32Array(192000, 255000)
+; The camera looks 15 m up the road from the squad, (192, 285) m: the squad in
+; the lower middle of the view, clear of the control bar, and the river beyond.
+; (It looked at (192, 255), which put the squad under the bar.)
+camera_start = PackedInt32Array(192000, 285000)
 atmosphere = ExtResource("5_atm01")

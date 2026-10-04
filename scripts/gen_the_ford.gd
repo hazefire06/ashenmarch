@@ -161,7 +161,10 @@ const LANDING_GUARD: Vector2 = Vector2(192.0, 145.0)
 const DRIFTER_WEST: Array[Vector2] = [Vector2(110.0, 192.0), Vector2(150.0, 190.0)]
 const DRIFTER_EAST: Array[Vector2] = [Vector2(240.0, 195.0), Vector2(300.0, 200.0)]
 const RIPPER_SPAWN: Vector2 = Vector2(330.0, 140.0)
-const CAMERA_START: Vector2 = Vector2(192.0, 255.0)
+## Where the mission camera starts looking: 15 m up the road from the deploy
+## point, so the squad stands in the lower middle of the view, clear of the
+## control bar, with the river ahead of it.
+const CAMERA_START: Vector2 = Vector2(192.0, 285.0)
 
 ## Ground types: noise layers and where each one takes over.
 const WOOD_SEED: int = 2102
