@@ -226,10 +226,13 @@ script = ExtResource("6_obj01")
 name = &"hold"
 text = "Hold the mill"
 
+; "Break", not "survive": the win needs every unit of every wave dead (the
+; `win` trigger's GROUP_CLEARED over the four waves), not just the plateau
+; still held.
 [sub_resource type="Resource" id="Objective_waves"]
 script = ExtResource("6_obj01")
 name = &"waves"
-text = "Survive four waves"
+text = "Break four waves"
 
 ; ---- trigger actions ----
 
@@ -237,7 +240,7 @@ text = "Survive four waves"
 [sub_resource type="Resource" id="Action_say_setup"]
 script = ExtResource("5_act01")
 kind = 2
-text = "Set satchel charges on the ramps (Sapper: T). The first wave comes in a minute."
+text = "Set satchel charges on the ramps (Sapper: T). The first wave is coming."
 
 [sub_resource type="Resource" id="Action_say_wave1"]
 script = ExtResource("5_act01")
@@ -323,7 +326,8 @@ kind = 4
 ; so a squad that kills fast gets a breather and one that doesn't gets the next
 ; wave on top of it. The gates have no actions of their own.
 
-; Tick 0 (condition 2 = TIMER, ticks 0): what to do with the first minute.
+; Tick 0 (condition 2 = TIMER, ticks 0): what to do before the first wave
+; (80 s at tier 0 down to 40 s at tier 4, so no time is promised in the text).
 [sub_resource type="Resource" id="Trigger_setup"]
 script = ExtResource("4_trg01")
 name = &"setup"

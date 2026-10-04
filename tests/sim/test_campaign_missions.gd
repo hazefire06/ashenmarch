@@ -161,6 +161,34 @@ func _message(index: int, trigger_name: StringName) -> String:
 	return ""
 
 
+## True if flooding the walkable samples (8-way) from `from` reaches `target`,
+## never entering `walled` (a rectangle of samples, empty for none).
+func _flood_reaches(terrain: Terrain, from: Vector2i, target: Vector2i, walled: Rect2i) -> bool:
+	var size: int = terrain.size_x
+	var seen: PackedByteArray = PackedByteArray()
+	seen.resize(terrain.size_x * terrain.size_z)
+	var queue: Array[Vector2i] = [from]
+	seen[from.y * size + from.x] = 1
+	var head: int = 0
+	while head < queue.size():
+		var at: Vector2i = queue[head]
+		head += 1
+		if at == target:
+			return true
+		for dz: int in range(-1, 2):
+			for dx: int in range(-1, 2):
+				var next: Vector2i = at + Vector2i(dx, dz)
+				if next.x < 0 or next.y < 0 or next.x >= size or next.y >= terrain.size_z:
+					continue
+				if seen[next.y * size + next.x] == 1 or walled.has_point(next):
+					continue
+				if not terrain.is_sample_passable(next.x, next.y, LIVING):
+					continue
+				seen[next.y * size + next.x] = 1
+				queue.append(next)
+	return false
+
+
 func _action_kinds(index: int, trigger_name: StringName) -> Array[TriggerAction.Kind]:
 	var out: Array[TriggerAction.Kind] = []
 	for action: TriggerAction in _trigger(index, trigger_name).actions:
@@ -209,9 +237,10 @@ func _kill_dark(world: World) -> void:
 			unit.kill()
 
 
-## The first objective's spot: the ford, the ford's mouth, and the mill yard.
+## The first objective's spot: the ford's south landing, the ford's mouth, and
+## the mill yard.
 func _first_objective(index: int) -> Vector2i:
-	var spots: Array[Vector2i] = [Vector2i(300, 226), Vector2i(192, 226), Vector2i(166, 157)]
+	var spots: Array[Vector2i] = [Vector2i(300, 244), Vector2i(192, 226), Vector2i(166, 157)]
 	return spots[index] * M
 
 
@@ -433,7 +462,8 @@ func test_the_numeric_enums_in_the_data_mean_what_the_comments_say() -> void:
 	var conditions: Array[Dictionary] = [
 		{
 			&"hello": TriggerSpec.Condition.TIMER, &"hint_formation": TriggerSpec.Condition.TIMER,
-			&"at_ford": TriggerSpec.Condition.AREA_ENTERED, &"hint_grenade": TriggerSpec.Condition.AREA_ENTERED,
+			&"in_ford": TriggerSpec.Condition.AREA_ENTERED, &"at_ford": TriggerSpec.Condition.AREA_ENTERED,
+			&"hint_grenade": TriggerSpec.Condition.AREA_ENTERED,
 			&"hint_fire": TriggerSpec.Condition.TIMER, &"stirring": TriggerSpec.Condition.TIMER,
 			&"raid": TriggerSpec.Condition.UNIT_DIES,
 			&"raid_over": TriggerSpec.Condition.GROUP_CLEARED, &"win": TriggerSpec.Condition.FACTION_ELIMINATED,
@@ -442,7 +472,8 @@ func test_the_numeric_enums_in_the_data_mean_what_the_comments_say() -> void:
 		{
 			&"start": TriggerSpec.Condition.TIMER, &"crossing": TriggerSpec.Condition.AREA_ENTERED,
 			&"rear": TriggerSpec.Condition.TIMER,
-			&"north": TriggerSpec.Condition.AREA_ENTERED, &"flank_timer": TriggerSpec.Condition.TIMER,
+			&"north": TriggerSpec.Condition.AREA_ENTERED, &"landing_cleared": TriggerSpec.Condition.GROUP_CLEARED,
+			&"flank_timer": TriggerSpec.Condition.TIMER,
 			&"flank": TriggerSpec.Condition.TRIGGERS_FIRED, &"home": TriggerSpec.Condition.AREA_ENTERED,
 			&"villager_dead": TriggerSpec.Condition.UNIT_DIES, &"lose": TriggerSpec.Condition.PLAYER_ELIMINATED,
 		},
@@ -479,15 +510,15 @@ func test_the_numeric_enums_in_the_data_mean_what_the_comments_say() -> void:
 func test_the_action_kinds_of_every_trigger() -> void:
 	var kinds: Array[Dictionary] = [
 		{
-			&"hello": [SAY], &"hint_formation": [SAY], &"at_ford": [DONE, SAY], &"hint_grenade": [SAY],
+			&"hello": [SAY], &"hint_formation": [SAY], &"in_ford": [SAY], &"at_ford": [DONE], &"hint_grenade": [SAY],
 			&"hint_fire": [SAY], &"stirring": [BEHAVE, BEHAVE, SAY], &"raid": [SPAWN, SHOW, SAY], &"raid_over": [DONE],
 			&"win": [DONE, WIN],
 			&"lose": [LOSE],
 		},
 		{
 			&"start": [SAY], &"crossing": [SAY, BEHAVE, BEHAVE], &"rear": [SPAWN, SAY], &"north": [SHOW],
-			&"flank_timer": [], &"flank": [SPAWN, SAY],
-			&"home": [DONE, DONE, WIN], &"villager_dead": [FAIL, LOSE], &"lose": [LOSE],
+			&"landing_cleared": [DONE], &"flank_timer": [], &"flank": [SPAWN, SAY],
+			&"home": [DONE, WIN], &"villager_dead": [FAIL, LOSE], &"lose": [LOSE],
 		},
 		{
 			&"setup": [SAY], &"w1": [SPAWN, SAY], &"w1_clear": [], &"w2_breather": [], &"w2_late": [],
@@ -541,11 +572,11 @@ func test_riverside_triggers_run_in_tutorial_order_with_the_designed_hints() -> 
 	var rules: MissionScript = _rules(RIVERSIDE)
 	assert_eq(
 		_names_of(rules.triggers),
-		[&"hello", &"hint_formation", &"at_ford", &"hint_grenade", &"hint_fire", &"stirring", &"raid", &"raid_over", &"win", &"lose"]
+		[&"hello", &"hint_formation", &"in_ford", &"at_ford", &"hint_grenade", &"hint_fire", &"stirring", &"raid", &"raid_over", &"win", &"lose"]
 	)
 	assert_eq(_message(RIVERSIDE, &"hello"), "Select soldiers: click one, or drag a box. Shift adds.")
 	assert_eq(_message(RIVERSIDE, &"hint_formation"), "Pick a formation with 1-0, then right-click the ground to march.")
-	assert_eq(_message(RIVERSIDE, &"at_ford"), "The water slows you. Keep your line tight.")
+	assert_eq(_message(RIVERSIDE, &"in_ford"), "The water slows you. Keep your line tight.")
 	assert_eq(_message(RIVERSIDE, &"hint_grenade"), "Sappers: Cmd-click (Ctrl-click) the ground to throw. Mind your own men.")
 	assert_eq(_message(RIVERSIDE, &"hint_fire"), "Longbows: press T to nock the fire arrow. Brush and houses burn.")
 	assert_eq(_message(RIVERSIDE, &"raid"), "Rippers! They go for your archers and sappers.")
@@ -562,8 +593,12 @@ func test_riverside_triggers_run_in_tutorial_order_with_the_designed_hints() -> 
 	assert_eq(_trigger(RIVERSIDE, &"hint_formation").ticks, PackedInt32Array([300]))
 	assert_eq(_trigger(RIVERSIDE, &"hint_fire").after, &"hint_grenade")
 	assert_eq(_trigger(RIVERSIDE, &"hint_fire").ticks, PackedInt32Array([450]))
+	var in_ford: TriggerSpec = _trigger(RIVERSIDE, &"in_ford")
+	assert_eq(in_ford.area, PackedInt32Array([300000, 226000, 8000]), "the ford's centre, 8 m: in the water")
+	assert_eq(in_ford.faction, LIGHT)
+	assert_eq(in_ford.min_count, 1)
 	var at_ford: TriggerSpec = _trigger(RIVERSIDE, &"at_ford")
-	assert_eq(at_ford.area, PackedInt32Array([300000, 226000, 15000]), "the ford's centre, 15 m")
+	assert_eq(at_ford.area, PackedInt32Array([300000, 244000, 8000]), "the south landing, 8 m")
 	assert_eq(at_ford.faction, LIGHT)
 	assert_eq(at_ford.min_count, 1)
 	assert_eq(at_ford.actions[0].objective, &"cross")
@@ -581,7 +616,7 @@ func test_riverside_triggers_run_in_tutorial_order_with_the_designed_hints() -> 
 	assert_eq(win.after, &"raid", "a straight assault can't win before the raid")
 	assert_eq(win.actions[0].objective, &"clear")
 	# Every hint is a message short enough for the line.
-	for hint: StringName in [&"hello", &"hint_formation", &"at_ford", &"hint_grenade", &"hint_fire", &"stirring", &"raid"]:
+	for hint: StringName in [&"hello", &"hint_formation", &"in_ford", &"hint_grenade", &"hint_fire", &"stirring", &"raid"]:
 		assert_lt(_message(RIVERSIDE, hint).length(), 100, "%s fits the message line" % hint)
 
 
@@ -592,6 +627,30 @@ func test_riverside_has_enough_husks_to_spring_the_raid_at_every_tier() -> void:
 		for group_name: StringName in raid.names:
 			husks += _group(RIVERSIDE, group_name).unit_count(tier)
 		assert_gt(husks, raid.count, "tier %d has %d Husks for a raid at %d deaths" % [tier, husks, raid.count])
+
+
+func test_the_crossing_objective_waits_on_the_south_landing_and_only_the_ford_leads_there() -> void:
+	var terrain: Terrain = _terrains[RIVERSIDE]
+	var at_ford: TriggerSpec = _trigger(RIVERSIDE, &"at_ford")
+	var centre: Vector2i = Vector2i(at_ford.area[0], at_ford.area[1]) / M
+	var radius: int = at_ford.area[2] / M
+	# The whole circle is dry, walkable ground: the objective is done on land,
+	# not in the water, so someone has to have crossed.
+	for dz: int in range(-radius, radius + 1):
+		for dx: int in range(-radius, radius + 1):
+			if dx * dx + dz * dz <= radius * radius:
+				var x: int = centre.x + dx
+				var z: int = centre.y + dz
+				assert_eq(terrain.sample_water_depth(x, z), 0, "(%d, %d) m is dry" % [x, z])
+				assert_true(terrain.is_sample_passable(x, z, LIVING), "(%d, %d) m is walkable" % [x, z])
+	# A Light unit gets from the deploy point to the circle by the ford alone:
+	# flood the walkable samples from the deploy point (8-way, so more
+	# permissive than any unit) and the circle is reached with the ford open and
+	# not with the ford's water walled off.
+	var deploy: Vector2i = _pair(_mission(RIVERSIDE).deploy) / M
+	var ford: Rect2i = Rect2i(284, 214, 33, 22)
+	assert_true(_flood_reaches(terrain, deploy, centre, Rect2i()), "the circle is reachable from the deploy point")
+	assert_false(_flood_reaches(terrain, deploy, centre, ford), "and only through the ford")
 
 
 func test_the_field_patrols_keep_their_alert_radius_off_the_north_bank() -> void:
@@ -649,12 +708,12 @@ func test_the_ford_has_the_designed_groups_counts_and_objectives() -> void:
 	assert_eq(_per_tier(_group(FORD, &"rippers_rear"), &"ripper"), PackedInt32Array([3, 4, 6, 6, 7]))
 	assert_false(_group(FORD, &"rippers_rear").spawn_at_start, "the rear trigger spawns the rear pack")
 	assert_true(rules.draws.is_empty())
-	assert_eq(_names_of(rules.objectives), [&"escort", &"hold"])
+	assert_eq(_names_of(rules.objectives), [&"escort", &"clear_landing"])
 	assert_eq(rules.objectives[0].text, "Bring the villager to the gate")
-	assert_eq(rules.objectives[1].text, "Hold the north landing")
+	assert_eq(rules.objectives[1].text, "Clear the north landing")
 	assert_true(rules.objectives[0].shown_at_start)
 	assert_false(rules.objectives[0].optional)
-	assert_false(rules.objectives[1].shown_at_start, "hold is hidden until the villager crosses")
+	assert_false(rules.objectives[1].shown_at_start, "clear_landing is hidden until the villager crosses")
 	assert_true(rules.objectives[1].optional)
 
 
@@ -675,7 +734,10 @@ func test_the_fords_triggers_do_what_the_design_says() -> void:
 	var north: TriggerSpec = _trigger(FORD, &"north")
 	assert_eq(north.names, [&"villager"])
 	assert_eq(north.area[2], 15000)
-	assert_eq(north.actions[0].objective, &"hold")
+	assert_eq(north.actions[0].objective, &"clear_landing")
+	var cleared: TriggerSpec = _trigger(FORD, &"landing_cleared")
+	assert_eq(cleared.names, [&"landing"], "the landing guard's death completes it, not the gate")
+	assert_eq(cleared.actions[0].objective, &"clear_landing")
 	var flank: TriggerSpec = _trigger(FORD, &"flank")
 	assert_eq(flank.names, [&"north", &"flank_timer"])
 	assert_eq(flank.min_count, 1, "either one")
@@ -684,7 +746,8 @@ func test_the_fords_triggers_do_what_the_design_says() -> void:
 	var home: TriggerSpec = _trigger(FORD, &"home")
 	assert_eq(home.names, [&"villager"])
 	assert_eq(home.actions[0].objective, &"escort")
-	assert_eq(home.actions[1].objective, &"hold")
+	assert_eq(home.actions.size(), 2, "the gate completes the escort and wins, nothing else")
+	assert_eq(home.actions[1].kind, TriggerAction.Kind.WIN)
 	var dead: TriggerSpec = _trigger(FORD, &"villager_dead")
 	assert_eq(dead.names, [&"villager"])
 	assert_eq(dead.count, 1)
@@ -864,7 +927,7 @@ func test_each_waves_edge_by_tier_follows_the_designed_scheme() -> void:
 
 
 func test_old_mills_pacing_triggers_chain_as_designed() -> void:
-	assert_eq(_message(MILL, &"setup"), "Set satchel charges on the ramps (Sapper: T). The first wave comes in a minute.")
+	assert_eq(_message(MILL, &"setup"), "Set satchel charges on the ramps (Sapper: T). The first wave is coming.")
 	assert_eq(_trigger(MILL, &"w1").ticks, PackedInt32Array([2400, 2100, 1800, 1500, 1200]))
 	assert_eq(_trigger(MILL, &"w1").actions[0].group, &"wave1")
 	for k: int in range(2, 5):
@@ -905,7 +968,7 @@ func test_old_mills_pacing_triggers_chain_as_designed() -> void:
 	assert_eq(overrun.actions[0].objective, &"hold")
 	assert_eq(_names_of(_rules(MILL).objectives), [&"hold", &"waves"])
 	assert_eq(_rules(MILL).objectives[0].text, "Hold the mill")
-	assert_eq(_rules(MILL).objectives[1].text, "Survive four waves")
+	assert_eq(_rules(MILL).objectives[1].text, "Break four waves")
 
 
 func test_every_wave_spawn_reaches_the_plateau() -> void:
@@ -1158,7 +1221,67 @@ func test_the_ford_can_be_won_by_walking_the_villager_to_the_gate() -> void:
 	assert_gt(_fired(world, &"crossing"), 0)
 	assert_gt(_fired(world, &"flank"), _fired(world, &"north"), "the Rippers came the tick after the landing")
 	assert_eq(_objective_state(world, &"escort"), MissionRuntime.ObjectiveState.DONE)
-	assert_eq(_objective_state(world, &"hold"), MissionRuntime.ObjectiveState.DONE)
+	assert_eq(_objective_state(world, &"clear_landing"), MissionRuntime.ObjectiveState.DONE, "the guard was killed")
+
+
+func test_the_fords_landing_objective_is_done_when_the_landing_guard_is_dead() -> void:
+	var world: World = _world(FORD)
+	world.step()
+	assert_ne(_objective_state(world, &"clear_landing"), MissionRuntime.ObjectiveState.DONE)
+	var guard: AiGroup = world.ai.groups_of(_rules(FORD).group_index(&"landing"))[0]
+	assert_gt(guard.spawned_ids.size(), 0, "the guard stands at the start")
+	for unit: Unit in world.units:
+		if guard.spawned_ids.has(unit.id):
+			unit.kill()
+	world.step()
+	world.step()
+	assert_gte(_fired(world, &"landing_cleared"), 0, "the guard's death fired it")
+	assert_eq(_fired(world, &"north"), -1, "though the villager is nowhere near the landing")
+	assert_eq(_objective_state(world, &"clear_landing"), MissionRuntime.ObjectiveState.DONE)
+	assert_eq(_objective_state(world, &"escort"), MissionRuntime.ObjectiveState.ACTIVE, "the escort isn't")
+
+
+func test_the_fords_landing_objective_stays_open_while_a_guard_stands() -> void:
+	var world: World = _world(FORD)
+	for _t: int in 60:
+		world.step()
+	assert_eq(_fired(world, &"landing_cleared"), -1)
+	assert_ne(_objective_state(world, &"clear_landing"), MissionRuntime.ObjectiveState.DONE)
+
+
+func test_the_fords_ending_without_the_guard_dead_leaves_the_landing_objective_undone() -> void:
+	# The gate completes the escort and wins; it doesn't touch the optional one.
+	var world: World = _world(FORD)
+	world.step()
+	var gate: TriggerSpec = _trigger(FORD, &"home")
+	for unit: Unit in world.units:
+		if unit.type.id == &"villager":
+			unit.x = gate.area[0]
+			unit.z = gate.area[1]
+	world.step()
+	world.step()
+	assert_eq(world.mission.outcome, MissionRuntime.Outcome.WON)
+	assert_eq(_objective_state(world, &"escort"), MissionRuntime.ObjectiveState.DONE)
+	assert_ne(_objective_state(world, &"clear_landing"), MissionRuntime.ObjectiveState.DONE, "the guard still stands")
+
+
+func test_riversides_crossing_objective_is_done_on_the_south_landing_not_in_the_water() -> void:
+	var world: World = _world(RIVERSIDE)
+	world.step()
+	var soldiers: PackedInt32Array = _soldiers(world)
+	# Into the middle of the ford: in the water, the tip is shown, nothing is done.
+	world.enqueue(MoveUnitsCommand.new(world.tick, soldiers, 300 * M, 226 * M, Formations.Kind.LOOSE_LINE))
+	while world.tick < 1500 and _fired(world, &"in_ford") < 0:
+		world.step()
+	assert_gte(_fired(world, &"in_ford"), 0, "the squad reached the water")
+	assert_eq(_fired(world, &"at_ford"), -1, "not across yet")
+	assert_eq(_objective_state(world, &"cross"), MissionRuntime.ObjectiveState.ACTIVE)
+	# On to the south landing: only now is it done.
+	world.enqueue(MoveUnitsCommand.new(world.tick, soldiers, 300 * M, 244 * M, Formations.Kind.LOOSE_LINE))
+	while world.tick < 3000 and _objective_state(world, &"cross") != MissionRuntime.ObjectiveState.DONE:
+		world.step()
+	assert_eq(_objective_state(world, &"cross"), MissionRuntime.ObjectiveState.DONE, "across the ford")
+	assert_gt(_fired(world, &"at_ford"), _fired(world, &"in_ford"), "after the water, not before")
 
 
 func test_the_ford_is_lost_with_the_villager() -> void:

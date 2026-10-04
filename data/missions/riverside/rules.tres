@@ -302,16 +302,32 @@ condition = 2
 ticks = PackedInt32Array(300)
 actions = Array[ExtResource("5_act01")]([SubResource("Action_say_formation")])
 
-; The first Light unit within 15 m of the middle of the ford, at the creek's
-; north shore (condition 0 = AREA_ENTERED; faction 0, Light, is the default):
-; the first objective is done.
+; The first Light unit within 8 m of the middle of the ford, which is the
+; whole width of the gravel bar: the squad is in the water (the creek's depth-1
+; shallows run from z = 218 to 234 m at x = 300), and the water's tip is shown
+; as it starts to slow them (condition 0 = AREA_ENTERED; faction 0, Light, is
+; the default).
+[sub_resource type="Resource" id="Trigger_in_ford"]
+script = ExtResource("4_trg01")
+name = &"in_ford"
+condition = 0
+area = PackedInt32Array(300000, 226000, 8000)
+min_count = 1
+actions = Array[ExtResource("5_act01")]([SubResource("Action_say_ford")])
+
+; The first Light unit on the south landing: within 8 m of (300, 244) m, dry
+; ground whose north edge is the first dry row (z = 236 m) off the ford's
+; south end. The creek's depth-3 core is impassable to Light units along the
+; whole map, so the ford is the only way there (checked by flood fill: with
+; the ford walled off nothing south of the creek is reachable from the
+; deploy), and the first objective is done when the squad has crossed.
 [sub_resource type="Resource" id="Trigger_at_ford"]
 script = ExtResource("4_trg01")
 name = &"at_ford"
 condition = 0
-area = PackedInt32Array(300000, 226000, 15000)
+area = PackedInt32Array(300000, 244000, 8000)
 min_count = 1
-actions = Array[ExtResource("5_act01")]([SubResource("Action_done_cross"), SubResource("Action_say_ford")])
+actions = Array[ExtResource("5_act01")]([SubResource("Action_done_cross")])
 
 ; Light within 40 m of the village square, (445, 375) m, the same point as
 ; gen_riverside.gd's VILLAGE_SQUARE.
@@ -363,9 +379,10 @@ names = Array[StringName]([&"raiders"])
 actions = Array[ExtResource("5_act01")]([SubResource("Action_done_raid")])
 
 ; Every Dark unit is down, once the raid has come (condition 4 =
-; FACTION_ELIMINATED, faction 1 = DARK): a straight assault that took the
-; village before the eleventh Husk fell would otherwise win before the raiders
-; ever spawned. The raiders count as Dark, so this waits for them too.
+; FACTION_ELIMINATED, faction 1 = DARK): the raid is sprung by the sixth roamer
+; to die, and `after` keeps a straight assault that clears the Dark side from
+; winning before the raiders ever spawned. The raiders count as Dark, so this
+; waits for them too.
 [sub_resource type="Resource" id="Trigger_win"]
 script = ExtResource("4_trg01")
 name = &"win"
@@ -385,5 +402,5 @@ actions = Array[ExtResource("5_act01")]([SubResource("Action_lose")])
 [resource]
 script = ExtResource("1_msc01")
 groups = Array[ExtResource("2_grp01")]([SubResource("Group_field_patrol_w"), SubResource("Group_field_patrol_e"), SubResource("Group_village_patrol"), SubResource("Group_village_guard"), SubResource("Group_raiders"), SubResource("Group_field_roamers_s"), SubResource("Group_field_roamers_w")])
-triggers = Array[ExtResource("4_trg01")]([SubResource("Trigger_hello"), SubResource("Trigger_hint_formation"), SubResource("Trigger_at_ford"), SubResource("Trigger_hint_grenade"), SubResource("Trigger_hint_fire"), SubResource("Trigger_stirring"), SubResource("Trigger_raid"), SubResource("Trigger_raid_over"), SubResource("Trigger_win"), SubResource("Trigger_lose")])
+triggers = Array[ExtResource("4_trg01")]([SubResource("Trigger_hello"), SubResource("Trigger_hint_formation"), SubResource("Trigger_in_ford"), SubResource("Trigger_at_ford"), SubResource("Trigger_hint_grenade"), SubResource("Trigger_hint_fire"), SubResource("Trigger_stirring"), SubResource("Trigger_raid"), SubResource("Trigger_raid_over"), SubResource("Trigger_win"), SubResource("Trigger_lose")])
 objectives = Array[ExtResource("6_obj01")]([SubResource("Objective_cross"), SubResource("Objective_clear"), SubResource("Objective_raid")])

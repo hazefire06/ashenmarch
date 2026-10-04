@@ -16,9 +16,11 @@
 ; soldier_names are the given names recruits are called by, in the order they
 ; are handed out: plain, human, mostly Scots, and original to this game. A
 ; name is picked by the soldier's id, and each further lap of the list (after
-; 64 recruits) adds a roman numeral (CampaignState.name_for). They alternate
-; between men's and women's names so any one company is a mix. There must be
-; at least CampaignDef.MIN_NAMES (50), all different.
+; 64 recruits) adds a roman numeral (CampaignState.name_for). The first 56
+; alternate between men's and women's names (men's at the even places), so a
+; company drawn from the start of the list is a mix; the last 8 are all men's,
+; so a very large company late in a campaign leans that way. There must be at
+; least CampaignDef.MIN_NAMES (50), all different.
 
 [resource]
 script = ExtResource("1_cmp01")

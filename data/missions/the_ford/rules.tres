@@ -204,12 +204,15 @@ script = ExtResource("6_obj01")
 name = &"escort"
 text = "Bring the villager to the gate"
 
-; Hidden until the villager is across, and optional: the panel marks it so,
-; and winning doesn't need it (the `home` trigger completes it anyway).
-[sub_resource type="Resource" id="Objective_hold"]
+; Shown when the villager is across (`north`), and optional: the panel marks it
+; so, and winning doesn't need it. It is done when the landing guard is dead
+; (`landing_cleared`), which can come first, when the squad clears the landing
+; before the villager reaches it: then it appears already done. Reaching the
+; gate doesn't complete it.
+[sub_resource type="Resource" id="Objective_clear_landing"]
 script = ExtResource("6_obj01")
-name = &"hold"
-text = "Hold the north landing"
+name = &"clear_landing"
+text = "Clear the north landing"
 optional = true
 shown_at_start = false
 
@@ -237,20 +240,20 @@ kind = 2
 text = "Rippers in the east woods!"
 
 ; Kind 6 = SHOW_OBJECTIVE, 7 = COMPLETE_OBJECTIVE, 8 = FAIL_OBJECTIVE.
-[sub_resource type="Resource" id="Action_show_hold"]
+[sub_resource type="Resource" id="Action_show_clear_landing"]
 script = ExtResource("5_act01")
 kind = 6
-objective = &"hold"
+objective = &"clear_landing"
 
 [sub_resource type="Resource" id="Action_done_escort"]
 script = ExtResource("5_act01")
 kind = 7
 objective = &"escort"
 
-[sub_resource type="Resource" id="Action_done_hold"]
+[sub_resource type="Resource" id="Action_done_clear_landing"]
 script = ExtResource("5_act01")
 kind = 7
-objective = &"hold"
+objective = &"clear_landing"
 
 [sub_resource type="Resource" id="Action_fail_escort"]
 script = ExtResource("5_act01")
@@ -337,7 +340,16 @@ condition = 0
 area = PackedInt32Array(192000, 145000, 15000)
 min_count = 1
 names = Array[StringName]([&"villager"])
-actions = Array[ExtResource("5_act01")]([SubResource("Action_show_hold")])
+actions = Array[ExtResource("5_act01")]([SubResource("Action_show_clear_landing")])
+
+; Every Husk of the landing guard is down (condition 3 = GROUP_CLEARED): the
+; optional objective is done, whether or not the villager has landed yet.
+[sub_resource type="Resource" id="Trigger_landing_cleared"]
+script = ExtResource("4_trg01")
+name = &"landing_cleared"
+condition = 3
+names = Array[StringName]([&"landing"])
+actions = Array[ExtResource("5_act01")]([SubResource("Action_done_clear_landing")])
 
 ; Three minutes in at tier 2 (5400 ticks; 6300, 5700, 5400, 4800, 4200 by
 ; tier): the Rippers come whether or not the villager has landed. It has no
@@ -366,7 +378,7 @@ condition = 0
 area = PackedInt32Array(239000, 80500, 7000)
 min_count = 1
 names = Array[StringName]([&"villager"])
-actions = Array[ExtResource("5_act01")]([SubResource("Action_done_escort"), SubResource("Action_done_hold"), SubResource("Action_win")])
+actions = Array[ExtResource("5_act01")]([SubResource("Action_done_escort"), SubResource("Action_win")])
 
 ; The villager dies (condition 1 = UNIT_DIES, one death across her group):
 ; the escort fails and so does the mission.
@@ -390,5 +402,5 @@ actions = Array[ExtResource("5_act01")]([SubResource("Action_lose")])
 [resource]
 script = ExtResource("1_msc01")
 groups = Array[ExtResource("2_grp01")]([SubResource("Group_villager"), SubResource("Group_pool_w"), SubResource("Group_pool_e"), SubResource("Group_landing"), SubResource("Group_drifters"), SubResource("Group_rippers"), SubResource("Group_rippers_rear")])
-triggers = Array[ExtResource("4_trg01")]([SubResource("Trigger_start"), SubResource("Trigger_crossing"), SubResource("Trigger_rear"), SubResource("Trigger_north"), SubResource("Trigger_flank_timer"), SubResource("Trigger_flank"), SubResource("Trigger_home"), SubResource("Trigger_villager_dead"), SubResource("Trigger_lose")])
-objectives = Array[ExtResource("6_obj01")]([SubResource("Objective_escort"), SubResource("Objective_hold")])
+triggers = Array[ExtResource("4_trg01")]([SubResource("Trigger_start"), SubResource("Trigger_crossing"), SubResource("Trigger_rear"), SubResource("Trigger_north"), SubResource("Trigger_landing_cleared"), SubResource("Trigger_flank_timer"), SubResource("Trigger_flank"), SubResource("Trigger_home"), SubResource("Trigger_villager_dead"), SubResource("Trigger_lose")])
+objectives = Array[ExtResource("6_obj01")]([SubResource("Objective_escort"), SubResource("Objective_clear_landing")])
