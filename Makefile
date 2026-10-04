@@ -1,7 +1,7 @@
 GODOT ?= godot
 MAC_APP := build/mac/Ashenmarch.app
 
-.PHONY: import run demo demo-projectiles demo-abilities demo-ai test check-sim export-mac maps fixtures
+.PHONY: import run demo demo-projectiles demo-abilities demo-ai test check-sim export-mac maps fixtures playtest
 
 # Builds the .godot/ import and class_name cache. A fresh clone has none, and
 # GUT can't resolve class_name types without it.
@@ -31,6 +31,26 @@ demo-abilities: import
 # runs it faster; DEMO_STAGE=3 make demo-ai runs one stage alone.
 demo-ai: import
 	$(GODOT) --path . -s scripts/demo_ai.gd
+
+# Balance playtest: a bot plays the campaign headless through the real sim and
+# prints a line per run, then win/length/loss tables. Settings are environment
+# variables, all optional:
+#   MISSIONS=riverside,the_ford,old_mill  which missions (default all)
+#   TIERS=2                               difficulty tiers 0..4 (default 2, the middle)
+#   SEEDS=20                              runs per mission, tier and pilot
+#   SEED_BASE=1000                        first campaign seed; run i uses SEED_BASE+i, so
+#                                         SEED_BASE=<seed> SEEDS=1 replays one run
+#   PILOTS=competent,naive                which bots (default both)
+#   CHAIN=1                               play the whole campaign per seed, survivors
+#                                         carrying over (default 0: fresh recruits)
+#   MAX_MINUTES=25                        game minutes before a run counts as a timeout
+#   OUT=tables.md                         write the tables here (Markdown)
+#   TRACE=10                              print a status line every 10 game seconds
+#   RAW=runs.jsonl                        write each run as a JSON line as it finishes
+#   REPORT=a.jsonl,b.jsonl                merge RAW files into tables instead of playing
+# e.g. MISSIONS=old_mill TIERS=0,2,4 SEEDS=10 PILOTS=competent make playtest
+playtest: import
+	$(GODOT) --headless --path . -s scripts/playtest.gd
 
 test: import check-sim
 	$(GODOT) --headless -d --path . -s addons/gut/gut_cmdln.gd

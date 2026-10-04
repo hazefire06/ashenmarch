@@ -1,0 +1,539 @@
+extends GutTest
+## The playtest harness (scripts/playtest.gd and scripts/playtest/): the pilots
+## that play the Light side through sim commands, the runner that builds a
+## world as the game does, and the tables. The properties that make the
+## numbers worth reading are pinned: a pilot orders only soldiers the player
+## would, a run is repeatable from its seed, and the pilot's rules (when a
+## Sapper throws, a Warden heals, a Longbow shoots its fire arrow, where the
+## charges go) do what the brief says. The long runs are the playtest's own
+## job (`make playtest`); these are short.
+
+const M: int = 1000
+const LIGHT: UnitType.Faction = UnitType.Faction.LIGHT
+const DARK: UnitType.Faction = UnitType.Faction.DARK
+const CAMPAIGN_PATH: String = "res://data/campaign/campaign.tres"
+const TIER: int = 2
+const SEED: int = 7
+## Ticks of the short runs: enough for every pilot to have given its first
+## orders and (on Old Mill, where the Sappers lay charges for their first 40
+## seconds) for those to be laid.
+const SHORT_TICKS: int = 300
+const MILL_TICKS: int = 1500
+
+var _campaign: CampaignDef
+var _catalog: UnitCatalog
+var _allowed: Array[GDScript] = []
+# The one competent run of Old Mill's first minute, shared by the tests that read
+# it (it is the slowest thing here).
+var _mill: PlaytestRunner
+var _mill_result: PlaytestResult
+
+
+func before_all() -> void:
+	_campaign = load(CAMPAIGN_PATH) as CampaignDef
+	_catalog = TestTerrains.catalog()
+	_allowed = [
+		MoveUnitsCommand, AttackMoveCommand, GroundAttackCommand, UseSpecialCommand,
+		HealCommand, StopUnitsCommand, InteractCommand,
+	]
+	# The route table reads the map generators' constants, which compiles them
+	# (and the shared map builder, whose integer division GDScript warns about
+	# once): done here so the warning isn't taken for the first test's.
+	for mission: MissionDef in _campaign.missions:
+		PlaytestRoutes.constants(mission.id)
+	_mill = _runner()
+	_mill_result = _play(_mill, 2, PlaytestPilot.Kind.COMPETENT, MILL_TICKS)
+
+
+func after_all() -> void:
+	_mill.release()
+
+
+# ---- helpers ----
+
+func _runner(record: bool = true) -> PlaytestRunner:
+	var runner: PlaytestRunner = PlaytestRunner.new(_catalog, _campaign.soldier_names)
+	runner.record_commands = record
+	return runner
+
+
+## Plays campaign mission `index` for `ticks` with `kind`, the way scripts/playtest.gd
+## does.
+func _play(
+	runner: PlaytestRunner, index: int, kind: PlaytestPilot.Kind, ticks: int, campaign_seed: int = SEED
+) -> PlaytestResult:
+	var state: CampaignState = CampaignState.new_campaign(campaign_seed, TIER)
+	return runner.play(_campaign.missions[index], index, state, kind, ticks)
+
+
+## A mission of two Husks (idle until something comes) 15 m from a small squad,
+## won when every Dark unit is dead. The smallest thing a pilot can win.
+func _tiny_mission() -> MissionDef:
+	var roster: Array[RosterEntry] = [
+		CampaignFixtures.entry(&"shieldman", PackedInt32Array([3])),
+		CampaignFixtures.entry(&"longbow", PackedInt32Array([1])),
+	]
+	var mission: MissionDef = CampaignFixtures.mission(&"tiny", roster)
+	var husks: AiGroupSpec = MissionFixtures.group(&"husks", 2, 75, 60)
+	var win: TriggerSpec = MissionFixtures.trigger(&"win", TriggerSpec.Condition.FACTION_ELIMINATED)
+	win.faction = DARK
+	win.actions.append(MissionFixtures.action(TriggerAction.Kind.WIN))
+	var lose: TriggerSpec = MissionFixtures.player_eliminated(&"lose")
+	lose.actions.append(MissionFixtures.action(TriggerAction.Kind.LOSE))
+	var groups: Array[AiGroupSpec] = [husks]
+	var triggers: Array[TriggerSpec] = [win, lose]
+	mission.rules = MissionFixtures.script(groups, triggers)
+	return mission
+
+
+## A bare flat world of the shipped catalog, for a pilot's single decisions:
+## units are spawned by hand, nothing steps unless a test says.
+func _bare(terrain: Terrain = null) -> World:
+	return World.new(1, terrain if terrain != null else TestTerrains.flat(120, 120), _catalog)
+
+
+func _spawn(w: World, type_id: StringName, side: UnitType.Faction, x: int, z: int) -> Unit:
+	return w.spawn_unit(_catalog.index_of(type_id), side, x * M, z * M, 1, 0)
+
+
+## A pilot of the tiny mission's kind, recording, that has looked at `w` once.
+func _think(w: World, kind: PlaytestPilot.Kind = PlaytestPilot.Kind.COMPETENT) -> PlaytestPilot:
+	var pilot: PlaytestPilot = PlaytestPilot.new(kind, _tiny_mission())
+	pilot.record = true
+	pilot.think(w)
+	return pilot
+
+
+func _commands_of(pilot: PlaytestPilot, script: GDScript, unit_id: int) -> Array[SimCommand]:
+	var out: Array[SimCommand] = []
+	for command: SimCommand in pilot.recorded:
+		if command.get_script() == script and (command.get(&"unit_ids") as PackedInt32Array).has(unit_id):
+			out.append(command)
+	return out
+
+
+## Flat ground with a patch of brush from (x0, z0) to (x1, z1) metres.
+func _brushy(x0: int, z0: int, x1: int, z1: int) -> Terrain:
+	var rows: Array[String] = []
+	for j: int in 120:
+		var row: String = ""
+		for i: int in 120:
+			row += "b" if i >= x0 and i <= x1 and j >= z0 and j <= z1 else "."
+		rows.append(row)
+	return TestTerrains.from_ascii(rows)
+
+
+# ---- the pilot orders only what the player could ----
+
+func test_the_pilot_orders_only_light_soldiers_the_ai_does_not_control() -> void:
+	for index: int in _campaign.missions.size():
+		for kind: PlaytestPilot.Kind in [PlaytestPilot.Kind.COMPETENT, PlaytestPilot.Kind.NAIVE]:
+			var label: String = "%s %s" % [_campaign.missions[index].id, PlaytestPilot.kind_name(kind)]
+			var runner: PlaytestRunner = _mill if index == 2 and kind == PlaytestPilot.Kind.COMPETENT else _runner()
+			if runner != _mill:
+				assert_not_null(_play(runner, index, kind, SHORT_TICKS), label)
+			_assert_orders_are_the_players(runner, label)
+			if runner != _mill:
+				runner.release()
+
+
+# Every command the pilot of this run gave names only Light units the AI does
+# not control, and is one the player's input produces.
+func _assert_orders_are_the_players(runner: PlaytestRunner, label: String) -> void:
+	var world: World = runner.last_world
+	var pilot: PlaytestPilot = runner.last_pilot
+	assert_gt(pilot.recorded.size(), 0, "%s: the pilot gave orders" % label)
+	assert_eq(pilot.recorded.size(), pilot.commands_issued, "%s: every command was kept" % label)
+	var wards: int = 0
+	for unit: Unit in world.units:
+		if unit.faction == LIGHT and world.ai.controls(unit.id):
+			wards += 1
+	if label.begins_with("the_ford"):
+		assert_eq(wards, 1, "%s: the villager is the AI's, and in the world" % label)
+	for command: SimCommand in pilot.recorded:
+		assert_true(_allowed.has(command.get_script()), "%s: %s is a player command" % [label, command.get_script().resource_path])
+		var ids: PackedInt32Array = command.get(&"unit_ids")
+		assert_gt(ids.size(), 0, "%s: a command names someone" % label)
+		for id: int in ids:
+			var unit: Unit = world.get_unit(id)
+			assert_not_null(unit, "%s: unit %d exists" % [label, id])
+			if unit == null:
+				continue
+			assert_eq(unit.faction, LIGHT, "%s: %s is on the player's side" % [label, unit.type.id])
+			assert_false(world.ai.controls(id), "%s: %s #%d isn't the AI's" % [label, unit.type.id, id])
+
+
+func test_every_route_point_is_ground_a_soldier_can_stand_on() -> void:
+	for mission: MissionDef in _campaign.missions:
+		var terrain: Terrain = Terrain.load_map(mission.map)
+		var points: Array[Vector2] = PlaytestRoutes.route(mission)
+		assert_gt(points.size(), 0, "%s has a route" % mission.id)
+		for point: Vector2 in points:
+			assert_true(
+				terrain.is_passable(roundi(point.x * M), roundi(point.y * M), Terrain.Mobility.LIVING),
+				"%s: route point %s is walkable" % [mission.id, point]
+			)
+
+
+func test_the_fords_route_is_the_villagers_own_waypoints() -> void:
+	var mission: MissionDef = _campaign.missions[1]
+	var villager: AiGroupSpec = mission.rules.groups[mission.rules.group_index(&"villager")]
+	var route: Array[Vector2] = PlaytestRoutes.route(mission)
+	assert_eq(route.size() * 2, villager.waypoints.size())
+	for k: int in route.size():
+		assert_eq(roundi(route[k].x * M), villager.waypoints[2 * k])
+		assert_eq(roundi(route[k].y * M), villager.waypoints[2 * k + 1])
+
+
+# ---- a run is repeatable from its seed ----
+
+func test_a_tiny_run_ends_the_same_way_every_time_for_the_same_seed() -> void:
+	var mission: MissionDef = _tiny_mission()
+	var hashes: Array[String] = []
+	for campaign_seed: int in [1, 2]:
+		var first: PlaytestResult = _play_tiny(mission, campaign_seed)
+		var again: PlaytestResult = _play_tiny(mission, campaign_seed)
+		assert_eq(first.outcome, PlaytestResult.WON, "seed %d: the squad wins" % campaign_seed)
+		assert_eq(again.outcome, first.outcome)
+		assert_eq(again.end_tick, first.end_tick, "seed %d: the same outcome tick" % campaign_seed)
+		assert_eq(again.state_hash, first.state_hash, "seed %d: the same world" % campaign_seed)
+		assert_eq(again.commands, first.commands, "seed %d: the same orders" % campaign_seed)
+		assert_eq(again.losses, first.losses)
+		assert_eq(again.kills, first.kills)
+		assert_gt(first.commands, 0)
+		hashes.append(first.state_hash)
+	assert_ne(hashes[0], hashes[1], "different seeds are different worlds")
+
+
+func _play_tiny(mission: MissionDef, campaign_seed: int) -> PlaytestResult:
+	var runner: PlaytestRunner = _runner(false)
+	var state: CampaignState = CampaignState.new_campaign(campaign_seed, TIER)
+	var result: PlaytestResult = runner.play(mission, 0, state, PlaytestPilot.Kind.COMPETENT, 3000)
+	runner.release()
+	return result
+
+
+func test_a_run_uses_the_seed_the_app_would() -> void:
+	var mission: MissionDef = _campaign.missions[0]
+	var state: CampaignState = CampaignState.new_campaign(SEED, TIER)
+	var runner: PlaytestRunner = _runner(false)
+	var result: PlaytestResult = runner.play(mission, 0, state, PlaytestPilot.Kind.NAIVE, 30)
+	assert_eq(result.campaign_seed, SEED)
+	assert_eq(result.world_seed, state.mission_seed(0))
+	assert_eq(result.roster, state.plan_deploy(mission, PackedInt32Array(), _campaign.soldier_names).size())
+	assert_eq(result.outcome, PlaytestResult.TIMEOUT, "30 ticks decide nothing: a timeout")
+	assert_eq(result.end_tick, 30)
+	runner.release()
+
+
+func test_a_won_run_can_be_applied_to_the_campaign_like_the_apps() -> void:
+	var mission: MissionDef = _tiny_mission()
+	var runner: PlaytestRunner = _runner(false)
+	var state: CampaignState = CampaignState.new_campaign(SEED, TIER)
+	var result: PlaytestResult = runner.play(mission, state.mission_index, state, PlaytestPilot.Kind.COMPETENT, 3000, true)
+	assert_true(result.won())
+	assert_true(result.chain)
+	state.apply_victory(mission, runner.last_plan, runner.last_world, runner.last_stats)
+	assert_eq(state.mission_index, 1, "the campaign moved on")
+	assert_eq(state.soldiers.size() + state.fallen.size(), result.roster)
+	assert_eq(state.fallen.size(), result.losses)
+	runner.release()
+
+
+# ---- Old Mill: the charges go on the ramps, early ----
+
+func test_old_mills_sappers_lay_all_their_charges_on_the_ramps_within_forty_seconds() -> void:
+	var world: World = _mill.last_world
+	var result: PlaytestResult = _mill_result
+	assert_gt(result.charges_done_tick, 0, "every Sapper laid his last charge")
+	assert_lte(result.charges_done_tick, 40 * World.TICK_RATE, "in the first 40 seconds")
+	var charges: int = 0
+	var near: Array[int] = [0, 0]
+	var ramps: Array[Dictionary] = PlaytestRoutes.mill_ramps()
+	for p: Projectile in world.projectiles:
+		if p.type.id != &"satchel":
+			continue
+		charges += 1
+		var at: Vector2 = Vector2(p.x, p.z) / float(M)
+		for r: int in 2:
+			var line: Vector2 = Geometry2D.get_closest_point_to_segment(at, ramps[r]["top"], ramps[r]["foot"])
+			if at.distance_to(line) <= 4.0:
+				near[r] += 1
+	var sappers: int = 0
+	for unit: Unit in world.units:
+		if unit.type.id == &"sapper":
+			sappers += 1
+			assert_eq(unit.special_left, 0, "a Sapper has none left")
+	assert_eq(charges, sappers * PlaytestPilot.CHARGES_PER_SAPPER, "every charge is on the ground")
+	assert_eq(near[0] + near[1], charges, "each one lies on a ramp")
+	assert_gt(near[0], 0, "the north-west ramp has some")
+	assert_gt(near[1], 0, "and the south-east one")
+
+
+# ---- the pilot's rules, one decision at a time ----
+
+func test_a_sapper_throws_at_a_cluster_of_three_in_range() -> void:
+	var w: World = _bare()
+	var sapper: Unit = _spawn(w, &"sapper", LIGHT, 20, 20)
+	_spawn(w, &"shieldman", LIGHT, 20, 26)
+	for at: Vector2i in [Vector2i(35, 20), Vector2i(36, 21), Vector2i(35, 22)]:
+		_spawn(w, &"husk", DARK, at.x, at.y)
+	var throws: Array[SimCommand] = _commands_of(_think(w), GroundAttackCommand, sapper.id)
+	assert_eq(throws.size(), 1, "one bombardment is ordered")
+	var aim: GroundAttackCommand = throws[0] as GroundAttackCommand
+	assert_almost_eq(float(aim.x) / M, 35.3, 1.0)
+	assert_almost_eq(float(aim.z) / M, 21.0, 1.0)
+
+
+func test_a_sapper_does_not_throw_at_fewer_than_three() -> void:
+	var w: World = _bare()
+	var sapper: Unit = _spawn(w, &"sapper", LIGHT, 20, 20)
+	_spawn(w, &"husk", DARK, 35, 20)
+	_spawn(w, &"husk", DARK, 36, 21)
+	assert_eq(_commands_of(_think(w), GroundAttackCommand, sapper.id).size(), 0)
+
+
+func test_a_sapper_does_not_throw_with_a_friend_within_six_meters_of_the_aim() -> void:
+	var w: World = _bare()
+	var sapper: Unit = _spawn(w, &"sapper", LIGHT, 20, 20)
+	for at: Vector2i in [Vector2i(35, 20), Vector2i(36, 21), Vector2i(35, 22)]:
+		_spawn(w, &"husk", DARK, at.x, at.y)
+	# A Shieldman 5 m short of the cluster: inside six meters of its middle.
+	_spawn(w, &"shieldman", LIGHT, 30, 21)
+	assert_eq(_commands_of(_think(w), GroundAttackCommand, sapper.id).size(), 0)
+
+
+func test_a_sapper_does_not_throw_out_of_range_or_at_a_cluster_in_the_water() -> void:
+	var far: World = _bare()
+	var sapper: Unit = _spawn(far, &"sapper", LIGHT, 10, 20)
+	for at: Vector2i in [Vector2i(60, 20), Vector2i(61, 21), Vector2i(60, 22)]:
+		_spawn(far, &"husk", DARK, at.x, at.y)
+	assert_eq(_commands_of(_think(far), GroundAttackCommand, sapper.id).size(), 0, "50 m is out of a grenade's reach")
+	var rows: Array[String] = []
+	for j: int in 120:
+		rows.append(".".repeat(30) + "1".repeat(20) + ".".repeat(70) if j >= 15 and j <= 25 else ".".repeat(120))
+	var wet: World = _bare(TestTerrains.from_ascii(rows))
+	var thrower: Unit = _spawn(wet, &"sapper", LIGHT, 20, 20)
+	for at: Vector2i in [Vector2i(35, 20), Vector2i(36, 21), Vector2i(35, 22)]:
+		_spawn(wet, &"husk", DARK, at.x, at.y)
+	assert_eq(_commands_of(_think(wet), GroundAttackCommand, thrower.id).size(), 0, "a fuse goes out in water")
+
+
+func test_a_warden_heals_the_most_hurt_friend_below_sixty_per_cent_within_fifteen_meters() -> void:
+	var w: World = _bare()
+	var warden: Unit = _spawn(w, &"warden", LIGHT, 20, 20)
+	var hurt: Unit = _spawn(w, &"shieldman", LIGHT, 25, 20)
+	hurt.hp = 30
+	var worse_but_far: Unit = _spawn(w, &"shieldman", LIGHT, 60, 20)
+	worse_but_far.hp = 20
+	var scratched: Unit = _spawn(w, &"shieldman", LIGHT, 22, 20)
+	scratched.hp = 65
+	var heals: Array[SimCommand] = _commands_of(_think(w), HealCommand, warden.id)
+	assert_eq(heals.size(), 1)
+	assert_eq((heals[0] as HealCommand).target_id, hurt.id, "the one at 30 per cent, not 20 per cent out of reach")
+
+
+func test_a_warden_leaves_everyone_at_sixty_per_cent_or_more_alone() -> void:
+	var w: World = _bare()
+	var warden: Unit = _spawn(w, &"warden", LIGHT, 20, 20)
+	var fine: Unit = _spawn(w, &"shieldman", LIGHT, 24, 20)
+	fine.hp = 60
+	assert_eq(_commands_of(_think(w), HealCommand, warden.id).size(), 0)
+
+
+func test_two_wardens_heal_two_different_friends() -> void:
+	var w: World = _bare()
+	var first: Unit = _spawn(w, &"warden", LIGHT, 20, 20)
+	var second: Unit = _spawn(w, &"warden", LIGHT, 21, 20)
+	var worst: Unit = _spawn(w, &"shieldman", LIGHT, 25, 20)
+	worst.hp = 10
+	var next: Unit = _spawn(w, &"shieldman", LIGHT, 26, 20)
+	next.hp = 40
+	var pilot: PlaytestPilot = _think(w)
+	var a: Array[SimCommand] = _commands_of(pilot, HealCommand, first.id)
+	var b: Array[SimCommand] = _commands_of(pilot, HealCommand, second.id)
+	assert_eq(a.size() + b.size(), 2)
+	assert_eq((a[0] as HealCommand).target_id, worst.id, "the lower id takes the worst hurt")
+	assert_eq((b[0] as HealCommand).target_id, next.id, "and the other goes to the next")
+
+
+func test_a_longbow_nocks_its_fire_arrow_and_aims_it_at_a_cluster_on_brush() -> void:
+	var w: World = _bare(_brushy(60, 15, 80, 25))
+	var archer: Unit = _spawn(w, &"longbow", LIGHT, 35, 20)
+	for at: Vector2i in [Vector2i(68, 20), Vector2i(70, 21), Vector2i(69, 22)]:
+		_spawn(w, &"husk", DARK, at.x, at.y)
+	var pilot: PlaytestPilot = _think(w)
+	var nocks: Array[SimCommand] = _commands_of(pilot, UseSpecialCommand, archer.id)
+	var shots: Array[SimCommand] = _commands_of(pilot, GroundAttackCommand, archer.id)
+	assert_eq(nocks.size(), 1, "the arrow is nocked")
+	assert_eq(shots.size(), 1, "and aimed")
+	assert_lt(pilot.recorded.find(nocks[0]), pilot.recorded.find(shots[0]), "in that order")
+	assert_almost_eq(float((shots[0] as GroundAttackCommand).x) / M, 69.0, 1.5)
+
+
+func test_a_longbow_keeps_its_fire_arrow_for_brush_a_friend_or_a_charge_isnt_near() -> void:
+	var bare: World = _bare(_brushy(0, 0, 0, 0))
+	var archer: Unit = _spawn(bare, &"longbow", LIGHT, 35, 20)
+	for at: Vector2i in [Vector2i(68, 20), Vector2i(70, 21), Vector2i(69, 22)]:
+		_spawn(bare, &"husk", DARK, at.x, at.y)
+	assert_eq(_commands_of(_think(bare), UseSpecialCommand, archer.id).size(), 0, "grass doesn't take it")
+	var crowded: World = _bare(_brushy(60, 15, 80, 25))
+	var shooter: Unit = _spawn(crowded, &"longbow", LIGHT, 35, 20)
+	for at: Vector2i in [Vector2i(68, 20), Vector2i(70, 21), Vector2i(69, 22)]:
+		_spawn(crowded, &"husk", DARK, at.x, at.y)
+	_spawn(crowded, &"shieldman", LIGHT, 50, 20)
+	assert_eq(_commands_of(_think(crowded), UseSpecialCommand, shooter.id).size(), 0, "a friend is in the line of fire")
+	var mined: World = _bare(_brushy(60, 15, 80, 25))
+	var third: Unit = _spawn(mined, &"longbow", LIGHT, 35, 20)
+	for at: Vector2i in [Vector2i(68, 20), Vector2i(70, 21), Vector2i(69, 22)]:
+		_spawn(mined, &"husk", DARK, at.x, at.y)
+	mined.drop_object(_catalog.projectile_index_of(&"satchel"), 62 * M, 20 * M, 0)
+	assert_eq(_commands_of(_think(mined), UseSpecialCommand, third.id).size(), 0, "a charge lies near the aim")
+
+
+func test_the_pilot_does_not_chase_husks_lying_submerged() -> void:
+	var rows: Array[String] = []
+	for j: int in 120:
+		rows.append(".".repeat(35) + "4".repeat(15) + ".".repeat(70))
+	var w: World = _bare(TestTerrains.from_ascii(rows))
+	var soldier: Unit = _spawn(w, &"shieldman", LIGHT, 20, 20)
+	var husk: Unit = _spawn(w, &"husk", DARK, 40, 20)
+	assert_true(Visibility.is_submerged(w.terrain, husk), "it lies in deep water")
+	var pilot: PlaytestPilot = _think(w)
+	var marches: Array[SimCommand] = _commands_of(pilot, AttackMoveCommand, soldier.id)
+	assert_eq(marches.size(), 1)
+	# Nothing in sight: it goes to the route's point (the deploy point, 60 m
+	# east and 40 south), not to the Husk 20 m away.
+	assert_almost_eq(float((marches[0] as AttackMoveCommand).x) / M, 60.0, 1.0)
+	husk.surfaced = true
+	var seen: PlaytestPilot = _think(w)
+	var chase: AttackMoveCommand = _commands_of(seen, AttackMoveCommand, soldier.id)[0] as AttackMoveCommand
+	assert_almost_eq(float(chase.x) / M, 40.0, 1.0, "once it has sprung, it is fought")
+
+
+func test_the_naive_pilot_only_attack_moves_everyone_and_nothing_else() -> void:
+	var w: World = _bare()
+	_spawn(w, &"sapper", LIGHT, 20, 20)
+	_spawn(w, &"warden", LIGHT, 21, 20).hp = 5
+	_spawn(w, &"longbow", LIGHT, 22, 20)
+	for at: Vector2i in [Vector2i(35, 20), Vector2i(36, 21), Vector2i(35, 22)]:
+		_spawn(w, &"husk", DARK, at.x, at.y)
+	var pilot: PlaytestPilot = _think(w, PlaytestPilot.Kind.NAIVE)
+	assert_eq(pilot.recorded.size(), 1)
+	assert_eq(pilot.recorded[0].get_script(), AttackMoveCommand)
+	assert_eq((pilot.recorded[0].get(&"unit_ids") as PackedInt32Array).size(), 3)
+
+
+func test_orders_are_not_repeated_until_the_goal_moves() -> void:
+	var w: World = _bare()
+	_spawn(w, &"shieldman", LIGHT, 20, 20)
+	var pilot: PlaytestPilot = PlaytestPilot.new(PlaytestPilot.Kind.COMPETENT, _tiny_mission())
+	pilot.record = true
+	pilot.think(w)
+	var first: int = pilot.commands_issued
+	assert_gt(first, 0)
+	w.step()
+	pilot.think(w)
+	assert_eq(pilot.commands_issued, first, "the same goal gives no new order")
+
+
+# ---- the results and their tables ----
+
+func _result(
+	mission_id: StringName, outcome: String, minutes: float, losses: int, roster: int = 10, pilot: String = "competent",
+	tier: int = 2
+) -> PlaytestResult:
+	var r: PlaytestResult = PlaytestResult.new()
+	r.mission_id = mission_id
+	r.outcome = outcome
+	r.end_tick = roundi(minutes * 60.0 * World.TICK_RATE)
+	r.losses = losses
+	r.roster = roster
+	r.pilot = pilot
+	r.tier = tier
+	return r
+
+
+func test_the_median_and_percentile_use_the_nearest_rank() -> void:
+	var values: Array[float] = [5.0, 1.0, 3.0, 2.0, 4.0, 10.0, 9.0, 8.0, 7.0, 6.0]
+	assert_almost_eq(PlaytestReport.median(values), 5.5, 0.001)
+	assert_almost_eq(PlaytestReport.percentile(values, 90.0), 9.0, 0.001)
+	assert_almost_eq(PlaytestReport.percentile(values, 100.0), 10.0, 0.001)
+	assert_almost_eq(PlaytestReport.percentile(values, 0.0), 1.0, 0.001)
+	var odd: Array[float] = [3.0, 1.0, 2.0]
+	assert_almost_eq(PlaytestReport.median(odd), 2.0, 0.001)
+	var none: Array[float] = []
+	assert_eq(PlaytestReport.median(none), 0.0)
+	assert_eq(PlaytestReport.percentile(none, 90.0), 0.0)
+
+
+func test_the_table_counts_wins_losses_and_timeouts_per_group() -> void:
+	var results: Array[PlaytestResult] = [
+		_result(&"old_mill", PlaytestResult.WON, 8.0, 2, 20),
+		_result(&"old_mill", PlaytestResult.LOST, 5.0, 20, 20),
+		_result(&"old_mill", PlaytestResult.TIMEOUT, 25.0, 1, 20),
+		_result(&"old_mill", PlaytestResult.WON, 10.0, 4, 20),
+		_result(&"riverside", PlaytestResult.WON, 2.0, 0, 14, "naive", 0),
+	]
+	var text: String = PlaytestReport.markdown(results, "T")
+	var rows: PackedStringArray = text.split("\n")
+	var mill: String = ""
+	var river: String = ""
+	for row: String in rows:
+		if row.begins_with("| old_mill | 2 | competent"):
+			mill = row
+		if row.begins_with("| riverside | 0 | naive"):
+			river = row
+	assert_ne(mill, "", "an Old Mill row")
+	assert_string_contains(mill, "| 4 | 50% | 25% | 25% |", "two of four won, one lost, one timed out")
+	assert_string_contains(river, "| 1 | 100% | 0% | 0% |")
+	assert_lt(text.find("| riverside |"), text.find("| old_mill |"), "the campaign's order, not the order of arrival")
+	assert_string_contains(text, "1 of 4 timed out", "the anomalies name the timeout")
+
+
+func test_the_fords_and_old_mills_tables_say_what_went_wrong() -> void:
+	var ford: PlaytestResult = _result(&"the_ford", PlaytestResult.LOST, 1.5, 6, 16)
+	ford.villager_died = true
+	ford.villager_killer = "drifter"
+	var ok: PlaytestResult = _result(&"the_ford", PlaytestResult.WON, 2.0, 0, 16)
+	var mill: PlaytestResult = _result(&"old_mill", PlaytestResult.LOST, 6.0, 20, 20)
+	mill.waves = PackedStringArray(["husks", "rippers", "bags", "storm"])
+	mill.waves_spawned = 3
+	var results: Array[PlaytestResult] = [ford, ok, mill]
+	var text: String = PlaytestReport.markdown(results, "T")
+	assert_string_contains(text, "| 2 | competent | 2 | 50% | drifter 1 |")
+	assert_string_contains(text, "bags 1, husks 1, rippers 1, storm 1")
+	assert_string_contains(text, "wave 3 (bags) 1")
+
+
+func test_a_chained_campaign_is_tabled_by_how_far_it_got() -> void:
+	var results: Array[PlaytestResult] = []
+	for mission_id: StringName in [&"riverside", &"the_ford", &"old_mill"]:
+		var r: PlaytestResult = _result(mission_id, PlaytestResult.WON, 3.0, 1)
+		r.chain = true
+		results.append(r)
+	var stopped: PlaytestResult = _result(&"riverside", PlaytestResult.LOST, 3.0, 14, 14)
+	stopped.chain = true
+	results.append(stopped)
+	var text: String = PlaytestReport.markdown(results, "T")
+	assert_string_contains(text, "| 2 | competent | 2 | 1 | 1 / 1 | 1 / 1 | 50% |")
+
+
+func test_a_result_survives_the_trip_through_json() -> void:
+	var r: PlaytestResult = _result(&"old_mill", PlaytestResult.LOST, 6.5, 12, 20)
+	r.world_seed = 5392023410520822974
+	r.campaign_seed = 1002
+	r.waves = PackedStringArray(["husks", "bags"])
+	r.waves_spawned = 2
+	r.notes = PackedStringArray(["left: husk #4 at (1, 2) m"])
+	r.state_hash = "abcd"
+	var back: PlaytestResult = PlaytestResult.from_dict(JSON.parse_string(JSON.stringify(r.to_dict())))
+	assert_not_null(back)
+	assert_eq(back.world_seed, r.world_seed, "a 63-bit seed survives JSON")
+	assert_eq(back.mission_id, r.mission_id)
+	assert_eq(back.end_tick, r.end_tick)
+	assert_eq(back.waves, r.waves)
+	assert_eq(back.notes, r.notes)
+	assert_eq(back.state_hash, "abcd")
+	assert_null(PlaytestResult.from_dict({"mission": "x"}), "an incomplete line isn't a run")
+	assert_null(PlaytestResult.from_dict("nonsense"))
