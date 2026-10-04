@@ -32,6 +32,11 @@ const GROUND_TINTS: Array[Color] = [
 	Color(0.80, 0.72, 0.50, 0.75),
 	Color(0.48, 0.47, 0.45, 0.70),
 ]
+## A blocked sample (a house, a wall) is drawn this much darker and this much
+## greyer than the ground it would otherwise show, so structures read as
+## solid whatever they stand on. Both are fractions, 0..1.
+const BLOCKED_DARKEN: float = 0.45
+const BLOCKED_DESATURATE: float = 0.25
 ## Width of the height ramp texture the shader samples.
 const RAMP_WIDTH: int = 256
 
@@ -52,6 +57,14 @@ static func water_color(depth: int) -> Color:
 ## Tint for a ground type (Terrain.Ground); alpha is the blend strength.
 static func ground_tint(ground: int) -> Color:
 	return GROUND_TINTS[clampi(ground, 0, GROUND_TINTS.size() - 1)]
+
+
+## What the terrain shader makes of a ground color at a blocked sample: part
+## of the way to its own gray (same luminance), then darkened.
+static func blocked_color(ground: Color) -> Color:
+	var grey: Color = Color(ground.get_luminance(), ground.get_luminance(), ground.get_luminance())
+	var dull: Color = ground.lerp(grey, BLOCKED_DESATURATE)
+	return Color(dull.r, dull.g, dull.b, ground.a) * (1.0 - BLOCKED_DARKEN)
 
 
 ## Height color with the ground type's tint, then the water tint for this

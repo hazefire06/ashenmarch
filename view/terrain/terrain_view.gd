@@ -1,7 +1,9 @@
 class_name TerrainView
 extends Node3D
 ## Draws a Terrain as chunked, flat-shaded placeholder meshes colored by
-## height, ground type, and water depth. build() reads the whole terrain;
+## height, ground type, and water depth, and darker where a structure blocks
+## the sample (a house, a wall), since blocked samples are raised but not
+## otherwise marked. build() reads the whole terrain;
 ## rebuild_region() re-reads the heights in part of it, after explosions scar
 ## the ground. Never writes the terrain.
 ##
@@ -13,6 +15,8 @@ extends Node3D
 const TERRAIN_SHADER: Shader = preload("res://view/terrain/terrain.gdshader")
 ## Fire texel value (R8) by Fire.Cell.
 const FIRE_TEXEL: Array[int] = [0, 128, 255]
+## Blocked texel value (R8) of a blocked sample; an open one is 0.
+const BLOCKED_TEXEL: int = 255
 
 ## Index array shared by every full-size chunk, made by build().
 var _shared_indices: PackedInt32Array = PackedInt32Array()
@@ -129,6 +133,10 @@ func _make_material(terrain: Terrain) -> ShaderMaterial:
 	)
 	material.set_shader_parameter("water_tint", ImageTexture.create_from_image(_water_tint_image(terrain)))
 	material.set_shader_parameter("ground_tint", ImageTexture.create_from_image(_ground_tint_image(terrain)))
+	material.set_shader_parameter("blocked_map", ImageTexture.create_from_image(_blocked_image(terrain)))
+	material.set_shader_parameter(
+		"blocked_tint", Vector2(TerrainPalette.BLOCKED_DARKEN, TerrainPalette.BLOCKED_DESATURATE)
+	)
 	_fire_image = Image.create(terrain.size_x, terrain.size_z, false, Image.FORMAT_R8)
 	_burning_seen = 0
 	_fire_texture = ImageTexture.create_from_image(_fire_image)
@@ -158,6 +166,16 @@ func _ground_tint_image(terrain: Terrain) -> Image:
 		data[k * 4 + 2] = texel[2]
 		data[k * 4 + 3] = texel[3]
 	return Image.create_from_data(terrain.size_x, terrain.size_z, false, Image.FORMAT_RGBA8, data)
+
+
+## R8, one texel per sample: BLOCKED_TEXEL where a structure blocks it, so the
+## shader can draw houses and walls as solid.
+func _blocked_image(terrain: Terrain) -> Image:
+	var data: PackedByteArray = PackedByteArray()
+	data.resize(terrain.size_x * terrain.size_z)
+	for k: int in data.size():
+		data[k] = BLOCKED_TEXEL if terrain.blocked[k] != 0 else 0
+	return Image.create_from_data(terrain.size_x, terrain.size_z, false, Image.FORMAT_R8, data)
 
 
 ## RGBA8, one texel per sample: TerrainPalette.water_color of its depth.

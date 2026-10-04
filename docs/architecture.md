@@ -743,6 +743,7 @@ The environment changes tactics:
 ### View
 - **Terrain:**
   - Ground types tint the height bands, on the terrain and the overhead map alike, so firebreaks read before anything is lit.
+  - Blocked samples (houses, walls; Phase 8) are drawn 45% darker and 25% greyer, on the terrain only. Their height was already in the mesh, but nothing marked them, so a house read as a bump. `TerrainView` writes an R8 `blocked_map` texel per sample once, because the sim never unblocks anything, and the shader's `blocked_tint` uniform (`TerrainPalette.BLOCKED_DARKEN`, `BLOCKED_DESATURATE`) says how.
   - An R8 texel per sample follows `fire.changed` (burning glows with emission, scorched is charred), with one `ImageTexture.update()` per tick that changed.
   - `wetness` darkens and cools the ground.
   - `snow_cover` whitens faces whose world normal points up (smoothstep 0.55–0.85), not steep faces, and not water, which is drawn over it.

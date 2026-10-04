@@ -2,15 +2,23 @@ shader_type spatial;
 render_mode diffuse_lambert, specular_disabled;
 
 // Flat-shaded placeholder terrain: banded height colors (TerrainPalette),
-// tinted by ground type, charred where the sim's fire has been, darkened when
-// wet, whitened by snow on faces that point up, glowing where it burns now,
-// and the water-depth tint on top. TerrainView sets every uniform.
+// tinted by ground type, darker and greyer where a structure blocks the
+// sample, charred where the sim's fire has been, darkened when wet, whitened by
+// snow on faces that point up, glowing where it burns now, and the water-depth
+// tint on top. TerrainView sets every uniform.
 
 uniform sampler2D height_ramp : source_color, filter_nearest, repeat_disable;
 // One texel per heightmap sample: water tint color, alpha = blend strength.
 uniform sampler2D water_tint : source_color, filter_nearest, repeat_disable;
 // One texel per sample: ground-type tint, alpha = blend strength.
 uniform sampler2D ground_tint : source_color, filter_nearest, repeat_disable;
+// One texel per sample, R: 1 where a structure blocks it (a house, a wall),
+// else 0. The sim never changes blocked samples, so unlike fire_state this is
+// written once.
+uniform sampler2D blocked_map : filter_nearest, repeat_disable;
+// How a blocked sample is drawn: x how much darker, y how much greyer, both
+// 0..1 (TerrainPalette.BLOCKED_DARKEN and BLOCKED_DESATURATE).
+uniform vec2 blocked_tint = vec2(0.45, 0.25);
 // One texel per sample, R: 0 unburnt, about 0.5 burning, 1 scorched.
 uniform sampler2D fire_state : filter_nearest, repeat_disable;
 // How wet the ground is and how much snow lies on it, 0..1.
@@ -47,6 +55,9 @@ void fragment() {
 	vec2 uv = (world_pos.xz / cell_size + 0.5) / sample_count;
 	vec4 kind = texture(ground_tint, uv);
 	ground = mix(ground, kind.rgb, kind.a);
+	float solid = texture(blocked_map, uv).r;
+	float grey = dot(ground, vec3(0.2126, 0.7152, 0.0722));
+	ground = mix(ground, vec3(grey), blocked_tint.y * solid) * (1.0 - blocked_tint.x * solid);
 
 	float fire = texture(fire_state, uv).r;
 	if (fire > 0.75) {
