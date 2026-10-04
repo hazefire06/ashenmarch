@@ -19,7 +19,10 @@ var name: String = ""
 var kills: int = 0
 ## Hit points he has, or 0 for full health: the DeployCommand convention. A
 ## survivor who is not hurt is stored as 0, never as his type's maximum, so a
-## later change to that maximum doesn't leave him short of it.
+## later change to that maximum doesn't leave him short of it. Read it through
+## current_hp(), not directly, wherever a number is shown or compared. It means
+## nothing for a fallen soldier: it is whatever it was when he was last
+## deployed.
 var hp: int = 0
 ## Missions he has survived.
 var missions: int = 0
@@ -31,6 +34,14 @@ func _init(soldier_id: int = 0, soldier_type: StringName = &"", given_name: Stri
 	id = soldier_id
 	type_id = soldier_type
 	name = given_name
+
+
+## The hit points he really has, given his type's maximum: max_hp for the 0
+## that means full health, otherwise `hp`, never above max_hp (a maximum that
+## was retuned down). For display and comparison; meaningless for a fallen
+## soldier (see hp).
+func current_hp(max_hp: int) -> int:
+	return max_hp if hp <= 0 else mini(hp, max_hp)
 
 
 ## The record as JSON-safe values: ints, and Strings in place of StringNames.

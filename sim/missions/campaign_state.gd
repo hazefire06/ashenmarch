@@ -18,12 +18,14 @@ extends RefCounted
 
 ## The save format. Any other version is refused by from_dict.
 const VERSION: int = 1
+## The low 32 bits of an int, for the 32-bit mix and for splitting the seed.
 const MASK32: int = 0xFFFFFFFF
-## Mixed into the index and the high half of the seed in mission_seed(): the
-## golden-ratio and murmur3 multipliers, chosen only because they are well
-## mixed. Changing one re-rolls every campaign's missions, so they are part of
-## the save format.
+## Mixed into the mission index in mission_seed(): the golden-ratio multiplier,
+## chosen only because it is well mixed. Changing it re-rolls every campaign's
+## missions, so it is part of the save format.
 const INDEX_SALT: int = 0x9E3779B1
+## Mixed into the high half of the seed in mission_seed(): the murmur3
+## multiplier, with the same warning as INDEX_SALT.
 const HIGH_SALT: int = 0x85EBCA6B
 ## The multiplier of the 32-bit mix below (the same one Formations uses for its
 ## rabble jitter). Odd, so multiplying by it mod 2^32 is a bijection.
@@ -32,8 +34,11 @@ const MIX_MULTIPLIER: int = 0x45D9F3B
 const FULL_HEALTH_RANK: int = 0x7FFFFFFF
 ## The text of the largest int64, for reading a seed back.
 const INT64_MAX_TEXT: String = "9223372036854775807"
+## The digits of the magnitude of the smallest int64, which has no positive twin.
 const INT64_MIN_DIGITS: String = "9223372036854775808"
+## Roman numeral values, largest first, for the numeral after a recycled name.
 const ROMAN_VALUES: Array[int] = [1000, 900, 500, 400, 100, 90, 50, 40, 10, 9, 5, 4, 1]
+## The symbols for ROMAN_VALUES, in the same order.
 const ROMAN_SYMBOLS: Array[String] = ["M", "CM", "D", "CD", "C", "XC", "L", "XL", "X", "IX", "V", "IV", "I"]
 
 ## The campaign's seed; every mission's seed follows from it (mission_seed).
@@ -90,18 +95,19 @@ func mission_seed(index: int) -> int:
 	return ((b & 0x7FFFFFFF) << 32) | a
 
 
-## A recruit's given name from his id: names[id % names.size()], with a roman
-## numeral after it once the list has wrapped: the first lap is plain, the
-## second says II, the third III, and so on. Deterministic, so a replay or a
-## Retry names the same recruits the same. With no names at all he is
-## "Soldier <id>".
+## A recruit's given name from his id. Ids start at 1, so the id's place in the
+## list is id - 1: the first names.size() recruits get the names in order, plain,
+## and each further lap of the list adds a roman numeral (the second says II,
+## the third III, and so on). Deterministic, so a replay or a Retry names the
+## same recruits the same. With no names at all he is "Soldier <id>".
 static func name_for(id: int, names: PackedStringArray) -> String:
 	if names.is_empty():
 		return "Soldier %d" % id
+	var place: int = maxi(0, id - 1)
 	# The whole number of laps is the point, so the remainder is dropped on purpose.
 	@warning_ignore("integer_division")
-	var lap: int = id / names.size()
-	var base: String = names[id % names.size()]
+	var lap: int = place / names.size()
+	var base: String = names[place % names.size()]
 	return base if lap == 0 else "%s %s" % [base, _roman(lap + 1)]
 
 
@@ -127,6 +133,8 @@ func find_soldier(soldier_id: int) -> Soldier:
 ## Veterans beyond the slots (and the benched) are the reserve.
 func plan_deploy(mission: MissionDef, benched: PackedInt32Array, names: PackedStringArray) -> DeployPlan:
 	var plan: DeployPlan = DeployPlan.new()
+	plan.mission_id = mission.id
+	plan.mission_index = mission_index
 	var placed: Dictionary[int, bool] = {}
 	var next_id: int = next_soldier_id
 	for entry: RosterEntry in mission.roster:
@@ -174,10 +182,17 @@ func reserve_for(mission: MissionDef, benched: PackedInt32Array) -> Array[Soldie
 ##   of him.
 ## - The reserve is untouched. The mission is added to the history and
 ##   mission_index moves on.
-## `plan` must be one this state made and hasn't changed since (its recruits'
-## ids are the ones next_soldier_id would have handed out). A defeat is never
-## applied: see the class comment.
+## `plan` must be one this state made for this mission and hasn't changed since;
+## otherwise (made for another mission, already applied so the mission has moved
+## on, its recruits' ids no longer the next ones, a veteran no longer on the
+## roll) nothing is changed and push_error says why, so applying a plan twice
+## can't put a recruit on the roll twice or leave a save the loader refuses. A
+## defeat is never applied: see the class comment.
 func apply_victory(mission: MissionDef, plan: DeployPlan, world: World, stats: MissionStats) -> void:
+	var problem: String = _plan_problem(mission, plan)
+	if problem != "":
+		push_error("CampaignState.apply_victory: " + problem)
+		return
 	# Copies, so the plan (which a menu may still hold) never aliases the roll.
 	for recruit: Soldier in plan.recruits:
 		var joined: Soldier = Soldier.new(recruit.id, recruit.type_id, recruit.name)
@@ -208,6 +223,24 @@ func apply_victory(mission: MissionDef, plan: DeployPlan, world: World, stats: M
 		"id": String(mission.id), "ticks": stats.end_tick, "kills": stats.enemies_killed(), "losses": losses,
 	})
 	mission_index += 1
+
+
+# Why this plan can't be applied to this state for this mission, or "".
+func _plan_problem(mission: MissionDef, plan: DeployPlan) -> String:
+	if plan.mission_id != mission.id:
+		return "the plan was made for mission %s, not %s" % [plan.mission_id, mission.id]
+	if plan.mission_index != mission_index:
+		return "the plan was made at mission %d but the campaign is at %d (applied already?)" % [plan.mission_index, mission_index]
+	for i: int in plan.recruits.size():
+		if plan.recruits[i].id != next_soldier_id + i:
+			return "the plan's recruit ids don't start at next_soldier_id %d" % next_soldier_id
+	for i: int in plan.size():
+		if plan.is_recruit[i]:
+			continue
+		var veteran: Soldier = find_soldier(plan.soldier_ids[i])
+		if veteran == null or veteran.type_id != plan.type_ids[i]:
+			return "soldier %d is no longer on the roll" % plan.soldier_ids[i]
+	return ""
 
 
 ## True once every mission of the campaign has been won.
@@ -379,8 +412,10 @@ func _available(type_id: StringName, benched: PackedInt32Array, placed: Dictiona
 static func _outranks(a: Soldier, b: Soldier) -> bool:
 	if a.kills != b.kills:
 		return a.kills > b.kills
-	var health_a: int = a.hp if a.hp > 0 else FULL_HEALTH_RANK
-	var health_b: int = b.hp if b.hp > 0 else FULL_HEALTH_RANK
+	# Both are the same type, so only the order matters: a stand-in maximum above
+	# any real one puts full health (hp 0) first.
+	var health_a: int = a.current_hp(FULL_HEALTH_RANK)
+	var health_b: int = b.current_hp(FULL_HEALTH_RANK)
 	if health_a != health_b:
 		return health_a > health_b
 	return a.id < b.id

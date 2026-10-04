@@ -82,6 +82,14 @@ func test_a_soldier_starts_alive_with_no_kills_and_full_health() -> void:
 	assert_eq(s.fallen_in, &"")
 
 
+func test_current_hp_turns_the_full_health_zero_into_the_types_maximum() -> void:
+	assert_eq(_soldier(1, SHIELDMAN, 0, 0).current_hp(100), 100, "0 is full health")
+	assert_eq(_soldier(1, SHIELDMAN, 0, 37).current_hp(100), 37)
+	assert_eq(_soldier(1, SHIELDMAN, 0, 100).current_hp(100), 100)
+	assert_eq(_soldier(1, SHIELDMAN, 0, 120).current_hp(100), 100, "never above a maximum that was retuned down")
+	assert_eq(_soldier(1, SHIELDMAN, 0, 0).current_hp(130), 130, "and follows a maximum retuned up")
+
+
 func test_a_soldier_round_trips_through_its_dictionary() -> void:
 	var s: Soldier = _soldier(9, WARDEN, 12, 33)
 	s.missions = 2
@@ -230,20 +238,29 @@ func test_mission_seeds_are_pinned() -> void:
 
 func test_names_follow_the_id_and_a_numeral_marks_each_lap_of_the_list() -> void:
 	var names: PackedStringArray = PackedStringArray(["Ada", "Bram", "Cole"])
-	assert_eq(CampaignState.name_for(1, names), "Bram")
-	assert_eq(CampaignState.name_for(2, names), "Cole")
-	assert_eq(CampaignState.name_for(3, names), "Ada II", "id 3 wraps the three names for the first time")
-	assert_eq(CampaignState.name_for(4, names), "Bram II")
-	assert_eq(CampaignState.name_for(6, names), "Ada III")
-	assert_eq(CampaignState.name_for(9, names), "Ada IV")
-	assert_eq(CampaignState.name_for(27, names), "Ada X")
-	assert_eq(CampaignState.name_for(3 * 49 + 1, names), "Bram L", "49 laps on: roman numerals keep going")
+	assert_eq(CampaignState.name_for(1, names), "Ada", "ids start at 1, so the first recruit gets the first name")
+	assert_eq(CampaignState.name_for(2, names), "Bram")
+	assert_eq(CampaignState.name_for(3, names), "Cole", "the last name of the first lap is still plain")
+	assert_eq(CampaignState.name_for(4, names), "Ada II", "id 4 wraps the three names for the first time")
+	assert_eq(CampaignState.name_for(5, names), "Bram II")
+	assert_eq(CampaignState.name_for(7, names), "Ada III")
+	assert_eq(CampaignState.name_for(10, names), "Ada IV")
+	assert_eq(CampaignState.name_for(28, names), "Ada X")
+	assert_eq(CampaignState.name_for(3 * 49 + 1, names), "Ada L", "49 laps on: roman numerals keep going")
 
 
-func test_names_are_the_plain_name_until_the_list_wraps() -> void:
+func test_the_first_recruits_get_every_name_once_before_any_numeral() -> void:
 	var names: PackedStringArray = CampaignFixtures.names(50)
-	for id: int in range(1, 50):
-		assert_eq(CampaignState.name_for(id, names), names[id])
+	for id: int in range(1, 51):
+		assert_eq(CampaignState.name_for(id, names), names[id - 1])
+	assert_eq(CampaignState.name_for(51, names), "%s II" % names[0])
+
+
+func test_a_plan_with_more_recruits_than_names_numbers_the_repeats() -> void:
+	var state: CampaignState = CampaignState.new_campaign(7, 2)
+	var mission: MissionDef = CampaignFixtures.mission(&"m", [_entry(SHIELDMAN, 4)])
+	var plan: DeployPlan = state.plan_deploy(mission, PackedInt32Array(), CampaignFixtures.names(3))
+	assert_eq(plan.names, PackedStringArray(["Ada", "Bram", "Cole", "Ada II"]))
 
 
 func test_with_no_names_a_soldier_is_numbered() -> void:
@@ -261,11 +278,11 @@ func test_a_fresh_campaign_deploys_only_recruits_numbered_from_one() -> void:
 	assert_eq(_slot_ids(plan), [1, 2, 3, 4, 5])
 	assert_eq(plan.type_ids, [SHIELDMAN, SHIELDMAN, SHIELDMAN, LONGBOW, LONGBOW] as Array[StringName])
 	assert_eq(plan.is_recruit, [true, true, true, true, true] as Array[bool])
-	assert_eq(plan.names, PackedStringArray(["Bram", "Cole", "Dara", "Eben", "Ada II"]))
+	assert_eq(plan.names, PackedStringArray(["Ada", "Bram", "Cole", "Dara", "Eben"]))
 	assert_eq(plan.kills, PackedInt32Array([0, 0, 0, 0, 0]))
 	assert_eq(plan.hp, PackedInt32Array([0, 0, 0, 0, 0]), "a recruit is at full health: hp 0")
 	assert_eq(_ids(plan.recruits), [1, 2, 3, 4, 5])
-	assert_eq(plan.recruits[0].name, "Bram")
+	assert_eq(plan.recruits[0].name, "Ada")
 	assert_eq(plan.recruits[0].type_id, SHIELDMAN)
 
 
@@ -471,7 +488,7 @@ func test_winning_commits_the_recruits_and_advances_the_ids() -> void:
 	_win(state, mission, played)
 	assert_eq(_ids(state.soldiers), [1, 2, 3])
 	assert_eq(state.next_soldier_id, 4)
-	assert_eq(state.soldiers[0].name, "Bram")
+	assert_eq(state.soldiers[0].name, "Ada")
 	assert_eq(state.soldiers[2].type_id, LONGBOW)
 	for s: Soldier in state.soldiers:
 		assert_eq(s.missions, 1, "each survived one mission")
@@ -557,7 +574,7 @@ func test_a_recruit_who_dies_is_still_on_the_roll_of_the_fallen() -> void:
 	assert_eq(_ids(state.soldiers), [2])
 	assert_eq(_ids(state.fallen), [1])
 	assert_eq(state.next_soldier_id, 3, "his id is spent either way")
-	assert_eq(state.fallen[0].name, "Bram")
+	assert_eq(state.fallen[0].name, "Ada")
 
 
 func test_a_win_records_the_mission_in_the_history() -> void:
@@ -609,6 +626,82 @@ func test_a_defeat_changes_nothing_so_a_retry_plans_the_same_deploy() -> void:
 	assert_eq(retry.kills, first.kills)
 	assert_eq(retry.hp, first.hp)
 	assert_eq(state.mission_index, 0, "still the same mission, with the same seed, so the same waves")
+
+
+# --- apply_victory refuses a plan that doesn't fit ----------------------------------
+
+
+## Plans and deploys, then wins once, leaving the state with the plan applied.
+func _won_once(state: CampaignState, mission: MissionDef) -> Dictionary:
+	var played: Dictionary = _play(state, mission)
+	_win(state, mission, played)
+	return played
+
+
+func test_applying_the_same_plan_twice_changes_nothing_the_second_time() -> void:
+	var state: CampaignState = CampaignFixtures.state([_soldier(1, SHIELDMAN, 2)])
+	var mission: MissionDef = CampaignFixtures.mission(&"m", [_entry(SHIELDMAN, 2), _entry(LONGBOW, 1)])
+	var played: Dictionary = _won_once(state, mission)
+	var after_first: String = _json(state)
+	assert_eq(_ids(state.soldiers), [1, 2, 3])
+	state.apply_victory(mission, played["plan"], played["world"], played["stats"])
+	assert_push_error("CampaignState.apply_victory")
+	assert_eq(_json(state), after_first, "no second set of recruits, no second mission, no second history entry")
+	assert_eq(state.mission_index, 1)
+	assert_eq(state.history.size(), 1)
+	assert_not_null(CampaignState.from_dict(_parsed(state)), "and the save still loads")
+
+
+func test_a_plan_made_for_another_mission_is_refused() -> void:
+	var state: CampaignState = CampaignFixtures.state([_soldier(1, SHIELDMAN, 2)])
+	var planned_for: MissionDef = CampaignFixtures.mission(&"one", [_entry(SHIELDMAN, 2)])
+	var other: MissionDef = CampaignFixtures.mission(&"two", [_entry(SHIELDMAN, 2)])
+	var played: Dictionary = _play(state, planned_for)
+	var before: String = _json(state)
+	state.apply_victory(other, played["plan"], played["world"], played["stats"])
+	assert_push_error("CampaignState.apply_victory")
+	assert_eq(_json(state), before)
+
+
+func test_a_plan_whose_recruit_ids_are_no_longer_next_is_refused() -> void:
+	var state: CampaignState = CampaignState.new_campaign(7, 2)
+	var mission: MissionDef = CampaignFixtures.mission(&"m", [_entry(SHIELDMAN, 2)])
+	var played: Dictionary = _play(state, mission)
+	state.next_soldier_id = 9
+	var before: String = _json(state)
+	state.apply_victory(mission, played["plan"], played["world"], played["stats"])
+	assert_push_error("CampaignState.apply_victory")
+	assert_eq(_json(state), before)
+
+
+func test_a_plan_whose_veteran_has_since_left_the_roll_is_refused() -> void:
+	var state: CampaignState = CampaignFixtures.state([_soldier(1, SHIELDMAN, 2), _soldier(2, SHIELDMAN, 1)])
+	var mission: MissionDef = CampaignFixtures.mission(&"m", [_entry(SHIELDMAN, 2)])
+	var played: Dictionary = _play(state, mission)
+	state.soldiers.remove_at(0)
+	var before: String = _json(state)
+	state.apply_victory(mission, played["plan"], played["world"], played["stats"])
+	assert_push_error("CampaignState.apply_victory")
+	assert_eq(_json(state), before)
+
+
+func test_a_plan_made_at_an_earlier_point_in_the_campaign_is_refused() -> void:
+	var state: CampaignState = CampaignFixtures.state([_soldier(1, SHIELDMAN, 2)])
+	var mission: MissionDef = CampaignFixtures.mission(&"m", [_entry(SHIELDMAN, 1)])
+	var played: Dictionary = _play(state, mission)
+	state.mission_index = 2
+	var before: String = _json(state)
+	state.apply_victory(mission, played["plan"], played["world"], played["stats"])
+	assert_push_error("CampaignState.apply_victory")
+	assert_eq(_json(state), before)
+
+
+func test_a_plan_records_the_mission_and_where_in_the_campaign_it_was_made() -> void:
+	var state: CampaignState = CampaignFixtures.state([_soldier(1, SHIELDMAN)])
+	state.mission_index = 1
+	var plan: DeployPlan = state.plan_deploy(CampaignFixtures.mission(&"the_ford", [_entry(SHIELDMAN)]), PackedInt32Array(), _names)
+	assert_eq(plan.mission_id, &"the_ford")
+	assert_eq(plan.mission_index, 1)
 
 
 # --- JSON -------------------------------------------------------------------------

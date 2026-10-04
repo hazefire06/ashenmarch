@@ -14,13 +14,17 @@ extends Resource
 ## The View group holds fields only the view reads, on a sim resource because
 ## they belong to the mission's data: `atmosphere` is a view class (a pure data
 ## Resource with no Nodes), following the UnitType.placeholder_color
-## precedent. sim/ never reads these fields.
+## precedent. Nothing that steps a World (the AI, the triggers, the combat)
+## reads these fields; only validate() checks them and the view uses them.
 ##
 ## Facing defaults to 1 south (0, 1), not 0, 0 (which means north), and the
 ## camera distance to 75000, because those are the common case; Godot leaves
 ## defaults out of the .tres.
 
+## Stable key: what a CampaignState's history and a soldier's fallen_in name,
+## and what a DeployPlan is checked against. Unique within a CampaignDef.
 @export var id: StringName = &""
+## The name the menus show.
 @export var display_name: String = ""
 ## The briefing text, several lines.
 @export_multiline var briefing: String = ""
@@ -32,9 +36,12 @@ extends Resource
 @export var roster: Array[RosterEntry] = []
 ## Where the roster block is centered, as one x, z pair in milli-units.
 @export var deploy: PackedInt32Array = PackedInt32Array()
-## The way the roster block faces; 0, 0 would mean north, the default is south.
+## The way the roster block faces, as a direction; 0, 0 would mean north, the
+## default (0, 1) is south.
 @export var deploy_facing_x: int = 0
+## See deploy_facing_x.
 @export var deploy_facing_z: int = 1
+## The shape the roster block is laid out in, front to back in roster order.
 @export var deploy_formation: Formations.Kind = Formations.Kind.BOX
 
 @export_group("View")

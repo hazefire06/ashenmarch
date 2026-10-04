@@ -26,6 +26,13 @@ var hp: PackedInt32Array = PackedInt32Array()
 ## The provisional records of the recruits, in slot order: what apply_victory
 ## adds to the roll if the mission is won.
 var recruits: Array[Soldier] = []
+## The mission this plan was made for. apply_victory refuses a plan made for
+## another mission. Set by CampaignState.plan_deploy.
+var mission_id: StringName = &""
+## The campaign's mission_index when the plan was made. apply_victory refuses a
+## plan whose index isn't the state's, which is what a plan applied already (the
+## index has moved on) looks like. Set by CampaignState.plan_deploy.
+var mission_index: int = -1
 
 
 ## How many slots there are.

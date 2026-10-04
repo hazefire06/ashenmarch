@@ -104,9 +104,11 @@ func seconds() -> int:
 	return whole
 
 
+## True if this soldier was lost: dead, or no longer on the Light side.
 func was_lost(soldier_id: int) -> bool:
 	return lost.has(soldier_id)
 
 
+## True if this soldier died to friendly fire (see the class comment).
 func was_friendly_fire(soldier_id: int) -> bool:
 	return friendly_fire.has(soldier_id)

@@ -16,21 +16,28 @@ extends Resource
 @export_group("Sky and light")
 ## The flat color behind the world.
 @export var background_color: Color = Color(0.52, 0.6, 0.68, 1.0)
-## Light that falls on everything alike, and how much of it.
+## The color of the light that falls on everything alike.
 @export var ambient_color: Color = Color(0.75, 0.75, 0.8, 1.0)
+## How much of that ambient light there is. At least 0.
 @export var ambient_energy: float = 0.5
+## The color of the sun's light.
 @export var sun_color: Color = Color(1.0, 1.0, 1.0, 1.0)
+## How bright the sun is. At least 0; 0 is no sun.
 @export var sun_energy: float = 1.0
-## The sun's DirectionalLight3D rotation in degrees, as rotation_degrees.x and
-## .y: pitch is how far below the horizon it shines (-90 straight down, 0
-## along the ground; main.tscn's sun is -30), yaw turns it about the vertical.
+## The sun's DirectionalLight3D rotation in degrees, as rotation_degrees.x:
+## how far below the horizon it shines (-90 straight down, 0 along the ground;
+## main.tscn's sun is -30). Validated to -90..0.
 @export var sun_pitch_degrees: float = -30.0
+## The sun's rotation about the vertical, as rotation_degrees.y (main.tscn's sun
+## is -30).
 @export var sun_yaw_degrees: float = -30.0
 
 @export_group("Fog")
+## Whether there is fog at all.
 @export var fog_enabled: bool = false
+## The color the world fades to in the distance.
 @export var fog_color: Color = Color(0.7, 0.75, 0.8, 1.0)
-## Godot's exponential fog density (0.01 is a light haze).
+## Godot's exponential fog density (0.01 is a light haze). At least 0.
 @export var fog_density: float = 0.01
 
 @export_group("Ground and water")
@@ -50,20 +57,26 @@ extends Resource
 ## How thick the falling ash is, 0 (none) to 1 (a storm of it). Particles
 ## only: it changes nothing in the sim.
 @export var ash_fall: float = 0.0
+## The color of the falling ash.
 @export var ash_color: Color = Color(0.25, 0.23, 0.22, 1.0)
 
 
 ## Problems that make the atmosphere unusable, or an empty array if it is
-## valid. Every one is listed.
+## valid. Every one is listed. Each field is read by name in code, not looked up
+## by a string, so a renamed field is a parse error here rather than a check
+## that quietly passes.
 func validate() -> PackedStringArray:
 	var errors: PackedStringArray = PackedStringArray()
-	for field: String in ["ambient_energy", "sun_energy", "fog_density"]:
-		if float(get(field)) < 0.0:
-			errors.append("%s must be >= 0" % field)
-	for field: String in ["terrain_desaturation", "ash_fall"]:
-		var value: float = float(get(field))
-		if value < 0.0 or value > 1.0:
-			errors.append("%s must be 0..1" % field)
+	if ambient_energy < 0.0:
+		errors.append("ambient_energy must be >= 0")
+	if sun_energy < 0.0:
+		errors.append("sun_energy must be >= 0")
+	if fog_density < 0.0:
+		errors.append("fog_density must be >= 0")
+	if terrain_desaturation < 0.0 or terrain_desaturation > 1.0:
+		errors.append("terrain_desaturation must be 0..1")
+	if ash_fall < 0.0 or ash_fall > 1.0:
+		errors.append("ash_fall must be 0..1")
 	if sun_pitch_degrees < -90.0 or sun_pitch_degrees > 0.0:
 		errors.append("sun_pitch_degrees must be -90..0 (the sun shines down)")
 	if water_tint.a < 0.0 or water_tint.a > 1.0:
