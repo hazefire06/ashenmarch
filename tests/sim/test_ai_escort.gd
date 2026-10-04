@@ -101,38 +101,38 @@ func _park(unit: Unit, at: Vector2i) -> void:
 	unit.z = at.y * M
 
 
-## Steps once and adds the group's escort-relevant events to log.
-func _step(world: World, group: AiGroup, log: Array[AiEvent]) -> void:
+## Steps once and appends the group's AI events to `events`.
+func _step(world: World, group: AiGroup, events: Array[AiEvent]) -> void:
 	world.step()
 	for e: AiEvent in world.ai_events:
 		if e.group_id == group.id:
-			log.append(e)
+			events.append(e)
 
 
 ## Steps up to `ticks` times with the friend beside the group before each step.
 ## Stops early once stop_at returns true.
 func _walk_with_friend(
-	world: World, group: AiGroup, friend: Unit, log: Array[AiEvent], ticks: int, stop_at: Callable
+	world: World, group: AiGroup, friend: Unit, events: Array[AiEvent], ticks: int, stop_at: Callable
 ) -> void:
 	for _t: int in ticks:
 		_beside(world, group, friend)
-		_step(world, group, log)
+		_step(world, group, events)
 		if stop_at.call():
 			return
 
 
-func _of_kind(log: Array[AiEvent], kind: AiEvent.Kind) -> Array[AiEvent]:
+func _of_kind(events: Array[AiEvent], kind: AiEvent.Kind) -> Array[AiEvent]:
 	var out: Array[AiEvent] = []
-	for e: AiEvent in log:
+	for e: AiEvent in events:
 		if e.kind == kind:
 			out.append(e)
 	return out
 
 
-## The waypoint indices of the WAYPOINT_REACHED events in log, in order.
-func _reached(log: Array[AiEvent]) -> Array[int]:
+## The waypoint indices of the WAYPOINT_REACHED events in events, in order.
+func _reached(events: Array[AiEvent]) -> Array[int]:
 	var out: Array[int] = []
-	for e: AiEvent in _of_kind(log, AiEvent.Kind.WAYPOINT_REACHED):
+	for e: AiEvent in _of_kind(events, AiEvent.Kind.WAYPOINT_REACHED):
 		out.append(e.value)
 	return out
 
@@ -152,12 +152,12 @@ func test_it_walks_a_three_waypoint_route_with_a_friend_beside_it_and_arrives() 
 	var world: World = s[0]
 	var group: AiGroup = s[1]
 	var friend: Unit = s[2]
-	var log: Array[AiEvent] = []
-	_walk_with_friend(world, group, friend, log, RUN_TICKS, func() -> bool: return group.phase == 2)
+	var events: Array[AiEvent] = []
+	_walk_with_friend(world, group, friend, events, RUN_TICKS, func() -> bool: return group.phase == 2)
 	assert_eq(group.phase, 2, "arrived")
-	assert_eq(_reached(log), [0, 1, 2], "every waypoint, in order")
-	assert_eq(_of_kind(log, AiEvent.Kind.ESCORT_WAIT).size(), 0, "it never had to wait")
-	assert_eq(_of_kind(log, AiEvent.Kind.WAYPOINT_FAILED).size(), 0)
+	assert_eq(_reached(events), [0, 1, 2], "every waypoint, in order")
+	assert_eq(_of_kind(events, AiEvent.Kind.ESCORT_WAIT).size(), 0, "it never had to wait")
+	assert_eq(_of_kind(events, AiEvent.Kind.WAYPOINT_FAILED).size(), 0)
 	assert_eq(group.behavior, AiGroupSpec.Behavior.ESCORT, "never switched")
 	var c: Vector2i = AiOrders.centroid(group.living(world))
 	assert_lte(FixedMath.length(c.x - 55 * M, c.y - 50 * M), NEAR, "at the last waypoint")
@@ -170,7 +170,6 @@ func test_each_reached_event_is_at_its_waypoint_and_the_members_are_near_it() ->
 	var world: World = s[0]
 	var group: AiGroup = s[1]
 	var friend: Unit = s[2]
-	var log: Array[AiEvent] = []
 	var seen: int = 0
 	for _t: int in RUN_TICKS:
 		_beside(world, group, friend)
@@ -184,7 +183,6 @@ func test_each_reached_event_is_at_its_waypoint_and_the_members_are_near_it() ->
 		if group.phase == 2:
 			break
 	assert_eq(seen, 3)
-	assert_eq(log.size(), 0)
 
 
 func test_a_group_that_has_arrived_holds_and_ignores_the_friend_leaving() -> void:
@@ -192,15 +190,15 @@ func test_a_group_that_has_arrived_holds_and_ignores_the_friend_leaving() -> voi
 	var world: World = s[0]
 	var group: AiGroup = s[1]
 	var friend: Unit = s[2]
-	var log: Array[AiEvent] = []
-	_walk_with_friend(world, group, friend, log, RUN_TICKS, func() -> bool: return group.phase == 2)
+	var events: Array[AiEvent] = []
+	_walk_with_friend(world, group, friend, events, RUN_TICKS, func() -> bool: return group.phase == 2)
 	assert_eq(group.phase, 2)
 	_park(friend, AWAY)
 	var held: Array[Vector2i] = _positions(group, world)
-	log.clear()
+	events.clear()
 	for _t: int in 120:
-		_step(world, group, log)
-	assert_eq(log.size(), 0, "no events: nothing left to do")
+		_step(world, group, events)
+	assert_eq(events.size(), 0, "no events: nothing left to do")
 	assert_eq(group.phase, 2)
 	assert_eq(_positions(group, world), held, "the members hold")
 
@@ -213,22 +211,22 @@ func test_it_waits_where_it_stands_when_the_friend_walks_away() -> void:
 	var world: World = s[0]
 	var group: AiGroup = s[1]
 	var friend: Unit = s[2]
-	var log: Array[AiEvent] = []
-	_walk_with_friend(world, group, friend, log, 100, func() -> bool: return false)
+	var events: Array[AiEvent] = []
+	_walk_with_friend(world, group, friend, events, 100, func() -> bool: return false)
 	assert_eq(group.phase, 0, "walking with the friend beside it")
 	var moved: Vector2i = AiOrders.centroid(group.living(world))
 	assert_gt(moved.x, SPAWN.x * M + 3 * M, "it is under way")
 	_park(friend, AWAY)
-	log.clear()
+	events.clear()
 	var waited_at: int = -1
 	for _t: int in 40:
-		_step(world, group, log)
-		if not _of_kind(log, AiEvent.Kind.ESCORT_WAIT).is_empty():
+		_step(world, group, events)
+		if not _of_kind(events, AiEvent.Kind.ESCORT_WAIT).is_empty():
 			waited_at = world.tick
 			break
 	assert_gt(waited_at, 0, "it waited at its next think")
 	assert_eq(group.phase, 1)
-	var waits: Array[AiEvent] = _of_kind(log, AiEvent.Kind.ESCORT_WAIT)
+	var waits: Array[AiEvent] = _of_kind(events, AiEvent.Kind.ESCORT_WAIT)
 	assert_eq(waits.size(), 1)
 	var c: Vector2i = AiOrders.centroid(group.living(world))
 	assert_lte(FixedMath.length(waits[0].x - c.x, waits[0].z - c.y), 300, "reported where it stands")
@@ -258,38 +256,38 @@ func test_it_walks_on_when_the_friend_returns_and_the_new_leg_is_fresh() -> void
 	var world: World = s[0]
 	var group: AiGroup = s[1]
 	var friend: Unit = s[2]
-	var log: Array[AiEvent] = []
-	_walk_with_friend(world, group, friend, log, 100, func() -> bool: return false)
+	var events: Array[AiEvent] = []
+	_walk_with_friend(world, group, friend, events, 100, func() -> bool: return false)
 	_park(friend, AWAY)
 	for _t: int in 40:
-		_step(world, group, log)
+		_step(world, group, events)
 	assert_eq(group.phase, 1, "waiting")
 	# A pause in the middle of a retry: the next leg must not inherit it.
 	group.leg_retried = true
 	var index_before: int = group.waypoint_index
-	log.clear()
+	events.clear()
 	var resumed: bool = false
 	for _t: int in 40:
 		_beside(world, group, friend)
-		_step(world, group, log)
-		if not _of_kind(log, AiEvent.Kind.ESCORT_GO).is_empty():
+		_step(world, group, events)
+		if not _of_kind(events, AiEvent.Kind.ESCORT_GO).is_empty():
 			resumed = true
 			break
 	assert_true(resumed, "it resumed at its next think")
-	var go: AiEvent = _of_kind(log, AiEvent.Kind.ESCORT_GO)[0]
+	var go: AiEvent = _of_kind(events, AiEvent.Kind.ESCORT_GO)[0]
 	assert_eq(go.value, index_before, "toward the waypoint it was walking to")
 	assert_eq(Vector2i(go.x, go.z), Vector2i(ROUTE[2 * index_before] * M, ROUTE[2 * index_before + 1] * M))
 	assert_eq(group.phase, 0)
 	assert_true(group.leg_active, "a leg is under way again")
 	assert_false(group.leg_retried, "and it is a fresh one")
-	assert_false(_of_kind(log, AiEvent.Kind.ORDER).is_empty(), "the members were sent")
+	assert_false(_of_kind(events, AiEvent.Kind.ORDER).is_empty(), "the members were sent")
 	var before: Array[Vector2i] = _positions(group, world)
-	_walk_with_friend(world, group, friend, log, 60, func() -> bool: return false)
+	_walk_with_friend(world, group, friend, events, 60, func() -> bool: return false)
 	assert_ne(_positions(group, world), before, "they are walking")
 	# And it carries on to the end.
-	_walk_with_friend(world, group, friend, log, RUN_TICKS, func() -> bool: return group.phase == 2)
+	_walk_with_friend(world, group, friend, events, RUN_TICKS, func() -> bool: return group.phase == 2)
 	assert_eq(group.phase, 2)
-	assert_eq(_reached(log), [0, 1, 2])
+	assert_eq(_reached(events), [0, 1, 2])
 
 
 func test_a_walking_group_tolerates_a_friend_a_little_past_the_radius() -> void:
@@ -299,12 +297,12 @@ func test_a_walking_group_tolerates_a_friend_a_little_past_the_radius() -> void:
 	var world: World = s[0]
 	var group: AiGroup = s[1]
 	var friend: Unit = s[2]
-	var log: Array[AiEvent] = []
+	var events: Array[AiEvent] = []
 	for _t: int in 20:
 		_north_of_first(world, group, friend, ESCORT_RADIUS + M)
-		_step(world, group, log)
+		_step(world, group, events)
 	assert_eq(group.phase, 0, "13 m is inside the 14 m a walking group allows")
-	assert_eq(_of_kind(log, AiEvent.Kind.ESCORT_WAIT).size(), 0)
+	assert_eq(_of_kind(events, AiEvent.Kind.ESCORT_WAIT).size(), 0)
 	# But it doesn't resume from a wait for it.
 	_north_of_first(world, group, friend, ESCORT_RADIUS + 5 * M)
 	var go_log: Array[AiEvent] = []
@@ -341,16 +339,16 @@ func test_only_a_living_commanded_unit_of_the_groups_side_is_a_friend() -> void:
 	other.spawns = PackedInt32Array([c.x + 2 * M, c.y + 2 * M])
 	var other_group: AiGroup = world.ai.spawn_group(world, other, 1, 0)
 	assert_eq(other_group.members.size(), 1)
-	var log: Array[AiEvent] = []
+	var events: Array[AiEvent] = []
 	for _t: int in 60:
-		_step(world, group, log)
+		_step(world, group, events)
 	assert_eq(group.phase, 1, "none of them is a friend: the group waits")
 	_beside(world, group, friend)
 	for _t: int in 40:
 		_beside(world, group, friend)
-		_step(world, group, log)
+		_step(world, group, events)
 	assert_eq(group.phase, 0, "a commanded Light unit is")
-	assert_eq(_of_kind(log, AiEvent.Kind.ESCORT_GO).size(), 1)
+	assert_eq(_of_kind(events, AiEvent.Kind.ESCORT_GO).size(), 1)
 
 
 func test_a_friend_beside_any_one_member_is_enough() -> void:
@@ -359,9 +357,9 @@ func test_a_friend_beside_any_one_member_is_enough() -> void:
 	var group: AiGroup = s[1]
 	var friend: Unit = s[2]
 	_park(friend, AWAY)
-	var log: Array[AiEvent] = []
+	var events: Array[AiEvent] = []
 	for _t: int in 40:
-		_step(world, group, log)
+		_step(world, group, events)
 	assert_eq(group.phase, 1, "waiting")
 	# 11.5 m beyond the member farthest from the centroid, on the far side
 	# from the others: inside the radius of that member, outside it of the
@@ -372,14 +370,14 @@ func test_a_friend_beside_any_one_member_is_enough() -> void:
 	for unit: Unit in units:
 		if FixedMath.length(unit.x - c.x, unit.z - c.y) > FixedMath.length(far.x - c.x, far.z - c.y):
 			far = unit
-	var out: Vector2i = FixedMath.normalize(far.x - c.x, far.z - c.y, ESCORT_RADIUS - M / 2)
+	var out: Vector2i = FixedMath.normalize(far.x - c.x, far.z - c.y, ESCORT_RADIUS - 500)
 	friend.x = far.x + out.x
 	friend.z = far.z + out.y
 	assert_gt(FixedMath.length(friend.x - c.x, friend.z - c.y), ESCORT_RADIUS, "not within the radius of the centroid")
 	for _t: int in 40:
-		_step(world, group, log)
+		_step(world, group, events)
 	assert_eq(group.phase, 0, "but within the radius of one member, which is what counts")
-	assert_eq(_of_kind(log, AiEvent.Kind.ESCORT_GO).size(), 1)
+	assert_eq(_of_kind(events, AiEvent.Kind.ESCORT_GO).size(), 1)
 
 
 # --- enemies ----------------------------------------------------------------
@@ -393,17 +391,17 @@ func test_a_visible_enemy_inside_the_alert_radius_makes_it_wait_and_it_resumes_w
 	var group: AiGroup = s[1]
 	var friend: Unit = s[2]
 	var foe: Unit = world.spawn_unit(FOE, DARK, SPAWN.x * M, SPAWN.y * M - 8 * M, 0, 1)
-	var log: Array[AiEvent] = []
-	_walk_with_friend(world, group, friend, log, 40, func() -> bool: return false)
+	var events: Array[AiEvent] = []
+	_walk_with_friend(world, group, friend, events, 40, func() -> bool: return false)
 	assert_eq(group.phase, 1, "8 m from a foe with a 10 m alert radius")
-	assert_eq(_of_kind(log, AiEvent.Kind.ESCORT_WAIT).size(), 1)
+	assert_eq(_of_kind(events, AiEvent.Kind.ESCORT_WAIT).size(), 1)
 	assert_eq(group.behavior, AiGroupSpec.Behavior.ESCORT, "an alert never switches an escort")
-	assert_eq(_of_kind(log, AiEvent.Kind.BEHAVIOR).size(), 0)
+	assert_eq(_of_kind(events, AiEvent.Kind.BEHAVIOR).size(), 0)
 	# The friend is beside it all along, so the foe alone is what holds it.
 	foe.kill()
-	_walk_with_friend(world, group, friend, log, 40, func() -> bool: return false)
+	_walk_with_friend(world, group, friend, events, 40, func() -> bool: return false)
 	assert_eq(group.phase, 0, "the foe is dead: on it goes")
-	assert_eq(_of_kind(log, AiEvent.Kind.ESCORT_GO).size(), 1)
+	assert_eq(_of_kind(events, AiEvent.Kind.ESCORT_GO).size(), 1)
 
 
 func test_a_paused_group_needs_the_foe_2_m_beyond_the_alert_radius_to_resume() -> void:
@@ -414,15 +412,15 @@ func test_a_paused_group_needs_the_foe_2_m_beyond_the_alert_radius_to_resume() -
 	var group: AiGroup = s[1]
 	var friend: Unit = s[2]
 	var foe: Unit = world.spawn_unit(FOE, DARK, SPAWN.x * M, SPAWN.y * M - 8 * M, 0, 1)
-	var log: Array[AiEvent] = []
-	_walk_with_friend(world, group, friend, log, 40, func() -> bool: return false)
+	var events: Array[AiEvent] = []
+	_walk_with_friend(world, group, friend, events, 40, func() -> bool: return false)
 	assert_eq(group.phase, 1)
 	var at: Vector2i = AiOrders.centroid(group.living(world))
 	foe.z = at.y - ALERT_RADIUS - M
-	_walk_with_friend(world, group, friend, log, 60, func() -> bool: return false)
+	_walk_with_friend(world, group, friend, events, 60, func() -> bool: return false)
 	assert_eq(group.phase, 1, "11 m: outside the radius but not by the margin")
 	foe.z = at.y - ALERT_RADIUS - 3 * M
-	_walk_with_friend(world, group, friend, log, 40, func() -> bool: return false)
+	_walk_with_friend(world, group, friend, events, 40, func() -> bool: return false)
 	assert_eq(group.phase, 0, "13 m: clear of it")
 
 
@@ -434,12 +432,12 @@ func test_a_foe_just_outside_the_alert_radius_does_not_stop_a_walking_group() ->
 	var group: AiGroup = s[1]
 	var friend: Unit = s[2]
 	world.spawn_unit(FOE, DARK, SPAWN.x * M, SPAWN.y * M - 11 * M, 0, 1)
-	var log: Array[AiEvent] = []
+	var events: Array[AiEvent] = []
 	for _t: int in 20:
 		_beside(world, group, friend)
-		_step(world, group, log)
+		_step(world, group, events)
 	assert_eq(group.phase, 0, "11 m of a 10 m alert radius")
-	assert_eq(_of_kind(log, AiEvent.Kind.ESCORT_WAIT).size(), 0)
+	assert_eq(_of_kind(events, AiEvent.Kind.ESCORT_WAIT).size(), 0)
 
 
 func test_a_group_with_no_alert_radius_is_never_stopped_by_enemies() -> void:
@@ -448,10 +446,10 @@ func test_a_group_with_no_alert_radius_is_never_stopped_by_enemies() -> void:
 	var group: AiGroup = s[1]
 	var friend: Unit = s[2]
 	world.spawn_unit(FOE, DARK, SPAWN.x * M + 2 * M, SPAWN.y * M - 2 * M, 0, 1)
-	var log: Array[AiEvent] = []
-	_walk_with_friend(world, group, friend, log, 60, func() -> bool: return false)
+	var events: Array[AiEvent] = []
+	_walk_with_friend(world, group, friend, events, 60, func() -> bool: return false)
 	assert_eq(group.phase, 0, "a foe 2 m off, and no alert radius")
-	assert_eq(_of_kind(log, AiEvent.Kind.ESCORT_WAIT).size(), 0)
+	assert_eq(_of_kind(events, AiEvent.Kind.ESCORT_WAIT).size(), 0)
 
 
 func test_an_enemy_hiding_in_deep_water_does_not_stop_it_until_it_surfaces() -> void:
@@ -469,14 +467,14 @@ func test_an_enemy_hiding_in_deep_water_does_not_stop_it_until_it_surfaces() -> 
 	var friend: Unit = s[2]
 	var lurker: Unit = world.spawn_unit(LURKER, DARK, 15 * M, 23 * M, 0, 1)
 	assert_true(Visibility.is_submerged(world.terrain, lurker), "the lurker is under")
-	var log: Array[AiEvent] = []
-	_walk_with_friend(world, group, friend, log, 20, func() -> bool: return false)
+	var events: Array[AiEvent] = []
+	_walk_with_friend(world, group, friend, events, 20, func() -> bool: return false)
 	var c: Vector2i = AiOrders.centroid(group.living(world))
 	assert_lt(FixedMath.length(c.x - lurker.x, c.y - lurker.z), ALERT_RADIUS, "within the alert radius all the same")
 	assert_eq(group.phase, 0, "a submerged enemy isn't seen")
-	assert_eq(_of_kind(log, AiEvent.Kind.ESCORT_WAIT).size(), 0)
+	assert_eq(_of_kind(events, AiEvent.Kind.ESCORT_WAIT).size(), 0)
 	lurker.surfaced = true
-	_walk_with_friend(world, group, friend, log, 20, func() -> bool: return false)
+	_walk_with_friend(world, group, friend, events, 20, func() -> bool: return false)
 	assert_eq(group.phase, 1, "once it has shown itself it counts")
 
 
@@ -494,12 +492,12 @@ func test_a_leg_that_fails_does_not_advance_the_waypoint() -> void:
 	var world: World = s[0]
 	var group: AiGroup = s[1]
 	var friend: Unit = s[2]
-	var log: Array[AiEvent] = []
+	var events: Array[AiEvent] = []
 	var failed_at: int = -1
 	for _t: int in RUN_TICKS:
 		_beside(world, group, friend)
-		_step(world, group, log)
-		for e: AiEvent in log:
+		_step(world, group, events)
+		for e: AiEvent in events:
 			if e.kind == AiEvent.Kind.WAYPOINT_FAILED and e.value == 0:
 				failed_at = world.tick
 		if failed_at > 0:
@@ -508,17 +506,17 @@ func test_a_leg_that_fails_does_not_advance_the_waypoint() -> void:
 	assert_eq(group.waypoint_index, 0, "and the escort did not skip on to waypoint 1")
 	assert_eq(group.phase, 0, "still walking, not arrived")
 	var retries: int = 0
-	for e: AiEvent in log:
+	for e: AiEvent in events:
 		if e.kind == AiEvent.Kind.WAYPOINT_FAILED and e.value == -1:
 			retries += 1
 	assert_eq(retries, 1, "it retried once first")
 	# Left alone it keeps trying the same waypoint, never the next one.
-	log.clear()
-	_walk_with_friend(world, group, friend, log, 900, func() -> bool: return false)
+	events.clear()
+	_walk_with_friend(world, group, friend, events, 900, func() -> bool: return false)
 	assert_eq(group.waypoint_index, 0)
-	assert_eq(_reached(log), [], "no waypoint was ever reached")
-	assert_false(_of_kind(log, AiEvent.Kind.WAYPOINT_FAILED).is_empty(), "it kept trying")
-	assert_eq(_of_kind(log, AiEvent.Kind.ESCORT_WAIT).size(), 0, "with the friend beside it, it never waited")
+	assert_eq(_reached(events), [], "no waypoint was ever reached")
+	assert_false(_of_kind(events, AiEvent.Kind.WAYPOINT_FAILED).is_empty(), "it kept trying")
+	assert_eq(_of_kind(events, AiEvent.Kind.ESCORT_WAIT).size(), 0, "with the friend beside it, it never waited")
 
 
 # --- never retreats ---------------------------------------------------------
@@ -538,9 +536,9 @@ func test_an_escort_never_retreats_even_when_its_spec_says_to() -> void:
 	world.ai.set_behavior(world, group, AiGroupSpec.Behavior.ESCORT)
 	group.living(world)[0].hp = 10
 	world.spawn_unit(FOE, DARK, SPAWN.x * M, SPAWN.y * M - 5 * M, 0, 1)
-	var log: Array[AiEvent] = []
-	_walk_with_friend(world, group, friend, log, 120, func() -> bool: return false)
-	assert_eq(_of_kind(log, AiEvent.Kind.RETREAT).size(), 0)
+	var events: Array[AiEvent] = []
+	_walk_with_friend(world, group, friend, events, 120, func() -> bool: return false)
+	assert_eq(_of_kind(events, AiEvent.Kind.RETREAT).size(), 0)
 	assert_eq(group.behavior, AiGroupSpec.Behavior.ESCORT)
 	assert_false(group.retreated)
 

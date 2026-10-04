@@ -179,17 +179,34 @@ static func _patrol(world: World, group: AiGroup, units: Array[Unit]) -> void:
 			group.anchor_z = c.y
 		switch_to(world, group, spec.on_alert)
 		return
-	var i: int = group.waypoint_index
-	var result: LegResult = leg(world, group, units, spec.waypoints[2 * i], spec.waypoints[2 * i + 1], true)
-	if result == LegResult.RUNNING:
+	if _leg_to_waypoint(world, group, units, true) == LegResult.RUNNING:
 		return
+	_advance_waypoint(group)
+	var next: Vector2i = _waypoint(spec, group.waypoint_index)
+	leg(world, group, units, next.x, next.y, true)
+
+
+# The point of waypoint i of the spec's route, in milli-units.
+static func _waypoint(spec: AiGroupSpec, i: int) -> Vector2i:
+	return Vector2i(spec.waypoints[2 * i], spec.waypoints[2 * i + 1])
+
+
+# One think's walk along a route (PATROL, ESCORT): the leg to the group's
+# current waypoint, attack-moving if attack. When the leg ends, ARRIVED or
+# FAILED, it reports WAYPOINT_REACHED or WAYPOINT_FAILED for the waypoint (its
+# index as the value) and returns the result for the caller to advance on.
+# RUNNING reports nothing.
+static func _leg_to_waypoint(world: World, group: AiGroup, units: Array[Unit], attack: bool) -> LegResult:
+	var i: int = group.waypoint_index
+	var at: Vector2i = _waypoint(group.spec, i)
+	var result: LegResult = leg(world, group, units, at.x, at.y, attack)
+	if result == LegResult.RUNNING:
+		return result
 	var kind: AiEvent.Kind = (
 		AiEvent.Kind.WAYPOINT_REACHED if result == LegResult.ARRIVED else AiEvent.Kind.WAYPOINT_FAILED
 	)
-	world.ai_events.append(AiEvent.new(kind, group.id, spec.waypoints[2 * i], spec.waypoints[2 * i + 1], i))
-	_advance_waypoint(group)
-	i = group.waypoint_index
-	leg(world, group, units, spec.waypoints[2 * i], spec.waypoints[2 * i + 1], true)
+	world.ai_events.append(AiEvent.new(kind, group.id, at.x, at.y, i))
+	return result
 
 
 # Moves waypoint_index on: LOOP wraps from the last waypoint to the first;
@@ -429,7 +446,7 @@ static func _escort(world: World, group: AiGroup, units: Array[Unit]) -> void:
 		if held_up:
 			return
 		group.phase = 0
-		var to: Vector2i = Vector2i(spec.waypoints[2 * i], spec.waypoints[2 * i + 1])
+		var to: Vector2i = _waypoint(spec, i)
 		world.ai_events.append(AiEvent.new(AiEvent.Kind.ESCORT_GO, group.id, to.x, to.y, i))
 	elif held_up:
 		var ids: PackedInt32Array = PackedInt32Array()
@@ -442,20 +459,15 @@ static func _escort(world: World, group: AiGroup, units: Array[Unit]) -> void:
 		var c: Vector2i = AiOrders.centroid(units)
 		world.ai_events.append(AiEvent.new(AiEvent.Kind.ESCORT_WAIT, group.id, c.x, c.y, i))
 		return
-	var result: LegResult = leg(world, group, units, spec.waypoints[2 * i], spec.waypoints[2 * i + 1], false)
-	if result == LegResult.RUNNING:
-		return
-	var kind: AiEvent.Kind = (
-		AiEvent.Kind.WAYPOINT_REACHED if result == LegResult.ARRIVED else AiEvent.Kind.WAYPOINT_FAILED
-	)
-	world.ai_events.append(AiEvent.new(kind, group.id, spec.waypoints[2 * i], spec.waypoints[2 * i + 1], i))
-	if result == LegResult.FAILED:
+	var result: LegResult = _leg_to_waypoint(world, group, units, false)
+	if result != LegResult.ARRIVED:
 		return
 	if i + 1 >= spec.waypoints.size() >> 1:
 		group.phase = 2
 		return
 	group.waypoint_index = i + 1
-	leg(world, group, units, spec.waypoints[2 * i + 2], spec.waypoints[2 * i + 3], false)
+	var next: Vector2i = _waypoint(spec, i + 1)
+	leg(world, group, units, next.x, next.y, false)
 
 
 # True if a friend stands within radius (center to center) of any of units: a
