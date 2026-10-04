@@ -124,7 +124,7 @@ art-src/units/<id>/               downloaded GLB/FBX and candidate thumbnails (L
 | Command | Paid | What it does |
 |---|---|---|
 | `plan <id>` | no | Prints the tasks it would run and their credit cost |
-| `candidates <id>` | yes | Text-to-3D previews: mesh only, A-pose, remeshed to about 20–30k triangles. Downloads the four-view thumbnails and builds a candidate contact sheet. |
+| `candidates <id>` | yes | Text-to-3D previews: mesh only, A-pose, remeshed to about 20–30k triangles. Downloads each candidate's mesh; `make art-candidates` (free, Blender) renders them from the back, left, front and right, at the game camera's angle and true scale, into a candidate sheet. |
 | `build <id> --pick N` | yes | Texture (2K), rig (`height_meters` from the unit's height), animate (one request, up to 10 actions). Downloads everything at once, because Meshy links expire after about 3 days. |
 
 **Credits, from Meshy's API pricing:**
@@ -178,7 +178,7 @@ Run headless. It turns the sheets and sidecar into `data/art/<id>.tres` and rewr
 - `unit_id` (matches `UnitType.id`);
 - `frames: SpriteFrames` with animations named `<anim>_<dir>`, dir 0–7. `idle`, `walk` and `attack` are required. `die` is required unless `bursts_on_death` is set (the Blightbag, whose body becomes gibs). `shoot`, `throw`, `cast` and `place` are optional;
 - the impact frame of each attack-type animation;
-- `stride_m`, `figure_height_px`, `gib_color`;
+- `stride_m`, `pixels_per_meter`, `cell_px`, `feet_px` (together these give the sprite's scale and its pivot at the feet), `gib_color`, `die_falls_forward`;
 - `validate()`: every required animation has all 8 directions, and impact frames are in range.
 
 ### 7.2 Body
