@@ -1,6 +1,6 @@
 class_name AiDebugView
 extends Node3D
-## F7 debug overlay for the enemy AI, hidden until toggled. While shown it
+## F5 debug overlay for the enemy AI, hidden until toggled. While shown it
 ## redraws after every step:
 ## - a camera-facing label over each group that has living members, at their
 ##   centroid: "name: BEHAVIOR";
@@ -166,7 +166,7 @@ static func behavior_color(behavior: AiGroupSpec.Behavior) -> Color:
 	return IDLE_COLOR
 
 
-# Nodes receive unhandled input while hidden, which is how F7 shows it again.
+# Nodes receive unhandled input while hidden, which is how F5 shows it again.
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed(InputBindings.TOGGLE_AI_DEBUG):
 		toggle()

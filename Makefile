@@ -27,7 +27,7 @@ demo-abilities: import
 	$(GODOT) --path . -s scripts/demo_abilities.gd
 
 # Phase 7 showcase: patrol, ambush, flank, standoff, cluster, retreat, and a
-# trigger-driven finale, with the F7 AI overlay on. DEMO_SPEED=2 make demo-ai
+# trigger-driven finale, with the F5 AI overlay on. DEMO_SPEED=2 make demo-ai
 # runs it faster; DEMO_STAGE=3 make demo-ai runs one stage alone.
 demo-ai: import
 	$(GODOT) --path . -s scripts/demo_ai.gd

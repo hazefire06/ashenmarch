@@ -2,7 +2,7 @@ extends SceneTree
 ## Phase 7 showcase: `make demo-ai` (DEMO_SPEED=2 to run faster).
 ##
 ## Runs the real game and stages the enemy AI on Riverside, one behavior after
-## another, each with a caption and a live tally. The F7 overlay is on for the
+## another, each with a caption and a live tally. The F5 overlay is on for the
 ## whole demo: a label over each group says what it is doing, and the lines and
 ## rings show where (cyan: a patrol's loop, red: an ambush's alert radius,
 ## orange: a guard's radius, magenta: a flank's route, blue: a retreat).
@@ -163,7 +163,7 @@ func _run() -> void:
 	if not _capture_dir.is_empty():
 		quit()
 		return
-	_caption.text = "Demo over. You have control. F7 shows or hides the AI overlay. F9 switches the side you command; the Dark groups keep thinking either way."
+	_caption.text = "Demo over. You have control. F5 shows or hides the AI overlay. F9 switches the side you command; the Dark groups keep thinking either way."
 	_tally.text = ""
 
 

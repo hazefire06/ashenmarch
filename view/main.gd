@@ -4,7 +4,7 @@ extends Node3D
 ## it one tick per physics frame. The terrain view, camera, overhead map, and
 ## unit, projectile, explosion, fire, and weather views read the World; only
 ## commands change it. The gas cloud and herb plant views read it too, and so
-## do the mission HUD and the F7 AI overlay.
+## do the mission HUD and the F5 AI overlay.
 ## Everything that draws the ground is built from the World's own terrain,
 ## not the one loaded from the map: explosions scar the World's copy.
 ##
@@ -147,7 +147,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _process(_delta: float) -> void:
 	var w: Weather = world.weather
-	_stats_label.text = "tick %d   %d fps   %d draw calls   sim %.2f ms/tick   %d units   %d projectiles   %d paths queued\nrain %d%%   snow %d%%   wet %d%%   snow cover %d%%   %d cells burning   (F6 weather, F7 AI overlay)" % [
+	_stats_label.text = "tick %d   %d fps   %d draw calls   sim %.2f ms/tick   %d units   %d projectiles   %d paths queued\nrain %d%%   snow %d%%   wet %d%%   snow cover %d%%   %d cells burning   (F5 AI overlay, F6 weather)" % [
 		world.tick,
 		Performance.get_monitor(Performance.TIME_FPS),
 		Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME),

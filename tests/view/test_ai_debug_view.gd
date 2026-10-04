@@ -1,5 +1,5 @@
 extends GutTest
-## AiDebugView, the F7 overlay: hidden until toggled, then one label per
+## AiDebugView, the F5 overlay: hidden until toggled, then one label per
 ## group with living members at its centroid and a line set drawn from the
 ## world's AI state (patrol routes, guard and ambush circles, flank routes,
 ## area triggers). It redraws after a step only while shown, and never
@@ -181,9 +181,9 @@ func test_it_redraws_after_a_step_only_while_shown() -> void:
 	assert_eq(_view.line_count(), 0, "shown again: it draws what is there now")
 
 
-func test_f7_toggles_it() -> void:
+func test_f5_toggles_it() -> void:
 	var event: InputEventKey = InputEventKey.new()
-	event.physical_keycode = KEY_F7
+	event.physical_keycode = KEY_F5
 	event.pressed = true
 	_view._unhandled_input(event)
 	assert_true(_view.visible)
