@@ -1,13 +1,16 @@
 GODOT ?= godot
 MAC_APP := build/mac/Ashenmarch.app
 
-.PHONY: import run demo demo-projectiles demo-abilities demo-ai test check-sim export-mac maps fixtures playtest
+.PHONY: import run demo demo-projectiles demo-abilities demo-ai test check-sim export-mac maps fixtures playtest capture
 
 # Builds the .godot/ import and class_name cache. A fresh clone has none, and
 # GUT can't resolve class_name types without it.
 import:
 	$(GODOT) --headless --path . --import
 
+# The game: the main scene is the App (Phase 8), so this opens the main menu
+# (Campaign, Skirmish, Settings, Quit), not a mission. The demos below load the
+# sandbox MainView directly and never show the menu.
 run: import
 	$(GODOT) --path .
 
@@ -51,6 +54,18 @@ demo-ai: import
 # e.g. MISSIONS=old_mill TIERS=0,2,4 SEEDS=10 PILOTS=competent make playtest
 playtest: import
 	$(GODOT) --headless --path . -s scripts/playtest.gd
+
+# Visual check, windowed: launches each mission the way the campaign does and
+# saves three screenshots of it (the opening view, the overhead map, and a
+# mid-battle frame after the competent playtest pilot has played 90 s of game
+# time, stepped as fast as the machine goes) into CAPTURE. The settings are
+# environment variables; see the head of scripts/capture_missions.gd:
+#   CAPTURE=<dir>   where the PNGs go (required)
+#   MISSIONS=...    which missions (default all)   TIER=2   SEED=1000
+#   SECONDS=90      game seconds played            FIRST=40 (number of the first file)
+# e.g. CAPTURE=shots MISSIONS=old_mill SECONDS=180 make capture
+capture: import
+	$(GODOT) --path . -s scripts/capture_missions.gd
 
 test: import check-sim
 	$(GODOT) --headless -d --path . -s addons/gut/gut_cmdln.gd
