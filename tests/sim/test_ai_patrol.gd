@@ -311,6 +311,56 @@ func test_an_enemy_outside_the_alert_radius_leaves_the_patrol_alone() -> void:
 	assert_eq(group.behavior, AiGroupSpec.Behavior.PATROL)
 
 
+func test_a_patrol_alerted_into_guard_guards_where_it_was_alerted() -> void:
+	var world: World = _world()
+	var spec: AiGroupSpec = _patrol_spec([50, 10, 50, 50])
+	spec.alert_radius = 10 * M
+	spec.on_alert = AiGroupSpec.Behavior.GUARD
+	spec.guard_radius = 12 * M
+	var group: AiGroup = world.ai.spawn_group(world, spec, 0, 0)
+	var spawn: Vector2i = Vector2i(group.spawn_x, group.spawn_z)
+	# 8 m off the first leg, near its end, so the alert comes about 30 m from
+	# the spawn point.
+	var target: Unit = world.spawn_unit(TARGET, LIGHT, 45 * M, 18 * M, -1, 0)
+	var alerted_at: Vector2i = Vector2i.ZERO
+	while world.tick < RUN_TICKS and group.behavior == AiGroupSpec.Behavior.PATROL:
+		# Where the members stand before this tick's think: an alert plans
+		# before anything moves.
+		var c: Vector2i = AiOrders.centroid(group.living(world))
+		world.step()
+		if group.behavior != AiGroupSpec.Behavior.PATROL:
+			alerted_at = c
+	assert_eq(group.behavior, AiGroupSpec.Behavior.GUARD, "the target alerted it")
+	assert_eq(Vector2i(group.anchor_x, group.anchor_z), alerted_at, "its post is where it was alerted")
+	assert_gt(FixedMath.length(alerted_at.x - spawn.x, alerted_at.y - spawn.y), 2 * spec.guard_radius, "far from the spawn point")
+	for _t: int in 600:
+		world.step()
+	assert_false(target.is_alive(), "it killed the target inside its radius")
+	for unit: Unit in group.living(world):
+		assert_lte(
+			FixedMath.length(unit.x - alerted_at.x, unit.z - alerted_at.y), spec.guard_radius,
+			"unit %d holds the post it was alerted at, not the spawn point" % unit.id
+		)
+
+
+func test_a_trigger_setting_guard_keeps_the_spawn_point_as_the_post() -> void:
+	var world: World = _world()
+	var spec: AiGroupSpec = _patrol_spec([50, 10, 50, 50])
+	spec.guard_radius = 5 * M
+	var group: AiGroup = world.ai.spawn_group(world, spec, 0, 0)
+	var seen: Array[PackedInt64Array] = _walk(world, group, 1)
+	assert_eq(_reached(seen), [0], "it walked 40 m off to the first waypoint")
+	world.ai.set_behavior(world, group, AiGroupSpec.Behavior.GUARD)
+	assert_eq(Vector2i(group.anchor_x, group.anchor_z), Vector2i(group.spawn_x, group.spawn_z))
+	for _t: int in 900:
+		world.step()
+	for unit: Unit in group.living(world):
+		assert_lte(
+			FixedMath.length(unit.x - group.spawn_x, unit.z - group.spawn_z), spec.guard_radius,
+			"unit %d went back to guard the spawn point" % unit.id
+		)
+
+
 func test_switch_to_plans_the_new_behavior_at_once() -> void:
 	var world: World = _world()
 	var group: AiGroup = world.ai.spawn_group(world, _patrol_spec([50, 10, 50, 50]), 0, 0)

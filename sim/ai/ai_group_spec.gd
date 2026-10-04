@@ -17,8 +17,10 @@ enum Behavior {
 	## Walks the waypoints; switches to on_alert when an enemy comes within
 	## alert_radius.
 	PATROL,
-	## Holds its spawn point; chases enemies within guard_radius and comes
-	## back afterwards.
+	## Holds its spawn point (or the point it retreated to, or where a
+	## patrol was alerted into it); chases enemies within guard_radius and
+	## comes back afterwards. Hurt from outside guard_radius it switches to
+	## on_alert, unless it has retreated.
 	GUARD,
 	## Marches at the nearest enemy.
 	HUNT,
@@ -30,7 +32,8 @@ enum Behavior {
 	AMBUSH,
 	## Falls back to the retreat point, then guards it. The AI enters it,
 	## once, when the group's health drops below retreat_below_permille
-	## and the enemies near it outweigh it; a script can't set it.
+	## and the enemies against it (near any member, or fighting or shooting
+	## one) outweigh it; a script can't set it.
 	RETREAT,
 }
 
@@ -74,7 +77,12 @@ enum PatrolMode {
 ## group to on_alert; 0 never does. AMBUSH: the radius that springs it, which
 ## must be above 0.
 @export var alert_radius: int = 0
-## What a PATROL or AMBUSH becomes when it spots an enemy.
+## What a PATROL or AMBUSH becomes when it spots an enemy, and what a GUARD
+## becomes when it is hurt with no enemy inside guard_radius (fire from
+## outside it), one way. A GUARD that has retreated holds instead, and
+## on_alert GUARD keeps a GUARD as it is. PATROL into GUARD guards where it
+## was alerted. GUARD, HUNT or FLANK, with that behavior's parameters for a
+## group that starts as PATROL, AMBUSH or GUARD.
 @export var on_alert: Behavior = Behavior.HUNT
 ## The roles FLANK goes after, as bits (1 << UnitType.Role): melee, ranged,
 ## support. The default is ranged and support.
@@ -128,7 +136,7 @@ func validate(catalog: UnitCatalog) -> PackedStringArray:
 		errors.append_array(params_errors(behavior))
 	if on_alert != Behavior.GUARD and on_alert != Behavior.HUNT and on_alert != Behavior.FLANK:
 		errors.append(prefix + "on_alert must be GUARD, HUNT or FLANK")
-	elif behavior == Behavior.PATROL or behavior == Behavior.AMBUSH:
+	elif behavior == Behavior.PATROL or behavior == Behavior.AMBUSH or behavior == Behavior.GUARD:
 		for problem: String in _param_problems(on_alert):
 			errors.append("%son_alert: %s" % [prefix, problem])
 	if alert_radius < 0:

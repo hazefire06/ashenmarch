@@ -529,6 +529,43 @@ func test_march_sends_standoff_members_behind_the_goal_and_records_the_goal() ->
 	assert_true(_events(world, AiEvent.Kind.ORDER).is_empty(), "already on their way")
 
 
+func test_a_plain_march_sends_standoff_members_to_the_goal_itself() -> void:
+	# A retreat, a recall, or a flank's approach: nobody is fighting at the
+	# goal, so there is no front to stand behind.
+	var world: World = _world(TestTerrains.flat(60, 60))
+	var group: AiGroup = _group(world, [[&"grunt", 2], [&"caster", 1]], 10, 30, AiGroupSpec.Behavior.HUNT)
+	var goal: Vector2i = Vector2i(40 * M, 30 * M)
+	AiOrders.march(world, group, group.living(world), goal.x, goal.y, false)
+	var orders: Array[AiEvent] = _events(world, AiEvent.Kind.ORDER)
+	assert_eq(orders.size(), 2, "one per bucket")
+	for order: AiEvent in orders:
+		assert_eq(Vector2i(order.x, order.z), goal, "unit %d is sent to the goal itself" % order.unit_id)
+		assert_eq(order.value, 0, "a plain move")
+
+
+func test_an_attack_march_of_some_members_offsets_from_their_own_centroid() -> void:
+	# The grunts stand 30 m west of the goal, the caster 10 m east of it. A
+	# march of the caster alone stops it short on its own side; measured from
+	# the whole group's centroid (west of the goal) it would be sent through
+	# the goal to the far side.
+	var world: World = _world(TestTerrains.flat(60, 60))
+	var group: AiGroup = _group(world, [[&"grunt", 3], [&"caster", 1]], 10, 30, AiGroupSpec.Behavior.HUNT)
+	var units: Array[Unit] = group.living(world)
+	for i: int in 3:
+		_place(units[i], 10 * M, (29 + i) * M)
+	var caster: Unit = units[3]
+	_place(caster, 50 * M, 30 * M)
+	var goal: Vector2i = Vector2i(40 * M, 30 * M)
+	var marched: Array[Unit] = [caster]
+	AiOrders.march(world, group, marched, goal.x, goal.y, true)
+	var orders: Array[AiEvent] = _events(world, AiEvent.Kind.ORDER)
+	assert_eq(orders.size(), 1)
+	if orders.size() != 1:
+		return
+	assert_eq(Vector2i(orders[0].x, orders[0].z), Vector2i(goal.x + AiTactics.STANDOFF_BEHIND, goal.y), "6 m short, east")
+	assert_eq(Vector2i(group.ordered_x[3], group.ordered_z[3]), goal, "the goal is recorded")
+
+
 func test_a_group_of_standoff_units_alone_marches_to_the_goal_itself() -> void:
 	var world: World = _world(TestTerrains.flat(60, 60))
 	var group: AiGroup = _group(world, [[&"caster", 2]], 10, 30, AiGroupSpec.Behavior.HUNT)

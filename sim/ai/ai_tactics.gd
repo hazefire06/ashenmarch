@@ -7,8 +7,8 @@ extends RefCounted
 ##
 ## - STANDOFF (Stormcallers, Drifters): holds where it can shoot from at range
 ##   with a clear line (StandoffSpot), walks to such a spot when it can't, and
-##   gets out when an enemy comes inside its dead zone, busy or not. A march
-##   stops it short of the goal, behind the rest (behind).
+##   gets out when an enemy comes inside its dead zone, busy or not. An
+##   attack march stops it short of the goal, behind the rest (behind).
 ## - CLUSTER (Blightbags): walks at the thickest knot of enemies
 ##   (ClusterFinder) without stopping for anything on the way, and
 ##   attack-moves into it once it is close.
@@ -20,8 +20,8 @@ extends RefCounted
 ## which an enemy is a threat to it, and the group's ASSAULT members go for
 ## that enemy first: the bodyguard rule.
 const PROTECT_RADIUS: int = 10000
-## Milli-units short of a march's goal its STANDOFF members stop, behind the
-## rest, along the way the group came.
+## Milli-units short of an attack march's goal its STANDOFF members stop,
+## behind the rest, along the way the marched members came.
 const STANDOFF_BEHIND: int = 6000
 ## Milli-units a STANDOFF member's new spot must be from the one it is
 ## walking to before it is sent to the new one.
@@ -47,15 +47,24 @@ static func front(units: Array[Unit]) -> Array[Unit]:
 	return out if not out.is_empty() else units
 
 
-## Where a march to (x, z) sends group's STANDOFF members: STANDOFF_BEHIND
-## short of it on the line from the group's centroid, or (x, z) itself when
-## the centroid is there or the group has nobody but STANDOFF members (there
-## is no one to stand behind).
-static func behind(world: World, group: AiGroup, x: int, z: int) -> Vector2i:
+## Where a march of marched (members of group) to (x, z) sends its STANDOFF
+## members. An attack march stops them STANDOFF_BEHIND short of it, on the
+## line from the centroid of marched, so they come up behind the rest and
+## shoot over them. A plain move (a retreat, a recall, a flank's approach)
+## sends them to (x, z) itself: nobody is fighting there to stand behind, and
+## during a retreat the side the group came from is the enemy's. (x, z)
+## itself too when the group has nobody but STANDOFF members (there is no
+## one to stand behind), or the centroid is at (x, z) (no way to be short of
+## it). The centroid is of marched, not of the whole group: members marched
+## on their own (one freed from a fight, a recall) would otherwise stop on
+## whatever side the rest of the group happens to be.
+static func behind(
+	world: World, group: AiGroup, marched: Array[Unit], x: int, z: int, attack: bool
+) -> Vector2i:
 	var living: Array[Unit] = group.living(world)
-	if front(living).size() == living.size():
+	if not attack or front(living).size() == living.size():
 		return Vector2i(x, z)
-	var c: Vector2i = AiOrders.centroid(living)
+	var c: Vector2i = AiOrders.centroid(marched)
 	var back: Vector2i = FixedMath.normalize(x - c.x, z - c.y, STANDOFF_BEHIND)
 	return Vector2i(x - back.x, z - back.y)
 

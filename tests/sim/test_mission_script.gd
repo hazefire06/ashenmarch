@@ -378,6 +378,14 @@ func test_patrol_on_alert_parameters_are_checked() -> void:
 	_assert_group_error(g, "on_alert: GUARD needs guard_radius > 0")
 
 
+func test_guard_on_alert_parameters_are_checked() -> void:
+	var g: AiGroupSpec = _patrol_group()
+	g.behavior = AiGroupSpec.Behavior.GUARD
+	g.on_alert = AiGroupSpec.Behavior.FLANK
+	g.flank_roles = 0
+	_assert_group_error(g, "on_alert: FLANK needs flank_roles")
+
+
 func test_ambush_on_alert_parameters_are_checked() -> void:
 	var g: AiGroupSpec = _ambush_group()
 	g.on_alert = AiGroupSpec.Behavior.FLANK

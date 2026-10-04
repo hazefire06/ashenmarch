@@ -213,9 +213,13 @@ condition = 3
 names = Array[StringName]([&"raiders"])
 actions = Array[ExtResource("5_act01")]([SubResource("Action_objective_clear")])
 
+; Every Dark unit is down, once the raid has come: a straight assault that
+; cleared the south bank before 90 s would otherwise win before the raiders,
+; the rain, and the last objective ever happened.
 [sub_resource type="Resource" id="Trigger_win"]
 script = ExtResource("4_trg01")
 name = &"win"
+after = &"raid"
 condition = 4
 faction = 1
 actions = Array[ExtResource("5_act01")]([SubResource("Action_win")])

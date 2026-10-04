@@ -1,10 +1,12 @@
 extends GutTest
 ## RETREAT: a group whose hit points fall below retreat_below_permille of what
-## it spawned with, while the enemies it can see near it outweigh what is left
-## of it, falls back once. It is pulled out of any fight, walks to the retreat
-## point (its spawn point if the spec names none), and then guards it. It never
-## retreats a second time. Groups are spawned straight from specs
-## (AiDirector.spawn_group) on flat ground, no mission.
+## it spawned with, while the enemies against it outweigh what is left of it,
+## falls back once. The enemies against it are those it can see near any of
+## its members, and any enemy, seen or not, fighting or shooting one of them.
+## It is pulled out of any fight, walks to the retreat point (its spawn point
+## if the spec names none), and then guards it. It never retreats a second
+## time. Groups are spawned straight from specs (AiDirector.spawn_group) on
+## flat ground, no mission.
 
 const M: int = 1000
 const LIGHT: UnitType.Faction = UnitType.Faction.LIGHT
@@ -16,6 +18,8 @@ const POST: int = 1
 const WEAKLING: int = 2
 const LURKER: int = 3
 const SCAVENGER: int = 4
+const CASTER: int = 5
+const ARCHER: int = 6
 
 ## The spec's threshold and retreat point in most tests: half its health, and a
 ## point 25 m west of where the group stands.
@@ -42,6 +46,10 @@ func before_all() -> void:
 		TestUnits.undead(&"lurker", {"hidden_in_deep_water": true}),
 		# Tears parts off any body within 8 m, a 9-tick errand each.
 		TestUnits.scavenger(&"scavenger"),
+		# Bolts out to 40 m, held at 36 m: what a group's casters stand off at.
+		TestUnits.caster(&"caster", {"ai_tactic": UnitType.AiTactic.STANDOFF, "ai_standoff_permille": 900}),
+		# Arrows out to 50 m, and weighs as much as three grunts.
+		TestUnits.ranged(&"archer", {"max_hp": 300}),
 	]
 	_catalog = TestUnits.catalog(types)
 
@@ -73,6 +81,44 @@ func _group(
 	g.retreat_point = point
 	assert_eq(g.validate(_catalog), PackedStringArray(), "the spec is valid")
 	return world.ai.spawn_group(world, g, 0, 0)
+
+
+## A DARK group at (20, 20) m spawned as spec 0 from [type id, count] pairs,
+## in that order, with the HALF threshold and POINT as its retreat point.
+func _mixed_group(
+	world: World, entries: Array, behavior: AiGroupSpec.Behavior, guard_radius: int = 0
+) -> AiGroup:
+	var g: AiGroupSpec = AiGroupSpec.new()
+	g.name = &"camp"
+	for pair: Array in entries:
+		var e: AiUnitEntry = AiUnitEntry.new()
+		e.type_id = pair[0]
+		e.counts = PackedInt32Array([pair[1]])
+		g.units.append(e)
+	g.spawns = PackedInt32Array([20 * M, 20 * M])
+	g.behavior = behavior
+	g.guard_radius = guard_radius
+	g.retreat_below_permille = HALF
+	g.retreat_point = PackedInt32Array([POINT.x, POINT.y])
+	assert_eq(g.validate(_catalog), PackedStringArray(), "the spec is valid")
+	return world.ai.spawn_group(world, g, 0, 0)
+
+
+## Puts unit at (x, z) m, standing and holding there, as if it had walked.
+func _place(unit: Unit, x: int, z: int) -> void:
+	unit.x = x * M
+	unit.z = z * M
+	unit.goal_x = unit.x
+	unit.goal_z = unit.z
+	UnitOrders.hold(unit)
+
+
+## The distance from unit to the nearest of units, center to center.
+func _nearest(unit: Unit, units: Array[Unit]) -> int:
+	var best: int = 1 << 40
+	for other: Unit in units:
+		best = mini(best, _distance(unit, other.x, other.z))
+	return best
 
 
 ## Six 100k-hp LIGHT posts in a block at (x, 20) m, so the enemies near a group
@@ -295,6 +341,24 @@ func test_a_member_mid_errand_is_pulled_off_it_and_the_retreat_completes() -> vo
 		assert_lte(_distance(unit, POINT.x, POINT.y), 3 * M, "unit %d is at the retreat point" % unit.id)
 
 
+func test_a_retreat_sends_its_standoff_members_to_the_point_itself() -> void:
+	# Stopping them short of the point on the line from the group would leave
+	# the casters on the side the enemy is on.
+	var world: World = _world()
+	var group: AiGroup = _mixed_group(world, [[&"grunt", 5], [&"caster", 1]], AiGroupSpec.Behavior.HUNT)
+	_posts(world, 34)
+	_lose(world, group, 4)
+	var caster: Unit = group.living(world)[1]
+	assert_true(AiTactics.is_standoff(caster))
+	var event: AiEvent = _step_to_event(world, AiEvent.Kind.RETREAT, CALL_TICKS)
+	assert_not_null(event)
+	var orders: Array[AiEvent] = _events_of(world, AiEvent.Kind.ORDER)
+	assert_eq(orders.size(), 2, "one march per bucket: the grunt, then the caster")
+	for order: AiEvent in orders:
+		assert_eq(Vector2i(order.x, order.z), POINT, "unit %d is sent to the point itself" % order.unit_id)
+	assert_eq(Vector2i(caster.order_x, caster.order_z), POINT)
+
+
 # --- once only --------------------------------------------------------------
 
 
@@ -405,17 +469,120 @@ func test_enemies_that_outweigh_the_group_by_a_point_drive_it_off() -> void:
 	assert_eq(_count_retreats(world, CALL_TICKS), 1, "201 hp of enemies against 200")
 
 
-func test_enemies_beyond_the_threat_radius_do_not_count() -> void:
+func test_enemies_beyond_the_threat_radius_of_every_member_do_not_count() -> void:
 	var world: World = _world()
 	var group: AiGroup = _group(world, AiGroupSpec.Behavior.IDLE)
 	_lose(world, group, 4)
-	var centroid: Vector2i = AiOrders.centroid(group.living(world))
+	var survivors: Array[Unit] = group.living(world)
+	# West of the westmost survivor and east of the eastmost, level with it.
+	var west: Unit = survivors[0] if survivors[0].x <= survivors[1].x else survivors[1]
+	var east: Unit = survivors[1] if west == survivors[0] else survivors[0]
 	var edge: int = AiBehaviors.RETREAT_THREAT_RADIUS
-	world.spawn_unit(POST, LIGHT, centroid.x - edge - 100, centroid.y, 1, 0)
-	assert_eq(_count_retreats(world, 300), 0, "a heavy enemy 100 mm past the radius is not a threat")
-	var near: Unit = world.spawn_unit(POST, LIGHT, centroid.x + edge - 100, centroid.y, -1, 0)
-	assert_not_null(near)
+	var far: Unit = world.spawn_unit(POST, LIGHT, west.x - edge - 100, west.z, 1, 0)
+	assert_eq(_nearest(far, survivors), edge + 100)
+	assert_eq(_count_retreats(world, 300), 0, "a heavy enemy 100 mm past the radius of every member is not a threat")
+	var near: Unit = world.spawn_unit(POST, LIGHT, east.x + edge - 100, east.z, -1, 0)
+	assert_eq(_nearest(near, survivors), edge - 100)
 	assert_eq(_count_retreats(world, CALL_TICKS), 1, "one 100 mm inside it is")
+
+
+func test_an_enemy_near_one_member_counts_however_far_it_is_from_the_centroid() -> void:
+	var world: World = _world()
+	var group: AiGroup = _group(world, AiGroupSpec.Behavior.IDLE)
+	_lose(world, group, 4)
+	var survivors: Array[Unit] = group.living(world)
+	# The survivors stand 30 m apart; the post is 15 m past the east one,
+	# 30 m from their centroid.
+	_place(survivors[0], 10, 20)
+	_place(survivors[1], 40, 20)
+	var post: Unit = world.spawn_unit(POST, LIGHT, 55 * M, 20 * M, -1, 0)
+	var c: Vector2i = AiOrders.centroid(survivors)
+	assert_gt(_distance(post, c.x, c.y), AiBehaviors.RETREAT_THREAT_RADIUS, "out of the radius of the centroid")
+	assert_eq(_count_retreats(world, CALL_TICKS), 1, "but inside that of a member, so it counts")
+
+
+func test_standoff_casters_left_alone_retreat_from_archers_shooting_them_from_far_off() -> void:
+	# The melee are dead, and the casters stand where they shoot from, 36 m
+	# from the archers shooting them: nowhere near the threat radius.
+	var world: World = _world(TestTerrains.flat(80, 40))
+	var group: AiGroup = _mixed_group(
+		world, [[&"grunt", 4], [&"caster", 2]], AiGroupSpec.Behavior.GUARD, 10 * M
+	)
+	_lose(world, group, 4)
+	var casters: Array[Unit] = group.living(world)
+	_place(casters[0], 20, 19)
+	_place(casters[1], 20, 21)
+	var archers: Array[Unit] = [
+		world.spawn_unit(ARCHER, LIGHT, 56 * M, 19 * M, -1, 0),
+		world.spawn_unit(ARCHER, LIGHT, 56 * M, 21 * M, -1, 0),
+	]
+	for archer: Unit in archers:
+		assert_gt(_nearest(archer, casters), AiBehaviors.RETREAT_THREAT_RADIUS, "archer %d is far off" % archer.id)
+	var shot_at: bool = false
+	var event: AiEvent = null
+	for _t: int in 90:
+		world.step()
+		var found: Array[AiEvent] = _events_of(world, AiEvent.Kind.RETREAT)
+		if not found.is_empty():
+			event = found[0]
+			for archer: Unit in archers:
+				shot_at = shot_at or group.members.has(archer.shot_target_id)
+			break
+	assert_not_null(event, "the casters fall back")
+	assert_true(shot_at, "from the archers shooting at them")
+	assert_eq(group.behavior, AiGroupSpec.Behavior.RETREAT)
+
+
+func test_a_group_shot_by_an_archer_beyond_the_threat_radius_retreats() -> void:
+	var world: World = _world()
+	var group: AiGroup = _group(world, AiGroupSpec.Behavior.IDLE)
+	_lose(world, group, 4)
+	var survivors: Array[Unit] = group.living(world)
+	# 300 hp against the two survivors' 200, 25 m off and shooting.
+	var archer: Unit = world.spawn_unit(ARCHER, LIGHT, 55 * M, 20 * M, -1, 0)
+	assert_gt(_nearest(archer, survivors), AiBehaviors.RETREAT_THREAT_RADIUS)
+	var event: AiEvent = _step_to_event(world, AiEvent.Kind.RETREAT, 60)
+	assert_not_null(event, "the group falls back")
+	assert_true(group.members.has(archer.shot_target_id), "from the archer shooting at it")
+
+
+func test_an_enemy_fighting_or_shooting_a_member_counts_seen_or_not_far_or_near() -> void:
+	var rows: Array[String] = []
+	for j: int in 40:
+		rows.append(".".repeat(5) + "4444" + ".".repeat(51))
+	var world: World = _world(TestTerrains.from_ascii(rows))
+	var group: AiGroup = _group(world, AiGroupSpec.Behavior.IDLE)
+	_lose(world, group, 4)
+	var survivors: Array[Unit] = group.living(world)
+	# A weakling far off: 100 hp, not enough alone against the survivors' 200.
+	var weakling: Unit = world.spawn_unit(WEAKLING, LIGHT, 58 * M, 20 * M, -1, 0)
+	# A lurker under the water 23 m to the west, out of sight.
+	var lurker: Unit = world.spawn_unit(LURKER, LIGHT, 7 * M, 20 * M, -1, 0)
+	lurker.hp = 101
+	assert_true(Visibility.is_submerged(world.terrain, lurker))
+	AiBehaviors.think(world, group)
+	assert_false(group.retreated, "neither is near, and neither is after a member")
+	weakling.target_id = survivors[0].id
+	AiBehaviors.think(world, group)
+	assert_false(group.retreated, "the weakling chasing a member counts, but 100 hp is not more than 200")
+	lurker.shot_target_id = survivors[1].id
+	AiBehaviors.think(world, group)
+	assert_true(group.retreated, "the hidden lurker shooting a member counts too: 201 hp against 200")
+
+
+func test_an_enemy_both_near_and_after_a_member_counts_once() -> void:
+	var world: World = _world()
+	var group: AiGroup = _group(world, AiGroupSpec.Behavior.IDLE)
+	_lose(world, group, 4)
+	var survivors: Array[Unit] = group.living(world)
+	var archer: Unit = world.spawn_unit(ARCHER, LIGHT, survivors[0].x + 10 * M, survivors[0].z, -1, 0)
+	archer.hp = 150
+	archer.shot_target_id = survivors[0].id
+	AiBehaviors.think(world, group)
+	assert_false(group.retreated, "150 hp, counted once, is not more than 200")
+	archer.hp = 201
+	AiBehaviors.think(world, group)
+	assert_true(group.retreated, "201 is")
 
 
 func test_an_enemy_hidden_in_deep_water_is_not_a_threat_until_it_surfaces() -> void:

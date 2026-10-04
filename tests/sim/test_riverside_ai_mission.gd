@@ -170,6 +170,22 @@ func test_the_raid_timer_brings_the_rippers_the_rain_and_a_new_objective() -> vo
 	assert_eq(world.weather.rain, 700, "the rain has ramped in")
 
 
+func test_victory_waits_for_the_raid() -> void:
+	var win: TriggerSpec = _script.triggers[_script.trigger_index(&"win")]
+	assert_eq(win.after, &"raid", "win is gated on the raid")
+	# Light wipes out every Dark unit at once, long before the raid's timer.
+	var world: World = _world()
+	_light(world, &"shieldman", [Vector2i(60, 60), Vector2i(63, 60)])
+	world.step()
+	for unit: Unit in world.units:
+		if unit.faction == DARK:
+			unit.kill()
+	for _t: int in 60:
+		world.step()
+	assert_eq(world.mission.outcome, MissionRuntime.Outcome.NONE, "no victory before the raid")
+	assert_eq(world.mission.fired_tick[_script.trigger_index(&"win")], -1)
+
+
 # --- helpers ------------------------------------------------------------------
 
 

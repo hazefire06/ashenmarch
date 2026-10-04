@@ -1,7 +1,8 @@
 extends GutTest
 ## GUARD and HUNT: a guard chases what enters its radius, ignores what stays
-## out, comes back afterwards, and is called back when a chase drags a member
-## past the leash; a hunt runs enemies down one after another, prefers the
+## out, comes back afterwards, is called back when a chase drags a member
+## past the leash, and turns to its on_alert behavior when it is hurt from
+## outside its radius (unless it has retreated there); a hunt runs enemies down one after another, prefers the
 ## roles its type prefers, leaves a member mid-swing alone, and re-orders
 ## only when its plan changes (the ORDER count pins that). Also when the
 ## director lets a group think. Groups are spawned straight from specs
@@ -47,7 +48,8 @@ func _world(terrain: Terrain = null) -> World:
 ## A DARK group of count units of type_id at (x, z) m, spawned as spec 0.
 func _group(
 	world: World, type_id: StringName, count: int, x: int, z: int,
-	behavior: AiGroupSpec.Behavior, guard_radius: int = 0
+	behavior: AiGroupSpec.Behavior, guard_radius: int = 0,
+	on_alert: AiGroupSpec.Behavior = AiGroupSpec.Behavior.HUNT
 ) -> AiGroup:
 	var g: AiGroupSpec = AiGroupSpec.new()
 	g.name = &"pack"
@@ -58,6 +60,7 @@ func _group(
 	g.spawns = PackedInt32Array([x * M, z * M])
 	g.behavior = behavior
 	g.guard_radius = guard_radius
+	g.on_alert = on_alert
 	assert_eq(g.validate(_catalog), PackedStringArray(), "the spec is valid")
 	return world.ai.spawn_group(world, g, 0, 0)
 
@@ -248,6 +251,88 @@ func test_guard_without_a_radius_uses_the_default() -> void:
 	if order == null:
 		return
 	assert_eq(Vector2i(order.x, order.z), Vector2i(near.x, near.z))
+
+
+## Steps the world for ticks and returns the BEHAVIOR events the group
+## emitted, as the behaviors it switched to.
+func _switches(world: World, group: AiGroup, ticks: int) -> Array[int]:
+	var out: Array[int] = []
+	for _t: int in ticks:
+		world.step()
+		for e: AiEvent in world.ai_events:
+			if e.kind == AiEvent.Kind.BEHAVIOR and e.group_id == group.id:
+				out.append(e.value)
+	return out
+
+
+func test_a_guard_shot_from_outside_its_radius_turns_to_hunt_and_closes() -> void:
+	var world: World = _world()
+	var radius: int = 10 * M
+	var group: AiGroup = _group(world, &"grunt", 4, 20, 30, AiGroupSpec.Behavior.GUARD, radius)
+	# 30 m from the post, outside the radius, and in bow range of the guards.
+	var archer: Unit = world.spawn_unit(ARCHER, LIGHT, 50 * M, 30 * M, -1, 0)
+	var start_hp: int = group.start_hp
+	var switched: int = -1
+	var hp_at_switch: int = 0
+	while world.tick < 300 and switched < 0:
+		world.step()
+		for e: AiEvent in world.ai_events:
+			if e.kind == AiEvent.Kind.BEHAVIOR and e.group_id == group.id:
+				assert_eq(e.value, AiGroupSpec.Behavior.HUNT, "its on_alert")
+				switched = world.tick
+				hp_at_switch = AiOrders.hp_sum(group.living(world))
+	assert_gt(switched, 0, "the arrows provoked it")
+	assert_lt(hp_at_switch, start_hp, "after it was hit")
+	assert_eq(group.behavior, AiGroupSpec.Behavior.HUNT)
+	for i: int in group.members.size():
+		assert_eq(group.ordered_target[i], archer.id, "sent at the archer")
+	for _t: int in 900:
+		world.step()
+		if not archer.is_alive():
+			break
+	assert_false(archer.is_alive(), "it closed with the archer and killed it")
+	assert_eq(group.behavior, AiGroupSpec.Behavior.HUNT, "one way: it doesn't go back to guarding")
+
+
+func test_a_guard_that_kills_an_intruder_which_hurt_it_stays_guarding() -> void:
+	# The intruder lands its last blow and dies between two thinks, so at the
+	# next one the group is down hit points with no intruder left inside. It
+	# wasn't hit from outside: the intruder was there at the think before.
+	var world: World = _world()
+	var group: AiGroup = _group(world, &"grunt", 4, 20, 30, AiGroupSpec.Behavior.GUARD, 15 * M)
+	var intruder: Unit = world.spawn_unit(GRUNT, LIGHT, 20 * M, 13 * M, 0, 1)
+	intruder.hp = 50
+	world.enqueue(AttackMoveCommand.new(
+		1, PackedInt32Array([intruder.id]), 20 * M, 23 * M, Formations.Kind.BOX
+	))
+	assert_eq(_switches(world, group, 900), [], "no switch")
+	assert_false(intruder.is_alive(), "the guard killed the intruder")
+	assert_lt(AiOrders.hp_sum(group.living(world)), group.start_hp, "which hurt it first")
+	assert_eq(group.behavior, AiGroupSpec.Behavior.GUARD)
+
+
+func test_a_guard_that_has_retreated_holds_its_post_under_fire() -> void:
+	var world: World = _world()
+	var group: AiGroup = _group(world, &"grunt", 4, 20, 30, AiGroupSpec.Behavior.GUARD, 10 * M)
+	# As if it had fallen back here: a group that has retreated holds.
+	group.retreated = true
+	world.spawn_unit(ARCHER, LIGHT, 50 * M, 30 * M, -1, 0)
+	assert_eq(_switches(world, group, 300), [], "no switch")
+	assert_eq(group.behavior, AiGroupSpec.Behavior.GUARD)
+	assert_lt(AiOrders.hp_sum(group.living(world)), group.start_hp, "though it was shot")
+	for unit: Unit in group.living(world):
+		assert_lte(_distance(unit, group.anchor_x, group.anchor_z), 10 * M, "unit %d held the post" % unit.id)
+
+
+func test_a_guard_whose_on_alert_is_guard_stays_guarding_under_fire() -> void:
+	var world: World = _world()
+	var group: AiGroup = _group(
+		world, &"grunt", 4, 20, 30, AiGroupSpec.Behavior.GUARD, 10 * M, AiGroupSpec.Behavior.GUARD
+	)
+	world.spawn_unit(ARCHER, LIGHT, 50 * M, 30 * M, -1, 0)
+	assert_eq(_switches(world, group, 300), [], "no switch, not even to GUARD again")
+	assert_eq(group.behavior, AiGroupSpec.Behavior.GUARD)
+	assert_lt(AiOrders.hp_sum(group.living(world)), group.start_hp, "though it was shot")
 
 
 # --- HUNT -------------------------------------------------------------------

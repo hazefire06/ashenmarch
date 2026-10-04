@@ -98,9 +98,9 @@ static func centroid(units: Array[Unit]) -> Vector2i:
 ## attack-moving if attack. Normally only free members not already sent there
 ## go; with force, every living member in units goes, busy or not (a retry, a
 ## recall). One UnitOrders.move and one ORDER event per bucket, and each
-## member's goal is recorded as (x, z) with no objective. STANDOFF members
-## stop short of it, behind the rest (AiTactics.behind); their recorded goal
-## is still (x, z), so a leg sees them as sent there.
+## member's goal is recorded as (x, z) with no objective. On an attack march
+## STANDOFF members stop short of it, behind the rest (AiTactics.behind);
+## their recorded goal is still (x, z), so a leg sees them as sent there.
 static func march(
 	world: World, group: AiGroup, units: Array[Unit], x: int, z: int, attack: bool, force: bool = false
 ) -> void:
@@ -116,7 +116,7 @@ static func march(
 	var keys: PackedInt64Array = _bucket_keys(world, picked)
 	if keys.is_empty():
 		return
-	var behind: Vector2i = AiTactics.behind(world, group, x, z)
+	var behind: Vector2i = AiTactics.behind(world, group, picked, x, z, attack)
 	for key: int in keys:
 		var bucket: Array[Unit] = _bucket(world, picked, key)
 		var to: Vector2i = behind if AiTactics.is_standoff(bucket[0]) else Vector2i(x, z)

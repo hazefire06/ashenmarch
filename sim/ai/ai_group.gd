@@ -43,6 +43,10 @@ var ordered_attack: PackedByteArray = PackedByteArray()
 
 var behavior: AiGroupSpec.Behavior
 ## Sub-state of the behavior; 0 is fresh, so set_behavior restarts it.
+## FLANK: 0 plan, 1 approach, 2 strike (AiFlank). RETREAT: 1 once the forced
+## march is out. GUARD: 1 if there were intruders at the last think, so a
+## loss with none now isn't read as fire from outside when an intruder that
+## dealt it has just died.
 var phase: int = 0
 ## Asks the AI to plan at the next update instead of waiting for its interval.
 var think_now: bool = false
@@ -51,8 +55,11 @@ var think_now: bool = false
 var spawn_x: int
 var spawn_z: int
 ## The post a GUARD group holds or the spot an AMBUSH group waits at. Starts at
-## the spawn point.
+## the spawn point; a retreat makes it the retreat point, and a PATROL alerted
+## into GUARD the members' centroid where it was alerted. A trigger's
+## SET_BEHAVIOR leaves it as it is.
 var anchor_x: int
+## See anchor_x.
 var anchor_z: int
 
 ## PATROL: the waypoint being walked to (pair index) and which way the index
