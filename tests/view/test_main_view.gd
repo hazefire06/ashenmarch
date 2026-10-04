@@ -264,6 +264,34 @@ func test_esc_does_not_open_the_menu_once_the_mission_is_decided() -> void:
 	assert_false(main.pause_menu().is_open())
 
 
+func test_the_bars_menu_button_cannot_open_the_menu_once_the_mission_is_decided() -> void:
+	# Otherwise Restart and Quit would be reachable during the end delay, with
+	# mission_ended still on its way.
+	var main: MainView = _view(0)
+	var bar: ControlBar = main.get_node("Hud/ControlBar") as ControlBar
+	watch_signals(main)
+	_step(main)
+	assert_true(_button(bar, "Menu").disabled, "greyed")
+	# A greyed button can't be pressed with the mouse, but the signal is what
+	# matters: it must lead nowhere either.
+	_button(bar, "Menu").pressed.emit()
+	assert_false(main.pause_menu().is_open(), "the menu stays shut")
+	main.pause_menu().open()
+	assert_false(main.pause_menu().is_open(), "however it is asked")
+	main._process(0.016)
+	main._process(0.016)
+	assert_signal_emit_count(main, "mission_ended", 1)
+	assert_signal_not_emitted(main, "restart_requested")
+	assert_signal_not_emitted(main, "quit_requested")
+
+
+func test_the_bars_menu_button_is_on_until_the_mission_is_decided() -> void:
+	var main: MainView = _view()
+	var bar: ControlBar = main.get_node("Hud/ControlBar") as ControlBar
+	_step(main, 3)
+	assert_false(_button(bar, "Menu").disabled)
+
+
 # --- pause --------------------------------------------------------------------
 
 
@@ -315,14 +343,19 @@ func test_the_selection_controller_enqueues_nothing_while_paused() -> void:
 	controller.selection.select(PackedInt32Array([unit.id]))
 	_push(_key(KEY_P))
 	assert_true(controller.paused)
+	# The state hash includes the number of commands waiting for the next tick,
+	# so it moves if anything at all was enqueued.
+	var before: String = main.world.state_hash()
 	_right_click(main)
 	controller.stop_selected()
 	controller.use_special_selected()
+	controller.cycle_debug_status()
 	controller.arm(SelectionController.ArmedOrder.MOVE)
 	assert_eq(controller.armed_order, SelectionController.ArmedOrder.NONE, "nothing arms while paused")
+	assert_eq(main.world.state_hash(), before, "nothing was enqueued")
 	_push(_key(KEY_P))
 	_step(main, 2)
-	assert_eq(unit.order, Unit.Order.NONE, "no command was queued to wake up on the resume")
+	assert_eq(unit.order, Unit.Order.NONE, "and no command woke up on the resume")
 
 
 func test_the_same_right_click_moves_when_not_paused() -> void:
@@ -514,6 +547,33 @@ func test_the_campaign_ignores_f6() -> void:
 	assert_eq(main.world.weather.rain, 0, "no debug rain")
 
 
+func test_the_campaign_ignores_f8() -> void:
+	# F8 could burn or paralyze a soldier who carries over for good.
+	var main: MainView = _view()
+	_step(main, 2)
+	var unit: Unit = _soldier(main)
+	_controller(main).selection.select(PackedInt32Array([unit.id]))
+	_push(_key(KEY_F8))
+	_step(main, 2)
+	assert_false(StatusEffects.paralyzed(main.world, unit))
+	_controller(main).cycle_debug_status()
+	_step(main, 2)
+	assert_false(StatusEffects.paralyzed(main.world, unit), "nor through the method")
+
+
+func test_f6_does_nothing_while_paused() -> void:
+	# It would queue a command for the resume.
+	var main: MainView = _view(NEVER, false)
+	_step(main, 2)
+	_push(_key(KEY_P))
+	var before: String = main.world.state_hash()
+	_push(_key(KEY_F6))
+	assert_eq(main.world.state_hash(), before, "nothing was enqueued")
+	_push(_key(KEY_P))
+	_step(main, 40)
+	assert_eq(main.world.weather.rain, 0, "and no rain arrives on the resume")
+
+
 func test_a_development_launch_keeps_the_debug_keys() -> void:
 	var main: MainView = _view(NEVER, false)
 	var bar: ControlBar = main.get_node("Hud/ControlBar") as ControlBar
@@ -523,6 +583,13 @@ func test_a_development_launch_keeps_the_debug_keys() -> void:
 	_push(_key(KEY_F6))
 	_step(main, 40)
 	assert_gt(main.world.weather.rain, 0, "F6 brings the rain")
+	_step(main, 2)
+	_controller(main).side = LIGHT
+	var unit: Unit = _soldier(main)
+	_controller(main).selection.select(PackedInt32Array([unit.id]))
+	_push(_key(KEY_F8))
+	_step(main, 2)
+	assert_true(StatusEffects.paralyzed(main.world, unit), "F8 paralyzes the selection")
 
 
 # --- the sandbox --------------------------------------------------------------

@@ -25,9 +25,10 @@ extends Control
 ##   group; Option/Alt+1..0 recall it. H stops. F9 (debug) switches sides.
 ##   F8 (debug) paralyzes, confuses, or sets alight the selection, in turn.
 ##
-## Only living units of the controlled side that the AI doesn't drive can be
-## selected: a Light escort the mission leads (the Ford's villager) is never
-## the player's to order. Selection is view state; orders go to the sim as
+## Only living units of the controlled side can be selected, and a Light unit
+## the AI drives is never the player's to order (the Ford's villager, led by an
+## ESCORT group). The gate is for Light only: in the sandbox every Dark unit is
+## the AI's, and F9 must still let the mouse command them. Selection is view state; orders go to the sim as
 ## commands for the next tick, the same stream multiplayer will send. unit_at()
 ## also picks units that can't be selected (either side, dead or alive), for the
 ## hover tooltip. This node covers the screen to draw the drag box but ignores
@@ -78,10 +79,12 @@ var paused: bool = false:
 		paused = value
 		if paused and armed_order != ArmedOrder.NONE:
 			arm(ArmedOrder.NONE)
-## Whether F9 (and switch_side()) hands the mouse to the other side. The
-## campaign turns it off: it is a debug cheat, and the control bar hides its
-## button.
-var switch_side_enabled: bool = true
+## Whether the debug keys work: F9 (and switch_side()) hands the mouse to the
+## other side, and F8 (and cycle_debug_status()) paralyzes, confuses, or sets
+## alight the selection. The campaign turns both off: they are cheats, F8 could
+## burn a soldier who carries over for good, and the control bar hides its
+## Switch side button.
+var debug_keys_enabled: bool = true
 
 var _world: World
 var _units: UnitsView
@@ -165,7 +168,7 @@ func use_special_selected() -> void:
 ## Debug (F8): the next of paralysis, confusion, and burning on the selection,
 ## for DEBUG_STATUS_TICKS.
 func cycle_debug_status() -> void:
-	if selection.is_empty() or paused:
+	if selection.is_empty() or paused or not debug_keys_enabled:
 		return
 	var kind: StatusEffects.Kind = DEBUG_STATUSES[_debug_status]
 	_debug_status = (_debug_status + 1) % DEBUG_STATUSES.size()
@@ -173,9 +176,9 @@ func cycle_debug_status() -> void:
 
 
 ## Debug: hands the mouse to the other side. Clears the selection. Does
-## nothing where switch_side_enabled is false.
+## nothing where debug_keys_enabled is false.
 func switch_side() -> void:
-	if not switch_side_enabled:
+	if not debug_keys_enabled:
 		return
 	side = UnitType.Faction.DARK if side == UnitType.Faction.LIGHT else UnitType.Faction.LIGHT
 	selection.clear()
@@ -283,10 +286,10 @@ func _handle_keys(event: InputEvent) -> bool:
 	if event.is_action_pressed(InputBindings.ABILITY, false, true):
 		use_special_selected()
 		return true
-	if switch_side_enabled and event.is_action_pressed(InputBindings.SWITCH_SIDE):
+	if debug_keys_enabled and event.is_action_pressed(InputBindings.SWITCH_SIDE):
 		switch_side()
 		return true
-	if event.is_action_pressed(InputBindings.CYCLE_STATUS):
+	if debug_keys_enabled and event.is_action_pressed(InputBindings.CYCLE_STATUS):
 		cycle_debug_status()
 		return true
 	return false
@@ -511,7 +514,12 @@ func _screen_rect(sprite: UnitSprite) -> Rect2:
 
 func _selectable(unit_id: int) -> bool:
 	var unit: Unit = _world.get_unit(unit_id)
-	return unit != null and unit.is_alive() and unit.faction == side and not _world.ai.controls(unit_id)
+	if unit == null or not unit.is_alive() or unit.faction != side:
+		return false
+	# A Light unit a group leads is the mission's, not the player's. (Dark units
+	# are always the AI's, so the gate can't apply to them: the debug side
+	# switch commands them.)
+	return unit.faction != UnitType.Faction.LIGHT or not _world.ai.controls(unit_id)
 
 
 func _drag_rect() -> Rect2:

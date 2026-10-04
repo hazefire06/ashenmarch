@@ -41,8 +41,10 @@ var yaw: float = 0.0
 ## Meters from the focus to the camera.
 var distance: float = DEFAULT_DISTANCE
 ## Whether the camera pans when the mouse is within EDGE_SCROLL_MARGIN pixels
-## of a window edge, as WASD does (the Settings toggle), except over a HUD
-## control. Off by default: it needs a window the mouse can't stray out of,
+## of a window edge, as WASD does (the Settings toggle), except while the mouse
+## is over a button (reaching for the control bar's buttons mustn't drag the
+## map; the bar keeps EDGE_SCROLL_MARGIN of padding under them, so the bottom
+## edge itself still scrolls). Off by default: it needs a window the mouse can't stray out of,
 ## and a dev who drags a window around shouldn't lose the map.
 var edge_scroll: bool = false
 
@@ -192,9 +194,10 @@ func _move(delta: float) -> void:
 		Input.get_axis(InputBindings.CAM_LEFT, InputBindings.CAM_RIGHT),
 		Input.get_axis(InputBindings.CAM_BACK, InputBindings.CAM_FORWARD),
 	)
-	# Not over a HUD control: the control bar fills the bottom edge, and
-	# reaching for its lowest buttons shouldn't drag the map back.
-	if edge_scroll and _mouse_in_window and not _mouse_over_hud():
+	# Not over a button: the control bar fills the bottom of the window, and
+	# reaching for its buttons shouldn't drag the map. (Anything else under the
+	# mouse, the bar's own padding included, still scrolls.)
+	if edge_scroll and _mouse_in_window and not _mouse_over_button():
 		input += edge_direction(_mouse_position(), get_viewport().get_visible_rect().size)
 	input = input.limit_length(1.0)
 	if input == Vector2.ZERO:
@@ -209,14 +212,14 @@ func _move(delta: float) -> void:
 	focus.z = clamped.y
 
 
-# Where the mouse is, and whether a HUD control is under it. Methods of their
-# own so a test can say where the mouse is: the headless window has none.
+# Where the mouse is, and whether a button is under it. Methods of their own so
+# a test can say where the mouse is: the headless window has none.
 func _mouse_position() -> Vector2:
 	return get_viewport().get_mouse_position()
 
 
-func _mouse_over_hud() -> bool:
-	return get_viewport().gui_get_hovered_control() != null
+func _mouse_over_button() -> bool:
+	return get_viewport().gui_get_hovered_control() is BaseButton
 
 
 func _apply_transform() -> void:

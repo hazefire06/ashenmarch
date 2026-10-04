@@ -49,8 +49,9 @@ const LABEL_COLOR: Color = Color(1.0, 0.95, 0.7)
 const MENU_LAYER: int = 10
 const QUIT_QUESTION: String = "Quit to the main menu?\nThis mission's progress is lost."
 
-## While false, Esc does nothing (MainView turns it off once the mission is
-## decided: the end is on its way and pausing it would only be in the way).
+## While false the menu can't be opened, by Esc or open() (MainView turns it
+## off once the mission is decided: the end is on its way, and a menu with
+## Restart and Quit on it would race it).
 var enabled: bool = true
 
 var _layer: CanvasLayer
@@ -73,9 +74,10 @@ func _ready() -> void:
 	_build()
 
 
-## Shows the menu, unless it is up already.
+## Shows the menu, unless it is up already or switched off (`enabled`): the
+## bar's Menu button and Esc reach it the same way.
 func open() -> void:
-	if is_open():
+	if is_open() or not enabled:
 		return
 	_show_confirm(false)
 	_overlay.visible = true

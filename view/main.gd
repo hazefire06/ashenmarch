@@ -184,8 +184,8 @@ func _ready() -> void:
 	_tooltip.setup(_selection, world, _camera.get_camera(), _projectiles_view, _plants_view)
 	_camera.edge_scroll = edge_scroll
 	if _campaign():
-		# The debug side switch and weather key are cheats: not in the campaign.
-		_selection.switch_side_enabled = false
+		# The debug keys (side switch, status, weather) are cheats: not in the campaign.
+		_selection.debug_keys_enabled = false
 		_control_bar.set_switch_side_visible(false)
 	# With no App around the menu (the sandbox) it can only resume.
 	_pause_menu.set_app_buttons_visible(launch != null)
@@ -257,7 +257,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed(InputBindings.PAUSE):
 		toggle_pause()
 		get_viewport().set_input_as_handled()
-	elif event.is_action_pressed(InputBindings.CYCLE_WEATHER) and not _campaign():
+	elif event.is_action_pressed(InputBindings.CYCLE_WEATHER) and not _campaign() and not paused:
 		_weather_preset = DebugWeather.next(_weather_preset)
 		world.enqueue(DebugWeather.command(_weather_preset, world.tick))
 		print("weather: %s" % DebugWeather.name_of(_weather_preset))
@@ -340,10 +340,14 @@ func _campaign() -> bool:
 func _freeze() -> void:
 	_frozen = true
 	stats.finish(world)
+	# No pausing now: the end is on its way, and a menu with Restart and Quit on
+	# it, opened by Esc or the bar's Menu button, would race mission_ended.
 	_pause_menu.close()
 	_pause_menu.enabled = false
+	_control_bar.set_menu_enabled(false)
+	# The setter brings the selection, the bar and the sprites in line with a
+	# sim that has stopped for good.
 	paused = false
-	_apply_pause()
 
 
 # The end of the freeze: after end_delay real seconds, once, the results are

@@ -12,6 +12,7 @@ const LIGHT: UnitType.Faction = UnitType.Faction.LIGHT
 var _world: World
 var _controller: SelectionController
 var _camera: Camera3D
+var _units: UnitsView
 var _commanded: Unit
 var _led: Unit
 
@@ -37,12 +38,14 @@ func before_each() -> void:
 	_camera.position = Vector3(20.0, 30.0, 20.0)
 	_camera.rotation_degrees = Vector3(-90.0, 0.0, 0.0)
 	_camera.make_current()
-	var units: UnitsView = UnitsView.new()
-	add_child_autofree(units)
+	_units = UnitsView.new()
+	add_child_autofree(_units)
 	_controller = SelectionController.new()
 	add_child_autofree(_controller)
-	units.setup(_world, _controller.selection, null)
-	_controller.setup(_world, units, _camera, TerrainPicker.new(_world.terrain))
+	_units.setup(_world, _controller.selection, null)
+	_controller.setup(_world, _units, _camera, TerrainPicker.new(_world.terrain))
+	# As MainView does: the view draws what the controlled side sees.
+	_controller.side_changed.connect(_units.set_viewer)
 
 
 func _screen_of(unit: Unit) -> Vector2:
@@ -82,6 +85,30 @@ func test_a_click_on_an_ai_led_light_unit_selects_nothing() -> void:
 	assert_true(_controller.selection.is_empty(), "the villager is led, not commanded")
 
 
+func test_the_gate_is_for_light_units_only_so_the_side_switch_still_commands_the_dark_ai() -> void:
+	# The sandbox: every Dark unit is the AI's (riverside_ai spawned them), and
+	# F9 must still let the mouse select them.
+	var entry: AiUnitEntry = AiUnitEntry.new()
+	entry.type_id = &"husk"
+	entry.counts = PackedInt32Array([1])
+	var spec: AiGroupSpec = AiGroupSpec.new()
+	spec.name = &"husks"
+	spec.units = [entry]
+	spec.spawns = PackedInt32Array([30 * M, 20 * M])
+	var husk: Unit = _world.ai.spawn_group(_world, spec, 1, 0).living(_world)[0]
+	assert_true(_world.ai.controls(husk.id))
+	assert_eq(husk.faction, UnitType.Faction.DARK)
+	_units.after_step()  # the husk spawned after the view was set up
+	await wait_process_frames(2)
+	_click(_screen_of(husk))
+	assert_true(_controller.selection.is_empty(), "on the Light side a Dark unit isn't the player's")
+	_controller.switch_side()
+	_click(_screen_of(husk))
+	assert_true(_controller.selection.is_selected(husk.id), "after F9 the AI's Dark unit is selectable")
+	_click(_screen_of(_led))
+	assert_false(_controller.selection.is_selected(_led.id), "and the Light villager is the other side's")
+
+
 func test_a_box_around_both_takes_only_the_commanded_one() -> void:
 	await wait_process_frames(2)
 	var from: Vector2 = Vector2.ZERO
@@ -115,6 +142,7 @@ func test_double_clicking_a_type_skips_the_ai_led_ones() -> void:
 	spec.spawns = PackedInt32Array([30 * M, 20 * M])
 	var led_shieldman: Unit = _world.ai.spawn_group(_world, spec, 1, 0).living(_world)[0]
 	assert_eq(led_shieldman.type_index, catalog.index_of(&"shieldman"))
+	_units.after_step()
 	await wait_process_frames(2)
 	_click(_screen_of(_commanded), true)
 	assert_true(_controller.selection.is_selected(_commanded.id))

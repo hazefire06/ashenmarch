@@ -97,17 +97,55 @@ func test_a_mouse_that_left_the_window_stops_the_pan() -> void:
 	assert_ne(Vector2(camera.focus.x, camera.focus.z), Vector2(before.x, before.z), "and it resumes when it is back")
 
 
-func test_a_hud_control_under_the_mouse_stops_the_pan() -> void:
-	# The control bar fills the bottom edge; reaching for its lowest buttons
-	# mustn't drag the map back.
+func test_a_button_under_the_mouse_stops_the_pan() -> void:
+	# Reaching for the control bar's buttons mustn't drag the map.
 	var camera: MouseCamera = _camera()
 	var before: Vector3 = camera.focus
 	camera.edge_scroll = true
 	camera.mouse = Vector2(1.0, 1.0)
-	camera.over_hud = true
+	camera.over_button = true
 	camera._process(0.5)
 	assert_eq(camera.focus.x, before.x)
 	assert_eq(camera.focus.z, before.z)
+
+
+func test_the_bottom_strip_scrolls_unless_a_button_is_in_it() -> void:
+	var camera: MouseCamera = _camera()
+	camera.edge_scroll = true
+	var size: Vector2 = get_viewport().get_visible_rect().size
+	camera.mouse = Vector2(size.x * 0.5, size.y - 2.0)
+	var start: float = camera.focus.z
+	camera._process(0.5)
+	assert_gt(camera.focus.z, start, "the bottom 12 px pan the camera back (south, +z at yaw 0)")
+	var panned: float = camera.focus.z
+	camera.over_button = true
+	camera._process(0.5)
+	assert_eq(camera.focus.z, panned, "but not over a button")
+
+
+func test_the_real_mouse_is_over_no_button_in_an_empty_window() -> void:
+	assert_false(_camera()._mouse_over_button())
+
+
+func test_the_control_bar_keeps_the_bottom_edge_strip_free_of_buttons() -> void:
+	var catalog: UnitCatalog = TestTerrains.catalog()
+	var world: World = World.new(1, TestTerrains.flat(40, 40), catalog)
+	var controller: SelectionController = SelectionController.new()
+	add_child_autofree(controller)
+	var bar: ControlBar = ControlBar.new()
+	add_child_autofree(bar)
+	bar.setup(controller, world)
+	assert_gte(
+		bar.get_theme_stylebox("panel").content_margin_bottom, RtsCamera.EDGE_SCROLL_MARGIN,
+		"as much padding under the last row as the edge zone is deep"
+	)
+	await wait_process_frames(3)  # the bar lays itself out
+	var bottom: float = bar.get_global_rect().end.y
+	var lowest: float = 0.0
+	for node: Node in bar.find_children("*", "BaseButton", true, false):
+		lowest = maxf(lowest, (node as Control).get_global_rect().end.y)
+	assert_gt(lowest, 0.0, "the harness: the buttons have been laid out")
+	assert_lte(lowest, bottom - RtsCamera.EDGE_SCROLL_MARGIN, "no button reaches into the bottom edge zone")
 
 
 func test_wasd_still_works_with_edge_scroll_on() -> void:
@@ -125,13 +163,13 @@ func test_wasd_still_works_with_edge_scroll_on() -> void:
 # A camera that is told where the mouse is.
 class MouseCamera extends RtsCamera:
 	var mouse: Vector2 = Vector2(-100.0, -100.0)
-	var over_hud: bool = false
+	var over_button: bool = false
 
 	func _mouse_position() -> Vector2:
 		return mouse
 
-	func _mouse_over_hud() -> bool:
-		return over_hud
+	func _mouse_over_button() -> bool:
+		return over_button
 
 
 func _camera() -> MouseCamera:

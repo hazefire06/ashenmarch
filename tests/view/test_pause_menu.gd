@@ -113,10 +113,13 @@ func test_reopening_never_starts_on_the_quit_question() -> void:
 	assert_false(_menu.is_confirming())
 
 
-func test_a_menu_that_is_switched_off_ignores_esc() -> void:
+func test_a_menu_that_is_switched_off_cannot_be_opened() -> void:
 	_menu.enabled = false
 	_esc()
-	assert_false(_menu.is_open())
+	assert_false(_menu.is_open(), "not by Esc")
+	_menu.open()
+	assert_false(_menu.is_open(), "nor by open(), which the bar's Menu button calls")
+	assert_signal_not_emitted(_menu, "opened")
 	_menu.enabled = true
 	_esc()
 	assert_true(_menu.is_open())

@@ -15,6 +15,12 @@ extends PanelContainer
 ## The Menu button was pressed: open the pause menu (MainView connects it).
 signal menu_requested
 
+## Space kept below the last row of buttons: as deep as the camera's edge-scroll
+## zone, so the bottom strip of the window is bar background and not a button,
+## and edge scroll still works along the bottom edge (it only holds off over a
+## button).
+const BOTTOM_PADDING: float = RtsCamera.EDGE_SCROLL_MARGIN
+
 const GROUP_LABELS: Array[String] = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"]
 
 var _controller: SelectionController
@@ -28,6 +34,7 @@ var _ground_attack_toggle: Button
 ## Stop, the three order toggles, and Ability: the buttons that give orders.
 var _order_buttons: Array[Button] = []
 var _side_button: Button
+var _menu_button: Button
 var _status: Label
 ## Living units per side, recounted when the tick changes.
 var _light_alive: int = 0
@@ -47,6 +54,9 @@ func setup(controller: SelectionController, world: World) -> void:
 
 func _build() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
+	var panel: StyleBox = get_theme_stylebox("panel").duplicate() as StyleBox
+	panel.content_margin_bottom = BOTTOM_PADDING
+	add_theme_stylebox_override("panel", panel)
 	var rows: VBoxContainer = VBoxContainer.new()
 	add_child(rows)
 
@@ -120,10 +130,10 @@ func _build() -> void:
 	_side_button.tooltip_text = "Debug: command the other side (F9)"
 	_side_button.pressed.connect(_controller.switch_side)
 	orders.add_child(_side_button)
-	var menu: Button = _button("Menu")
-	menu.tooltip_text = "Pause and open the menu (Esc)"
-	menu.pressed.connect(menu_requested.emit)
-	orders.add_child(menu)
+	_menu_button = _button("Menu")
+	_menu_button.tooltip_text = "Pause and open the menu (Esc)"
+	_menu_button.pressed.connect(menu_requested.emit)
+	orders.add_child(_menu_button)
 	rows.add_child(orders)
 
 	set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE, Control.PRESET_MODE_MINSIZE)
@@ -144,6 +154,13 @@ func is_switch_side_visible() -> bool:
 ## which side is controlled.
 func status_text() -> String:
 	return _status.text
+
+
+## Turns the Menu button on or off. MainView turns it off once the mission is
+## decided, with the menu itself. Unlike the order buttons it stays on while
+## paused: the menu is how a paused game is left.
+func set_menu_enabled(enabled: bool) -> void:
+	_menu_button.disabled = not enabled
 
 
 ## Disables the order buttons while the game is paused and enables them again
