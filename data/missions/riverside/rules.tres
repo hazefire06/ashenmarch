@@ -143,11 +143,12 @@ behavior = 4
 flank_roles = 6
 
 ; The dead roaming the fields: two bands of Husks (4 at tier 0 up to 8 at tier
-; 4, 6 at tier 2) looping wide triangles in the far fields, one 100 to 115 m
-; south of the square, (420, 490) to (470, 490), and one 90 to 120 m
-; south-west of it, (350, 480) to (360, 440) (PATROL, LOOP, alert 12 m: far
-; off the squad's road). The `stirring` trigger sets them hunting 40 s after
-; the squad reaches the village, so they come in over the next minute or so.
+; 4, 6 at tier 2) looping wide triangles in the far fields, one south of the
+; square, (420, 490) to (470, 490) (its waypoints 95 to 118 m from the square,
+; (445, 375)), and one south-west of it, (350, 480) to (360, 440) (107 to
+; 142 m from the square) (PATROL, LOOP, alert 12 m: far off the squad's road).
+; The `stirring` trigger sets them hunting 40 s after the squad reaches the
+; village, so they come in over the next minute or so.
 [sub_resource type="Resource" id="Group_field_roamers_s"]
 script = ExtResource("2_grp01")
 name = &"field_roamers_s"
