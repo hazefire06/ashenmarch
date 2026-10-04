@@ -38,10 +38,12 @@ test: import check-sim
 check-sim:
 	scripts/check_sim_purity.sh
 
-# Regenerates maps/riverside from scripts/gen_riverside.gd. The output is
-# committed; rerun only when the generator changes.
+# Regenerates every map from its generator: each scripts/gen_<map>.gd writes
+# maps/<map>/ (the shared tool code is scripts/mapgen/map_builder.gd). The
+# output is committed; rerun only when a generator changes. A new map's
+# generator is picked up by name, with no change here.
 maps: import
-	$(GODOT) --headless --path . -s scripts/gen_riverside.gd
+	for script in scripts/gen_*.gd; do $(GODOT) --headless --path . -s $$script || exit 1; done
 
 # Regenerates the PNG test fixtures with an independent Python encoder.
 fixtures:

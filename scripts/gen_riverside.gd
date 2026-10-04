@@ -10,7 +10,9 @@ extends SceneTree
 ##
 ## Run with `make maps`. The PNGs it writes are the source of truth and are
 ## committed. Floats and FastNoiseLite are fine here because this runs
-## offline, never inside the sim.
+## offline, never inside the sim. The rasters, stamps, and file writing are
+## MapBuilder's (scripts/mapgen/map_builder.gd); this script holds Riverside's
+## own terrain.
 
 const OUT_DIR: String = "res://maps/riverside/"
 const SIZE: int = 512
@@ -66,47 +68,20 @@ func _initialize() -> void:
 	noise.fractal_type = FastNoiseLite.FRACTAL_FBM
 	noise.fractal_octaves = 4
 
-	var wood: FastNoiseLite = _patches(WOOD_SEED, WOOD_FREQUENCY)
-	var brush: FastNoiseLite = _patches(BRUSH_SEED, BRUSH_FREQUENCY)
+	var wood: FastNoiseLite = MapBuilder.patches(WOOD_SEED, WOOD_FREQUENCY)
+	var brush: FastNoiseLite = MapBuilder.patches(BRUSH_SEED, BRUSH_FREQUENCY)
 
-	var cell_m: float = float(CELL_SIZE) / World.UNITS_PER_METER
-	var height: PngRaster = PngRaster.create(SIZE, SIZE, 1, 16)
-	var mask: PngRaster = PngRaster.create(SIZE, SIZE, 3, 8)
-	var heights_m: PackedFloat32Array = PackedFloat32Array()
-	heights_m.resize(SIZE * SIZE)
-	for j: int in SIZE:
-		for i: int in SIZE:
-			var ground: Vector2 = _ground(noise, i * cell_m, j * cell_m)
-			var raw: int = clampi(roundi(ground.x / MAX_HEIGHT_M * 65535.0), 0, 65535)
-			height.set_sample(i, j, 0, raw)
-			mask.set_sample(i, j, 0, Terrain.mask_from_depth(_level(ground.y)))
-			heights_m[j * SIZE + i] = ground.x
-	# Ground types need the slope, so they come once every height is known.
-	for j: int in SIZE:
-		for i: int in SIZE:
-			var x: float = i * cell_m
-			var z: float = j * cell_m
-			var type: int = _ground_type(
-				wood, brush, x, z, heights_m[j * SIZE + i], _slope(heights_m, i, j, cell_m)
-			)
-			mask.set_sample(i, j, 1, Terrain.mask_from_ground(type))
-
-	_write(OUT_DIR + "height.png", PngCodec.encode(height))
-	_write(OUT_DIR + "mask.png", PngCodec.encode(mask))
-
-	var info: MapInfo = MapInfo.new()
-	info.display_name = "Riverside"
-	info.heightmap_path = OUT_DIR + "height.png"
-	info.mask_path = OUT_DIR + "mask.png"
-	info.cell_size = CELL_SIZE
-	info.max_height = roundi(MAX_HEIGHT_M * World.UNITS_PER_METER)
-	info.max_walkable_slope = MAX_WALKABLE_SLOPE
-	info.herb_plants = HERB_PLANTS
-	var err: Error = ResourceSaver.save(info, OUT_DIR + "riverside.tres")
-	if err != OK:
-		push_error("saving riverside.tres: %s" % error_string(err))
-	_report(info)
-	quit()
+	var map: MapBuilder = MapBuilder.new(SIZE, SIZE, CELL_SIZE, MAX_HEIGHT_M, MAX_WALKABLE_SLOPE)
+	map.level_depths_m = LEVEL_DEPTHS_M
+	map.fill(
+		func(x: float, z: float) -> Vector2: return _ground(noise, x, z),
+		func(x: float, z: float, height_m: float, slope: float) -> int:
+			return _ground_type(wood, brush, x, z, height_m, slope)
+	)
+	var info: MapInfo = map.save(OUT_DIR, "riverside", "Riverside", HERB_PLANTS)
+	if info != null:
+		map.report(info)
+	quit(0 if info != null else 1)
 
 
 ## (ground height, water depth) in meters at (x, z) meters.
@@ -143,28 +118,6 @@ func _ground_type(
 	return Terrain.Ground.GRASS
 
 
-## Steepness at sample (i, j), m per m, by central differences (one-sided at
-## the edges).
-func _slope(heights_m: PackedFloat32Array, i: int, j: int, cell_m: float) -> float:
-	var i0: int = maxi(i - 1, 0)
-	var i1: int = mini(i + 1, SIZE - 1)
-	var j0: int = maxi(j - 1, 0)
-	var j1: int = mini(j + 1, SIZE - 1)
-	var gx: float = (heights_m[j * SIZE + i1] - heights_m[j * SIZE + i0]) / ((i1 - i0) * cell_m)
-	var gz: float = (heights_m[j1 * SIZE + i] - heights_m[j0 * SIZE + i]) / ((j1 - j0) * cell_m)
-	return sqrt(gx * gx + gz * gz)
-
-
-func _patches(noise_seed: int, frequency: float) -> FastNoiseLite:
-	var n: FastNoiseLite = FastNoiseLite.new()
-	n.seed = noise_seed
-	n.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
-	n.frequency = frequency
-	n.fractal_type = FastNoiseLite.FRACTAL_FBM
-	n.fractal_octaves = 3
-	return n
-
-
 ## Perpendicular distance in meters from (x, z) to the creek's centerline,
 ## corrected for its slope.
 func _creek_distance(x: float, z: float) -> float:
@@ -191,46 +144,3 @@ func _ford_cap(x: float) -> float:
 		CHANNEL_DEPTH_M,
 		smoothstep(FORD_HALF_M, FORD_HALF_M + FORD_RAMP_M, along)
 	)
-
-
-func _level(depth_m: float) -> int:
-	var level: int = 0
-	for threshold: float in LEVEL_DEPTHS_M:
-		if depth_m >= threshold:
-			level += 1
-	return level
-
-
-func _write(path: String, bytes: PackedByteArray) -> void:
-	var file: FileAccess = FileAccess.open(path, FileAccess.WRITE)
-	if file == null:
-		push_error("writing %s: %s" % [path, error_string(FileAccess.get_open_error())])
-		return
-	file.store_buffer(bytes)
-	print("wrote %s (%d bytes)" % [path, bytes.size()])
-
-
-## Reloads the written map through the sim and prints what it contains.
-func _report(info: MapInfo) -> void:
-	var terrain: Terrain = Terrain.load_map(info)
-	if terrain == null:
-		return
-	var levels: Array[int] = [0, 0, 0, 0, 0]
-	var grounds: Array[int] = [0, 0, 0, 0, 0]
-	var steep: int = 0
-	var max_slope: int = 0
-	for k: int in terrain.heights.size():
-		levels[terrain.water[k]] += 1
-		grounds[terrain.ground[k]] += 1
-		max_slope = maxi(max_slope, terrain.sample_slopes[k])
-		if terrain.sample_slopes[k] > terrain.max_walkable_slope:
-			steep += 1
-	var heights: Array = Array(terrain.heights)
-	print("terrain %dx%d, heights %d..%d mm" % [
-		terrain.size_x, terrain.size_z, heights.min(), heights.max()
-	])
-	print("water samples by depth level 0..4: %s" % [levels])
-	print("samples by ground (grass, brush, wood, sand, rock): %s" % [grounds])
-	print("max sample slope %d permille; %d samples steeper than %d" % [
-		max_slope, steep, terrain.max_walkable_slope
-	])
