@@ -10,11 +10,20 @@ extends RefCounted
 ## effects never make another fire on the same tick, and a trigger gated by
 ## `after` opens the tick after its prerequisite fired, never the same tick.
 
-enum Outcome { NONE, WON, LOST }
+## How the mission ended, if it has.
+enum Outcome {
+	## Still being played.
+	NONE,
+	## A WIN action fired (and no LOSE on the same tick).
+	WON,
+	## A LOSE action fired.
+	LOST,
+}
 
 ## The data this runs. Read-only, and not hashed: it never changes. (Not named
 ## `script`: RefCounted already has a member by that name.)
 var mission_script: MissionScript
+## The difficulty tier it is played at, 0..Difficulty.TIERS - 1.
 var tier: int
 ## The tick the mission started on; TIMERs without `after` count from it.
 var start_tick: int
@@ -34,6 +43,8 @@ var objective: String = ""
 var objective_trigger: int = -1
 ## Counts objective changes, so the HUD can tell a re-set of the same text.
 var objective_revision: int = 0
+## How it ended; NONE while it is still being played. Once it isn't NONE no
+## trigger is evaluated again.
 var outcome: Outcome = Outcome.NONE
 ## The tick the outcome was decided on, or -1.
 var outcome_tick: int = -1

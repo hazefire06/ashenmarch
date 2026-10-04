@@ -5,7 +5,7 @@ extends Resource
 
 ## Id of a UnitType in the catalog, e.g. &"husk".
 @export var type_id: StringName = &""
-## How many spawn, per tier: one entry for every tier or one per tier
+## How many spawn, per tier: one entry used at every tier, or one per tier
 ## (Difficulty). Each is at least 0, so a harder tier can add a type an easier
 ## one lacks.
 @export var counts: PackedInt32Array = PackedInt32Array()

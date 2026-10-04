@@ -5,6 +5,7 @@ extends RefCounted
 ## as a PackedInt32Array with either one entry, used at every tier, or one
 ## per tier, so a mission only spells out the tiers it changes.
 
+## How many tiers there are, so how many entries a per-tier array has.
 const TIERS: int = 5
 
 

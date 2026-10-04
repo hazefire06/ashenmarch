@@ -6,7 +6,11 @@ extends Resource
 ## not engine code. It is read-only at runtime; MissionRuntime keeps all
 ## progress in the world.
 
+## The groups the mission can spawn, each named uniquely; a group's index here
+## is how the AI and the hash refer to it.
 @export var groups: Array[AiGroupSpec] = []
+## The mission's rules, checked in this order; a trigger's index here is how
+## the runtime and the hash refer to it.
 @export var triggers: Array[TriggerSpec] = []
 
 
@@ -59,6 +63,10 @@ func _validate_trigger(index: int, t: TriggerSpec) -> PackedStringArray:
 	var prefix: String = "trigger %s: " % (String(t.name) if t.name != &"" else "<unnamed>")
 	if t.name == &"":
 		errors.append(prefix + "name is empty")
+	if not TriggerSpec.Condition.values().has(t.condition):
+		errors.append(prefix + "condition is not a TriggerSpec.Condition")
+	if not UnitType.Faction.values().has(t.faction):
+		errors.append(prefix + "faction is not a UnitType.Faction")
 	if t.after != &"":
 		if trigger_index(t.after) < 0:
 			errors.append("%safter names no trigger (%s)" % [prefix, t.after])
@@ -122,6 +130,10 @@ func _validate_action(prefix: String, i: int, action: TriggerAction) -> PackedSt
 	if action == null:
 		errors.append(where + " is null")
 		return errors
+	if not TriggerAction.Kind.values().has(action.kind):
+		errors.append(where + ": kind is not a TriggerAction.Kind")
+	if not AiGroupSpec.Behavior.values().has(action.behavior):
+		errors.append(where + ": behavior is not an AiGroupSpec.Behavior")
 	match action.kind:
 		TriggerAction.Kind.SPAWN_GROUP, TriggerAction.Kind.SET_BEHAVIOR:
 			var g: int = group_index(action.group)

@@ -37,10 +37,15 @@ var members: PackedInt32Array = PackedInt32Array()
 ## - a CLUSTER member: the middle of the knot (ClusterFinder).
 ## A new member starts recorded at its own position, with no objective.
 var ordered_x: PackedInt64Array = PackedInt64Array()
+## See ordered_x.
 var ordered_z: PackedInt64Array = PackedInt64Array()
+## The objective each member was last sent after (0 for none); see ordered_x.
 var ordered_target: PackedInt32Array = PackedInt32Array()
+## 1 if each member's last order was an attack-move, 0 for a plain move; see
+## ordered_x.
 var ordered_attack: PackedByteArray = PackedByteArray()
 
+## What the group is doing now: the spec's behavior until a switch.
 var behavior: AiGroupSpec.Behavior
 ## Sub-state of the behavior; 0 is fresh, so set_behavior restarts it.
 ## FLANK: 0 plan, 1 approach, 2 strike (AiFlank). RETREAT: 1 once the forced
@@ -53,6 +58,7 @@ var think_now: bool = false
 
 ## Where the group spawned.
 var spawn_x: int
+## See spawn_x.
 var spawn_z: int
 ## The post a GUARD group holds or the spot an AMBUSH group waits at. Starts at
 ## the spawn point; a retreat makes it the retreat point, and a PATROL alerted
@@ -65,27 +71,35 @@ var anchor_z: int
 ## PATROL: the waypoint being walked to (pair index) and which way the index
 ## advances (1 or -1).
 var waypoint_index: int = 0
+## See waypoint_index.
 var waypoint_step: int = 1
 ## A leg is one march to one goal. While one is active, (leg_x, leg_z) is its
 ## goal and leg_retried says it already got one second try.
 var leg_active: bool = false
+## See leg_active.
 var leg_x: int = 0
+## See leg_active.
 var leg_z: int = 0
+## See leg_active.
 var leg_retried: bool = false
 
 ## FLANK: the unit being circled, the route around it as x, z pairs, and the
 ## pair being walked to.
 var focus_id: int = 0
+## See focus_id.
 var route: PackedInt64Array = PackedInt64Array()
+## See focus_id.
 var route_index: int = 0
 ## FLANK: where the focus stood when the route was planned. A focus that
 ## moves far from it gets a new route (AiFlank).
 var plan_x: int = 0
+## See plan_x.
 var plan_z: int = 0
 
 ## Hit points of the members at spawn and when the AI last looked. The drop
 ## from one to the other is what makes a group retreat, or springs an ambush.
 var start_hp: int = 0
+## See start_hp.
 var last_hp: int = 0
 ## True once the group has retreated; it only retreats once.
 var retreated: bool = false

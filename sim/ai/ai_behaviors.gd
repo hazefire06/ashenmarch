@@ -282,7 +282,9 @@ static func _flank(world: World, group: AiGroup, units: Array[Unit]) -> void:
 # (AiDirector.set_behavior) and plans under the new behavior at once. A quiet
 # one tells any free member that isn't holding to hold where it stands, so a
 # member that wandered off, or was sent off, goes back to lying still. A busy
-# member is left alone: that is a disturbance already.
+# member is left alone. Only fighting (a target, or ATTACKING) disturbs the
+# ambush; one that is confused, on an errand, waiting on a path, or drawing
+# is left to finish, and is told to hold once it is free.
 static func _ambush(world: World, group: AiGroup, units: Array[Unit]) -> void:
 	if _disturbed(world, group, units):
 		switch_to(world, group, group.spec.on_alert)
@@ -296,9 +298,9 @@ static func _ambush(world: World, group: AiGroup, units: Array[Unit]) -> void:
 
 
 # True if an ambush has been found: its members have lost hit points since the
-# last think (blasts and arrows reach units under the water), one is fighting
-# (an enemy walked into it), or an enemy it can see is within alert_radius of
-# any member, center to center.
+# last think (a blast reaches units under the water; arrows and blows can't
+# target them), one is fighting (an enemy walked into it), or an enemy it can
+# see is within alert_radius of any member, center to center.
 static func _disturbed(world: World, group: AiGroup, units: Array[Unit]) -> bool:
 	if AiOrders.hp_sum(units) < group.last_hp:
 		return true

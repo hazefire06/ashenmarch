@@ -329,6 +329,30 @@ func test_group_formation_must_be_a_known_kind() -> void:
 	_assert_group_error(g, "not a Formations.Kind")
 
 
+func test_group_behavior_must_be_a_known_behavior() -> void:
+	var g: AiGroupSpec = _patrol_group()
+	g.set(&"behavior", 99)
+	_assert_group_error(g, "behavior is not an AiGroupSpec.Behavior")
+
+
+func test_group_faction_must_be_a_known_faction() -> void:
+	var g: AiGroupSpec = _patrol_group()
+	g.set(&"faction", 99)
+	_assert_group_error(g, "faction is not a UnitType.Faction")
+
+
+func test_group_patrol_mode_must_be_a_known_mode() -> void:
+	var g: AiGroupSpec = _patrol_group()
+	g.set(&"patrol_mode", 99)
+	_assert_group_error(g, "patrol_mode is not an AiGroupSpec.PatrolMode")
+
+
+func test_group_on_alert_out_of_range_is_rejected() -> void:
+	var g: AiGroupSpec = _patrol_group()
+	g.set(&"on_alert", 99)
+	_assert_group_error(g, "on_alert must be GUARD, HUNT or FLANK")
+
+
 func test_group_cannot_start_in_retreat() -> void:
 	var g: AiGroupSpec = _patrol_group()
 	g.behavior = AiGroupSpec.Behavior.RETREAT
@@ -503,6 +527,18 @@ func test_trigger_with_no_name() -> void:
 	_assert_script_error(s, "trigger <unnamed>: name is empty")
 
 
+func test_trigger_condition_must_be_a_known_condition() -> void:
+	var s: MissionScript = _valid_script()
+	_find_trigger(s, &"timer").set(&"condition", 99)
+	_assert_script_error(s, "trigger timer: condition is not a TriggerSpec.Condition")
+
+
+func test_trigger_faction_must_be_a_known_faction() -> void:
+	var s: MissionScript = _valid_script()
+	_find_trigger(s, &"wiped").set(&"faction", 99)
+	_assert_script_error(s, "trigger wiped: faction is not a UnitType.Faction")
+
+
 func test_trigger_after_must_name_a_trigger() -> void:
 	var s: MissionScript = _valid_script()
 	_find_trigger(s, &"dies").after = &"nowhere"
@@ -601,6 +637,18 @@ func test_null_action() -> void:
 	_assert_script_error(s, "trigger wiped: action 1 is null")
 
 
+func test_action_kind_must_be_a_known_kind() -> void:
+	var s: MissionScript = _valid_script()
+	_find_trigger(s, &"cleared").actions[0].set(&"kind", 99)
+	_assert_script_error(s, "action 0: kind is not a TriggerAction.Kind")
+
+
+func test_action_behavior_must_be_a_known_behavior() -> void:
+	var s: MissionScript = _valid_script()
+	_find_trigger(s, &"dies").actions[0].set(&"behavior", 99)
+	_assert_script_error(s, "action 0: behavior is not an AiGroupSpec.Behavior")
+
+
 func test_spawn_group_action_needs_a_known_group() -> void:
 	var s: MissionScript = _valid_script()
 	_find_trigger(s, &"entered").actions[0].group = &"phantoms"
@@ -675,13 +723,21 @@ func test_standoff_needs_a_ranged_attack() -> void:
 
 
 func test_standoff_needs_a_permille() -> void:
-	for permille: int in [0, -5, 1001]:
+	for permille: int in [0, -5, 951]:
 		var t: UnitType = TestUnits.ranged(&"sniper")
 		t.ai_tactic = UnitType.AiTactic.STANDOFF
 		t.ai_standoff_permille = permille
 		assert_string_contains(
-			"\n".join(t.validate()), "ai_standoff_permille must be 1..1000"
+			"\n".join(t.validate()), "ai_standoff_permille must be 1..950"
 		)
+
+
+func test_standoff_permille_accepts_1_through_950() -> void:
+	for permille: int in [1, 950]:
+		var t: UnitType = TestUnits.ranged(
+			&"sniper", {"ai_tactic": UnitType.AiTactic.STANDOFF, "ai_standoff_permille": permille}
+		)
+		assert_eq(t.validate(), PackedStringArray(), "%d is valid" % permille)
 
 
 func test_other_tactics_need_no_standoff_permille() -> void:

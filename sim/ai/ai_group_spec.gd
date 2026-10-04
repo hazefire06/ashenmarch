@@ -54,12 +54,13 @@ enum PatrolMode {
 ## Spawn points as x, z pairs.
 @export var spawns: PackedInt32Array = PackedInt32Array()
 ## Which spawn point each tier uses, as indices into spawns (point 0 is the
-## first pair). Empty: point 0 at every tier. Otherwise one entry for every
-## tier or one per tier (Difficulty).
+## first pair). Empty: point 0 at every tier. Otherwise one entry used at
+## every tier, or one per tier (Difficulty).
 @export var spawn_by_tier: PackedInt32Array = PackedInt32Array()
 ## Direction the group faces when it spawns. 0, 0 means north (Formations
 ## does that).
 @export var facing_x: int = 0
+## See facing_x.
 @export var facing_z: int = 0
 ## The shape it spawns in and marches in.
 @export var formation: Formations.Kind = Formations.Kind.BOX
@@ -70,6 +71,7 @@ enum PatrolMode {
 @export var behavior: Behavior = Behavior.IDLE
 ## PATROL: the route, as x, z pairs.
 @export var waypoints: PackedInt32Array = PackedInt32Array()
+## PATROL: how it walks the waypoints, round in a loop or out and back.
 @export var patrol_mode: PatrolMode = PatrolMode.LOOP
 ## GUARD: how far from its post it chases an enemy.
 @export var guard_radius: int = 0
@@ -115,6 +117,8 @@ func validate(catalog: UnitCatalog) -> PackedStringArray:
 	var prefix: String = _prefix()
 	if name == &"":
 		errors.append(prefix + "name is empty")
+	if not UnitType.Faction.values().has(faction):
+		errors.append(prefix + "faction is not a UnitType.Faction")
 	errors.append_array(_validate_units(catalog))
 	if spawns.is_empty():
 		errors.append(prefix + "spawns needs at least one x, z pair")
@@ -130,10 +134,14 @@ func validate(catalog: UnitCatalog) -> PackedStringArray:
 					errors.append(prefix + "spawn_by_tier index %d is out of range" % index)
 	if not Formations.Kind.values().has(formation):
 		errors.append(prefix + "formation is not a Formations.Kind")
-	if behavior == Behavior.RETREAT:
+	if not Behavior.values().has(behavior):
+		errors.append(prefix + "behavior is not an AiGroupSpec.Behavior")
+	elif behavior == Behavior.RETREAT:
 		errors.append(prefix + "RETREAT can't be a starting behavior")
 	else:
 		errors.append_array(params_errors(behavior))
+	if not PatrolMode.values().has(patrol_mode):
+		errors.append(prefix + "patrol_mode is not an AiGroupSpec.PatrolMode")
 	if on_alert != Behavior.GUARD and on_alert != Behavior.HUNT and on_alert != Behavior.FLANK:
 		errors.append(prefix + "on_alert must be GUARD, HUNT or FLANK")
 	elif behavior == Behavior.PATROL or behavior == Behavior.AMBUSH or behavior == Behavior.GUARD:

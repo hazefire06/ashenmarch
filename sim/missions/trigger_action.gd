@@ -4,6 +4,7 @@ extends Resource
 ## fields named for the kind are read. MissionScript.validate() checks them,
 ## because group names resolve against the script's group list.
 
+## What the action does.
 enum Kind {
 	## Spawns the group named in `group`.
 	SPAWN_GROUP,
@@ -19,6 +20,7 @@ enum Kind {
 	SET_BEHAVIOR,
 }
 
+## What it does (see Kind), which says which of the fields below it reads.
 @export var kind: Kind = Kind.SPAWN_GROUP
 ## SPAWN_GROUP, SET_BEHAVIOR: the group's name in the MissionScript.
 @export var group: StringName = &""

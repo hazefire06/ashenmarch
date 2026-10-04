@@ -29,12 +29,17 @@ enum Kind {
 	RETREAT,
 }
 
+## What happened.
 var kind: Kind
+## The AiGroup it happened to.
 var group_id: int
 ## The unit the event is about; 0 when it is about the whole group.
 var unit_id: int = 0
+## Where, in milli-units, as the kind says; 0 when the kind names no place.
 var x: int = 0
+## See x.
 var z: int = 0
+## A count, index, behavior or flag, as the kind says.
 var value: int = 0
 
 

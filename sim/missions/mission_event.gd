@@ -4,6 +4,7 @@ extends RefCounted
 ## tests. Output only, like AiEvent: World clears its list at the start of
 ## each step, nothing in the sim may read it, and it is never hashed.
 
+## What happened.
 enum Kind {
 	## A trigger fired; trigger_index is its place in the MissionScript.
 	TRIGGER_FIRED,
@@ -15,7 +16,9 @@ enum Kind {
 	LOST,
 }
 
+## What happened.
 var kind: Kind
+## The trigger it is about, by its index in the MissionScript.
 var trigger_index: int
 ## OBJECTIVE only: the new objective text (empty clears it).
 var text: String = ""

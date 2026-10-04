@@ -158,8 +158,8 @@ func step() -> void:
 ## hardest). Only a world that hasn't stepped yet can start one, and only one:
 ## the starting groups spawn on the first step. Returns false and says why if
 ## the world has no terrain or catalog, has already stepped or started a
-## mission, the tier is out of range, or the script doesn't validate against
-## the catalog.
+## mission, the script is null, the tier is out of range, or the script
+## doesn't validate against the catalog.
 func start_mission(mission_script: MissionScript, tier: int) -> bool:
 	var problem: String = ""
 	if terrain == null or catalog == null:
@@ -168,6 +168,8 @@ func start_mission(mission_script: MissionScript, tier: int) -> bool:
 		problem = "the world has already stepped"
 	elif mission != null:
 		problem = "a mission has already started"
+	elif mission_script == null:
+		problem = "there is no mission script"
 	elif tier < 0 or tier >= Difficulty.TIERS:
 		problem = "tier %d is not 0..%d" % [tier, Difficulty.TIERS - 1]
 	else:

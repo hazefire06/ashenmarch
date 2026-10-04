@@ -463,8 +463,6 @@ func test_guard_bodyguards_leave_a_threat_past_the_leash_alone() -> void:
 		assert_eq(group.ordered_target[i], intruder.id, "grunt %d after the intruder" % i)
 
 
-
-
 func test_a_guarding_caster_isnt_called_back_from_its_spot_while_intruders_live() -> void:
 	var world: World = _world(TestTerrains.flat(80, 40))
 	var radius: int = 10 * M

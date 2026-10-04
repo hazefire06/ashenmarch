@@ -777,6 +777,13 @@ func test_start_mission_rejects_an_invalid_script() -> void:
 	assert_null(world.mission)
 
 
+func test_start_mission_rejects_a_null_script() -> void:
+	var world: World = World.new(1, TestTerrains.flat(60, 60), _catalog)
+	assert_false(world.start_mission(null, 0))
+	assert_push_error("start_mission")
+	assert_null(world.mission)
+
+
 func test_start_mission_rejects_a_bad_tier() -> void:
 	var script: MissionScript = _script([_squad()], [])
 	var world: World = World.new(1, TestTerrains.flat(60, 60), _catalog)
