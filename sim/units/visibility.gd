@@ -4,9 +4,10 @@ extends RefCounted
 ##
 ## A unit that hides in deep water (UnitType.hidden_in_deep_water: Husks) is
 ## submerged at depth Terrain.LIVING_IMPASSABLE_DEPTH or more, unless it is
-## fighting (it surfaced to do it). Submerged units can't be targeted or hit
-## by anyone: melee and ranged don't pick them, and projectiles pass over
-## them. That holds whoever sees them.
+## fighting (it surfaced to do it) or has sprung from an ambush
+## (Unit.surfaced, for good). Submerged units can't be targeted or hit by
+## anyone: melee and ranged don't pick them, and projectiles pass over them.
+## That holds whoever sees them.
 ##
 ## Seeing is about the player's view (the units view draws only what the
 ## commanding side sees): a side sees its own units, every unit that isn't
@@ -18,6 +19,7 @@ extends RefCounted
 static func is_submerged(terrain: Terrain, unit: Unit) -> bool:
 	return (
 		unit.type.hidden_in_deep_water
+		and not unit.surfaced
 		and unit.state != Unit.State.ATTACKING
 		and terrain.water_depth_at(unit.x, unit.z) >= Terrain.LIVING_IMPASSABLE_DEPTH
 	)

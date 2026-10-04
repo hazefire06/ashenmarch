@@ -31,6 +31,10 @@ const FIGHT_TIMEOUT: float = 45.0
 const FINALE_TIMEOUT: float = 90.0
 ## Yaw 0 looks north; a half turn looks south.
 const LOOK_SOUTH: float = PI
+## Where MainView stood the Dark test squad (meters) until Phase 7 made the
+## Dark side the Riverside AI mission; the finale stands one there again.
+const DARK_ORIGIN: Vector2 = Vector2(250.0, 275.0)
+const DARK_SPACING: float = 2.0
 
 var _main: MainView
 var _world: World
@@ -55,6 +59,9 @@ func _initialize() -> void:
 	Engine.time_scale = float(speed) if speed.is_valid_float() and float(speed) > 0.0 else 1.0
 	Engine.max_physics_steps_per_frame = 16
 	_main = load("res://view/main.tscn").instantiate() as MainView
+	# No Riverside AI mission: its 29 Dark units would hunt across every
+	# event. The finale stands its own Dark squad (_finale).
+	_main.mission_path = ""
 	root.add_child(_main)
 	_run.call_deferred()
 
@@ -200,17 +207,24 @@ func _scavengers() -> void:
 
 func _finale() -> void:
 	_begin(5, "Finale", "The standing squads fight at the ford: the whole roster. Wardens behind the line, Blightbags and Stormcallers with the Husks and Rippers, herb plants on both banks.", Vector2(285.0, 245.0), 0.0, 70.0)
+	# The whole Dark test squad as MainView laid it out before Phase 7: 20
+	# Husks in a block south of the creek with 3 Blightbags in front, then
+	# rows of 5 Rippers, 6 Drifters and 2 Stormcallers behind. MainView spawns
+	# no Dark units since Phase 7.
+	var back: Vector2 = DARK_ORIGIN + Vector2(0.0, 4.0 * DARK_SPACING)
+	var dark: PackedInt32Array = await _spawn(&"husk", DARK, _grid(DARK_ORIGIN, 20, 5, DARK_SPACING), Vector2i(0, -1))
+	dark.append_array(await _spawn(&"ripper", DARK, _grid(back, 5, 5, DARK_SPACING), Vector2i(0, -1)))
+	dark.append_array(await _spawn(&"drifter", DARK, _grid(back + Vector2(0.0, DARK_SPACING), 6, 6, DARK_SPACING), Vector2i(0, -1)))
+	dark.append_array(await _spawn(&"blightbag", DARK, _grid(DARK_ORIGIN - Vector2(0.0, DARK_SPACING), 3, 3, 2.0 * DARK_SPACING), Vector2i(0, -1)))
+	dark.append_array(await _spawn(&"stormcaller", DARK, _grid(back + Vector2(0.0, 2.0 * DARK_SPACING), 2, 2, 4.0 * DARK_SPACING), Vector2i(0, -1)))
+	# The Light side: whatever of MainView's test squad stands at the ford.
 	var light: PackedInt32Array = PackedInt32Array()
-	var dark: PackedInt32Array = PackedInt32Array()
 	for unit: Unit in _world.units:
-		if not unit.is_alive() or _watched.has(unit.id) or unit.x < 230 * M or unit.x > 330 * M:
+		if not unit.is_alive() or unit.faction != LIGHT or _watched.has(unit.id):
 			continue
-		if unit.z < 165 * M or unit.z > 305 * M:
+		if unit.x < 230 * M or unit.x > 330 * M or unit.z < 165 * M or unit.z > 305 * M:
 			continue
-		if unit.faction == LIGHT:
-			light.append(unit.id)
-		else:
-			dark.append(unit.id)
+		light.append(unit.id)
 		_watched[unit.id] = true
 	await _wait(READ_BEFORE)
 	_attack_move(light, Vector2(255.0, 280.0), Formations.Kind.SHORT_LINE)
@@ -294,6 +308,15 @@ func _packets_near(c: Vector2, radius: float) -> int:
 		if Vector2(p.x / float(M), p.z / float(M)).distance_to(c) <= radius:
 			n += 1
 	return n
+
+
+# count spots in rows of columns, spacing meters apart, from origin toward +x
+# and +z (MainView's old squad layout).
+static func _grid(origin: Vector2, count: int, columns: int, spacing: float) -> Array[Vector2]:
+	var out: Array[Vector2] = []
+	for i: int in count:
+		out.append(origin + Vector2((i % columns) * spacing, (i / columns) * spacing))
+	return out
 
 
 static func _row(center: Vector2, count: int, spacing: float) -> Array[Vector2]:

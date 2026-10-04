@@ -36,6 +36,10 @@ const BEHIND_LIGHT: float = PI
 const ANVIL_ENGAGED: int = 8
 const HAMMER_BACK: float = 7.0
 const LONGBOW_ID: StringName = &"longbow"
+## Where MainView stood the Dark test squad (meters) until Phase 7 made the
+## Dark side the Riverside AI mission; the finale stands one there again.
+const DARK_ORIGIN: Vector2 = Vector2(250.0, 275.0)
+const DARK_SPACING: float = 2.0
 
 var _main: MainView
 var _world: World
@@ -63,6 +67,9 @@ func _initialize() -> void:
 	# Lets the sim keep up at DEMO_SPEED > 1 instead of slowing down.
 	Engine.max_physics_steps_per_frame = 16
 	_main = load("res://view/main.tscn").instantiate() as MainView
+	# No Riverside AI mission: its 29 Dark units would hunt across every
+	# event. The finale stands its own Dark squad (_finale).
+	_main.mission_path = ""
 	root.add_child(_main)
 	_run.call_deferred()
 
@@ -181,17 +188,17 @@ func _ripper_raid() -> void:
 func _finale() -> void:
 	var c: Vector2 = Vector2(280.0, 232.0)
 	_begin(5, "Finale", "The test squads clash at the ford: Shieldmen and Reavers against Husks and Rippers. Living units wade the shallow ford; undead Husks cross the deep water anywhere.", c, 0.0, 70.0)
+	# MainView spawns the Light test squad first: the Shieldmen, then the
+	# Reavers. It spawns no Dark units since Phase 7.
 	var light: PackedInt32Array = PackedInt32Array()
-	var dark: PackedInt32Array = PackedInt32Array()
-	# The test squads are the first units MainView spawned.
-	for unit: Unit in _world.units.slice(0, MainView.TEST_SQUAD_SIZE * 2 + MainView.TEST_SHOCK_ROW_SIZE * 2):
-		if not unit.is_alive():
-			continue
-		if unit.faction == LIGHT:
+	for unit: Unit in _world.units.slice(0, MainView.TEST_SQUAD_SIZE + MainView.TEST_SHOCK_ROW_SIZE):
+		if unit.is_alive():
 			light.append(unit.id)
-		else:
-			dark.append(unit.id)
-		_watched[unit.id] = true
+			_watched[unit.id] = true
+	# The Dark test squad as MainView laid it out before Phase 7: 20 Husks in
+	# a block south of the creek, 5 Rippers in a row behind them.
+	var dark: PackedInt32Array = await _spawn(&"husk", DARK, _grid(DARK_ORIGIN, 20, 5, DARK_SPACING), Vector2i(0, -1))
+	dark.append_array(await _spawn(&"ripper", DARK, _grid(DARK_ORIGIN + Vector2(0.0, 4.0 * DARK_SPACING), 5, 5, DARK_SPACING), Vector2i(0, -1)))
 	await _wait(READ_BEFORE)
 	_attack_move(light, Vector2(255.0, 280.0), Formations.Kind.SHORT_LINE)
 	_attack_move(dark, Vector2(295.0, 190.0), Formations.Kind.RABBLE)
@@ -281,6 +288,15 @@ func _result(text: String) -> void:
 		root.get_viewport().get_texture().get_image().save_png(
 			_capture_dir.path_join("demo_event_%d.png" % _event)
 		)
+
+
+# count spots in rows of columns, spacing meters apart, from origin toward +x
+# and +z (MainView's old squad layout).
+static func _grid(origin: Vector2, count: int, columns: int, spacing: float) -> Array[Vector2]:
+	var out: Array[Vector2] = []
+	for i: int in count:
+		out.append(origin + Vector2((i % columns) * spacing, (i / columns) * spacing))
+	return out
 
 
 # count spots centered on center along x, spacing meters apart.

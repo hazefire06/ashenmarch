@@ -1,7 +1,7 @@
 GODOT ?= godot
 MAC_APP := build/mac/Ashenmarch.app
 
-.PHONY: import run demo demo-projectiles demo-abilities test check-sim export-mac maps fixtures
+.PHONY: import run demo demo-projectiles demo-abilities demo-ai test check-sim export-mac maps fixtures
 
 # Builds the .godot/ import and class_name cache. A fresh clone has none, and
 # GUT can't resolve class_name types without it.
@@ -25,6 +25,12 @@ demo-projectiles: import
 # control. DEMO_SPEED=2 make demo-abilities runs it faster.
 demo-abilities: import
 	$(GODOT) --path . -s scripts/demo_abilities.gd
+
+# Phase 7 showcase: patrol, ambush, flank, standoff, cluster, retreat, and a
+# trigger-driven finale, with the F5 AI overlay on. DEMO_SPEED=2 make demo-ai
+# runs it faster; DEMO_STAGE=3 make demo-ai runs one stage alone.
+demo-ai: import
+	$(GODOT) --path . -s scripts/demo_ai.gd
 
 test: import check-sim
 	$(GODOT) --headless -d --path . -s addons/gut/gut_cmdln.gd

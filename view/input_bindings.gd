@@ -47,13 +47,16 @@ const ABILITY: StringName = &"unit_ability"
 const STOP: StringName = &"unit_stop"
 ## Esc: cancel an order armed from the control bar.
 const CANCEL: StringName = &"cancel"
-## Debug until the AI exists: switch which side the mouse commands.
+## Debug: switch which side the mouse commands. The AI keeps driving its
+## groups whichever side that is.
 const SWITCH_SIDE: StringName = &"debug_switch_side"
-## Debug until missions drive the weather: cycle clear, rain, heavy rain,
-## snow (DebugWeather).
+## Debug: cycle clear, rain, heavy rain, snow (DebugWeather), until the
+## mission's next weather change.
 const CYCLE_WEATHER: StringName = &"debug_cycle_weather"
 ## Debug: paralyze, confuse, or set alight the selection, in turn.
 const CYCLE_STATUS: StringName = &"debug_cycle_status"
+## Debug: F5 shows or hides the enemy AI overlay (AiDebugView).
+const TOGGLE_AI_DEBUG: StringName = &"debug_toggle_ai"
 ## Index i is formation Formations.Kind i and group slot i; keys 1..9, 0.
 const FORMATIONS: Array[StringName] = [
 	&"formation_1", &"formation_2", &"formation_3", &"formation_4", &"formation_5",
@@ -117,6 +120,7 @@ static func _default_events() -> Dictionary[StringName, InputEvent]:
 	events[SWITCH_SIDE] = _key(KEY_F9)
 	events[CYCLE_WEATHER] = _key(KEY_F6)
 	events[CYCLE_STATUS] = _key(KEY_F8)
+	events[TOGGLE_AI_DEBUG] = _key(KEY_F5)
 	for i: int in NUMBER_KEYS.size():
 		events[FORMATIONS[i]] = _key(NUMBER_KEYS[i])
 		var save: InputEventKey = _key(NUMBER_KEYS[i])

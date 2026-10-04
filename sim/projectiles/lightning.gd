@@ -36,7 +36,17 @@ static func is_clear(
 	world: World, unit: Unit, p: ProjectileType, x: int, y: int, z: int,
 	careful: bool, margin: int, spread: int, reach: int
 ) -> bool:
-	var from: PackedInt64Array = launch_point(unit)
+	return is_clear_from(world, unit, launch_point(unit), p, x, y, z, careful, margin, spread, reach)
+
+
+## is_clear for a bolt unit would cast from `from` (x, y, z milli-units)
+## rather than from where it stands: the AI asks it of a spot it is thinking
+## of sending the unit to (StandoffSpot). The unit's own body is never in the
+## way, wherever it is.
+static func is_clear_from(
+	world: World, unit: Unit, from: PackedInt64Array, p: ProjectileType, x: int, y: int, z: int,
+	careful: bool, margin: int, spread: int, reach: int
+) -> bool:
 	var dist: int = FixedMath.length(x - from[0], z - from[2])
 	if dist > GROUND_SLACK:
 		var keep: int = dist - GROUND_SLACK

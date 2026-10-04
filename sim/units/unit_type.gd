@@ -58,7 +58,22 @@ enum Special {
 	DETONATE,
 }
 
+## How the AI fights with a unit of this type, beyond marching at its
+## group's objective.
+enum AiTactic {
+	## Closes with its objective by attack-moving.
+	ASSAULT,
+	## Holds at ai_standoff_permille of its max range where its line is clear,
+	## and keeps enemies out of its minimum range.
+	STANDOFF,
+	## Walks at the densest knot of enemies (a Blightbag wants as many as it
+	## can catch in one burst).
+	CLUSTER,
+}
+
 const WATER_DEPTH_LEVELS: int = Terrain.MAX_WATER_DEPTH + 1
+## Highest ai_standoff_permille a STANDOFF type may have (see it).
+const MAX_STANDOFF_PERMILLE: int = 950
 ## preferred_target_roles holds bit (1 << Role) per role.
 const ALL_ROLES_MASK: int = (1 << Role.MELEE) | (1 << Role.RANGED) | (1 << Role.SUPPORT)
 
@@ -192,6 +207,16 @@ const ALL_ROLES_MASK: int = (1 << Role.MELEE) | (1 << Role.RANGED) | (1 << Role.
 @export var veterancy_attack_rate_permille: int = 0
 @export var veterancy_speed_permille: int = 0
 
+@export_group("AI")
+## How the AI fights with it.
+@export var ai_tactic: AiTactic = AiTactic.ASSAULT
+## STANDOFF only: permille of ranged_max_range to hold at, so a unit that
+## stands back doesn't sit at the very edge of its reach, where a step of the
+## target out of range would stop it shooting. 1..950: a unit walking to a
+## spot at 1000 can overshoot by up to 250 mm, find the target out of range
+## where it stops, and be sent to a new spot at every think.
+@export var ai_standoff_permille: int = 0
+
 @export_group("View")
 ## Placeholder quad color until the art pass. View only; the sim ignores it.
 @export var placeholder_color: Color = Color.WHITE
@@ -263,6 +288,13 @@ func validate() -> PackedStringArray:
 		errors.append("%s: HEAL needs a positive heal_hp" % who)
 	if heal_windup_ticks < 0:
 		errors.append("%s: heal_windup_ticks can't be negative" % who)
+	if ai_tactic == AiTactic.STANDOFF:
+		if not has_ranged():
+			errors.append("%s: STANDOFF needs a ranged attack" % who)
+		if ai_standoff_permille < 1 or ai_standoff_permille > MAX_STANDOFF_PERMILLE:
+			errors.append("%s: ai_standoff_permille must be 1..%d for STANDOFF" % [who, MAX_STANDOFF_PERMILLE])
+	elif ai_standoff_permille != 0:
+		errors.append("%s: ai_standoff_permille only applies to STANDOFF" % who)
 	return errors
 
 
