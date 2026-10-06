@@ -32,7 +32,7 @@ def _unsafe(value: Any) -> bool:
 class Manifest:
     def __init__(self, path: Path, tasks: list[dict[str, Any]] | None = None) -> None:
         self.path = path
-        self.tasks: list[dict[str, Any]] = tasks if tasks is not None else []
+        self.tasks: list[dict[str, Any]] = [clean(t) for t in tasks] if tasks is not None else []
 
     @classmethod
     def load(cls, path: Path) -> "Manifest":
@@ -58,7 +58,7 @@ class Manifest:
 
     def save(self) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        text = json.dumps({"tasks": self.tasks}, indent=2, sort_keys=True) + "\n"
+        text = json.dumps({"tasks": [clean(t) for t in self.tasks]}, indent=2, sort_keys=True) + "\n"
         part = self.path.with_name(self.path.name + ".part")
         part.write_text(text, encoding="utf-8")
         part.replace(self.path)

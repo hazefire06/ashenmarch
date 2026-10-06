@@ -58,6 +58,15 @@ class ManifestTest(unittest.TestCase):
     def test_loading_a_missing_file_gives_an_empty_manifest(self) -> None:
         self.assertEqual(Manifest.load(self.path).tasks, [])
 
+    def test_save_never_writes_a_url_however_tasks_got_in(self) -> None:
+        m = Manifest(self.path, [{"kind": "rig", "label": "x", "url": "https://a/b?Signature=s"}])
+        m.tasks.append({"kind": "preview", "label": "y", "url": "https://example.com?Expires=123"})
+        m.save()
+        written = self.path.read_text(encoding="utf-8")
+        self.assertNotIn("://", written)
+        self.assertNotIn("Signature", written)
+        self.assertNotIn("Expires", written)
+
 
 if __name__ == "__main__":
     unittest.main()
