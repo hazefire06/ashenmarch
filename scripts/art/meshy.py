@@ -57,6 +57,7 @@ from unit_spec import (  # noqa: E402
 
 ART_SRC = HERE.parent.parent / "art-src"
 Say = Callable[[str], None]
+OUTPUT_FOLDERS = ("candidates", "model", "anims", "review")  # what builds and renders write under a unit or prop folder
 Recipe = UnitSpec | PropSpec  # both list candidates and are previewed; only a unit is rigged and animated
 
 
@@ -308,6 +309,12 @@ def run_build(spec: UnitSpec, manifest: Manifest, client: Any, unit_dir: Path, p
         _fetch(manifest, client, "animations", animate, unit_dir, {"anims/actions.glb": lambda t: t["result"]["animation_glb_url"]})
 
 
+def _local_error(error: OSError) -> str:
+    """The OS's own wording and the local path, and nothing else an OSError was built with, so no URL or key can ride along."""
+    what = error.strerror or type(error).__name__
+    return f"{what}: {error.filename}" if error.filename else what
+
+
 def _unsafe_work_dir(work_dir: Path) -> str | None:
     """Why this unit or prop folder can't be used, or None. Symlinks under art-src could send our writes elsewhere."""
     try:
@@ -319,6 +326,9 @@ def _unsafe_work_dir(work_dir: Path) -> str | None:
         here = here / part
         if here.is_symlink():
             return f"{here} is a symlink; replace it with a real folder"
+    for folder in OUTPUT_FOLDERS:  # refused up front, so nothing is bought before a write would be; _fetch re-checks as a second line
+        if (work_dir / folder).is_symlink():  # is_symlink() is also true for a dangling one
+            return f"{work_dir / folder} is a symlink; replace it with a real folder"
     if not work_dir.resolve().is_relative_to(ART_SRC.resolve()):  # belt and braces: nothing above should let this happen
         return f"{work_dir} resolves outside art-src"
     return None
@@ -390,6 +400,9 @@ def main(argv: list[str] | None = None) -> int:
             raise AssertionError(args.command)
     except (MeshyError, BudgetError, BuildError, InterruptedCreate, SpecError) as error:
         print(f"meshy.py: {error}", file=sys.stderr)
+        return 1
+    except OSError as error:  # the transport and downloader turn network failures into MeshyError, so this is local file trouble
+        print(f"meshy.py: {_local_error(error)}", file=sys.stderr)
         return 1
     print(f"credits spent on {spec.id} so far: {manifest.credits_spent()}")
     return 0

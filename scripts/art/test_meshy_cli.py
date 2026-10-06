@@ -693,6 +693,110 @@ class MainTest(unittest.TestCase):
             self.assertIn(str(root / "props"), err)
             self.assertIn("symlink", err)
 
+    def stage_unit(self, root: Path) -> Path:
+        """A throwaway art-src with the real Shieldman recipe (its manifest is left out: it is not ours to copy)."""
+        shutil.copy(ART_SRC / "style.toml", root / "style.toml")
+        unit_dir = root / "units" / "shieldman"
+        unit_dir.mkdir(parents=True)
+        shutil.copy(ART_SRC / "units" / "shieldman" / "spec.toml", unit_dir / "spec.toml")
+        return unit_dir
+
+    def test_a_symlinked_output_folder_is_refused_before_anything_is_bought(self) -> None:
+        for folder in ("candidates", "model", "anims", "review"):
+            for command, stage in (("prop-candidates", "prop"), ("prop-build", "prop"), ("candidates", "unit"), ("build", "unit")):
+                with self.subTest(folder=folder, command=command), tempfile.TemporaryDirectory() as tmp:
+                    root = Path(tmp) / "art-src"
+                    root.mkdir()
+                    work_dir = self.stage(root) if stage == "prop" else self.stage_unit(root)
+                    outside = Path(tmp) / "elsewhere"
+                    outside.mkdir()
+                    (work_dir / folder).symlink_to(outside, target_is_directory=True)
+                    name = work_dir.name
+                    argv = {"prop-candidates": ["prop-candidates", name, "--max-credits", "100"],
+                            "prop-build": ["prop-build", name, "--pick", "1", "--max-credits", "100"],
+                            "candidates": ["candidates", name, "--max-credits", "100"],
+                            "build": ["build", name, "--pick", "1", "--max-credits", "100"]}[command]
+                    fake = FakeClient()
+                    code, out, err = self.run_paid(root, fake, argv)
+                    self.assertEqual((code, out, fake.created), (2, "", []))
+                    self.assertIn(f"meshy.py: {work_dir / folder} is a symlink", err)
+                    self.assertEqual(list(outside.iterdir()), [])
+                    self.assertFalse((work_dir / "manifest.json").exists())  # not even a CREATING record
+
+    def test_any_symlinked_output_folder_is_refused_even_one_that_stays_inside(self) -> None:
+        # _fetch lets a symlink that stays inside the work dir through (second line of defence); main is stricter.
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "art-src"
+            root.mkdir()
+            work_dir = self.stage(root)
+            (work_dir / "real").mkdir()
+            (work_dir / "candidates").symlink_to(work_dir / "real", target_is_directory=True)
+            fake = FakeClient()
+            code, _, err = self.run_paid(root, fake, ["prop-candidates", "broadsword", "--max-credits", "10"])
+            self.assertEqual((code, fake.created), (2, []))
+            self.assertIn("candidates is a symlink", err)
+
+    def test_a_dangling_symlinked_output_folder_is_refused(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "art-src"
+            root.mkdir()
+            work_dir = self.stage(root)
+            (work_dir / "anims").symlink_to(Path(tmp) / "does_not_exist", target_is_directory=True)
+            code, _, err = self.run_paid(root, FakeClient(), ["prop-plan", "broadsword"])
+            self.assertEqual(code, 2)
+            self.assertIn("anims is a symlink", err)
+
+    def test_real_output_folders_and_missing_ones_are_fine(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "art-src"
+            root.mkdir()
+            work_dir = self.stage(root)
+            (work_dir / "candidates").mkdir()
+            (work_dir / "model").mkdir()
+            with mock.patch.object(meshy, "ART_SRC", root):
+                self.assertIsNone(meshy._unsafe_work_dir(work_dir))
+
+    def test_a_local_file_error_in_a_paid_command_is_reported_and_returns_1(self) -> None:
+        # A planted manifest.json.part symlink: save() refuses it with an OSError. That is local file trouble, not a traceback.
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "art-src"
+            root.mkdir()
+            work_dir = self.stage(root)
+            target = Path(tmp) / "precious.txt"
+            target.write_text("keep me")
+            (work_dir / "manifest.json.part").symlink_to(target)
+            for argv in (["prop-candidates", "broadsword", "--max-credits", "10"],
+                         ["prop-build", "broadsword", "--pick", "1", "--max-credits", "10"]):
+                with self.subTest(argv=argv[0]):
+                    fake = FakeClient()
+                    if argv[0] == "prop-build":  # needs a finished candidate; put one in a manifest saved the safe way
+                        (work_dir / "manifest.json.part").unlink()
+                        manifest = Manifest(work_dir / "manifest.json")
+                        manifest.upsert({"kind": "preview", "label": "cand-1", "task_id": "preview-1", "status": "SUCCEEDED", "credits": 5})
+                        manifest.save()
+                        (work_dir / "manifest.json.part").symlink_to(target)
+                    code, out, err = self.run_paid(root, fake, argv)
+                    self.assertEqual(code, 1)
+                    self.assertNotIn("credits spent", out)  # the "creating..." line is printed before the record is saved
+                    self.assertTrue(err.startswith("meshy.py: "), err)
+                    self.assertEqual(err.count("\n"), 1)  # one line, no traceback
+                    self.assertIn("manifest.json.part", err)
+                    self.assertNotIn("://", err)
+                    self.assertNotIn("not-a-real-key", err)
+                    self.assertEqual(fake.created, [])
+                    self.assertEqual(target.read_text(), "keep me")
+
+    def test_a_local_file_error_shows_only_the_oss_words_and_the_path(self) -> None:
+        # Whatever else an OSError was built with (say, text from somewhere else) is not printed.
+        sneaky = OSError("GET https://assets.meshy.ai/x.glb?Signature=SECRETSIG failed with key not-a-real-key")
+        self.assertEqual(meshy._local_error(sneaky), "OSError")
+        self.assertEqual(meshy._local_error(PermissionError(13, "Permission denied", "/art/model/PICK")), "Permission denied: /art/model/PICK")
+        with mock.patch.object(meshy, "load_secret", return_value="not-a-real-key"), mock.patch.object(meshy, "http_transport"), \
+                mock.patch.object(meshy, "MeshyClient"), mock.patch.object(meshy, "run_candidates", side_effect=sneaky):
+            code, _, err = self.run_main(["prop-candidates", "broadsword", "--max-credits", "10"])
+        self.assertEqual(code, 1)
+        self.assertEqual(err, "meshy.py: OSError\n")
+
     def test_a_work_dir_that_resolves_outside_art_src_is_refused(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp) / "art-src"
