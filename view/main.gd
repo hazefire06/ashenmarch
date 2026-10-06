@@ -25,7 +25,8 @@ extends Node3D
 ##   built by SkirmishSetup, the camera starts over the player's army looking
 ##   the way it faces, the look is the map's, the player may be either side,
 ##   there are no MissionStats (the skirmish keeps its own score), and the
-##   end is skirmish_ended.
+##   end is skirmish_ended. It also has its own views: FlagsView in the world,
+##   and SkirmishHud (the score line, and the F7 scoreboard) under the HUD.
 ##
 ## Pause stops the stepping and nothing else, so the sim, which never hears of
 ## it, stays deterministic: Esc opens the pause menu (unless an order is armed,
@@ -124,6 +125,10 @@ var _ended: bool = false
 var _since_outcome: float = 0.0
 ## False until the first step has run, after which stats.begin() is called.
 var _stats_begun: bool = false
+## A skirmish's flags in the world and its score line and scoreboard; null
+## outside a skirmish.
+var _flags_view: FlagsView
+var _skirmish_hud: SkirmishHud
 
 @onready var _terrain_view: TerrainView = $TerrainView
 @onready var _units_view: UnitsView = $Units
@@ -168,7 +173,7 @@ func _ready() -> void:
 	_terrain_view.build(terrain)
 	_camera.setup(terrain)
 	_place_camera()
-	_overhead_map.setup(terrain, _camera)
+	_overhead_map.setup(terrain, _camera, world)
 	_gibs.setup(terrain)
 	if launch == null:
 		_spawn_test_squads()
@@ -193,6 +198,8 @@ func _ready() -> void:
 	_ai_debug.setup(world)
 	_mission_hud.show_world(world)
 	_objectives.show_world(world)
+	if launch != null and launch.is_skirmish():
+		_build_skirmish_views()
 	_selection.setup(
 		world, _units_view, _camera.get_camera(), TerrainPicker.new(terrain), _projectiles_view, _plants_view
 	)
@@ -202,6 +209,8 @@ func _ready() -> void:
 		_selection.side = launch.player_faction()
 		_units_view.set_viewer(launch.player_faction())
 	_control_bar.setup(_selection, world)
+	if launch != null and launch.is_skirmish():
+		_control_bar.set_skirmish(launch.player_faction())
 	_info_panel.setup(_selection, world, _control_bar)
 	_tooltip.setup(_selection, world, _camera.get_camera(), _projectiles_view, _plants_view)
 	_apply_edge_scroll()
@@ -248,6 +257,9 @@ func _physics_process(_delta: float) -> void:
 	_ai_debug.after_step()
 	_mission_hud.show_world(world)
 	_objectives.show_world(world)
+	if _skirmish_hud != null:
+		_flags_view.after_step()
+		_skirmish_hud.show_world(world)
 	_terrain_view.update_fire(world.fire)
 	_terrain_view.set_weather(world.weather)
 	# Only a launched mission freezes; the sandbox plays on whatever it decides.
@@ -299,6 +311,8 @@ func _process(delta: float) -> void:
 		return
 	var w: Weather = world.weather
 	var hints: String = "(F5 AI overlay)" if _campaign() else "(F5 AI overlay, F6 weather)"
+	if _skirmish_hud != null:
+		hints = "(F5 AI overlay, F7 scoreboard)"
 	_stats_label.text = "tick %d   %d fps   %d draw calls   sim %.2f ms/tick   %d units   %d projectiles   %d paths queued\nrain %d%%   snow %d%%   wet %d%%   snow cover %d%%   %d cells burning   %s" % [
 		world.tick,
 		Performance.get_monitor(Performance.TIME_FPS),
@@ -368,6 +382,23 @@ func _place_skirmish_camera() -> void:
 		facing = Vector2(0.0, -1.0)
 	var focus: Vector2 = Vector2(at) / mm + facing * SKIRMISH_CAMERA_LEAD
 	_camera.set_pose(focus, atan2(-facing.x, -facing.y), setup.map.camera_distance / mm)
+
+
+# A skirmish's own views: its flags in the world, and under the HUD its score
+# line and scoreboard. Built after the units view and the others exist, so the
+# flags draw over the ground, and shown the world as it is at tick 0.
+func _build_skirmish_views() -> void:
+	_flags_view = FlagsView.new()
+	_flags_view.name = "Flags"
+	add_child(_flags_view)
+	_flags_view.setup(world)
+	_skirmish_hud = SkirmishHud.new()
+	_skirmish_hud.name = "SkirmishHud"
+	$Hud.add_child(_skirmish_hud)
+	# Beside the mission's own line, so the open overhead map (later in the tree)
+	# dims the score line as it does that one.
+	$Hud.move_child(_skirmish_hud, _mission_hud.get_index() + 1)
+	_skirmish_hud.setup(world, launch.player_faction())
 
 
 # True in a campaign mission: no debug cheats, and the window's focus matters.

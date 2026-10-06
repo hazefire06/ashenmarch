@@ -90,3 +90,36 @@ func test_it_follows_the_world_as_the_triggers_fire() -> void:
 
 func test_it_never_takes_the_mouse() -> void:
 	assert_eq(_hud.mouse_filter, Control.MOUSE_FILTER_IGNORE)
+
+
+# --- a drawn skirmish ---------------------------------------------------------
+
+
+func test_a_draw_has_its_own_banner_in_amber() -> void:
+	assert_eq(MissionHud.banner_text(MissionRuntime.Outcome.DRAW), "Draw")
+	assert_eq(MissionHud.banner_color(MissionRuntime.Outcome.DRAW), MissionHud.DRAW_COLOR)
+	assert_gt(MissionHud.DRAW_COLOR.r, MissionHud.DRAW_COLOR.b + 0.3, "warm, not the win's green or the loss's red")
+	assert_gt(MissionHud.DRAW_COLOR.g, MissionHud.DEFEAT_COLOR.g, "and not the loss's red")
+	assert_ne(MissionHud.DRAW_COLOR, MissionHud.VICTORY_COLOR)
+	assert_ne(MissionHud.DRAW_COLOR, MissionHud.DEFEAT_COLOR)
+
+
+func test_the_win_and_loss_banners_keep_their_colors() -> void:
+	assert_eq(MissionHud.banner_color(WON), MissionHud.VICTORY_COLOR)
+	assert_eq(MissionHud.banner_color(LOST), MissionHud.DEFEAT_COLOR)
+	assert_eq(MissionHud.banner_color(NONE), MissionHud.VICTORY_COLOR, "as it always was before an outcome")
+
+
+func test_a_drawn_mission_shows_the_draw_banner() -> void:
+	_world.start_mission(MissionScript.new(), 0)
+	_world.mission.outcome = MissionRuntime.Outcome.DRAW
+	_hud.show_world(_world)
+	assert_eq(_hud.shown_banner(), "Draw")
+	assert_eq(_hud.shown_banner_color(), MissionHud.DRAW_COLOR)
+	_world.mission.outcome = WON
+	_hud.show_world(_world)
+	assert_eq(_hud.shown_banner(), "Victory")
+	assert_eq(_hud.shown_banner_color(), MissionHud.VICTORY_COLOR)
+	_world.mission.outcome = LOST
+	_hud.show_world(_world)
+	assert_eq(_hud.shown_banner_color(), MissionHud.DEFEAT_COLOR)

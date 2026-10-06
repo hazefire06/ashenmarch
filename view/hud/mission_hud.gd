@@ -2,7 +2,8 @@ class_name MissionHud
 extends Control
 ## The mission at a glance: its message line (the text a SET_OBJECTIVE action
 ## last set: a hint, a new task) at the top centre of the screen, and once the
-## mission is decided a Victory or Defeat banner in the middle. The list of
+## mission is decided a Victory, Defeat or (a skirmish nobody won) Draw banner
+## in the middle. The list of
 ## objectives and how each stands is the ObjectivePanel's. Hidden in a world
 ## with no mission. MainView calls show_world after every step; the labels only
 ## change when the text does. Reads the World; never writes it, and never takes
@@ -18,6 +19,7 @@ const OUTLINE_SIZE: int = 8
 const OBJECTIVE_COLOR: Color = Color(1.0, 0.95, 0.7)
 const VICTORY_COLOR: Color = Color(0.6, 1.0, 0.55)
 const DEFEAT_COLOR: Color = Color(1.0, 0.4, 0.35)
+const DRAW_COLOR: Color = MenuKit.WARN_COLOR
 const OUTLINE_COLOR: Color = Color(0.05, 0.05, 0.05, 0.9)
 
 var _objective: Label
@@ -38,15 +40,28 @@ func _ready() -> void:
 	_banner.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 
 
-## What the banner says for an outcome: "Victory", "Defeat", or "" while the
-## mission is still being decided.
+## What the banner says for an outcome: "Victory", "Defeat", "Draw", or "" while
+## the mission is still being decided.
 static func banner_text(outcome: MissionRuntime.Outcome) -> String:
 	match outcome:
 		MissionRuntime.Outcome.WON:
 			return "Victory"
 		MissionRuntime.Outcome.LOST:
 			return "Defeat"
+		MissionRuntime.Outcome.DRAW:
+			return "Draw"
 	return ""
+
+
+## The banner's color for an outcome: green for a win, red for a loss, amber for
+## a draw.
+static func banner_color(outcome: MissionRuntime.Outcome) -> Color:
+	match outcome:
+		MissionRuntime.Outcome.LOST:
+			return DEFEAT_COLOR
+		MissionRuntime.Outcome.DRAW:
+			return DRAW_COLOR
+	return VICTORY_COLOR
 
 
 ## Shows the world's mission as it is now: the objective, and the banner once
@@ -61,9 +76,7 @@ func show_world(world: World) -> void:
 	_set_text(_objective, mission.objective)
 	var banner: String = banner_text(mission.outcome)
 	_set_text(_banner, banner)
-	_banner.add_theme_color_override(
-		"font_color", DEFEAT_COLOR if mission.outcome == MissionRuntime.Outcome.LOST else VICTORY_COLOR
-	)
+	_banner.add_theme_color_override("font_color", banner_color(mission.outcome))
 
 
 ## The objective as drawn; empty when there is none to show.
@@ -74,6 +87,11 @@ func shown_objective() -> String:
 ## The banner as drawn; empty until the mission has an outcome.
 func shown_banner() -> String:
 	return _banner.text
+
+
+## The color the banner is drawn in.
+func shown_banner_color() -> Color:
+	return _banner.get_theme_color("font_color")
 
 
 func _make_label(font_size: int, color: Color) -> Label:

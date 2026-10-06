@@ -2,7 +2,8 @@ class_name OverheadMap
 extends Control
 ## The Tab overhead map: the heightmap drawn as a shaded, water-tinted image
 ## over a dimmed screen, with the camera's focus and facing marked. Click the
-## map to move the camera there.
+## map to move the camera there. In a skirmish the flags the mode uses are
+## marked too, small discs in the color of whoever holds them.
 ##
 ## North-up: map +x is screen right and map +z is screen down, so z = 0 is the
 ## top edge. Texel (i, j) is sample (i, j), so texel centers sit on the sample
@@ -15,6 +16,7 @@ const MARKER_FILL: Color = Color(1.0, 0.95, 0.6, 1.0)
 const MARKER_OUTLINE: Color = Color(0.05, 0.05, 0.05, 0.9)
 const WEDGE_COLOR: Color = Color(1.0, 0.95, 0.6, 0.35)
 const MARKER_RADIUS: float = 5.0
+const FLAG_MARK_RADIUS: float = 6.0
 const WEDGE_LENGTH: float = 40.0
 const WEDGE_HALF_ANGLE: float = deg_to_rad(30.0)
 ## Hillshade light: from the north-west (-x, -z) and 45 degrees above.
@@ -25,6 +27,7 @@ const SHADE_LIGHT: float = 1.15
 
 var _terrain: Terrain
 var _camera: RtsCamera
+var _world: World
 var _texture: ImageTexture
 
 
@@ -39,10 +42,12 @@ func _ready() -> void:
 
 
 ## Builds the map image once from the terrain. The camera supplies the focus
-## marker and receives clicks.
-func setup(terrain: Terrain, camera: RtsCamera) -> void:
+## marker and receives clicks. The world, if given, is read for a skirmish's
+## flags; without one, or with a world that has no skirmish, none are drawn.
+func setup(terrain: Terrain, camera: RtsCamera, world: World = null) -> void:
 	_terrain = terrain
 	_camera = camera
+	_world = world
 	_texture = ImageTexture.create_from_image(_build_image(terrain))
 	queue_redraw()
 
@@ -81,8 +86,36 @@ func _draw() -> void:
 	var rect: Rect2 = _map_rect()
 	draw_texture_rect(_texture, rect, false)
 	draw_rect(rect, BORDER_COLOR, false, 1.0)
-	if _camera == null:
-		return
+	if _camera != null:
+		_draw_camera()
+	for mark: Dictionary in flag_marks():
+		var at: Vector2 = mark["at"]
+		draw_circle(at, FLAG_MARK_RADIUS, mark["color"])
+		draw_arc(at, FLAG_MARK_RADIUS, 0.0, TAU, 20, MARKER_OUTLINE, 1.0)
+
+
+## The flags the map shows now, as {"flag": the rules index, "at": the screen
+## position of its center, "color": what it is drawn in}: none outside a
+## skirmish or in Body Count, the hill in King of the Hill, every flag in
+## Capture the Flags (the same rule as the flags in the world, FlagsView). The
+## contested hill flashes between the sides' colors in real time, view-only.
+func flag_marks() -> Array[Dictionary]:
+	var marks: Array[Dictionary] = []
+	if _world == null or _world.skirmish == null or _terrain == null:
+		return marks
+	var runtime: SkirmishRuntime = _world.skirmish
+	var flash: int = FlagsView.flash_side(Time.get_ticks_msec() / 1000.0)
+	var mm: float = float(World.UNITS_PER_METER)
+	for flag: int in FlagsView.shown_flags(runtime.rules):
+		var at: Vector2 = _world_to_screen(
+			Vector2(runtime.rules.flags[2 * flag], runtime.rules.flags[2 * flag + 1]) / mm
+		)
+		marks.append({"flag": flag, "at": at, "color": FlagsView.flag_color(runtime, flag, flash)})
+	return marks
+
+
+# The camera's focus and the way it faces.
+func _draw_camera() -> void:
 	var center: Vector2 = _world_to_screen(Vector2(_camera.focus.x, _camera.focus.z))
 	# Facing on the ground is -(sin yaw, cos yaw) in (x, z); screen y is z.
 	var facing: Vector2 = Vector2(-sin(_camera.yaw), -cos(_camera.yaw))

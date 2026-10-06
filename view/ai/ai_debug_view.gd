@@ -8,8 +8,14 @@ extends Node3D
 ##   waypoints as a loop or a polyline, the circle a GUARD chases within and
 ##   the one that springs an AMBUSH, around the group's anchor, the part of a
 ##   FLANK's route still to walk and a line to the unit it is circling, the
-##   part of an ESCORT's route still to walk (nothing once it has arrived), and
-##   every AREA_ENTERED trigger's circle, gray until it fires and green after.
+##   part of an ESCORT's route still to walk (nothing once it has arrived), an
+##   ADVANCE group's anchor (a cross, joined to the group by a dim line), the
+##   circle round the group it fights enemies within (dim while it is
+##   marching without fighting) and the one round the anchor it holds, and
+##   every AREA_ENTERED trigger's circle, gray until it fires and green after;
+## - for each skirmish commander, in its side's color: a line from its main
+##   group to its objective, a small circle at the point it stages at, and a
+##   label there with its posture (STAGE, COMMIT, DEFEND).
 ## Reads the World; never writes it. Lines are floats in meters: this is view
 ## code, so the sim's integer rules don't apply.
 
@@ -35,6 +41,14 @@ const HUNT_COLOR: Color = Color(1.0, 0.95, 0.4)
 const IDLE_COLOR: Color = Color(0.8, 0.8, 0.8)
 const RETREAT_COLOR: Color = Color(0.5, 0.6, 1.0)
 const ESCORT_COLOR: Color = Color(0.65, 1.0, 0.8)
+const ADVANCE_COLOR: Color = Color(0.7, 0.5, 1.0)
+## Meters from the center of an ADVANCE group's anchor cross to each tip.
+const ANCHOR_CROSS_RADIUS: float = 1.0
+## Meters: the circle at a commander's staging point, and its segments.
+const STAGE_RADIUS: float = 2.0
+const STAGE_SEGMENTS: int = 16
+## How much a dim line or circle is darkened.
+const DIM_AMOUNT: float = 0.4
 const TRIGGER_IDLE_COLOR: Color = Color(0.6, 0.6, 0.6)
 const TRIGGER_FIRED_COLOR: Color = Color(0.35, 1.0, 0.4)
 
@@ -93,6 +107,8 @@ func redraw() -> void:
 		_show_label(shown, group_label(group), centroid, color)
 		shown += 1
 		_draw_group(group, centroid, color)
+	for commander: SkirmishCommander in _world.ai.commanders:
+		shown = _draw_commander(commander, shown)
 	for i: int in range(shown, _labels.size()):
 		_labels[i].visible = false
 	_draw_triggers()
@@ -135,6 +151,14 @@ static func group_label(group: AiGroup) -> String:
 	return "%s: %s" % [group.spec.name, AiGroupSpec.Behavior.find_key(group.behavior)]
 
 
+## "<side> commander: <POSTURE>", what a skirmish commander's label says.
+static func commander_label(commander: SkirmishCommander) -> String:
+	return "%s commander: %s" % [
+		SideColors.side_name(commander.faction).to_lower(),
+		SkirmishCommander.Posture.find_key(commander.posture),
+	]
+
+
 ## CIRCLE_SEGMENTS points evenly round a circle, the first due east of the
 ## center; the circle closes from the last point back to the first.
 static func circle(center: Vector2, radius: float, segments: int = CIRCLE_SEGMENTS) -> PackedVector2Array:
@@ -167,6 +191,8 @@ static func behavior_color(behavior: AiGroupSpec.Behavior) -> Color:
 			return RETREAT_COLOR
 		AiGroupSpec.Behavior.ESCORT:
 			return ESCORT_COLOR
+		AiGroupSpec.Behavior.ADVANCE:
+			return ADVANCE_COLOR
 	return IDLE_COLOR
 
 
@@ -195,6 +221,8 @@ func _draw_group(group: AiGroup, centroid: Vector2i, color: Color) -> void:
 			_draw_flank(group, centroid, color)
 		AiGroupSpec.Behavior.ESCORT:
 			_draw_escort(group, centroid, color)
+		AiGroupSpec.Behavior.ADVANCE:
+			_draw_advance(group, centroid, color)
 
 
 # The waypoints joined in order, and for a LOOP the last joined back to the
@@ -231,6 +259,63 @@ func _draw_escort(group: AiGroup, centroid: Vector2i, color: Color) -> void:
 		var to: Vector2 = _waypoint(group.spec, i)
 		_add_line(from, to, color)
 		from = to
+
+
+# Where the group is going and what it does on the way: a dim line from the
+# group to its anchor, a cross on the anchor, the circle round the group it
+# fights enemies within (dim when it is on a plain move and doesn't fight), and
+# the circle round the anchor that someone must be inside.
+func _draw_advance(group: AiGroup, centroid: Vector2i, color: Color) -> void:
+	var from: Vector2 = _meters(centroid)
+	var anchor: Vector2 = _meters(Vector2i(group.anchor_x, group.anchor_z))
+	_add_line(from, anchor, color.darkened(DIM_AMOUNT))
+	_add_line(anchor - Vector2(ANCHOR_CROSS_RADIUS, 0.0), anchor + Vector2(ANCHOR_CROSS_RADIUS, 0.0), color)
+	_add_line(anchor - Vector2(0.0, ANCHOR_CROSS_RADIUS), anchor + Vector2(0.0, ANCHOR_CROSS_RADIUS), color)
+	var hold: int = group.hold_radius if group.hold_radius > 0 else AiBehaviors.DEFAULT_HOLD_RADIUS
+	_add_ring(anchor, hold / float(World.UNITS_PER_METER), color)
+	if group.engage_radius > 0:
+		var engage_color: Color = color if group.march_attack else color.darkened(DIM_AMOUNT)
+		_add_ring(from, group.engage_radius / float(World.UNITS_PER_METER), engage_color)
+
+
+# A skirmish commander, in its side's color: a line from its main group to its
+# objective, a small circle where it stages, and a label there naming its
+# posture. The main group is the first with members of its spec, or the
+# raiders if the main group is gone (the commander does the same). Nothing is
+# drawn for a commander with no group left, or before its first think (its
+# objective is still the map's corner). Returns the number of labels on show.
+func _draw_commander(commander: SkirmishCommander, shown: int) -> int:
+	var group: AiGroup = _commander_group(commander)
+	if group == null:
+		return shown
+	if (
+		commander.objective_x == 0 and commander.objective_z == 0
+		and commander.stage_x == 0 and commander.stage_z == 0
+	):
+		return shown
+	var color: Color = SideColors.of(commander.faction)
+	var stage: Vector2i = Vector2i(commander.stage_x, commander.stage_z)
+	_add_line(
+		_meters(AiOrders.centroid(group.living(_world))),
+		_meters(Vector2i(commander.objective_x, commander.objective_z)), color
+	)
+	var ring: PackedVector2Array = circle(_meters(stage), STAGE_RADIUS, STAGE_SEGMENTS)
+	for i: int in ring.size():
+		_add_segment(ring[i], ring[(i + 1) % ring.size()], color)
+	_show_label(shown, commander_label(commander), stage, color)
+	return shown + 1
+
+
+# The commander's first group with living members: the main group's, else the
+# raiders'. Null if neither has any.
+func _commander_group(commander: SkirmishCommander) -> AiGroup:
+	for spec_index: int in [commander.main_spec, commander.raider_spec]:
+		if spec_index < 0:
+			continue
+		for group: AiGroup in _world.ai.groups_of(spec_index):
+			if not group.living(_world).is_empty():
+				return group
+	return null
 
 
 func _draw_triggers() -> void:
