@@ -7,6 +7,10 @@ extends Node
 ## A defeat goes Results -> Retry (the saved campaign, the same seed: the
 ## failed attempt changes nothing) or Main menu. Settings is an overlay, over
 ## the main menu or over a paused mission; so is the Restart question.
+## A skirmish is a shorter walk: MainMenu -> SkirmishMenu -> the skirmish
+## (MainView with a MissionLaunch.for_skirmish) -> SkirmishResults -> Rematch,
+## Change army (the setup again, as it was) or Main menu. Nothing about a
+## skirmish is saved but the setup the player last chose (GameSettings).
 ##
 ## The App owns the campaign in play (`state`) and the plan the mission was
 ## built from; the screens only show and ask. Everything that changes the
@@ -27,16 +31,25 @@ extends Node
 ##   written back instead. The pause menu's Restart mission, which skips the
 ##   briefing, replays the same launch at once.
 ##
-## MainView's signals are wired here: mission_ended -> Results, restart_requested
-## -> the question then a fresh MainView, settings_requested -> the Settings
-## overlay (with the pause menu and edge scroll switched off behind it),
-## quit_requested -> the main menu (the pause menu already asked), build_failed
-## (the mission couldn't be built) -> the main menu with a notice.
+## MainView's signals are wired here: mission_ended (skirmish_ended in a
+## skirmish) -> Results, restart_requested -> the question then a fresh
+## MainView, settings_requested -> the Settings overlay (with the pause menu and
+## edge scroll switched off behind it), quit_requested -> the main menu (the
+## pause menu already asked), build_failed (the mission couldn't be built) ->
+## the main menu with a notice.
+##
+## The skirmish's dice are the App's too, and drawn in a fixed order: when the
+## enemy's army is left to chance its template first (App.rng.randi_range), then
+## the world's seed; a chosen template draws only the seed. The same
+## App.rng.seed therefore gives the same skirmish. A Rematch keeps both armies
+## and draws a new seed; the pause menu's Restart keeps the seed too.
 
 ## The campaign's data and the unit catalog it plays with.
 const CAMPAIGN_PATH: String = "res://data/campaign/campaign.tres"
 ## The unit catalog the roster and the missions are checked against.
 const CATALOG_PATH: String = "res://data/units/catalog.tres"
+## The skirmish's maps, army templates, budgets and time limits.
+const SKIRMISH_PATH: String = "res://data/skirmish/skirmish.tres"
 ## The mission screen. A preload, so its scripts are compiled with this one.
 const MAIN_SCENE: PackedScene = preload("res://view/main.tscn")
 ## Overlays sit above the pause menu's layer (PauseMenu.MENU_LAYER, 10), which
@@ -52,6 +65,8 @@ const NOTICE_SECONDS: float = 6.0
 var campaign: CampaignDef
 ## The unit catalog; loaded unless set first.
 var catalog: UnitCatalog
+## What the skirmish screen offers; loaded unless set first (a test's).
+var skirmish: SkirmishCatalog
 ## Where the campaign is saved; set before the App enters the tree to use
 ## another file.
 var store: CampaignStore
@@ -90,6 +105,12 @@ var _benched: PackedInt32Array = PackedInt32Array()
 var _result_outcome: MissionRuntime.Outcome = MissionRuntime.Outcome.NONE
 var _result_stats: MissionStats
 var _result_world: World
+# The skirmish in play (or just played): what Restart and Rematch relaunch and
+# Change army reopens the setup screen on, and what the player chose for the
+# enemy (a template id or "random"), which the setup's own AI army no longer
+# says once it is filled.
+var _skirmish_setup: SkirmishSetup
+var _skirmish_ai_choice: StringName = SkirmishMenu.RANDOM_AI
 
 
 func _ready() -> void:
@@ -98,6 +119,8 @@ func _ready() -> void:
 		campaign = load(CAMPAIGN_PATH) as CampaignDef
 	if catalog == null:
 		catalog = load(CATALOG_PATH) as UnitCatalog
+	if skirmish == null:
+		skirmish = load(SKIRMISH_PATH) as SkirmishCatalog
 	if store == null:
 		store = CampaignStore.new()
 	_overlay_layer = CanvasLayer.new()
@@ -146,6 +169,7 @@ func show_screen(screen: Node) -> void:
 func show_main_menu() -> void:
 	var menu: MainMenu = MainMenu.new()
 	menu.campaign_pressed.connect(show_campaign_menu)
+	menu.skirmish_pressed.connect(show_skirmish_menu)
 	menu.settings_pressed.connect(open_settings)
 	menu.quit_pressed.connect(quit_game)
 	show_screen(menu)
@@ -211,6 +235,58 @@ func show_complete() -> void:
 	screen.setup(campaign, state, catalog)
 	screen.main_menu_pressed.connect(show_main_menu)
 	show_screen(screen)
+
+
+## The skirmish setup screen. It opens on `remembered` if that has anything in
+## it (Change army passes the setup that was just played), else on what
+## GameSettings remembers of the last skirmish; whatever no longer fits is
+## ignored by the screen.
+func show_skirmish_menu(remembered: Dictionary = {}) -> void:
+	var menu: SkirmishMenu = SkirmishMenu.new()
+	menu.setup(
+		skirmish, catalog,
+		remembered if not remembered.is_empty() else GameSettings.skirmish_choice(settings_path)
+	)
+	menu.start_pressed.connect(start_skirmish)
+	menu.back_pressed.connect(show_main_menu)
+	show_screen(menu)
+
+
+## Plays a skirmish. `setup` is the player's half (what the setup screen
+## makes); this resolves the enemy's army from `ai_choice` (a template id, or
+## SkirmishMenu.RANDOM_AI to draw one of the enemy side's templates with
+## `rng`), fills it at the setup's budget, draws the world's seed, remembers
+## the choice for next time and launches. A choice that names no template of
+## the enemy's side is taken as random.
+func start_skirmish(setup: SkirmishSetup, ai_choice: StringName) -> void:
+	var offered: Array[ArmyTemplate] = skirmish.templates_for(setup.ai_faction())
+	if offered.is_empty():
+		push_error("App.start_skirmish: no army template for the enemy's side")
+		show_notice("The skirmish could not be started. See the log.")
+		return
+	var template: ArmyTemplate = skirmish.template(ai_choice)
+	if template == null or template.faction != setup.ai_faction():
+		template = offered[rng.randi_range(0, offered.size() - 1)]
+	setup.armies = [setup.armies[0], template.fill(setup.budget, catalog)]
+	setup.ai_template_id = template.id
+	setup.world_seed = _new_seed()
+	_skirmish_setup = setup
+	_skirmish_ai_choice = ai_choice
+	# Remembering is a convenience: a write that fails is not worth a notice.
+	GameSettings.set_skirmish_choice(SkirmishMenu.choice_of(setup, ai_choice, catalog), settings_path)
+	_launch_skirmish()
+
+
+## The results of a skirmish that just ended: the setup that was played, the
+## finished world and the outcome from the player's side. Nothing is applied or
+## saved: a skirmish changes nothing but the choice remembered when it began.
+func show_skirmish_results(outcome: MissionRuntime.Outcome, world: World) -> void:
+	var results: SkirmishResults = SkirmishResults.new()
+	results.setup(_skirmish_setup, world, outcome, skirmish)
+	results.rematch_pressed.connect(_on_skirmish_rematch)
+	results.change_army_pressed.connect(_on_skirmish_change_army)
+	results.main_menu_pressed.connect(_on_results_main_menu)
+	show_screen(results)
 
 
 ## Opens Settings over whatever is showing. Over a mission, the mission can't
@@ -334,6 +410,7 @@ func _on_restart_requested() -> void:
 func _on_quit_to_menu() -> void:
 	_drop_result()
 	_plan = null
+	_skirmish_setup = null
 	show_main_menu()
 
 
@@ -364,6 +441,7 @@ func _on_results_retry() -> void:
 
 func _on_results_main_menu() -> void:
 	_drop_result()
+	_skirmish_setup = null
 	show_main_menu()
 
 
@@ -406,6 +484,71 @@ func _fits(candidate: CampaignState) -> bool:
 # A fresh 63-bit seed: two 32-bit halves, the top bit left clear.
 func _new_seed() -> int:
 	return ((rng.randi() & 0x7FFFFFFF) << 32) | rng.randi()
+
+
+# --- the skirmish ---------------------------------------------------------------
+
+
+# The skirmish, built from _skirmish_setup exactly: its seed is whatever the
+# setup holds (a Restart replays the same one, a Rematch has already drawn a
+# new one).
+func _launch_skirmish() -> void:
+	var main: MainView = MAIN_SCENE.instantiate() as MainView
+	main.launch = MissionLaunch.for_skirmish(_skirmish_setup)
+	main.edge_scroll = GameSettings.edge_scroll(settings_path)
+	main.skirmish_ended.connect(_on_skirmish_ended)
+	main.restart_requested.connect(_on_skirmish_restart_requested)
+	main.settings_requested.connect(open_settings)
+	main.quit_requested.connect(_on_quit_to_menu)
+	main.build_failed.connect(_on_skirmish_build_failed.bind(main))
+	show_screen(main)
+
+
+func _on_skirmish_ended(outcome: MissionRuntime.Outcome) -> void:
+	var main: MainView = _screen as MainView
+	if main == null:
+		return
+	# Read the world now: the screen is freed when the results replace it.
+	show_skirmish_results(outcome, main.world)
+
+
+# The skirmish couldn't be built (SkirmishSetup has said why): there is nothing
+# to play. Ignored if the screen has already changed (the signal is deferred).
+func _on_skirmish_build_failed(failed: MainView) -> void:
+	if _screen != failed:
+		return
+	_skirmish_setup = null
+	show_main_menu()
+	show_notice("The skirmish could not be started. See the log.")
+
+
+func _on_skirmish_restart_requested() -> void:
+	ask("Restart this skirmish?\nProgress in it is lost.", "Restart", "Keep playing", _launch_skirmish)
+
+
+# The same armies, map and rules on a new seed.
+func _on_skirmish_rematch() -> void:
+	_skirmish_setup = _reseeded(_skirmish_setup)
+	_launch_skirmish()
+
+
+func _on_skirmish_change_army() -> void:
+	show_skirmish_menu(SkirmishMenu.choice_of(_skirmish_setup, _skirmish_ai_choice, catalog))
+
+
+# A copy of a setup with a fresh seed, so the setup the finished skirmish was
+# played from (still held by its MainView's launch) is never changed.
+func _reseeded(setup: SkirmishSetup) -> SkirmishSetup:
+	var again: SkirmishSetup = SkirmishSetup.new()
+	again.map = setup.map
+	again.rules = setup.rules
+	again.budget = setup.budget
+	again.armies = [setup.armies[0].copy(), setup.armies[1].copy()]
+	again.player_spawn = setup.player_spawn
+	again.ai_template_id = setup.ai_template_id
+	again.player_is_ai = setup.player_is_ai
+	again.world_seed = _new_seed()
+	return again
 
 
 # --- overlays -------------------------------------------------------------------

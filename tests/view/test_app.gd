@@ -3,9 +3,13 @@ extends GutTest
 ## through MainView's signals. The screens are tested alone elsewhere; here the
 ## walk is: MainMenu -> CampaignMenu -> Briefing -> mission -> Results -> next
 ## Briefing or CampaignComplete, with Retry after a defeat, Settings over a
-## paused mission, and the saves written at the right moments. Missions are the
-## tiny TIMER-0 fixtures (ViewFixtures): decided on their first step, so no test
-## plays a real one; the menus walk the shipped campaign.
+## paused mission, and the saves written at the right moments; then the skirmish
+## flow: MainMenu -> SkirmishMenu -> the skirmish -> SkirmishResults -> Rematch,
+## Change army or Main menu (a skirmish catalog over the tiny map is injected
+## into every App here). Campaign missions are the tiny TIMER-0 fixtures
+## (ViewFixtures): decided on their first step, so no test plays a real one; the
+## menus walk the shipped campaign. A skirmish is decided by killing a side's
+## units after one step.
 ## Every file is under a directory of this test's own.
 
 const DIR: String = "user://test_app"
@@ -61,6 +65,7 @@ func _app(def: CampaignDef = null, rng_seed: int = 12345) -> App:
 	app.store = _store()
 	app.settings_path = _settings_path()
 	app.campaign = def
+	app.skirmish = _skirmish_catalog()
 	app.rng.seed = rng_seed
 	add_child_autofree(app)
 	return app
@@ -886,3 +891,553 @@ func test_an_older_notices_timer_does_not_hide_a_newer_notice() -> void:
 	assert_eq(notice.text, "Second")
 	await get_tree().create_timer(0.5).timeout
 	assert_false(notice.visible, "the second one's has now")
+
+# --- the skirmish -------------------------------------------------------------
+
+
+const LIGHT: UnitType.Faction = UnitType.Faction.LIGHT
+const DARK: UnitType.Faction = UnitType.Faction.DARK
+
+
+## What the skirmish screen offers, over the tiny map: that one map, the
+## shipped templates, budgets and time limits.
+func _skirmish_catalog() -> SkirmishCatalog:
+	var shipped: SkirmishCatalog = load("res://data/skirmish/skirmish.tres") as SkirmishCatalog
+	var catalog: SkirmishCatalog = SkirmishCatalog.new()
+	catalog.maps = [ViewFixtures.skirmish_map()]
+	catalog.templates = shipped.templates
+	catalog.budgets = shipped.budgets
+	catalog.default_budget = shipped.default_budget
+	catalog.time_limits_minutes = shipped.time_limits_minutes
+	catalog.default_time_limit_minutes = shipped.default_time_limit_minutes
+	return catalog
+
+
+## From the main menu to the setup screen, `presses` (button names, in order),
+## then the army cleared and two of the side's cheapest units bought so the
+## world stays small, then Start. Returns the MainView.
+func _into_the_skirmish(app: App, presses: Array[String] = [], side_unit: StringName = &"shieldman") -> MainView:
+	_press(app, "SkirmishButton")
+	for button_name: String in presses:
+		_press(app, button_name)
+	_press(app, "Clear")
+	for i: int in 2:
+		_press(app, "Plus_%s" % side_unit)
+	_press(app, "Start")
+	return app.current_screen() as MainView
+
+
+## Plays the skirmish out: one step (the sim records both armies), `kill_ai`
+## and `kill_player` kill a side, one more step decides it, and the end delay
+## runs out so the results come up.
+func _end_skirmish(app: App, kill_ai: bool, kill_player: bool = false) -> void:
+	var main: MainView = app.current_screen() as MainView
+	main.end_delay = 0.0
+	main._physics_process(1.0 / World.TICK_RATE)
+	var setup: SkirmishSetup = main.launch.skirmish
+	for unit: Unit in main.world.units:
+		if (kill_ai and unit.faction == setup.ai_faction()) \
+				or (kill_player and unit.faction == setup.player_faction()):
+			unit.state = Unit.State.DEAD
+	main._physics_process(1.0 / World.TICK_RATE)
+	main._process(0.1)
+
+
+## What the App draws from its rng for a skirmish: the template's index (only
+## when the enemy is left to chance), then the 63-bit seed.
+func _expected_draw(rng_seed: int, templates: int, random_enemy: bool) -> Array[int]:
+	var dice: RandomNumberGenerator = RandomNumberGenerator.new()
+	dice.seed = rng_seed
+	var index: int = dice.randi_range(0, templates - 1) if random_enemy else -1
+	var world_seed: int = ((dice.randi() & 0x7FFFFFFF) << 32) | dice.randi()
+	return [index, world_seed]
+
+
+func _army_text(setup: SkirmishSetup, side: int) -> String:
+	return SkirmishMenu.army_to_text(setup.armies[side], MenuFixtures.catalog())
+
+
+func _screens(app: App) -> int:
+	var n: int = 0
+	for child: Node in app.get_children():
+		if child is MenuScreen:
+			n += 1
+	return n
+
+
+func test_the_main_menu_opens_the_skirmish_setup_and_back_returns() -> void:
+	var app: App = _app()
+	_press(app, "SkirmishButton")
+	assert_true(app.current_screen() is SkirmishMenu)
+	assert_eq(_screens(app), 1, "the main menu is replaced, not stacked")
+	_press(app, "Back")
+	assert_true(app.current_screen() is MainMenu)
+
+
+func test_esc_on_the_skirmish_setup_goes_back_to_the_main_menu() -> void:
+	var app: App = _app()
+	_press(app, "SkirmishButton")
+	_key(KEY_ESCAPE)
+	assert_true(app.current_screen() is MainMenu)
+
+
+func test_the_app_loads_the_shipped_skirmish_catalog_unless_given_one() -> void:
+	var app: App = (load("res://view/app/app.tscn") as PackedScene).instantiate() as App
+	app.store = _store()
+	app.settings_path = _settings_path()
+	add_child_autofree(app)
+	assert_not_null(app.skirmish)
+	assert_eq(app.skirmish.maps.size(), 3)
+	assert_eq(app.skirmish.template(&"dark_balanced").display_name, "Balanced")
+
+
+func test_the_setup_screen_opens_on_the_defaults_with_nothing_remembered() -> void:
+	var app: App = _app()
+	_press(app, "SkirmishButton")
+	var menu: SkirmishMenu = app.current_screen() as SkirmishMenu
+	var choice: Dictionary = menu.current_choice()
+	assert_eq(choice["map"], "test_flat")
+	assert_eq(choice["mode"], SkirmishRules.Mode.BODY_COUNT)
+	assert_eq(choice["budget"], 1000)
+	assert_eq(choice["side"], LIGHT)
+	assert_eq(choice["ai_choice"], "random")
+
+
+func test_the_setup_screen_opens_on_what_the_settings_remember() -> void:
+	GameSettings.set_skirmish_choice({
+		"map": "test_flat", "mode": 2, "minutes": 5, "budget": 600, "side": 1, "start": 1,
+		"ai_choice": "light_shock", "army": "husk:10", "army_side": 1,
+	}, _settings_path())
+	var app: App = _app()
+	_press(app, "SkirmishButton")
+	var choice: Dictionary = (app.current_screen() as SkirmishMenu).current_choice()
+	assert_eq(choice["mode"], SkirmishRules.Mode.CAPTURE_THE_FLAGS)
+	assert_eq(choice["minutes"], 5)
+	assert_eq(choice["budget"], 600)
+	assert_eq(choice["side"], DARK)
+	assert_eq(choice["start"], 1)
+	assert_eq(choice["ai_choice"], "light_shock")
+	assert_eq(choice["army"], "husk:10")
+
+
+func test_start_launches_the_skirmish_in_the_main_view() -> void:
+	var app: App = _app()
+	var main: MainView = _into_the_skirmish(app, ["Mode1", "Time5", "Budget600", "Spawn1", "Ai_dark_horde"])
+	assert_not_null(main, "the mission screen")
+	var launch: MissionLaunch = main.launch
+	assert_true(launch.is_skirmish())
+	assert_true(launch.campaign_mode)
+	assert_eq(launch.player_faction(), LIGHT)
+	var setup: SkirmishSetup = launch.skirmish
+	assert_eq(setup.map.id, &"test_flat")
+	assert_eq(setup.rules.mode, SkirmishRules.Mode.KING_OF_THE_HILL)
+	assert_eq(setup.rules.time_limit_ticks, 5 * 60 * World.TICK_RATE)
+	assert_eq(setup.budget, 600)
+	assert_eq(setup.player_spawn, 1)
+	assert_eq(setup.armies[0].counts, {&"shieldman": 2} as Dictionary[StringName, int])
+	assert_eq(setup.ai_template_id, &"dark_horde")
+	assert_eq(setup.armies[1].counts, app.skirmish.template(&"dark_horde").fill(600, MenuFixtures.catalog()).counts)
+	assert_eq(setup.armies[1].faction, DARK)
+	assert_true(setup.validate(MenuFixtures.catalog()).is_empty(), "a setup the sim accepts")
+	assert_eq(launch.world_seed, setup.world_seed)
+	assert_not_null(main.world, "the world is built")
+	assert_not_null(main.world.skirmish)
+	assert_eq(main.world.skirmish.rules.mode, SkirmishRules.Mode.KING_OF_THE_HILL)
+	assert_null(app.state, "a skirmish has no campaign")
+	assert_false(FileAccess.file_exists(_store().path), "and saves none")
+
+
+func test_a_dark_player_launches_as_dark_against_a_light_template() -> void:
+	var app: App = _app()
+	var main: MainView = _into_the_skirmish(app, ["Side1", "Ai_light_siege"], &"husk")
+	var setup: SkirmishSetup = main.launch.skirmish
+	assert_eq(main.launch.player_faction(), DARK)
+	assert_eq(setup.armies[0].counts, {&"husk": 2} as Dictionary[StringName, int])
+	assert_eq(setup.ai_template_id, &"light_siege")
+	assert_eq(setup.armies[1].faction, LIGHT)
+
+
+func test_the_world_has_both_armies_after_its_first_step() -> void:
+	var app: App = _app()
+	var main: MainView = _into_the_skirmish(app, ["Budget600", "Ai_dark_balanced"])
+	main._physics_process(1.0 / World.TICK_RATE)
+	var setup: SkirmishSetup = main.launch.skirmish
+	var light: int = 0
+	var dark: int = 0
+	for unit: Unit in main.world.units:
+		if unit.faction == LIGHT:
+			light += 1
+		else:
+			dark += 1
+	assert_eq(light, 2)
+	assert_eq(dark, setup.armies[1].size())
+	assert_gt(dark, 2, "a template's worth, not the fixture's two")
+
+
+func test_edge_scroll_comes_from_the_settings_when_a_skirmish_starts() -> void:
+	assert_false(_into_the_skirmish(_app()).edge_scroll, "off by default")
+	GameSettings.set_edge_scroll(true, _settings_path())
+	var main: MainView = _into_the_skirmish(_app())
+	assert_true(main.edge_scroll)
+	assert_true((main.get_node("CameraRig") as RtsCamera).edge_scroll)
+
+
+func test_a_chosen_enemy_army_draws_only_the_seed() -> void:
+	var app: App = _app(null, 77)
+	var main: MainView = _into_the_skirmish(app, ["Ai_dark_storm"])
+	var expected: Array[int] = _expected_draw(77, 4, false)
+	assert_eq(main.launch.skirmish.ai_template_id, &"dark_storm")
+	assert_eq(main.launch.world_seed, expected[1], "the first draw is the seed")
+	assert_gte(main.launch.world_seed, 0, "63 bits, never negative")
+
+
+func test_a_random_enemy_is_drawn_from_the_apps_rng_then_the_seed() -> void:
+	var templates: Array[ArmyTemplate] = _skirmish_catalog().templates_for(DARK)
+	assert_eq(templates.size(), 4)
+	for rng_seed: int in [1, 2, 3, 12345]:
+		var app: App = _app(null, rng_seed)
+		var main: MainView = _into_the_skirmish(app)
+		var expected: Array[int] = _expected_draw(rng_seed, templates.size(), true)
+		assert_eq(main.launch.skirmish.ai_template_id, templates[expected[0]].id, "seed %d: the template" % rng_seed)
+		assert_eq(main.launch.world_seed, expected[1], "seed %d: then the world's seed" % rng_seed)
+		assert_gte(main.launch.world_seed, 0)
+		assert_eq(
+			main.launch.skirmish.armies[1].counts,
+			templates[expected[0]].fill(1000, MenuFixtures.catalog()).counts
+		)
+
+
+func test_the_same_rng_seed_makes_the_same_skirmish() -> void:
+	var first: SkirmishSetup = _into_the_skirmish(_app(null, 4242)).launch.skirmish
+	var second: SkirmishSetup = _into_the_skirmish(_app(null, 4242)).launch.skirmish
+	assert_eq(second.ai_template_id, first.ai_template_id)
+	assert_eq(second.world_seed, first.world_seed)
+	assert_eq(second.armies[1].counts, first.armies[1].counts)
+
+
+func test_a_choice_that_names_no_template_of_the_enemys_side_is_taken_as_random() -> void:
+	var app: App = _app(null, 99)
+	var setup: SkirmishSetup = ViewFixtures.skirmish_setup()
+	setup.armies = [setup.armies[0], null]
+	# A Light template, for a Light player: the enemy is Dark.
+	app.start_skirmish(setup, &"light_siege")
+	var expected: Array[int] = _expected_draw(99, 4, true)
+	var templates: Array[ArmyTemplate] = app.skirmish.templates_for(DARK)
+	assert_eq(setup.ai_template_id, templates[expected[0]].id)
+	assert_eq(setup.armies[1].faction, DARK)
+	assert_true(app.current_screen() is MainView)
+	var other: App = _app(null, 99)
+	var again: SkirmishSetup = ViewFixtures.skirmish_setup()
+	again.armies = [again.armies[0], null]
+	other.start_skirmish(again, &"no_such_template")
+	assert_eq(again.ai_template_id, setup.ai_template_id)
+
+
+# --- remembering the setup ---------------------------------------------------
+
+
+func test_the_setup_is_remembered_when_the_skirmish_starts() -> void:
+	var app: App = _app()
+	_into_the_skirmish(app, ["Mode2", "Time5", "Budget600", "Spawn1", "Ai_dark_storm"])
+	var remembered: Dictionary = GameSettings.skirmish_choice(_settings_path())
+	assert_eq(remembered["map"], "test_flat")
+	assert_eq(remembered["mode"], SkirmishRules.Mode.CAPTURE_THE_FLAGS)
+	assert_eq(remembered["minutes"], 5)
+	assert_eq(remembered["budget"], 600)
+	assert_eq(remembered["side"], LIGHT)
+	assert_eq(remembered["start"], 1)
+	assert_eq(remembered["ai_choice"], "dark_storm", "what was picked")
+	assert_eq(remembered["army"], "shieldman:2")
+	assert_eq(remembered["army_side"], LIGHT)
+
+
+func test_a_random_enemy_is_remembered_as_random_not_as_the_template_it_drew() -> void:
+	var app: App = _app()
+	_into_the_skirmish(app)
+	assert_eq(GameSettings.skirmish_choice(_settings_path())["ai_choice"], "random")
+
+
+func test_the_next_visit_to_the_setup_opens_where_the_player_left_it() -> void:
+	var app: App = _app()
+	var main: MainView = _into_the_skirmish(app, ["Side1", "Mode1", "Time15", "Budget1500", "Spawn1", "Ai_light_shock"], &"husk")
+	main.quit_requested.emit()
+	assert_true(app.current_screen() is MainMenu)
+	_press(app, "SkirmishButton")
+	var choice: Dictionary = (app.current_screen() as SkirmishMenu).current_choice()
+	assert_eq(choice["side"], DARK)
+	assert_eq(choice["mode"], SkirmishRules.Mode.KING_OF_THE_HILL)
+	assert_eq(choice["minutes"], 15)
+	assert_eq(choice["budget"], 1500)
+	assert_eq(choice["start"], 1)
+	assert_eq(choice["ai_choice"], "light_shock")
+	assert_eq(choice["army"], "husk:2")
+
+
+func test_a_new_app_on_the_same_settings_file_remembers_too() -> void:
+	_into_the_skirmish(_app(), ["Mode2", "Budget600"])
+	var later: App = _app()
+	_press(later, "SkirmishButton")
+	var choice: Dictionary = (later.current_screen() as SkirmishMenu).current_choice()
+	assert_eq(choice["mode"], SkirmishRules.Mode.CAPTURE_THE_FLAGS)
+	assert_eq(choice["budget"], 600)
+	assert_eq(choice["army"], "shieldman:2")
+
+
+func test_a_setup_that_cannot_be_remembered_still_plays() -> void:
+	# A directory where the file should be: the write fails, the skirmish goes on.
+	var app: App = _app()
+	DirAccess.make_dir_recursive_absolute(DIR + "/settings_is_a_folder.cfg")
+	app.settings_path = DIR + "/settings_is_a_folder.cfg"
+	var main: MainView = _into_the_skirmish(app)
+	assert_true(main.launch.is_skirmish(), "not worth stopping for")
+	DirAccess.remove_absolute(DIR + "/settings_is_a_folder.cfg")
+
+
+# --- the end of a skirmish -------------------------------------------------------
+
+
+func test_a_won_skirmish_shows_victory_with_both_armies_tallied() -> void:
+	var app: App = _app()
+	var main: MainView = _into_the_skirmish(app, ["Budget600", "Ai_dark_horde"])
+	_end_skirmish(app, true)
+	var results: SkirmishResults = app.current_screen() as SkirmishResults
+	assert_not_null(results, "the results replaced the skirmish")
+	assert_true(results.is_victory())
+	assert_eq((MenuFixtures.named(results, "Outcome") as Label).text, "Victory")
+	assert_eq((MenuFixtures.named(results, "Reason") as Label).text, "Dark was wiped out")
+	assert_eq((MenuFixtures.named(results, "Heading1") as Label).text, "Dark (AI: Horde)")
+	var theirs: PackedStringArray = MenuFixtures.texts(MenuFixtures.named(results, "Table1"))
+	assert_true(theirs.has("Husk"), "the Horde's Husks, read from the finished world")
+	assert_eq(theirs[theirs.size() - 1], theirs[theirs.size() - 2], "all of them lost")
+	assert_false(app.get_children().has(main), "the mission screen is gone")
+
+
+func test_a_lost_skirmish_shows_defeat() -> void:
+	var app: App = _app()
+	_into_the_skirmish(app)
+	_end_skirmish(app, false, true)
+	var results: SkirmishResults = app.current_screen() as SkirmishResults
+	assert_not_null(results)
+	assert_false(results.is_victory())
+	assert_eq((MenuFixtures.named(results, "Outcome") as Label).text, "Defeat")
+	assert_eq((MenuFixtures.named(results, "Reason") as Label).text, "Light was wiped out")
+
+
+func test_a_drawn_skirmish_shows_draw() -> void:
+	var app: App = _app()
+	_into_the_skirmish(app)
+	_end_skirmish(app, true, true)
+	var results: SkirmishResults = app.current_screen() as SkirmishResults
+	assert_not_null(results)
+	assert_true(results.is_draw())
+	assert_eq((MenuFixtures.named(results, "Outcome") as Label).text, "Draw")
+
+
+func test_a_skirmish_changes_nothing_that_is_saved_but_the_choice() -> void:
+	var app: App = _app()
+	_into_the_skirmish(app)
+	var remembered: Dictionary = GameSettings.skirmish_choice(_settings_path())
+	_end_skirmish(app, true)
+	assert_null(app.state)
+	assert_false(FileAccess.file_exists(_store().path), "no campaign save")
+	assert_eq(GameSettings.skirmish_choice(_settings_path()), remembered)
+
+
+func test_main_menu_from_the_skirmish_results_goes_to_the_main_menu() -> void:
+	var app: App = _app()
+	_into_the_skirmish(app)
+	_end_skirmish(app, true)
+	_press(app, "MainMenuButton")
+	assert_true(app.current_screen() is MainMenu)
+
+
+# --- rematch and change army ----------------------------------------------------------
+
+
+func test_rematch_plays_the_same_armies_on_a_new_seed() -> void:
+	var app: App = _app()
+	var first: MainView = _into_the_skirmish(app, ["Mode2", "Budget600", "Spawn1", "Ai_dark_raiders"])
+	var before: SkirmishSetup = first.launch.skirmish
+	var seed_before: int = before.world_seed
+	var player_before: String = _army_text(before, 0)
+	var ai_before: Dictionary = before.armies[1].counts.duplicate()
+	_end_skirmish(app, true)
+	_press(app, "RematchButton")
+	var second: MainView = app.current_screen() as MainView
+	assert_not_null(second, "a fresh skirmish")
+	assert_ne(second, first)
+	var after: SkirmishSetup = second.launch.skirmish
+	assert_true(second.launch.is_skirmish())
+	assert_ne(after.world_seed, seed_before, "a new seed")
+	assert_gte(after.world_seed, 0)
+	assert_eq(second.launch.world_seed, after.world_seed)
+	assert_eq(_army_text(after, 0), player_before, "the player's army")
+	assert_eq(after.armies[1].counts, ai_before, "the AI's army is not rebuilt")
+	assert_eq(after.ai_template_id, &"dark_raiders")
+	assert_eq(after.map, before.map)
+	assert_eq(after.rules.mode, before.rules.mode)
+	assert_eq(after.budget, 600)
+	assert_eq(after.player_spawn, 1)
+	assert_eq(before.world_seed, seed_before, "the setup that was played is left as it was")
+	assert_eq(second.world.tick, 0, "a fresh world")
+
+
+func test_a_rematch_with_a_random_enemy_keeps_the_template_it_drew() -> void:
+	var app: App = _app(null, 31)
+	var first: MainView = _into_the_skirmish(app)
+	var template: StringName = first.launch.skirmish.ai_template_id
+	_end_skirmish(app, true)
+	_press(app, "RematchButton")
+	var second: MainView = app.current_screen() as MainView
+	assert_eq(second.launch.skirmish.ai_template_id, template, "the same enemy: a rematch, not a new draw")
+
+
+func test_rematches_each_take_a_new_seed() -> void:
+	var app: App = _app()
+	var first: MainView = _into_the_skirmish(app)
+	var seeds: Array[int] = [first.launch.world_seed]
+	for i: int in 2:
+		_end_skirmish(app, true)
+		_press(app, "RematchButton")
+		seeds.append((app.current_screen() as MainView).launch.world_seed)
+	assert_ne(seeds[0], seeds[1])
+	assert_ne(seeds[1], seeds[2])
+	assert_ne(seeds[0], seeds[2])
+
+
+func test_change_army_reopens_the_setup_as_it_was_played() -> void:
+	var app: App = _app()
+	_into_the_skirmish(app, ["Side1", "Mode1", "Time15", "Budget1500", "Spawn1", "Ai_light_shield_wall"], &"husk")
+	# What the settings hold now must not matter: it is the played setup.
+	GameSettings.set_skirmish_choice({
+		"mode": 0, "budget": 600, "army": "shieldman:9", "army_side": 0, "side": 0,
+	}, _settings_path())
+	_end_skirmish(app, true)
+	_press(app, "ChangeArmyButton")
+	var menu: SkirmishMenu = app.current_screen() as SkirmishMenu
+	assert_not_null(menu, "back to the setup")
+	var choice: Dictionary = menu.current_choice()
+	assert_eq(choice["map"], "test_flat")
+	assert_eq(choice["side"], DARK)
+	assert_eq(choice["mode"], SkirmishRules.Mode.KING_OF_THE_HILL)
+	assert_eq(choice["minutes"], 15)
+	assert_eq(choice["budget"], 1500)
+	assert_eq(choice["start"], 1)
+	assert_eq(choice["ai_choice"], "light_shield_wall")
+	assert_eq(choice["army"], "husk:2")
+	assert_true(menu.can_start())
+
+
+func test_change_army_with_a_random_enemy_opens_on_random() -> void:
+	var app: App = _app()
+	_into_the_skirmish(app)
+	_end_skirmish(app, true)
+	_press(app, "ChangeArmyButton")
+	assert_eq((app.current_screen() as SkirmishMenu).current_choice()["ai_choice"], "random")
+
+
+func test_a_changed_army_starts_a_new_skirmish() -> void:
+	var app: App = _app()
+	_into_the_skirmish(app)
+	_end_skirmish(app, true)
+	_press(app, "ChangeArmyButton")
+	_press(app, "Plus_longbow")
+	_press(app, "Start")
+	var main: MainView = app.current_screen() as MainView
+	assert_not_null(main)
+	assert_eq(main.launch.skirmish.armies[0].count_of(&"longbow"), 1)
+	assert_eq(main.launch.skirmish.armies[0].count_of(&"shieldman"), 2)
+
+
+func test_back_from_a_changed_army_goes_to_the_main_menu() -> void:
+	var app: App = _app()
+	_into_the_skirmish(app)
+	_end_skirmish(app, true)
+	_press(app, "ChangeArmyButton")
+	_press(app, "Back")
+	assert_true(app.current_screen() is MainMenu)
+
+
+# --- the pause menu in a skirmish ---------------------------------------------------------
+
+
+func test_restart_in_a_skirmish_asks_and_keep_playing_keeps_it() -> void:
+	var app: App = _app()
+	var main: MainView = _into_the_skirmish(app)
+	main.restart_requested.emit()
+	var dialog: ConfirmDialog = app.current_overlay() as ConfirmDialog
+	assert_not_null(dialog, "a question first")
+	assert_true(MenuFixtures.mentions(dialog, "Restart this skirmish?"))
+	MenuFixtures.press(dialog, "CancelButton")
+	assert_null(app.current_overlay())
+	assert_eq(app.current_screen(), main, "the same skirmish goes on")
+
+
+func test_restart_in_a_skirmish_relaunches_the_same_setup_and_seed() -> void:
+	var app: App = _app(null, 5)
+	var first: MainView = _into_the_skirmish(app, ["Mode2", "Ai_dark_horde"])
+	var setup: SkirmishSetup = first.launch.skirmish
+	var seed_before: int = setup.world_seed
+	var ai_before: Dictionary = setup.armies[1].counts.duplicate()
+	var remembered: Dictionary = GameSettings.skirmish_choice(_settings_path())
+	first._physics_process(1.0 / World.TICK_RATE)
+	first.restart_requested.emit()
+	MenuFixtures.press(app.current_overlay(), "ConfirmButton")
+	var second: MainView = app.current_screen() as MainView
+	assert_not_null(second)
+	assert_ne(second, first)
+	assert_null(app.current_overlay())
+	assert_true(second.launch.is_skirmish())
+	assert_eq(second.launch.world_seed, seed_before, "the same seed")
+	assert_eq(second.launch.skirmish.world_seed, seed_before)
+	assert_eq(second.launch.skirmish.armies[1].counts, ai_before, "the same enemy")
+	assert_eq(_army_text(second.launch.skirmish, 0), _army_text(setup, 0))
+	assert_eq(second.launch.skirmish.rules.mode, SkirmishRules.Mode.CAPTURE_THE_FLAGS)
+	assert_eq(second.world.tick, 0, "a fresh world")
+	assert_eq(GameSettings.skirmish_choice(_settings_path()), remembered, "nothing is drawn or remembered again")
+
+
+func test_quit_from_the_pause_menu_of_a_skirmish_goes_to_the_main_menu() -> void:
+	var app: App = _app()
+	var main: MainView = _into_the_skirmish(app)
+	main.quit_requested.emit()
+	assert_true(app.current_screen() is MainMenu)
+	assert_false(FileAccess.file_exists(_store().path))
+
+
+func test_settings_over_a_paused_skirmish_holds_it_and_gives_it_back() -> void:
+	GameSettings.set_edge_scroll(true, _settings_path())
+	var app: App = _app()
+	var main: MainView = _into_the_skirmish(app)
+	main.pause_menu().open()
+	main.settings_requested.emit()
+	assert_true(app.current_overlay() is SettingsMenu)
+	assert_false(main.pause_menu().enabled, "its Esc must not close the menu behind Settings")
+	assert_false(main.edge_scroll)
+	MenuFixtures.press(app.current_overlay(), "BackButton")
+	assert_null(app.current_overlay())
+	assert_true(main.pause_menu().enabled)
+	assert_true(main.edge_scroll)
+
+
+func test_a_skirmish_decided_with_settings_open_closes_it_for_the_results() -> void:
+	var app: App = _app()
+	var main: MainView = _into_the_skirmish(app)
+	main.settings_requested.emit()
+	_end_skirmish(app, true)
+	assert_true(app.current_screen() is SkirmishResults)
+	assert_null(app.current_overlay())
+
+
+func test_a_skirmish_that_cannot_be_built_returns_to_the_main_menu_with_a_notice() -> void:
+	var app: App = _app()
+	# The map names a heightmap that isn't there: the sim refuses to build it.
+	app.skirmish.maps[0].map.heightmap_path = DIR + "/no_such_height.png"
+	_into_the_skirmish(app)
+	assert_push_error("Terrain: cannot read")
+	assert_push_error("SkirmishSetup.create_world")
+	await get_tree().process_frame
+	assert_true(app.current_screen() is MainMenu, "not a blank mission screen")
+	var notice: Label = app.find_child("NoticeLabel", true, false) as Label
+	assert_true(notice.visible)
+	assert_string_contains(notice.text, "skirmish could not be started")
