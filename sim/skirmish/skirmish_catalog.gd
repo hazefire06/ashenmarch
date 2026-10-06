@@ -1,10 +1,13 @@
 class_name SkirmishCatalog
 extends Resource
 ## Everything the skirmish screen offers, as data (data/skirmish/skirmish.tres):
-## the AI's army templates and the budget and time-limit choices. An explicit
-## list rather than a directory scan, for the reason UnitCatalog gives
-## (exported builds rename .tres files).
+## the maps, the AI's army templates, and the budget and time-limit choices.
+## An explicit list rather than a directory scan, for the reason UnitCatalog
+## gives (exported builds rename .tres files).
 
+## The maps a skirmish may be played on, in the order the screen lists them;
+## ids are unique.
+@export var maps: Array[SkirmishMap] = []
 ## Every AI army template, both sides'; ids are unique.
 @export var templates: Array[ArmyTemplate] = []
 ## The budgets a skirmish may be played at, in points, ascending.
@@ -15,6 +18,14 @@ extends Resource
 @export var time_limits_minutes: PackedInt32Array = PackedInt32Array()
 ## The time limit the screen starts on; one of time_limits_minutes.
 @export var default_time_limit_minutes: int = 0
+
+
+## The map with this id, or null.
+func skirmish_map(map_id: StringName) -> SkirmishMap:
+	for m: SkirmishMap in maps:
+		if m != null and m.id == map_id:
+			return m
+	return null
 
 
 ## The template with this id, or null.
@@ -38,6 +49,20 @@ func templates_for(side: UnitType.Faction) -> Array[ArmyTemplate]:
 ## is listed.
 func validate(catalog: UnitCatalog) -> PackedStringArray:
 	var errors: PackedStringArray = PackedStringArray()
+	if maps.is_empty():
+		errors.append("no maps")
+	var seen_maps: Dictionary[StringName, bool] = {}
+	for i: int in maps.size():
+		var m: SkirmishMap = maps[i]
+		if m == null:
+			errors.append("map %d is null" % i)
+			continue
+		var label: String = String(m.id) if m.id != &"" else "#%d" % i
+		for problem: String in m.validate():
+			errors.append("map %s: %s" % [label, problem])
+		if m.id != &"" and seen_maps.has(m.id):
+			errors.append("duplicate map id %s" % m.id)
+		seen_maps[m.id] = true
 	var seen: Dictionary[StringName, bool] = {}
 	for i: int in templates.size():
 		var t: ArmyTemplate = templates[i]
