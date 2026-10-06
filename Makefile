@@ -1,7 +1,7 @@
 GODOT ?= godot
 MAC_APP := build/mac/Ashenmarch.app
 
-.PHONY: import run demo demo-projectiles demo-abilities demo-ai test check-sim export-mac maps fixtures playtest skirmish-playtest capture capture-skirmish hooks check-leaks check-layout
+.PHONY: import run demo demo-projectiles demo-abilities demo-ai test check-sim export-mac maps fixtures playtest skirmish-playtest capture capture-skirmish hooks check-leaks check-layout test-art art-candidates art-render
 
 # Builds the .godot/ import and class_name cache. A fresh clone has none, and
 # GUT can't resolve class_name types without it.
@@ -146,3 +146,20 @@ check-layout:
 
 check-leaks:
 	scripts/check_leak_rules.sh
+
+BLENDER ?= /Applications/Blender.app/Contents/MacOS/Blender
+BLENDER_RUN = $(BLENDER) -b --factory-startup --python-exit-code 1
+
+# Python and Blender tests for the art pipeline (scripts/art/). Not part of
+# `make test`, so the game's tests never need Blender.
+test-art:
+	python3 -m unittest discover -s scripts/art -p "test_*.py"
+	$(BLENDER_RUN) --python scripts/art/blender_test_render.py
+
+# Renders UNIT's Meshy candidates into art-src/units/UNIT/review/candidates.png (free).
+art-candidates:
+	$(BLENDER_RUN) --python scripts/art/render_sprites.py -- $(UNIT) --candidates
+
+# Renders UNIT's animations into assets/units/UNIT/ plus its review sheets (free).
+art-render:
+	$(BLENDER_RUN) --python scripts/art/render_sprites.py -- $(UNIT)
