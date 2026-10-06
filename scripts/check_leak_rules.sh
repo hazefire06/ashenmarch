@@ -34,8 +34,8 @@ expect_leak() { # name, line
 	echo "ok: $1 key flagged"
 }
 
-expect_leak meshy "MESHY_API_KEY=$(fake msy_ 16)"
-expect_leak elevenlabs "ELEVENLABS_API_KEY=$(fake sk_ 24)"
+expect_leak meshy "$(fake msy_ 16)"
+expect_leak elevenlabs "$(fake sk_ 24)"
 
 if ! gitleaks git . --config "$config" --no-banner --redact >/dev/null 2>&1; then
 	echo "FAIL: the history contains a leak (run: gitleaks git . --config $config -v)"
