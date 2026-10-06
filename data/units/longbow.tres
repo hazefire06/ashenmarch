@@ -36,4 +36,5 @@ special_charges = 1
 special_projectile = &"fire_arrow"
 veterancy_accuracy_permille = 300
 veterancy_attack_rate_permille = 250
+cost = 45
 placeholder_color = Color(0.3, 0.75, 0.3, 1)

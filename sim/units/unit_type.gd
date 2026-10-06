@@ -69,6 +69,10 @@ enum AiTactic {
 	## Walks at the densest knot of enemies (a Blightbag wants as many as it
 	## can catch in one burst).
 	CLUSTER,
+	## Heals its own side's wounded with its HEAL special (and kills undead
+	## enemies with it), standing behind its group while it has herbs; fights
+	## as ASSAULT once they are gone (a Warden).
+	MEDIC,
 }
 
 const WATER_DEPTH_LEVELS: int = Terrain.MAX_WATER_DEPTH + 1
@@ -217,6 +221,11 @@ const ALL_ROLES_MASK: int = (1 << Role.MELEE) | (1 << Role.RANGED) | (1 << Role.
 ## where it stops, and be sent to a new spot at every think.
 @export var ai_standoff_permille: int = 0
 
+@export_group("Skirmish")
+## Points a skirmish army pays for one of these (Army, ArmyTemplate). 0: it
+## can't be bought (the Ford's villager).
+@export var cost: int = 0
+
 @export_group("View")
 ## Placeholder quad color until the art pass. View only; the sim ignores it.
 @export var placeholder_color: Color = Color.WHITE
@@ -295,6 +304,14 @@ func validate() -> PackedStringArray:
 			errors.append("%s: ai_standoff_permille must be 1..%d for STANDOFF" % [who, MAX_STANDOFF_PERMILLE])
 	elif ai_standoff_permille != 0:
 		errors.append("%s: ai_standoff_permille only applies to STANDOFF" % who)
+	# A hand-written .tres can hold any integer in an enum field, and an
+	# unknown tactic would fall through every match in the AI without a word.
+	if ai_tactic < 0 or ai_tactic >= AiTactic.size():
+		errors.append("%s: ai_tactic %d is not an AiTactic" % [who, ai_tactic])
+	if ai_tactic == AiTactic.MEDIC and special_ability != Special.HEAL:
+		errors.append("%s: MEDIC needs the HEAL special" % who)
+	if cost < 0:
+		errors.append("%s: cost can't be negative" % who)
 	return errors
 
 

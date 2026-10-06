@@ -23,4 +23,5 @@ melee_reach = 500
 melee_windup_ticks = 9
 melee_cooldown_ticks = 27
 acquire_radius = 8000
+cost = 20
 placeholder_color = Color(0.55, 0.3, 0.65, 1)
