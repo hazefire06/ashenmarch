@@ -240,6 +240,123 @@ class FlowTest(unittest.TestCase):
         self.assertEqual(retry.created[0], ("preview", "meshy-6-lite"))
         self.assertEqual(Manifest.load(self.manifest.path).find("preview", "cand-1")["status"], "SUCCEEDED")
 
+    def test_the_certificate_failure_of_2026_10_06_leaves_nothing_to_clean_up(self) -> None:
+        # The handshake failed before anything was sent: the task is FAILED (not CREATING) and is simply bought again.
+        cert = MeshyError(meshy_client.CERT_FAILURE, may_have_created=False)
+        with self.assertRaisesRegex(MeshyError, "Install Certificates"):
+            self.candidates(FakeClient(create_error=cert))
+        record = Manifest.load(self.manifest.path).find("preview", "cand-1")
+        self.assertEqual((record["status"], record["credits"]), ("FAILED", 0))
+        self.assertEqual(meshy._interrupted(Manifest.load(self.manifest.path)), [])
+        self.manifest = Manifest.load(self.manifest.path)
+        retry = FakeClient()
+        self.candidates(retry)
+        self.assertEqual(retry.created[0], ("preview", "meshy-6-lite"))
+        self.assertEqual(Manifest.load(self.manifest.path).find("preview", "cand-1")["status"], "SUCCEEDED")
+
+    def test_a_build_writes_which_candidate_model_holds(self) -> None:
+        self.candidates(FakeClient())
+        meshy.run_build(self.spec, self.manifest, FakeClient(), self.unit_dir, 3, 100, say=self.quiet.append)
+        self.assertEqual((self.unit_dir / "model" / "PICK").read_text(), "cand-3\n")
+
+    def test_building_another_pick_would_mix_two_models_and_buys_nothing(self) -> None:
+        self.candidates(FakeClient())
+        meshy.run_build(self.spec, self.manifest, FakeClient(), self.unit_dir, 3, 100, say=self.quiet.append)
+        again = FakeClient()
+        with self.assertRaisesRegex(meshy.BuildError, r"model/ holds cand-3's files; building cand-1 would mix two models\. "
+                                    r"Move model/ and anims/ aside \(or delete them\) first\."):
+            meshy.run_build(self.spec, self.manifest, again, self.unit_dir, 1, 0, say=self.quiet.append)  # the guard comes before the budget check
+        self.assertEqual(again.created, [])
+        self.assertEqual((self.unit_dir / "model" / "PICK").read_text(), "cand-3\n")
+        self.assertIsNone(self.manifest.find("refine", "cand-1"))
+
+    def test_rebuilding_the_same_pick_is_fine_and_buys_nothing(self) -> None:
+        self.candidates(FakeClient())
+        meshy.run_build(self.spec, self.manifest, FakeClient(), self.unit_dir, 3, 100, say=self.quiet.append)
+        again = FakeClient()
+        meshy.run_build(self.spec, self.manifest, again, self.unit_dir, 3, 0, say=self.quiet.append)
+        self.assertEqual(again.created, [])
+
+    def test_a_model_folder_with_no_marker_is_adopted_not_refused(self) -> None:
+        # The real Shieldman's model/ and anims/ predate the marker.
+        self.candidates(FakeClient())
+        meshy.run_build(self.spec, self.manifest, FakeClient(), self.unit_dir, 3, 100, say=self.quiet.append)
+        (self.unit_dir / "model" / "PICK").unlink()
+        again = FakeClient()
+        meshy.run_build(self.spec, self.manifest, again, self.unit_dir, 3, 0, say=self.quiet.append)
+        self.assertEqual(again.created, [])
+        self.assertEqual((self.unit_dir / "model" / "PICK").read_text(), "cand-3\n")
+
+    def test_the_pick_guard_comes_after_the_interrupted_create_guard(self) -> None:
+        self.candidates(FakeClient())
+        meshy.run_build(self.spec, self.manifest, FakeClient(), self.unit_dir, 3, 100, say=self.quiet.append)
+        self.manifest.upsert({"kind": "refine", "label": "cand-1", "status": "CREATING", "created_at": 1})
+        with self.assertRaises(meshy.InterruptedCreate):
+            meshy.run_build(self.spec, self.manifest, FakeClient(), self.unit_dir, 1, 0, say=self.quiet.append)
+
+    def test_a_failed_refine_leaves_no_marker_so_another_pick_is_still_open(self) -> None:
+        self.candidates(FakeClient())
+        with self.assertRaises(MeshyError):
+            meshy.run_build(self.spec, self.manifest, FakeClient(create_error=MeshyError("HTTP 402")), self.unit_dir, 3, 100, say=self.quiet.append)
+        self.assertFalse((self.unit_dir / "model" / "PICK").exists())
+        meshy.run_build(self.spec, self.manifest, FakeClient(), self.unit_dir, 1, 100, say=self.quiet.append)
+        self.assertEqual((self.unit_dir / "model" / "PICK").read_text(), "cand-1\n")
+
+    def test_a_symlinked_marker_is_not_followed(self) -> None:
+        self.candidates(FakeClient())
+        (self.unit_dir / "model").mkdir()
+        target = self.unit_dir.parent / "precious.txt"
+        target.write_text("keep me")
+        (self.unit_dir / "model" / "PICK").symlink_to(target)
+        with self.assertRaisesRegex(meshy.BuildError, "PICK"):
+            meshy.run_build(self.spec, self.manifest, FakeClient(), self.unit_dir, 3, 100, say=self.quiet.append)
+        self.assertEqual(target.read_text(), "keep me")
+
+    def elsewhere(self) -> Path:
+        outside = self.unit_dir.parent / "elsewhere"
+        outside.mkdir()
+        return outside
+
+    def test_fetch_refuses_a_candidates_folder_that_is_a_symlink_out_of_the_work_dir(self) -> None:
+        outside = self.elsewhere()
+        (self.unit_dir / "candidates").symlink_to(outside, target_is_directory=True)
+        client = FakeClient()
+        record = {"kind": "preview", "label": "cand-1", "task_id": "preview-1", "status": "PENDING"}
+        with self.assertRaisesRegex(meshy.BuildError, "candidates") as caught:
+            meshy._fetch(self.manifest, client, "text-to-3d", record, self.unit_dir, {"candidates/cand-1.glb": lambda t: t["model_urls"]["glb"]})
+        self.assertIn(str(self.unit_dir / "candidates" / "cand-1.glb"), str(caught.exception))
+        self.assertEqual(list(outside.iterdir()), [])
+
+    def test_a_refused_fetch_does_not_rebuy_once_the_symlink_is_gone(self) -> None:
+        outside = self.elsewhere()
+        (self.unit_dir / "candidates").symlink_to(outside, target_is_directory=True)
+        with self.assertRaises(meshy.BuildError):
+            self.candidates(FakeClient())
+        self.assertEqual(list(outside.iterdir()), [])
+        (self.unit_dir / "candidates").unlink()
+        self.manifest = Manifest.load(self.manifest.path)
+        again = FakeClient()
+        self.candidates(again)
+        self.assertEqual([a for _, a in again.created], ["meshy-6-lite", "meshy-7.1", "meshy-7.1"])  # cand-1 is only waited on
+        self.assertTrue((self.unit_dir / "candidates" / "cand-1.glb").exists())
+
+    def test_a_model_folder_that_is_a_symlink_is_refused_before_anything_is_bought(self) -> None:
+        self.candidates(FakeClient())
+        outside = self.elsewhere()
+        (self.unit_dir / "model").symlink_to(outside, target_is_directory=True)
+        client = FakeClient()
+        with self.assertRaisesRegex(meshy.BuildError, "model"):
+            meshy.run_build(self.spec, self.manifest, client, self.unit_dir, 3, 100, say=self.quiet.append)
+        self.assertEqual(client.created, [])
+        self.assertEqual(list(outside.iterdir()), [])
+
+
+    def test_a_folder_symlinked_inside_the_work_dir_is_fine(self) -> None:
+        (self.unit_dir / "real").mkdir()
+        (self.unit_dir / "candidates").symlink_to(self.unit_dir / "real", target_is_directory=True)
+        paths = self.candidates(FakeClient())
+        self.assertTrue(all(p.exists() for p in paths))
+
     def test_a_build_refuses_to_continue_after_an_interrupted_create(self) -> None:
         self.candidates(FakeClient())
         with self.assertRaises(KeyboardInterrupt):
@@ -313,7 +430,7 @@ class PropFlowTest(unittest.TestCase):
         self.build(client, pick=2)
         self.assertEqual(client.created, [("refine", "preview-2")])  # no rig, no animate
         self.assertTrue((self.prop_dir / "model" / "textured.glb").exists())
-        self.assertEqual({p.name for p in (self.prop_dir / "model").iterdir()}, {"textured.glb"})
+        self.assertEqual({p.name for p in (self.prop_dir / "model").iterdir()}, {"textured.glb", "PICK"})  # the marker says which candidate this is
         self.assertFalse((self.prop_dir / "anims").exists())
         record = Manifest.load(self.manifest.path).find("refine", "cand-2")
         self.assertEqual(record["status"], "SUCCEEDED")
@@ -359,6 +476,26 @@ class PropFlowTest(unittest.TestCase):
         self.assertEqual(self.manifest.find("refine", "cand-1")["status"], "CREATING")
         with self.assertRaisesRegex(meshy.InterruptedCreate, "creating refine cand-1"):
             self.build(FakeClient(), max_credits=0)
+
+    def test_a_prop_build_writes_the_marker_and_refuses_another_pick(self) -> None:
+        self.candidates(FakeClient())
+        self.build(FakeClient(), pick=2)
+        self.assertEqual((self.prop_dir / "model" / "PICK").read_text(), "cand-2\n")
+        again = FakeClient()
+        with self.assertRaisesRegex(meshy.BuildError, r"model/ holds cand-2's files; building cand-1 would mix two models"):
+            self.build(again, pick=1, max_credits=0)
+        self.assertEqual(again.created, [])
+        self.build(again, pick=2, max_credits=0)  # the same pick again is fine
+        self.assertEqual(again.created, [])
+
+    def test_a_prop_model_with_no_marker_is_adopted(self) -> None:
+        self.candidates(FakeClient())
+        self.build(FakeClient(), pick=1)
+        (self.prop_dir / "model" / "PICK").unlink()
+        again = FakeClient()
+        self.build(again, pick=1, max_credits=0)
+        self.assertEqual(again.created, [])
+        self.assertEqual((self.prop_dir / "model" / "PICK").read_text(), "cand-1\n")
 
     def test_prop_plan_text_lists_what_it_would_buy_in_order(self) -> None:
         lines = meshy.prop_plan_text(self.spec, self.style, self.manifest).splitlines()
@@ -437,13 +574,17 @@ class MainTest(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertIn("refine 10 + rig 5 + 4 actions x 3 = 27 credits", out)
 
-    def stage(self, root: Path) -> Path:
-        """A throwaway art-src with the real broadsword recipe, so the paid commands never touch the repo's."""
+    def stage_in(self, root: Path, prop_dir: Path) -> Path:
+        """A throwaway art-src (style.toml at root) with the real broadsword recipe in prop_dir."""
+        root.mkdir(parents=True, exist_ok=True)
         shutil.copy(ART_SRC / "style.toml", root / "style.toml")
-        prop_dir = root / "props" / "broadsword"
         prop_dir.mkdir(parents=True)
         shutil.copy(ART_SRC / "props" / "broadsword" / "spec.toml", prop_dir / "spec.toml")
         return prop_dir
+
+    def stage(self, root: Path) -> Path:
+        """A throwaway art-src with the real broadsword recipe, so the paid commands never touch the repo's."""
+        return self.stage_in(root, root / "props" / "broadsword")
 
     def run_paid(self, root: Path, fake: FakeClient, argv: list[str]) -> tuple[int, str, str]:
         # The key file, the network and the real client are all patched out.
@@ -489,6 +630,87 @@ class MainTest(unittest.TestCase):
                     self.assertIn("a previous run stopped while creating preview cand-1", err)
                     self.assertNotIn("credits spent", out)
                     self.assertEqual(fake.created, [])
+
+    def test_the_free_commands_never_read_the_key(self) -> None:
+        for argv in (["prop-plan", "broadsword"], ["plan", "shieldman"]):
+            with self.subTest(argv=argv), \
+                    mock.patch.object(meshy, "load_secret", side_effect=AssertionError("read the key")), \
+                    mock.patch.object(meshy, "http_transport", side_effect=AssertionError("built a transport")), \
+                    mock.patch.object(meshy, "MeshyClient", side_effect=AssertionError("built a client")):
+                code, out, err = self.run_main(argv)
+            self.assertEqual((code, err), (0, ""))
+            self.assertIn("credits", out)
+
+    def test_each_paid_command_runs_only_its_own_flow(self) -> None:
+        calls = {"run_candidates": ["candidates", "prop-candidates"], "run_build": ["build"], "run_prop_build": ["prop-build"]}
+        argv = {
+            "candidates": ["candidates", "shieldman", "--max-credits", "1"],
+            "prop-candidates": ["prop-candidates", "broadsword", "--max-credits", "1"],
+            "build": ["build", "shieldman", "--pick", "1", "--max-credits", "1"],
+            "prop-build": ["prop-build", "broadsword", "--pick", "1", "--max-credits", "1"],
+        }
+        for flow, commands in calls.items():
+            for command in commands:
+                with self.subTest(command=command), \
+                        mock.patch.object(meshy, "load_secret", return_value="not-a-real-key"), \
+                        mock.patch.object(meshy, "http_transport"), \
+                        mock.patch.object(meshy, "MeshyClient"), \
+                        mock.patch.object(meshy, "run_candidates") as run_candidates, \
+                        mock.patch.object(meshy, "run_build") as run_build, \
+                        mock.patch.object(meshy, "run_prop_build") as run_prop_build:
+                    code, _, _ = self.run_main(argv[command])
+                    ran = {"run_candidates": run_candidates, "run_build": run_build, "run_prop_build": run_prop_build}
+                self.assertEqual(code, 0)
+                for name, mocked in ran.items():
+                    self.assertEqual(mocked.call_count, 1 if name == flow else 0, f"{command}: {name}")
+
+    def test_a_work_dir_that_is_a_symlink_is_refused(self) -> None:
+        # The repo is public, so a PR could plant a symlink under art-src to send writes elsewhere.
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "art-src"
+            real = Path(tmp) / "real_broadsword"
+            self.stage_in(root, real)
+            (root / "props").mkdir()
+            (root / "props" / "broadsword").symlink_to(real, target_is_directory=True)
+            for argv in (["prop-plan", "broadsword"], ["prop-candidates", "broadsword", "--max-credits", "10"],
+                         ["prop-build", "broadsword", "--pick", "1", "--max-credits", "10"]):
+                with self.subTest(argv=argv[0]):
+                    fake = FakeClient()
+                    code, out, err = self.run_paid(root, fake, argv)
+                    self.assertEqual((code, out, fake.created), (2, "", []))
+                    self.assertIn("symlink", err)
+                    self.assertIn(str(root / "props" / "broadsword"), err)
+            self.assertEqual(sorted(p.name for p in real.iterdir()), ["spec.toml"])  # nothing was written through it
+
+    def test_a_parent_folder_that_is_a_symlink_is_refused(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "art-src"
+            real_props = Path(tmp) / "real_props"
+            self.stage_in(root, real_props / "broadsword")
+            (root / "props").symlink_to(real_props, target_is_directory=True)
+            code, _, err = self.run_paid(root, FakeClient(), ["prop-plan", "broadsword"])
+            self.assertEqual(code, 2)
+            self.assertIn(str(root / "props"), err)
+            self.assertIn("symlink", err)
+
+    def test_a_work_dir_that_resolves_outside_art_src_is_refused(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "art-src"
+            root.mkdir()
+            with mock.patch.object(meshy, "ART_SRC", root):
+                self.assertIn("outside art-src", meshy._unsafe_work_dir(Path(tmp) / "elsewhere" / "broadsword"))
+                self.assertIsNone(meshy._unsafe_work_dir(root / "props" / "broadsword"))  # doesn't exist yet: fine
+
+    def test_an_art_src_that_is_itself_reached_through_a_symlink_still_works(self) -> None:
+        # Only components below art-src are checked; the checkout may live under a symlinked path.
+        with tempfile.TemporaryDirectory() as tmp:
+            real_root = Path(tmp) / "real"
+            link_root = Path(tmp) / "link"
+            self.stage_in(real_root, real_root / "props" / "broadsword")
+            link_root.symlink_to(real_root, target_is_directory=True)
+            code, out, _ = self.run_paid(link_root, FakeClient(), ["prop-plan", "broadsword"])
+            self.assertEqual(code, 0)
+            self.assertIn("broadsword: prompt", out)
 
     def test_an_interrupted_create_is_reported_and_returns_1(self) -> None:
         # Everything that could reach the key file, the network or a paid call is patched out.

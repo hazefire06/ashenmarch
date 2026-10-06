@@ -357,6 +357,32 @@ class HttpTest(unittest.TestCase):
             self.assertEqual(dest.read_bytes(), b"x" * 10)
             self.assertFalse((Path(tmp) / "m.glb.part").exists())
 
+    def test_a_symlinked_part_file_is_refused_and_its_target_is_left_alone(self) -> None:
+        url = "https://assets.meshy.ai/t/model.glb?Expires=1&Signature=SECRETSIG"
+        mock_opener = mock.MagicMock()
+        mock_opener.open.return_value = io.BytesIO(b"model bytes")
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(meshy_client.urllib.request, "build_opener", return_value=mock_opener):
+            target = Path(tmp) / "precious.txt"
+            target.write_text("keep me")
+            dest = Path(tmp) / "work" / "m.glb"
+            dest.parent.mkdir()
+            (dest.parent / "m.glb.part").symlink_to(target)
+            with self.assertRaisesRegex(MeshyError, "download of m.glb refused") as caught:
+                http_downloader(url, dest)
+            self.assertEqual(target.read_text(), "keep me")
+            self.assertFalse(dest.exists())
+            self.assertTrue((dest.parent / "m.glb.part").is_symlink())  # not ours to delete
+        self.assertNotIn("SECRETSIG", str(caught.exception))
+
+    def test_a_stale_regular_part_file_is_overwritten_by_a_download(self) -> None:
+        mock_opener = mock.MagicMock()
+        mock_opener.open.return_value = io.BytesIO(b"fresh")
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(meshy_client.urllib.request, "build_opener", return_value=mock_opener):
+            dest = Path(tmp) / "m.glb"
+            (Path(tmp) / "m.glb.part").write_bytes(b"stale and longer than the new bytes")
+            http_downloader("https://assets.meshy.ai/t/model.glb", dest)
+            self.assertEqual(dest.read_bytes(), b"fresh")
+
     def test_the_download_cap_is_512_mib(self) -> None:
         self.assertEqual(meshy_client.MAX_DOWNLOAD_BYTES, 512 * 1024 * 1024)
 
@@ -371,6 +397,54 @@ class HttpTest(unittest.TestCase):
         self.assertIsNone(result)
         result = meshy_client._AllowlistedRedirects().redirect_request(req, None, 302, "Found", {}, "https://assets.meshy.ai/other.glb")
         self.assertIsNotNone(result)
+
+
+class TlsTest(unittest.TestCase):
+    """The TLS context is built explicitly: certificates verified, no renegotiation, TLS 1.2 or newer."""
+
+    def https_handlers(self, build_opener: mock.MagicMock) -> list[urllib.request.HTTPSHandler]:
+        return [a for call in build_opener.call_args_list for a in call.args if isinstance(a, urllib.request.HTTPSHandler)]
+
+    def test_the_context_verifies_certificates_and_refuses_renegotiation(self) -> None:
+        ctx = meshy_client._tls_context()
+        self.assertTrue(ctx.options & ssl.OP_NO_RENEGOTIATION)
+        self.assertEqual(ctx.verify_mode, ssl.CERT_REQUIRED)
+        self.assertTrue(ctx.check_hostname)
+        self.assertGreaterEqual(ctx.minimum_version, ssl.TLSVersion.TLSv1_2)
+
+    def test_a_context_is_never_shared_between_calls(self) -> None:
+        self.assertIsNot(meshy_client._tls_context(), meshy_client._tls_context())
+
+    def test_the_transport_uses_that_context(self) -> None:
+        with mock.patch.object(meshy_client.urllib.request, "build_opener", wraps=urllib.request.build_opener) as build_opener:
+            http_transport("k")
+        handlers = self.https_handlers(build_opener)
+        self.assertEqual(len(handlers), 1)
+        self.assertTrue(handlers[0]._context.options & ssl.OP_NO_RENEGOTIATION)
+        self.assertEqual(handlers[0]._context.verify_mode, ssl.CERT_REQUIRED)
+        self.assertTrue(any(isinstance(a, meshy_client._NoRedirects) for a in build_opener.call_args.args))
+
+    def test_the_downloader_uses_that_context(self) -> None:
+        url = "https://assets.meshy.ai/t/model.glb"
+        with tempfile.TemporaryDirectory() as tmp, \
+                mock.patch.object(meshy_client.urllib.request, "build_opener", wraps=urllib.request.build_opener) as build_opener, \
+                mock.patch.object(meshy_client.urllib.request.OpenerDirector, "open", side_effect=http_error(404)):
+            with self.assertRaises(MeshyError):
+                http_downloader(url, Path(tmp) / "m.glb")
+        handlers = self.https_handlers(build_opener)
+        self.assertEqual(len(handlers), 1)
+        self.assertTrue(handlers[0]._context.options & ssl.OP_NO_RENEGOTIATION)
+        self.assertTrue(any(isinstance(a, meshy_client._AllowlistedRedirects) for a in build_opener.call_args.args))
+
+    def test_only_an_error_from_connecting_is_called_a_certificate_failure(self) -> None:
+        # urllib wraps only connect, handshake and send in URLError, so an error from reading
+        # the reply arrives unwrapped and must stay "may have created".
+        mock_opener = mock.MagicMock()
+        mock_opener.open.side_effect = ssl.SSLCertVerificationError(1, "certificate verify failed")
+        with mock.patch.object(meshy_client.urllib.request, "build_opener", return_value=mock_opener):
+            with self.assertRaises(MeshyError) as caught:
+                http_transport("k")("POST", "/openapi/v2/text-to-3d", {})
+        self.assertTrue(caught.exception.may_have_created)
 
 
 class WaitRetryTest(unittest.TestCase):

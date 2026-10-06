@@ -30,6 +30,8 @@ RIG_CLIPS = frozenset({"walk", "run"})
 # Unit and prop names become folder names under art-src, so they must not hold path pieces.
 NAME = re.compile(r"[a-z][a-z0-9_]{0,31}")
 FACTIONS = ("light", "dark")
+# A bone name from a rig (Blender's own, or a Mixamo-style "mixamorig:LeftForeArm"): plain characters only.
+BONE = re.compile(r"[A-Za-z0-9_.:\- ]{1,63}")
 
 
 class SpecError(Exception):
@@ -134,7 +136,7 @@ def load_spec(path: Path) -> UnitSpec:
         spec = UnitSpec(
             id=str(data["id"]),
             faction=str(data["faction"]),
-            height_m=float(data["height_m"]),
+            height_m=_length(path, "height_m", data["height_m"]),
             prompt=str(data["prompt"]),
             lite=int(candidates.get("lite", 0)),
             full=int(candidates.get("full", 0)),
@@ -148,8 +150,6 @@ def load_spec(path: Path) -> UnitSpec:
         raise SpecError(f"{path}: missing {missing}") from None
     if spec.id != path.parent.name:
         raise SpecError(f"{path}: id {spec.id!r} does not match its folder {path.parent.name!r}")
-    if spec.height_m <= 0:
-        raise SpecError(f"{path}: height_m must be positive")
     if spec.faction not in FACTIONS:
         raise SpecError(f"{path}: faction must be light or dark")
     return spec
@@ -162,7 +162,7 @@ def load_prop_spec(path: Path) -> PropSpec:
         spec = PropSpec(
             id=str(data["id"]),
             faction=str(data["faction"]),
-            length_m=float(data["length_m"]),
+            length_m=_length(path, "length_m", data["length_m"]),
             prompt=str(data["prompt"]),
             lite=int(candidates.get("lite", 0)),
             full=int(candidates.get("full", 0)),
@@ -172,11 +172,20 @@ def load_prop_spec(path: Path) -> PropSpec:
         raise SpecError(f"{path}: missing {missing}") from None
     if spec.id != path.parent.name:
         raise SpecError(f"{path}: id {spec.id!r} does not match its folder {path.parent.name!r}")
-    if spec.length_m <= 0:
-        raise SpecError(f"{path}: length_m must be positive")
     if spec.faction not in FACTIONS:
         raise SpecError(f"{path}: faction must be light or dark")
     return spec
+
+
+def _length(path: Path, key: str, value: Any) -> float:
+    """A size in metres: a finite number above zero. TOML `true` would otherwise pass as 1.0, and `nan` or `inf` would pass every comparison."""
+    try:
+        number = float(value) if not isinstance(value, bool) else None
+    except (TypeError, ValueError, OverflowError):  # OverflowError: an integer too big for a float
+        number = None
+    if number is None or not math.isfinite(number) or number <= 0:
+        raise SpecError(f"{path}: {key} must be positive and finite, not {str(value)[:40]!r}")
+    return number
 
 
 def _attachments(path: Path, entries: Any) -> tuple[AttachEntry, ...]:
@@ -197,17 +206,26 @@ def _attach(path: Path, number: int, entry: Any) -> AttachEntry:
     prop, bone = entry.get("prop"), entry.get("bone")
     if not isinstance(prop, str) or NAME.fullmatch(prop) is None:  # it becomes art-src/props/<prop>, so no path pieces
         raise SpecError(f"{where}: prop must be lowercase letters, digits and _ (it names a folder), not {prop!r}")
-    if not isinstance(bone, str) or not bone:
-        raise SpecError(f"{where}: bone must be the name of a bone in the unit's rig")
+    if not isinstance(bone, str) or BONE.fullmatch(bone) is None or not bone.strip():
+        raise SpecError(f"{where}: bone must be a bone name from the unit's rig: letters, digits and _ . : - space, up to 63 characters")
     return AttachEntry(prop=prop, bone=bone, offset=_triple(where, "offset", entry), rotation=_triple(where, "rotation", entry))
 
 
 def _triple(where: str, key: str, entry: dict[str, Any]) -> tuple[float, float, float]:
     value = entry.get(key, [0.0, 0.0, 0.0])
-    if (not isinstance(value, list) or len(value) != 3
-            or not all(isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v) for v in value)):
+    if not isinstance(value, list) or len(value) != 3 or not all(_is_number(v) for v in value):
         raise SpecError(f"{where}: {key} must be exactly 3 numbers")
     return (float(value[0]), float(value[1]), float(value[2]))
+
+
+def _is_number(value: Any) -> bool:
+    """A finite int or float. isfinite() raises OverflowError for an integer too big for a float, which is just as unusable."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return False
+    try:
+        return math.isfinite(value)
+    except OverflowError:
+        return False
 
 
 def _anim(name: str, entry: dict[str, Any]) -> AnimEntry:

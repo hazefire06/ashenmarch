@@ -27,10 +27,15 @@ meshy.ai and deleted its entry from manifest.json. A record is written as
 CREATING before each create call. If the run stops with the create
 unresolved, that task may exist and be charged, so the next run refuses to
 continue until you delete the CREATING entry from manifest.json.
+model/ and anims/ hold one candidate's files at fixed paths, so a build writes
+model/PICK naming the candidate and refuses to build a different one over it.
+Nothing is written through a symlink: a unit or prop folder that is one is
+refused, and so are symlinked .part files and symlinked download folders.
 """
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 import time
 from collections.abc import Callable
@@ -185,17 +190,25 @@ def _start(manifest: Manifest, kind: str, label: str, create: Callable[[], str],
     return _store(manifest, {**creating, "task_id": task_id, "status": "PENDING"})
 
 
-def _fetch(manifest: Manifest, client: Any, api_kind: str, record: dict[str, Any], unit_dir: Path,
+def _check_inside(work_dir: Path, dest: Path) -> None:
+    """Refuse a write that a symlink would carry out of the work dir. The repo is public, so a PR could plant one."""
+    if not dest.parent.resolve().is_relative_to(work_dir.resolve()):
+        raise BuildError(f"{dest} would be written outside {work_dir.name}/ because a folder on its path is a symlink. Remove the symlink and rerun.")
+
+
+def _fetch(manifest: Manifest, client: Any, api_kind: str, record: dict[str, Any], work_dir: Path,
            files: dict[str, Callable[[dict[str, Any]], str]]) -> None:
-    if record.get("status") == "SUCCEEDED" and all((unit_dir / rel).exists() for rel in files):
+    if record.get("status") == "SUCCEEDED" and all((work_dir / rel).exists() for rel in files):
         return
+    for rel in files:  # before waiting on the task: a refusal leaves it recorded, so a rerun downloads without rebuying
+        _check_inside(work_dir, work_dir / rel)
     task = _finish(manifest, client, api_kind, record)
     for rel, url_of in files.items():
-        client.download(url_of(task), unit_dir / rel)
+        client.download(url_of(task), work_dir / rel)
     _store(manifest, {**manifest.find(record["kind"], record["label"]), "files": sorted(files)})
 
 
-def run_candidates(spec: Recipe, style: Style, manifest: Manifest, client: Any, unit_dir: Path,
+def run_candidates(spec: Recipe, style: Style, manifest: Manifest, client: Any, work_dir: Path,
                    max_credits: int, say: Say = print) -> list[Path]:
     _refuse_if_interrupted(manifest)
     cost = candidates_cost(spec, manifest)
@@ -207,8 +220,8 @@ def run_candidates(spec: Recipe, style: Style, manifest: Manifest, client: Any, 
         record = _start(manifest, "preview", label, lambda m=model: client.create_preview(prompt, m, spec.polycount, spec.pose_mode),
                         say, f"{model}, {PREVIEW_CREDITS[model]} credits", ai_model=model, prompt=prompt)
         rel = f"candidates/{label}.glb"
-        _fetch(manifest, client, "text-to-3d", record, unit_dir, {rel: lambda t: t["model_urls"]["glb"]})
-        paths.append(unit_dir / rel)
+        _fetch(manifest, client, "text-to-3d", record, work_dir, {rel: lambda t: t["model_urls"]["glb"]})
+        paths.append(work_dir / rel)
     return paths
 
 
@@ -219,10 +232,41 @@ def _finished_preview(manifest: Manifest, label: str, candidates_command: str) -
     return candidate
 
 
-def _texture(manifest: Manifest, client: Any, unit_dir: Path, label: str, candidate: dict[str, Any], say: Say) -> dict[str, Any]:
+def _pick_marker(work_dir: Path) -> Path:
+    return work_dir / "model" / "PICK"
+
+
+def _check_pick(work_dir: Path, label: str) -> None:
+    """model/ and anims/ are fixed paths, so a build of another candidate would skip files it finds and keep the old model."""
+    marker = _pick_marker(work_dir)
+    _check_inside(work_dir, marker)  # a symlinked model/ is refused here, before anything is bought
+    try:
+        # O_NOFOLLOW here too, so a planted symlink can't make us print some other file.
+        with os.fdopen(os.open(marker, os.O_RDONLY | os.O_NOFOLLOW), encoding="utf-8", errors="replace") as handle:
+            old = handle.read(64).strip()
+    except FileNotFoundError:
+        return  # no marker yet (a build from before markers existed): adopt the files that are there
+    except OSError:
+        raise BuildError(f"{marker} can't be read (is it a symlink?). Delete it, or move model/ and anims/ aside, and rerun.") from None
+    if old != label:
+        raise BuildError(f"model/ holds {old}'s files; building {label} would mix two models. Move model/ and anims/ aside (or delete them) first.")
+
+
+def _write_pick(work_dir: Path, label: str) -> None:
+    marker = _pick_marker(work_dir)
+    if marker.exists() or marker.is_symlink():
+        return  # _check_pick already saw it holds this label
+    _check_inside(work_dir, marker)
+    marker.parent.mkdir(parents=True, exist_ok=True)
+    with os.fdopen(os.open(marker, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW, 0o644), "w", encoding="utf-8") as out:
+        out.write(f"{label}\n")
+
+
+def _texture(manifest: Manifest, client: Any, work_dir: Path, label: str, candidate: dict[str, Any], say: Say) -> dict[str, Any]:
     """The refine step, the same for a unit and a prop: texture the picked preview and download it."""
     refine = _start(manifest, "refine", label, lambda: client.create_refine(candidate["task_id"]), say, f"{REFINE_CREDITS} credits")
-    _fetch(manifest, client, "text-to-3d", refine, unit_dir, {"model/textured.glb": lambda t: t["model_urls"]["glb"]})
+    _write_pick(work_dir, label)  # after the create: a rejected refine leaves no marker, so another pick stays open
+    _fetch(manifest, client, "text-to-3d", refine, work_dir, {"model/textured.glb": lambda t: t["model_urls"]["glb"]})
     return refine
 
 
@@ -230,6 +274,7 @@ def run_prop_build(spec: PropSpec, manifest: Manifest, client: Any, prop_dir: Pa
                    max_credits: int, say: Say = print) -> None:
     _refuse_if_interrupted(manifest)
     label = f"cand-{pick}"
+    _check_pick(prop_dir, label)
     candidate = _finished_preview(manifest, label, "prop-candidates")
     cost = prop_build_cost(manifest, pick)
     if cost > max_credits:
@@ -241,6 +286,7 @@ def run_build(spec: UnitSpec, manifest: Manifest, client: Any, unit_dir: Path, p
               max_credits: int, say: Say = print) -> None:
     _refuse_if_interrupted(manifest)
     label = f"cand-{pick}"
+    _check_pick(unit_dir, label)
     candidate = _finished_preview(manifest, label, "candidates")
     cost = build_cost(spec, manifest, pick)
     if cost > max_credits:
@@ -260,6 +306,22 @@ def run_build(spec: UnitSpec, manifest: Manifest, client: Any, unit_dir: Path, p
         animate = _start(manifest, "animate", _animate_label(spec, pick), lambda: client.create_animation(rig["task_id"], ids),
                          say, f"{len(ids)} actions, {CREDITS_PER_ACTION * len(ids)} credits", action_ids=ids)
         _fetch(manifest, client, "animations", animate, unit_dir, {"anims/actions.glb": lambda t: t["result"]["animation_glb_url"]})
+
+
+def _unsafe_work_dir(work_dir: Path) -> str | None:
+    """Why this unit or prop folder can't be used, or None. Symlinks under art-src could send our writes elsewhere."""
+    try:
+        parts = work_dir.relative_to(ART_SRC).parts
+    except ValueError:
+        return f"{work_dir} is outside art-src"
+    here = ART_SRC
+    for part in parts:  # art-src itself may be reached through a symlink (a checkout elsewhere); what is below it may not
+        here = here / part
+        if here.is_symlink():
+            return f"{here} is a symlink; replace it with a real folder"
+    if not work_dir.resolve().is_relative_to(ART_SRC.resolve()):  # belt and braces: nothing above should let this happen
+        return f"{work_dir} resolves outside art-src"
+    return None
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -289,6 +351,10 @@ def main(argv: list[str] | None = None) -> int:
         print("meshy.py: unit names are lowercase letters, digits and _", file=sys.stderr)
         return 2
     work_dir = ART_SRC / ("props" if is_prop else "units") / name
+    unsafe = _unsafe_work_dir(work_dir)
+    if unsafe:
+        print(f"meshy.py: {unsafe}", file=sys.stderr)
+        return 2
     try:
         spec = (load_prop_spec if is_prop else load_spec)(work_dir / "spec.toml")
         style = load_style(ART_SRC / "style.toml")
@@ -296,11 +362,11 @@ def main(argv: list[str] | None = None) -> int:
         print(f"meshy.py: {error}", file=sys.stderr)
         return 2
     manifest = Manifest.load(work_dir / "manifest.json")
-    if isinstance(spec, PropSpec) and args.command == "prop-plan":
-        print(prop_plan_text(spec, style, manifest))
-        return 0
-    if isinstance(spec, UnitSpec) and args.command == "plan":
+    if args.command == "plan":  # the free commands return before anything looks for the key
         print(plan_text(spec, style, manifest))
+        return 0
+    if args.command == "prop-plan":
+        print(prop_plan_text(spec, style, manifest))
         return 0
     try:
         client = MeshyClient(http_transport(load_secret("MESHY_API_KEY")), http_downloader)
@@ -308,18 +374,20 @@ def main(argv: list[str] | None = None) -> int:
         print(f"meshy.py: {error}", file=sys.stderr)
         return 2
     try:
-        if args.command in ("candidates", "prop-candidates"):
+        if args.command == "candidates":
             run_candidates(spec, style, manifest, client, work_dir, args.max_credits)
-            if isinstance(spec, PropSpec):
-                print(f"Next (free): make art-prop-candidates PROP={spec.id}, look at art-src/props/{spec.id}/review/candidates.png, then prop-build --pick N")
-            else:
-                print(f"Next (free): make art-candidates UNIT={spec.id}, look at art-src/units/{spec.id}/review/candidates.png, then build --pick N")
-        elif isinstance(spec, PropSpec):
+            print(f"Next (free): make art-candidates UNIT={spec.id}, look at art-src/units/{spec.id}/review/candidates.png, then build --pick N")
+        elif args.command == "prop-candidates":
+            run_candidates(spec, style, manifest, client, work_dir, args.max_credits)
+            print(f"Next (free): make art-prop-candidates PROP={spec.id}, look at art-src/props/{spec.id}/review/candidates.png, then prop-build --pick N")
+        elif args.command == "build":
+            run_build(spec, manifest, client, work_dir, args.pick, args.max_credits)
+            print(f"Next (free): make art-render UNIT={spec.id}")
+        elif args.command == "prop-build":
             run_prop_build(spec, manifest, client, work_dir, args.pick, args.max_credits)
             print("Next (free): make art-attach UNIT=<unit that carries it>")
         else:
-            run_build(spec, manifest, client, work_dir, args.pick, args.max_credits)
-            print(f"Next (free): make art-render UNIT={spec.id}")
+            raise AssertionError(args.command)
     except (MeshyError, BudgetError, BuildError, InterruptedCreate, SpecError) as error:
         print(f"meshy.py: {error}", file=sys.stderr)
         return 1

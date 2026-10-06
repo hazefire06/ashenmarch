@@ -73,6 +73,14 @@ class SpecErrorsTest(unittest.TestCase):
         with self.assertRaisesRegex(SpecError, "folder"):
             load_spec(path)
 
+    def test_the_height_must_be_a_finite_positive_number(self) -> None:
+        for value in ("nan", "inf", "-inf", "-1", "0", "0.0", "true", "false", '"tall"', "1" + "0" * 400):
+            with self.subTest(height_m=value):
+                path = self.dir / "spec.toml"
+                path.write_text(f'id = "unit_x"\nfaction = "light"\nheight_m = {value}\nprompt = "p"\n[animations.idle]\nfile = "a.glb"\n')
+                with self.assertRaisesRegex(SpecError, "height_m must be"):
+                    load_spec(path)
+
     def test_a_long_prompt_is_refused(self) -> None:
         spec = load_spec(self.spec('[animations.idle]\nfile = "a.glb"\n'))
         style = load_style(ART_SRC / "style.toml")
@@ -121,6 +129,23 @@ class AttachTest(unittest.TestCase):
             load_spec(self.spec('[[attach]]\nprop = "broadsword"\nbone = ""\n'))
         with self.assertRaisesRegex(SpecError, "attach entry 1.*prop"):
             load_spec(self.spec('[[attach]]\nbone = "RightHand"\n'))
+
+    def test_a_huge_number_is_refused_not_an_overflow(self) -> None:
+        huge = "1" + "0" * 400
+        for key in ("offset", "rotation"):
+            with self.subTest(key=key):
+                path = self.spec(f'[[attach]]\nprop = "targe"\nbone = "LeftForeArm"\n{key} = [0, 0, {huge}]\n')
+                with self.assertRaisesRegex(SpecError, f"{key} must be exactly 3 numbers"):
+                    load_spec(path)
+
+    def test_bone_names_are_plain_names(self) -> None:
+        for bone in ("RightHand", "mixamorig:LeftForeArm", "Bone.001", "left-hand_2", "Left Hand", "a" * 63):
+            with self.subTest(good=bone):
+                self.assertEqual(load_spec(self.spec(f'[[attach]]\nprop = "targe"\nbone = "{bone}"\n')).attach[0].bone, bone)
+        for bone in ("", " ", "   ", "a" * 64, "Right/Hand", "../x", "Hand\\n", "Hand\\tTab", "Hand;rm", "H\\u00e9", "[x]"):
+            with self.subTest(bad=bone):
+                with self.assertRaisesRegex(SpecError, "attach entry 1.*bone"):
+                    load_spec(self.spec(f'[[attach]]\nprop = "targe"\nbone = "{bone}"\n'))
 
     def test_offset_and_rotation_are_exactly_three_numbers(self) -> None:
         for key in ("offset", "rotation"):
@@ -180,6 +205,12 @@ class PropSpecTest(unittest.TestCase):
                 with self.assertRaisesRegex(SpecError, "length_m must be positive") as caught:
                     load_prop_spec(path)
                 self.assertIn(str(path), str(caught.exception))
+
+    def test_the_length_must_be_a_finite_number_not_a_bool(self) -> None:
+        for value in ("nan", "inf", "-inf", "true", "false", '"long"', "1" + "0" * 400):
+            with self.subTest(length_m=value):
+                with self.assertRaisesRegex(SpecError, "length_m must be"):
+                    load_prop_spec(self.prop(self.GOOD.replace("0.95", value)))
 
     def test_the_faction_is_light_or_dark(self) -> None:
         with self.assertRaisesRegex(SpecError, "faction must be light or dark"):

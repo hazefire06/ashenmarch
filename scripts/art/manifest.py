@@ -8,6 +8,7 @@ read it to resume instead of buying a task twice.
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from typing import Any
 
@@ -60,5 +61,8 @@ class Manifest:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         text = json.dumps({"tasks": [clean(t) for t in self.tasks]}, indent=2, sort_keys=True) + "\n"
         part = self.path.with_name(self.path.name + ".part")
-        part.write_text(text, encoding="utf-8")
+        # O_NOFOLLOW: the repo is public, so a PR could plant `manifest.json.part` as a symlink to a file of Tim's.
+        fd = os.open(part, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW, 0o644)
+        with os.fdopen(fd, "w", encoding="utf-8") as out:
+            out.write(text)
         part.replace(self.path)

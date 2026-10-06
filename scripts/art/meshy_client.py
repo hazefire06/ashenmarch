@@ -15,6 +15,7 @@ Endpoints and credit costs: https://docs.meshy.ai/en/api (checked 2026-10-01).
 from __future__ import annotations
 
 import json
+import os
 import re
 import ssl
 import time
@@ -175,11 +176,18 @@ def _allowed(url: str) -> bool:
     return parts.scheme == "https" and parts.hostname in ALLOWED_DOWNLOAD_HOSTS
 
 
+def _tls_context() -> ssl.SSLContext:
+    """Certificates and hostname verified (the default), TLS 1.2 or newer, and no renegotiation."""
+    context = ssl.create_default_context()
+    context.options |= ssl.OP_NO_RENEGOTIATION
+    return context
+
+
 def http_transport(api_key: str, base_url: str = BASE_URL, timeout: float = 60.0) -> Transport:
     if not api_key or not api_key.isprintable() or any(c.isspace() for c in api_key):
         raise MeshyError("the API key is empty or holds spaces or control characters; check ~/.config/ashenmarch/secrets.env")
 
-    opener = urllib.request.build_opener(_NoRedirects())
+    opener = urllib.request.build_opener(_NoRedirects(), urllib.request.HTTPSHandler(context=_tls_context()))
 
     def call(method: str, path: str, body: dict[str, Any] | None) -> dict[str, Any]:
         if not path.startswith("/openapi/"):
@@ -201,6 +209,9 @@ def http_transport(api_key: str, base_url: str = BASE_URL, timeout: float = 60.0
             ) from None
         except (urllib.error.URLError, OSError, ValueError) as error:
             # Only a failed certificate check is known to precede the request; any other SSL error may come after it.
+            # This leans on urllib's do_open: it wraps only h.request() (connect, handshake, send) in URLError, so a
+            # handshake failure is always pre-send. Errors from getresponse() arrive unwrapped, so they never match
+            # here and stay "may have created".
             if isinstance(error, urllib.error.URLError) and isinstance(error.reason, ssl.SSLCertVerificationError):
                 raise MeshyError(CERT_FAILURE, retryable=False, may_have_created=False) from None
             raise MeshyError(_lost(method, path), retryable=(method == "GET"), may_have_created=posting) from None
@@ -228,7 +239,7 @@ def http_downloader(url: str, dest: Path) -> None:
         raise MeshyError(f"refusing download from {parts.scheme}://{parts.hostname}")
     dest.parent.mkdir(parents=True, exist_ok=True)
     part = dest.with_name(dest.name + ".part")
-    opener = urllib.request.build_opener(_AllowlistedRedirects())
+    opener = urllib.request.build_opener(_AllowlistedRedirects(), urllib.request.HTTPSHandler(context=_tls_context()))
     try:
         response = opener.open(url, timeout=300)
     except urllib.error.HTTPError as error:
@@ -239,9 +250,16 @@ def http_downloader(url: str, dest: Path) -> None:
         part.unlink(missing_ok=True)
         raise MeshyError(f"download of {dest.name} failed: no reply (timed out or the connection failed); rerun to retry") from None
 
+    # O_NOFOLLOW: a symlink planted as the .part would otherwise redirect the write. It isn't ours, so it is left in place.
+    try:
+        out = os.fdopen(os.open(part, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW, 0o644), "wb")
+    except OSError:
+        response.close()
+        raise MeshyError(f"download of {dest.name} refused: {part.name} can't be created, or is a symlink; remove it and rerun") from None
+
     size = 0
     try:
-        with response, open(part, "wb") as out:
+        with response, out:
             while chunk := response.read(DOWNLOAD_CHUNK_BYTES):
                 size += len(chunk)
                 if size > MAX_DOWNLOAD_BYTES:

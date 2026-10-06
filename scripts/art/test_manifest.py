@@ -67,6 +67,26 @@ class ManifestTest(unittest.TestCase):
         self.assertNotIn("Signature", written)
         self.assertNotIn("Expires", written)
 
+    def test_a_symlinked_part_file_is_refused_and_its_target_is_left_alone(self) -> None:
+        # The repo is public: a PR could plant manifest.json.part -> some file of Tim's.
+        target = Path(self._tmp.name) / "precious.txt"
+        target.write_text("keep me")
+        self.path.with_name("manifest.json.part").symlink_to(target)
+        m = Manifest(self.path)
+        m.upsert({"kind": "preview", "label": "cand-1", "status": "CREATING"})
+        with self.assertRaises(OSError):
+            m.save()
+        self.assertEqual(target.read_text(), "keep me")
+        self.assertFalse(self.path.exists())
+
+    def test_a_stale_regular_part_file_is_just_overwritten(self) -> None:
+        self.path.with_name("manifest.json.part").write_text("half a write")
+        m = Manifest(self.path)
+        m.upsert({"kind": "preview", "label": "cand-1", "task_id": "a"})
+        m.save()
+        self.assertEqual(Manifest.load(self.path).find("preview", "cand-1")["task_id"], "a")
+        self.assertFalse(self.path.with_name("manifest.json.part").exists())
+
 
 if __name__ == "__main__":
     unittest.main()
