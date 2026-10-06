@@ -37,7 +37,9 @@ sim/            # pure gameplay logic, no Nodes
 view/           # Godot scenes: camera, sprites, HUD, overhead map, effects
 data/           # unit .tres files, formation definitions, map data
 maps/           # heightmaps, passability masks, spawn/trigger layouts, skirmish spawns and flags
-assets/         # placeholder art and audio (original only)
+assets/         # game-ready art and audio (LFS; owned or CC0 only, see assets/LICENSES.md)
+art-src/        # art recipes, Meshy models, render review sheets (LFS; Godot skips it)
+audio-src/      # sound prompts and raw downloads (LFS; Godot skips it)
 tests/          # GUT tests for sim/
 docs/           # design notes, prompts.md
 scripts/        # dev tooling (sim purity check)
@@ -51,7 +53,7 @@ scripts/        # dev tooling (sim purity check)
 - Feature branches: `feature/PHASE-N-short-description`. Squash-merge to `main`. Open a PR even solo; it's the change log.
 - Before starting any phase: enter plan mode, read this file and `docs/prompts.md`, propose the plan, wait for approval.
 - Commit messages: imperative, one line summary, body explains why.
-- Placeholder art: colored capsules/quads with a text label. Do not spend time on art until told to.
+- Placeholder art: colored quads with a text label stay the fallback for any unit without art. Unit art and audio are a parallel track (A0–A3, `docs/specs/2026-10-01-art-audio-design.md`) and are worked on only on `feature/PHASE-A*` branches. API keys live in `~/.config/ashenmarch/secrets.env`, never in the repo.
 
 ## Game design
 
