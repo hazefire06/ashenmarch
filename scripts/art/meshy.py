@@ -1,13 +1,21 @@
 #!/usr/bin/env python3
-"""Buys a unit's 3D model, rig and animations from Meshy (spec §6.1).
+"""Buys a unit's 3D model, rig and animations from Meshy (spec §6.1), and the
+weapons and gear it carries as separate textured models (spec §6.2a).
 
     python3 scripts/art/meshy.py plan shieldman                        free: what it would buy
     python3 scripts/art/meshy.py candidates shieldman --max-credits 60 paid: preview candidates
     python3 scripts/art/meshy.py build shieldman --pick 3 --max-credits 30
                                                                        paid: texture, rig, animate
 
+    python3 scripts/art/meshy.py prop-plan broadsword                  free: what it would buy
+    python3 scripts/art/meshy.py prop-candidates broadsword --max-credits 10
+                                                                       paid: preview candidates, no pose
+    python3 scripts/art/meshy.py prop-build broadsword --pick 1 --max-credits 10
+                                                                       paid: texture only, no rig
+
 Tim runs the paid commands in Terminal.app. Every task is recorded in
-art-src/units/<id>/manifest.json as soon as it is created, so an
+art-src/units/<id>/manifest.json (art-src/props/<id>/manifest.json for a
+prop) as soon as it is created, so an
 interrupted run resumes by polling the same task instead of buying it
 again. A failed task (Meshy refunds those) is bought again on the next run.
 Results download immediately, because Meshy's links expire after about 3
@@ -23,7 +31,6 @@ continue until you delete the CREATING entry from manifest.json.
 from __future__ import annotations
 
 import argparse
-import re
 import sys
 import time
 from collections.abc import Callable
@@ -39,10 +46,13 @@ from meshy_client import (  # noqa: E402
     MeshyClient, MeshyError, TaskFailed, http_downloader, http_transport,
 )
 from secrets_file import SecretsError, load_secret  # noqa: E402
-from unit_spec import PREVIEW_MODELS, SpecError, Style, UnitSpec, load_spec, load_style  # noqa: E402
+from unit_spec import (  # noqa: E402
+    NAME, PREVIEW_MODELS, PropSpec, SpecError, Style, UnitSpec, load_prop_spec, load_spec, load_style,
+)
 
 ART_SRC = HERE.parent.parent / "art-src"
 Say = Callable[[str], None]
+Recipe = UnitSpec | PropSpec  # both list candidates and are previewed; only a unit is rigged and animated
 
 
 class BudgetError(Exception):
@@ -57,7 +67,7 @@ class InterruptedCreate(Exception):
     """A previous run stopped while creating a task, so it may exist and be charged."""
 
 
-def candidate_jobs(spec: UnitSpec) -> list[tuple[str, str]]:
+def candidate_jobs(spec: Recipe) -> list[tuple[str, str]]:
     jobs = [(f"cand-{i + 1}", PREVIEW_MODELS["lite"]) for i in range(spec.lite)]
     jobs += [(f"cand-{spec.lite + i + 1}", PREVIEW_MODELS["full"]) for i in range(spec.full)]
     return jobs
@@ -83,7 +93,7 @@ def _refuse_if_interrupted(manifest: Manifest) -> None:
         raise InterruptedCreate(messages[0])
 
 
-def candidates_cost(spec: UnitSpec, manifest: Manifest) -> int:
+def candidates_cost(spec: Recipe, manifest: Manifest) -> int:
     return sum(PREVIEW_CREDITS[model] for label, model in candidate_jobs(spec) if not _bought(manifest.find("preview", label)))
 
 
@@ -100,15 +110,35 @@ def build_cost(spec: UnitSpec, manifest: Manifest, pick: int) -> int:
     return cost
 
 
+def _candidates_line(spec: Recipe, manifest: Manifest) -> str:
+    jobs = ", ".join(f"{label} {model} ({PREVIEW_CREDITS[model]})" for label, model in candidate_jobs(spec))
+    return f"candidates: {jobs} -> {candidates_cost(spec, manifest)} credits still to buy"
+
+
 def plan_text(spec: UnitSpec, style: Style, manifest: Manifest) -> str:
     prompt = spec.full_prompt(style)
-    jobs = ", ".join(f"{label} {model} ({PREVIEW_CREDITS[model]})" for label, model in candidate_jobs(spec))
     actions = len(spec.action_ids())
     build = REFINE_CREDITS + RIG_CREDITS + CREDITS_PER_ACTION * actions
     return "\n".join([
         f"{spec.id}: prompt {len(prompt)}/800 characters",
-        f"candidates: {jobs} -> {candidates_cost(spec, manifest)} credits still to buy",
+        _candidates_line(spec, manifest),
         f"build (after you pick): refine {REFINE_CREDITS} + rig {RIG_CREDITS} + {actions} actions x {CREDITS_PER_ACTION} = {build} credits",
+        f"spent on {spec.id} so far: {manifest.credits_spent()} credits",
+        *(f"blocked: {message}" for message in _interrupted(manifest)),
+    ])
+
+
+def prop_build_cost(manifest: Manifest, pick: int) -> int:
+    """A prop is textured and nothing else: no rig, no animations."""
+    return 0 if _bought(manifest.find("refine", f"cand-{pick}")) else REFINE_CREDITS
+
+
+def prop_plan_text(spec: PropSpec, style: Style, manifest: Manifest) -> str:
+    prompt = spec.full_prompt(style)
+    return "\n".join([
+        f"{spec.id}: prompt {len(prompt)}/800 characters",
+        _candidates_line(spec, manifest),
+        f"build (after you pick): refine {REFINE_CREDITS} credits",
         f"spent on {spec.id} so far: {manifest.credits_spent()} credits",
         *(f"blocked: {message}" for message in _interrupted(manifest)),
     ])
@@ -165,7 +195,7 @@ def _fetch(manifest: Manifest, client: Any, api_kind: str, record: dict[str, Any
     _store(manifest, {**manifest.find(record["kind"], record["label"]), "files": sorted(files)})
 
 
-def run_candidates(spec: UnitSpec, style: Style, manifest: Manifest, client: Any, unit_dir: Path,
+def run_candidates(spec: Recipe, style: Style, manifest: Manifest, client: Any, unit_dir: Path,
                    max_credits: int, say: Say = print) -> list[Path]:
     _refuse_if_interrupted(manifest)
     cost = candidates_cost(spec, manifest)
@@ -174,7 +204,7 @@ def run_candidates(spec: UnitSpec, style: Style, manifest: Manifest, client: Any
     prompt = spec.full_prompt(style)
     paths: list[Path] = []
     for label, model in candidate_jobs(spec):
-        record = _start(manifest, "preview", label, lambda m=model: client.create_preview(prompt, m, spec.polycount),
+        record = _start(manifest, "preview", label, lambda m=model: client.create_preview(prompt, m, spec.polycount, spec.pose_mode),
                         say, f"{model}, {PREVIEW_CREDITS[model]} credits", ai_model=model, prompt=prompt)
         rel = f"candidates/{label}.glb"
         _fetch(manifest, client, "text-to-3d", record, unit_dir, {rel: lambda t: t["model_urls"]["glb"]})
@@ -182,19 +212,41 @@ def run_candidates(spec: UnitSpec, style: Style, manifest: Manifest, client: Any
     return paths
 
 
+def _finished_preview(manifest: Manifest, label: str, candidates_command: str) -> dict[str, Any]:
+    candidate = manifest.find("preview", label)
+    if candidate is None or candidate.get("status") != "SUCCEEDED":
+        raise BuildError(f"{label} has no finished preview; run {candidates_command} first")
+    return candidate
+
+
+def _texture(manifest: Manifest, client: Any, unit_dir: Path, label: str, candidate: dict[str, Any], say: Say) -> dict[str, Any]:
+    """The refine step, the same for a unit and a prop: texture the picked preview and download it."""
+    refine = _start(manifest, "refine", label, lambda: client.create_refine(candidate["task_id"]), say, f"{REFINE_CREDITS} credits")
+    _fetch(manifest, client, "text-to-3d", refine, unit_dir, {"model/textured.glb": lambda t: t["model_urls"]["glb"]})
+    return refine
+
+
+def run_prop_build(spec: PropSpec, manifest: Manifest, client: Any, prop_dir: Path, pick: int,
+                   max_credits: int, say: Say = print) -> None:
+    _refuse_if_interrupted(manifest)
+    label = f"cand-{pick}"
+    candidate = _finished_preview(manifest, label, "prop-candidates")
+    cost = prop_build_cost(manifest, pick)
+    if cost > max_credits:
+        raise BudgetError(f"texturing {spec.id} needs {cost} credits; --max-credits is {max_credits}")
+    _texture(manifest, client, prop_dir, label, candidate, say)  # refine only: a prop is fixed to a bone, never rigged
+
+
 def run_build(spec: UnitSpec, manifest: Manifest, client: Any, unit_dir: Path, pick: int,
               max_credits: int, say: Say = print) -> None:
     _refuse_if_interrupted(manifest)
     label = f"cand-{pick}"
-    candidate = manifest.find("preview", label)
-    if candidate is None or candidate.get("status") != "SUCCEEDED":
-        raise BuildError(f"{label} has no finished preview; run candidates first")
+    candidate = _finished_preview(manifest, label, "candidates")
     cost = build_cost(spec, manifest, pick)
     if cost > max_credits:
         raise BudgetError(f"the build needs {cost} credits; --max-credits is {max_credits}")
 
-    refine = _start(manifest, "refine", label, lambda: client.create_refine(candidate["task_id"]), say, f"{REFINE_CREDITS} credits")
-    _fetch(manifest, client, "text-to-3d", refine, unit_dir, {"model/textured.glb": lambda t: t["model_urls"]["glb"]})
+    refine = _texture(manifest, client, unit_dir, label, candidate, say)
 
     rig = _start(manifest, "rig", label, lambda: client.create_rig(refine["task_id"], spec.height_m), say, f"{RIG_CREDITS} credits")
     _fetch(manifest, client, "rigging", rig, unit_dir, {
@@ -211,7 +263,7 @@ def run_build(spec: UnitSpec, manifest: Manifest, client: Any, unit_dir: Path, p
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(prog="meshy.py", description="Buy a unit's model, rig and animations from Meshy.")
+    parser = argparse.ArgumentParser(prog="meshy.py", description="Buy a unit's model, rig and animations, or a prop's model, from Meshy.")
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("plan").add_argument("unit")
     candidates = sub.add_parser("candidates")
@@ -221,20 +273,33 @@ def main(argv: list[str] | None = None) -> int:
     build.add_argument("unit")
     build.add_argument("--pick", type=int, required=True)
     build.add_argument("--max-credits", type=int, required=True)
+    sub.add_parser("prop-plan").add_argument("prop")
+    prop_candidates = sub.add_parser("prop-candidates")
+    prop_candidates.add_argument("prop")
+    prop_candidates.add_argument("--max-credits", type=int, required=True)
+    prop_build = sub.add_parser("prop-build")
+    prop_build.add_argument("prop")
+    prop_build.add_argument("--pick", type=int, required=True)
+    prop_build.add_argument("--max-credits", type=int, required=True)
     args = parser.parse_args(argv)
 
-    if not re.fullmatch(r"[a-z][a-z0-9_]{0,31}", args.unit):  # no path pieces: `../x` must not leave art-src
+    is_prop = args.command.startswith("prop-")
+    name = args.prop if is_prop else args.unit
+    if not NAME.fullmatch(name):  # no path pieces: `../x` must not leave art-src
         print("meshy.py: unit names are lowercase letters, digits and _", file=sys.stderr)
         return 2
-    unit_dir = ART_SRC / "units" / args.unit
+    work_dir = ART_SRC / ("props" if is_prop else "units") / name
     try:
-        spec = load_spec(unit_dir / "spec.toml")
+        spec = (load_prop_spec if is_prop else load_spec)(work_dir / "spec.toml")
         style = load_style(ART_SRC / "style.toml")
     except (SpecError, OSError) as error:
         print(f"meshy.py: {error}", file=sys.stderr)
         return 2
-    manifest = Manifest.load(unit_dir / "manifest.json")
-    if args.command == "plan":
+    manifest = Manifest.load(work_dir / "manifest.json")
+    if isinstance(spec, PropSpec) and args.command == "prop-plan":
+        print(prop_plan_text(spec, style, manifest))
+        return 0
+    if isinstance(spec, UnitSpec) and args.command == "plan":
         print(plan_text(spec, style, manifest))
         return 0
     try:
@@ -243,11 +308,17 @@ def main(argv: list[str] | None = None) -> int:
         print(f"meshy.py: {error}", file=sys.stderr)
         return 2
     try:
-        if args.command == "candidates":
-            run_candidates(spec, style, manifest, client, unit_dir, args.max_credits)
-            print(f"Next (free): make art-candidates UNIT={spec.id}, look at art-src/units/{spec.id}/review/candidates.png, then build --pick N")
+        if args.command in ("candidates", "prop-candidates"):
+            run_candidates(spec, style, manifest, client, work_dir, args.max_credits)
+            if isinstance(spec, PropSpec):
+                print(f"Next (free): make art-prop-candidates PROP={spec.id}, look at art-src/props/{spec.id}/review/candidates.png, then prop-build --pick N")
+            else:
+                print(f"Next (free): make art-candidates UNIT={spec.id}, look at art-src/units/{spec.id}/review/candidates.png, then build --pick N")
+        elif isinstance(spec, PropSpec):
+            run_prop_build(spec, manifest, client, work_dir, args.pick, args.max_credits)
+            print("Next (free): make art-attach UNIT=<unit that carries it>")
         else:
-            run_build(spec, manifest, client, unit_dir, args.pick, args.max_credits)
+            run_build(spec, manifest, client, work_dir, args.pick, args.max_credits)
             print(f"Next (free): make art-render UNIT={spec.id}")
     except (MeshyError, BudgetError, BuildError, InterruptedCreate, SpecError) as error:
         print(f"meshy.py: {error}", file=sys.stderr)

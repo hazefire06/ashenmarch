@@ -6,7 +6,9 @@ ones. Nothing here prints or stores the API key. Errors carry the HTTP
 status and Meshy's message, never the key or a signed URL. Only a GET that
 failed in passing is retried, and redirects can't carry the key. A POST with
 no usable reply may have created a charged task, so its error says so
-(may_have_created) and is never retried.
+(may_have_created) and is never retried. The one exception is a failed
+certificate check: that is the TLS handshake, before any request goes out, so
+nothing was sent and the error says so.
 
 Endpoints and credit costs: https://docs.meshy.ai/en/api (checked 2026-10-01).
 """
@@ -14,6 +16,7 @@ from __future__ import annotations
 
 import json
 import re
+import ssl
 import time
 import urllib.error
 import urllib.parse
@@ -36,6 +39,8 @@ MAX_DOWNLOAD_BYTES = 512 * 1024 * 1024
 DOWNLOAD_CHUNK_BYTES = 1024 * 1024
 # Task ids go into URLs, and they can come from the committed manifest, which a public PR can edit.
 TASK_ID = re.compile(r"[A-Za-z0-9-]{1,64}")
+# A failed handshake means no request was sent, so nothing can have been created or charged.
+CERT_FAILURE = "can't verify Meshy's HTTPS certificate, so nothing was sent. If you use python.org's Python, run its 'Install Certificates.command' once (in /Applications/Python 3.x/)"
 POST_WARNING = "; the task may have been created and charged, so check your API tasks on meshy.ai before rerunning, or you may pay twice"
 TASK_PATHS: dict[str, str] = {
     "text-to-3d": "/openapi/v2/text-to-3d",
@@ -98,11 +103,13 @@ class MeshyClient:
         self._poll = poll_seconds
         self._timeout = timeout_seconds
 
-    def create_preview(self, prompt: str, ai_model: str, polycount: int) -> str:
-        return self._create("text-to-3d", {
-            "mode": "preview", "prompt": prompt, "ai_model": ai_model, "pose_mode": "a-pose",
-            "should_remesh": True, "target_polycount": polycount, "target_formats": ["glb"],
-        })
+    def create_preview(self, prompt: str, ai_model: str, polycount: int, pose_mode: str | None = "a-pose") -> str:
+        """A unit is previewed in an A-pose so it rigs cleanly; a prop passes None and sends no pose at all."""
+        body: dict[str, Any] = {"mode": "preview", "prompt": prompt, "ai_model": ai_model}
+        if pose_mode is not None:
+            body["pose_mode"] = pose_mode
+        body.update({"should_remesh": True, "target_polycount": polycount, "target_formats": ["glb"]})
+        return self._create("text-to-3d", body)
 
     def create_refine(self, preview_task_id: str) -> str:
         return self._create("text-to-3d", {
@@ -192,7 +199,10 @@ def http_transport(api_key: str, base_url: str = BASE_URL, timeout: float = 60.0
                 retryable=(method == "GET" and (error.code == 429 or error.code >= 500)),
                 may_have_created=unsure,
             ) from None
-        except (urllib.error.URLError, OSError, ValueError):
+        except (urllib.error.URLError, OSError, ValueError) as error:
+            # Only a failed certificate check is known to precede the request; any other SSL error may come after it.
+            if isinstance(error, urllib.error.URLError) and isinstance(error.reason, ssl.SSLCertVerificationError):
+                raise MeshyError(CERT_FAILURE, retryable=False, may_have_created=False) from None
             raise MeshyError(_lost(method, path), retryable=(method == "GET"), may_have_created=posting) from None
 
         try:

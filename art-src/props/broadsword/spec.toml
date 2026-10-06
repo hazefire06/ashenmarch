@@ -1,0 +1,12 @@
+# The broadsword's art recipe (spec §6.2a). meshy.py prop-candidates and prop-build buy it.
+# The Shieldman carries it: his [[attach]] fixes it to the RightHand bone when sprites render.
+# length_m is its longest axis in metres (blade tip to pommel); the renderer scales the model to it.
+id = "broadsword"
+faction = "light"
+length_m = 0.95
+prompt = "Scottish basket-hilted broadsword, straight double-edged steel blade, steel basket guard lined with red leather, leather-wrapped wooden grip, round pommel"
+
+[candidates]
+lite = 2
+full = 0
+polycount = 6000

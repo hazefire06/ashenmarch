@@ -1,0 +1,12 @@
+# The targe's art recipe (spec §6.2a). meshy.py prop-candidates and prop-build buy it.
+# The Shieldman carries it: his [[attach]] fixes it to the LeftForeArm bone when sprites render.
+# length_m is its longest axis in metres (its diameter); the renderer scales the model to it.
+id = "targe"
+faction = "light"
+length_m = 0.55
+prompt = "Round Highland targe shield seen from the front, wooden face covered in tooled brown leather, ring of brass studs, central iron boss with a short spike, leather arm straps on the back"
+
+[candidates]
+lite = 2
+full = 0
+polycount = 6000

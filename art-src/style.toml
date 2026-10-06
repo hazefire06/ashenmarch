@@ -2,6 +2,9 @@
 # Spec §5. Original designs only: no names or looks from existing games or books.
 suffix = "Stylized fantasy strategy-game character, chunky heroic proportions, hand-painted textures, strong readable silhouette, muted earthy palette, full body, standing in A-pose, centered, plain background"
 
+# The same for props (spec §6.2a): no figure, no pose, so a sword isn't generated with a hand on it.
+prop_suffix = "Stylized fantasy strategy-game prop, chunky readable shape, hand-painted textures, muted earthy palette, single object on its own, no hands or figure, centered, plain background"
+
 [palettes]
 light = "warm tartan reds and greens, steel, woad blue"
 dark = "cold bog brown, bone white, sickly green glow"

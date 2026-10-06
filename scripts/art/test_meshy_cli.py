@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import contextlib
 import io
+import shutil
 import tempfile
 import unittest
 from pathlib import Path
@@ -13,7 +14,7 @@ import meshy
 import meshy_client
 from manifest import Manifest
 from meshy_client import MeshyError, TaskFailed
-from unit_spec import load_spec, load_style
+from unit_spec import load_prop_spec, load_spec, load_style
 
 ART_SRC = Path(__file__).resolve().parent.parent.parent / "art-src"
 
@@ -24,6 +25,8 @@ class FakeClient:
     def __init__(self, fail_waits: int = 0, lost_waits: dict[str, str] | None = None,
                  create_error: BaseException | None = None, finished_at: Any = 1) -> None:
         self.created: list[tuple[str, Any]] = []
+        self.pose_modes: list[str | None] = []  # one per preview, as asked for
+        self.prompts: list[str] = []
         self.fail_waits = fail_waits
         self.lost_waits = lost_waits or {}
         self.create_error = create_error
@@ -37,8 +40,12 @@ class FakeClient:
         self.created.append((what, arg))
         return f"{what}-{self._n}"
 
-    def create_preview(self, prompt: str, ai_model: str, polycount: int) -> str:
-        return self._new("preview", ai_model)
+    def create_preview(self, prompt: str, ai_model: str, polycount: int, pose_mode: str | None) -> str:
+        # No default on pose_mode (the real client has one): the flow must pass it, or this fake fails.
+        task_id = self._new("preview", ai_model)
+        self.pose_modes.append(pose_mode)
+        self.prompts.append(prompt)
+        return task_id
 
     def create_refine(self, preview_task_id: str) -> str:
         return self._new("refine", preview_task_id)
@@ -99,6 +106,12 @@ class FlowTest(unittest.TestCase):
         self.candidates(again)
         self.assertEqual(again.created, [])
         self.assertEqual(meshy.candidates_cost(self.spec, self.manifest), 0)
+
+    def test_unit_previews_are_still_requested_in_an_a_pose(self) -> None:
+        client = FakeClient()
+        self.candidates(client)
+        self.assertEqual(client.pose_modes, ["a-pose"] * 4)
+        self.assertTrue(all(self.style.suffix in prompt for prompt in client.prompts))
 
     def test_an_over_budget_run_buys_nothing(self) -> None:
         client = FakeClient()
@@ -248,6 +261,133 @@ class FlowTest(unittest.TestCase):
         self.assertIn("a previous run stopped while creating preview cand-1", meshy.plan_text(self.spec, self.style, self.manifest))
 
 
+class PropFlowTest(unittest.TestCase):
+    def setUp(self) -> None:
+        self._tmp = tempfile.TemporaryDirectory()
+        self.prop_dir = Path(self._tmp.name) / "broadsword"
+        self.prop_dir.mkdir()
+        self.spec = load_prop_spec(ART_SRC / "props" / "broadsword" / "spec.toml")
+        self.style = load_style(ART_SRC / "style.toml")
+        self.manifest = Manifest(self.prop_dir / "manifest.json")
+        self.quiet: list[str] = []
+
+    def tearDown(self) -> None:
+        self._tmp.cleanup()
+
+    def candidates(self, client: FakeClient, max_credits: int = 100) -> list[Path]:
+        return meshy.run_candidates(self.spec, self.style, self.manifest, client, self.prop_dir, max_credits, say=self.quiet.append)
+
+    def build(self, client: FakeClient, pick: int = 1, max_credits: int = 100) -> None:
+        meshy.run_prop_build(self.spec, self.manifest, client, self.prop_dir, pick, max_credits, say=self.quiet.append)
+
+    def test_candidates_are_bought_once_resumed_and_have_no_pose(self) -> None:
+        client = FakeClient()
+        paths = self.candidates(client)
+        self.assertEqual([p.name for p in paths], ["cand-1.glb", "cand-2.glb"])
+        self.assertTrue(all(p.parent == self.prop_dir / "candidates" and p.exists() for p in paths))
+        self.assertEqual(client.created, [("preview", "meshy-6-lite"), ("preview", "meshy-6-lite")])
+        self.assertEqual(client.pose_modes, [None, None])
+        self.assertTrue(all(prompt.endswith(self.style.prop_suffix) for prompt in client.prompts))
+        again = FakeClient()
+        self.candidates(again)
+        self.assertEqual(again.created, [])
+        self.assertEqual(meshy.candidates_cost(self.spec, self.manifest), 0)
+
+    def test_an_interrupted_candidates_run_resumes_the_same_task(self) -> None:
+        lost = {"preview-1": "text-to-3d task preview-1 still IN_PROGRESS after 1800 s; rerun to keep waiting"}
+        with self.assertRaises(MeshyError):
+            self.candidates(FakeClient(lost_waits=lost))
+        again = FakeClient()
+        self.candidates(again)
+        self.assertEqual(again.created, [("preview", "meshy-6-lite")])  # cand-1 is waited on, only cand-2 is bought
+
+    def test_candidates_over_budget_buy_nothing(self) -> None:
+        client = FakeClient()
+        with self.assertRaisesRegex(meshy.BudgetError, "need 10 credits"):
+            self.candidates(client, max_credits=9)
+        self.assertEqual(client.created, [])
+
+    def test_a_build_buys_the_refine_only_and_downloads_the_texture(self) -> None:
+        self.candidates(FakeClient())
+        client = FakeClient()
+        self.build(client, pick=2)
+        self.assertEqual(client.created, [("refine", "preview-2")])  # no rig, no animate
+        self.assertTrue((self.prop_dir / "model" / "textured.glb").exists())
+        self.assertEqual({p.name for p in (self.prop_dir / "model").iterdir()}, {"textured.glb"})
+        self.assertFalse((self.prop_dir / "anims").exists())
+        record = Manifest.load(self.manifest.path).find("refine", "cand-2")
+        self.assertEqual(record["status"], "SUCCEEDED")
+        self.assertIsNone(self.manifest.find("rig", "cand-2"))
+        again = FakeClient()
+        self.build(again, pick=2, max_credits=0)
+        self.assertEqual(again.created, [])
+
+    def test_the_build_cost_is_the_refine_until_it_is_bought(self) -> None:
+        self.assertEqual(meshy.prop_build_cost(self.manifest, 1), 10)
+        self.candidates(FakeClient())
+        self.build(FakeClient())
+        self.assertEqual(meshy.prop_build_cost(self.manifest, 1), 0)
+        self.assertEqual(meshy.prop_build_cost(self.manifest, 2), 10)
+
+    def test_an_over_budget_build_buys_nothing(self) -> None:
+        self.candidates(FakeClient())
+        client = FakeClient()
+        with self.assertRaisesRegex(meshy.BudgetError, "needs 10 credits; --max-credits is 9"):
+            self.build(client, max_credits=9)
+        self.assertEqual(client.created, [])
+        self.assertIsNone(self.manifest.find("refine", "cand-1"))
+
+    def test_a_build_needs_a_finished_candidate(self) -> None:
+        client = FakeClient()
+        with self.assertRaisesRegex(meshy.BuildError, "cand-1 has no finished preview; run prop-candidates first"):
+            self.build(client)
+        self.assertEqual(client.created, [])
+
+    def test_a_creating_record_blocks_prop_candidates_and_prop_build(self) -> None:
+        self.manifest.upsert({"kind": "preview", "label": "cand-1", "status": "CREATING", "created_at": 1})
+        for run in (lambda c: self.candidates(c, max_credits=0), lambda c: self.build(c, max_credits=0)):
+            client = FakeClient()
+            with self.assertRaisesRegex(meshy.InterruptedCreate, "creating preview cand-1"):
+                run(client)
+            self.assertEqual(client.created, [])
+
+    def test_a_build_refuses_to_continue_after_an_interrupted_refine(self) -> None:
+        self.candidates(FakeClient())
+        with self.assertRaises(KeyboardInterrupt):
+            self.build(FakeClient(create_error=KeyboardInterrupt()))
+        self.manifest = Manifest.load(self.manifest.path)
+        self.assertEqual(self.manifest.find("refine", "cand-1")["status"], "CREATING")
+        with self.assertRaisesRegex(meshy.InterruptedCreate, "creating refine cand-1"):
+            self.build(FakeClient(), max_credits=0)
+
+    def test_prop_plan_text_lists_what_it_would_buy_in_order(self) -> None:
+        lines = meshy.prop_plan_text(self.spec, self.style, self.manifest).splitlines()
+        prompt = self.spec.full_prompt(self.style)
+        self.assertEqual(lines, [
+            f"broadsword: prompt {len(prompt)}/800 characters",
+            "candidates: cand-1 meshy-6-lite (5), cand-2 meshy-6-lite (5) -> 10 credits still to buy",
+            "build (after you pick): refine 10 credits",
+            "spent on broadsword so far: 0 credits",
+        ])
+
+    def test_prop_plan_text_tracks_spending_and_shows_a_creating_record(self) -> None:
+        self.candidates(FakeClient())
+        text = meshy.prop_plan_text(self.spec, self.style, self.manifest)
+        self.assertIn("-> 0 credits still to buy", text)
+        self.assertIn("spent on broadsword so far: 2 credits", text)
+        self.assertNotIn("blocked:", text)
+        self.manifest.upsert({"kind": "refine", "label": "cand-1", "status": "CREATING", "created_at": 1})
+        lines = meshy.prop_plan_text(self.spec, self.style, self.manifest).splitlines()
+        self.assertTrue(lines[-1].startswith("blocked: a previous run stopped while creating refine cand-1"))
+
+    def test_the_manifest_never_holds_a_url(self) -> None:
+        self.candidates(FakeClient())
+        self.build(FakeClient())
+        text = self.manifest.path.read_text(encoding="utf-8")
+        self.assertNotIn("://", text)
+        self.assertNotIn("Signature", text)
+
+
 class MainTest(unittest.TestCase):
     def run_main(self, argv: list[str]) -> tuple[int, str, str]:
         out, err = io.StringIO(), io.StringIO()
@@ -266,6 +406,89 @@ class MainTest(unittest.TestCase):
         code, out, _ = self.run_main(["plan", "shieldman"])
         self.assertEqual(code, 0)
         self.assertIn("shieldman: prompt", out)
+
+    def test_a_prop_name_that_could_leave_the_repo_is_refused_before_any_path_is_built(self) -> None:
+        for command in (["prop-plan"], ["prop-candidates", "--max-credits", "100"], ["prop-build", "--pick", "1", "--max-credits", "100"]):
+            for name in ("../evil", "/abs", "..", "a/b", "Broadsword", "9lives", "_x", "", "a" * 33, "x\n"):
+                argv = [command[0], name, *command[1:]]
+                with self.subTest(argv=argv), mock.patch.object(meshy, "load_prop_spec", side_effect=AssertionError("built a path")):
+                    code, _, err = self.run_main(argv)
+                self.assertEqual(code, 2)
+                self.assertIn("meshy.py: unit names are lowercase letters, digits and _", err)
+
+    def test_prop_plan_reads_the_real_recipe(self) -> None:
+        for prop, length_line in (("broadsword", "broadsword: prompt"), ("targe", "targe: prompt")):
+            with self.subTest(prop=prop):
+                code, out, err = self.run_main(["prop-plan", prop])
+                self.assertEqual((code, err), (0, ""))
+                lines = out.splitlines()
+                self.assertTrue(lines[0].startswith(length_line) and lines[0].endswith("/800 characters"))
+                self.assertTrue(lines[1].startswith("candidates: cand-1 meshy-6-lite (5), cand-2 meshy-6-lite (5)"))
+                self.assertEqual(lines[2], "build (after you pick): refine 10 credits")
+                self.assertTrue(lines[3].startswith(f"spent on {prop} so far: "))
+
+    def test_a_prop_that_has_no_recipe_is_reported(self) -> None:
+        code, _, err = self.run_main(["prop-plan", "no_such_prop"])
+        self.assertEqual(code, 2)
+        self.assertIn("meshy.py:", err)
+
+    def test_a_unit_plan_is_not_affected_by_the_prop_commands(self) -> None:
+        code, out, _ = self.run_main(["plan", "shieldman"])
+        self.assertEqual(code, 0)
+        self.assertIn("refine 10 + rig 5 + 4 actions x 3 = 27 credits", out)
+
+    def stage(self, root: Path) -> Path:
+        """A throwaway art-src with the real broadsword recipe, so the paid commands never touch the repo's."""
+        shutil.copy(ART_SRC / "style.toml", root / "style.toml")
+        prop_dir = root / "props" / "broadsword"
+        prop_dir.mkdir(parents=True)
+        shutil.copy(ART_SRC / "props" / "broadsword" / "spec.toml", prop_dir / "spec.toml")
+        return prop_dir
+
+    def run_paid(self, root: Path, fake: FakeClient, argv: list[str]) -> tuple[int, str, str]:
+        # The key file, the network and the real client are all patched out.
+        with mock.patch.object(meshy, "ART_SRC", root), \
+                mock.patch.object(meshy, "load_secret", return_value="not-a-real-key"), \
+                mock.patch.object(meshy, "http_transport"), \
+                mock.patch.object(meshy, "MeshyClient", return_value=fake):
+            return self.run_main(argv)
+
+    def test_prop_candidates_and_prop_build_run_end_to_end_with_a_fake_client(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            prop_dir = self.stage(root)
+            fake = FakeClient()
+            code, out, err = self.run_paid(root, fake, ["prop-candidates", "broadsword", "--max-credits", "10"])
+            self.assertEqual((code, err), (0, ""))
+            self.assertEqual(fake.pose_modes, [None, None])
+            self.assertIn("Next (free): make art-prop-candidates PROP=broadsword, look at "
+                          "art-src/props/broadsword/review/candidates.png, then prop-build --pick N", out)
+            self.assertIn("credits spent on broadsword so far: 2", out)
+            self.assertTrue((prop_dir / "candidates" / "cand-2.glb").exists())
+
+            fake = FakeClient()
+            code, out, err = self.run_paid(root, fake, ["prop-build", "broadsword", "--pick", "1", "--max-credits", "10"])
+            self.assertEqual((code, err), (0, ""))
+            self.assertEqual(fake.created, [("refine", "preview-1")])
+            self.assertIn("Next (free): make art-attach UNIT=<unit that carries it>", out)
+            self.assertTrue((prop_dir / "model" / "textured.glb").exists())
+
+    def test_the_paid_prop_commands_stop_at_a_creating_record(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            prop_dir = self.stage(root)
+            manifest = Manifest(prop_dir / "manifest.json")
+            manifest.upsert({"kind": "preview", "label": "cand-1", "status": "CREATING", "created_at": 1})
+            manifest.save()
+            for argv in (["prop-candidates", "broadsword", "--max-credits", "10"],
+                         ["prop-build", "broadsword", "--pick", "1", "--max-credits", "10"]):
+                fake = FakeClient()
+                with self.subTest(argv=argv[0]):
+                    code, out, err = self.run_paid(root, fake, argv)
+                    self.assertEqual(code, 1)
+                    self.assertIn("a previous run stopped while creating preview cand-1", err)
+                    self.assertNotIn("credits spent", out)
+                    self.assertEqual(fake.created, [])
 
     def test_an_interrupted_create_is_reported_and_returns_1(self) -> None:
         # Everything that could reach the key file, the network or a paid call is patched out.

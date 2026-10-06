@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import io
+import ssl
 import tempfile
 import unittest
 import urllib.error
@@ -52,6 +53,24 @@ class CreateTest(unittest.TestCase):
             "mode": "preview", "prompt": "a clansman", "ai_model": "meshy-6-lite",
             "pose_mode": "a-pose", "should_remesh": True, "target_polycount": 30000, "target_formats": ["glb"],
         })
+
+    def test_a_prop_preview_sends_no_pose_mode(self) -> None:
+        t = FakeTransport([{"result": "task-1"}])
+        client(t).create_preview("a sword", "meshy-6-lite", 6000, pose_mode=None)
+        body = t.calls[0][2]
+        self.assertNotIn("pose_mode", body)
+        self.assertEqual(body, {
+            "mode": "preview", "prompt": "a sword", "ai_model": "meshy-6-lite",
+            "should_remesh": True, "target_polycount": 6000, "target_formats": ["glb"],
+        })
+
+    def test_a_preview_still_defaults_to_an_a_pose(self) -> None:
+        t = FakeTransport([{"result": "task-1"}, {"result": "task-2"}])
+        c = client(t)
+        c.create_preview("a clansman", "meshy-6-lite", 30000)
+        c.create_preview("a clansman", "meshy-6-lite", 30000, pose_mode="t-pose")
+        self.assertEqual(t.calls[0][2]["pose_mode"], "a-pose")
+        self.assertEqual(t.calls[1][2]["pose_mode"], "t-pose")
 
     def test_rig_and_animation_paths(self) -> None:
         t = FakeTransport([{"result": "r"}, {"result": "a"}])
@@ -233,6 +252,46 @@ class HttpTest(unittest.TestCase):
                 http_transport("k")("POST", "/openapi/v2/text-to-3d", {})
         self.assertIn("pay twice", str(caught.exception))
         self.assertTrue(caught.exception.may_have_created)
+
+    def test_a_certificate_failure_on_a_post_sent_nothing(self) -> None:
+        # Seen for real on 2026-10-06 with python.org's Python: the handshake failed, so no request left the machine.
+        cert = urllib.error.URLError(ssl.SSLCertVerificationError(1, "certificate verify failed: unable to get local issuer certificate"))
+        with mock.patch.object(meshy_client.urllib.request.OpenerDirector, "open", side_effect=cert):
+            with self.assertRaises(MeshyError) as caught:
+                http_transport("not-a-real-key")("POST", "/openapi/v2/text-to-3d", {"mode": "preview"})
+        self.assertFalse(caught.exception.may_have_created)
+        self.assertFalse(caught.exception.retryable)
+        self.assertIn("nothing was sent", str(caught.exception))
+        self.assertIn("Install Certificates", str(caught.exception))
+        self.assertNotIn("pay twice", str(caught.exception))
+        self.assertNotIn("not-a-real-key", str(caught.exception))
+
+    def test_a_certificate_failure_is_not_retried_on_a_get(self) -> None:
+        # Retrying can't fix a missing local certificate, so wait() should give up at once.
+        cert = urllib.error.URLError(ssl.SSLCertVerificationError(1, "certificate verify failed"))
+        with mock.patch.object(meshy_client.urllib.request.OpenerDirector, "open", side_effect=cert):
+            with self.assertRaises(MeshyError) as caught:
+                http_transport("k")("GET", "/openapi/v2/text-to-3d/t1", None)
+        self.assertFalse(caught.exception.retryable)
+        self.assertFalse(caught.exception.may_have_created)
+        self.assertIn("Install Certificates", str(caught.exception))
+
+    def test_other_ssl_errors_on_a_post_may_have_created_a_task(self) -> None:
+        # Only a failed certificate check is known to happen before the request goes out.
+        for reason in (ssl.SSLError("EOF occurred in violation of protocol"), ssl.SSLZeroReturnError("closed")):
+            with self.subTest(reason=type(reason).__name__):
+                with mock.patch.object(meshy_client.urllib.request.OpenerDirector, "open", side_effect=urllib.error.URLError(reason)):
+                    with self.assertRaises(MeshyError) as caught:
+                        http_transport("k")("POST", "/openapi/v2/text-to-3d", {})
+                self.assertTrue(caught.exception.may_have_created)
+                self.assertIn("pay twice", str(caught.exception))
+
+    def test_a_plain_url_error_on_a_post_may_have_created_a_task(self) -> None:
+        with mock.patch.object(meshy_client.urllib.request.OpenerDirector, "open", side_effect=urllib.error.URLError("down")):
+            with self.assertRaises(MeshyError) as caught:
+                http_transport("k")("POST", "/openapi/v2/text-to-3d", {})
+        self.assertTrue(caught.exception.may_have_created)
+        self.assertIn("pay twice", str(caught.exception))
 
     def test_a_post_reply_that_is_not_json_may_have_created_a_task(self) -> None:
         mock_response = mock.MagicMock()

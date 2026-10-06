@@ -9,6 +9,17 @@ height_m = 1.8
 prompt = "Scottish highland clansman warrior, kilt in red and green tartan, round wooden targe shield with an iron boss on the left arm, basket-hilted broadsword in the right hand, blue woad war paint on the face, wild ginger beard, blue wool bonnet, leather belt and sporran, rough leather boots"
 die_falls_forward = false
 
+# Held gear is bought separately (art-src/props/<prop>, spec §6.2a) and fixed to a
+# bone of rigged.glb when the sprites render. Offsets (m) and rotations (degrees)
+# start at zero and are tuned by eye with `make art-attach` (Task 9B).
+[[attach]]
+prop = "broadsword"
+bone = "RightHand"
+
+[[attach]]
+prop = "targe"
+bone = "LeftForeArm"
+
 [candidates]
 lite = 2
 full = 2
