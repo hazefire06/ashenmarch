@@ -4,14 +4,16 @@ Standard library only. The transport and downloader are injected, so tests
 run without the network; http_transport and http_downloader are the real
 ones. Nothing here prints or stores the API key. Errors carry the HTTP
 status and Meshy's message, never the key or a signed URL. Only a GET that
-failed in passing is retried, and redirects can't carry the key.
+failed in passing is retried, and redirects can't carry the key. A POST with
+no usable reply may have created a charged task, so its error says so
+(may_have_created) and is never retried.
 
 Endpoints and credit costs: https://docs.meshy.ai/en/api (checked 2026-10-01).
 """
 from __future__ import annotations
 
 import json
-import shutil
+import re
 import time
 import urllib.error
 import urllib.parse
@@ -28,7 +30,13 @@ RIG_CREDITS = 5
 CREDITS_PER_ACTION = 3
 MAX_ACTIONS_PER_REQUEST = 10
 MAX_POLL_RETRIES = 3
-FAILED_STATUSES = frozenset({"FAILED", "CANCELED", "EXPIRED"})
+# Meshy refunds only FAILED. A CANCELED or EXPIRED task is not rebought without a human check.
+UNREFUNDED_END_STATUSES = frozenset({"CANCELED", "EXPIRED"})
+MAX_DOWNLOAD_BYTES = 512 * 1024 * 1024
+DOWNLOAD_CHUNK_BYTES = 1024 * 1024
+# Task ids go into URLs, and they can come from the committed manifest, which a public PR can edit.
+TASK_ID = re.compile(r"[A-Za-z0-9-]{1,64}")
+POST_WARNING = "; the task may have been created and charged, so check your API tasks on meshy.ai before rerunning, or you may pay twice"
 TASK_PATHS: dict[str, str] = {
     "text-to-3d": "/openapi/v2/text-to-3d",
     "rigging": "/openapi/v1/rigging",
@@ -42,17 +50,20 @@ Downloader = Callable[[str, Path], None]
 class MeshyError(Exception):
     """A Meshy call or task failed. The message never holds the key or a signed URL.
     retryable marks a failed GET that is safe to repeat (a timeout, a dropped
-    connection, HTTP 429 or 5xx)."""
+    connection, HTTP 429 or 5xx). may_have_created is True when a POST may have
+    created and charged a task on Meshy even though we got no usable reply."""
 
-    def __init__(self, message: str, retryable: bool = False) -> None:
+    def __init__(self, message: str, retryable: bool = False, may_have_created: bool = False) -> None:
         super().__init__(message)
         self.retryable = retryable
+        self.may_have_created = may_have_created
 
 
 class TaskFailed(MeshyError):
-    """Meshy says the task itself failed (FAILED, CANCELED or EXPIRED). Meshy
-    refunds those, so it is safe to buy the work again. Any other MeshyError
-    from wait() leaves the task alive and charged: wait again, never re-buy."""
+    """Meshy says the task itself FAILED. Meshy refunds those, so it is safe to
+    buy the work again. Any other MeshyError from wait(), CANCELED and EXPIRED
+    included, leaves the task alive and possibly charged: wait again or check
+    meshy.ai, never re-buy automatically."""
 
 
 class _NoRedirects(urllib.request.HTTPRedirectHandler):
@@ -108,6 +119,8 @@ class MeshyClient:
         return self._create("animations", {"rig_task_id": rig_task_id, "action_ids": list(action_ids)})
 
     def get(self, kind: str, task_id: str) -> dict[str, Any]:
+        if not _valid_task_id(task_id):
+            raise MeshyError(f"refusing malformed task id for {kind}")
         return self._transport("GET", f"{TASK_PATHS[kind]}/{task_id}", None)
 
     def wait(self, kind: str, task_id: str) -> dict[str, Any]:
@@ -126,9 +139,11 @@ class MeshyClient:
             status = task.get("status")
             if status == "SUCCEEDED":
                 return task
-            if status in FAILED_STATUSES:
+            if status == "FAILED" or status in UNREFUNDED_END_STATUSES:
                 reason = (task.get("task_error") or {}).get("message") or "no reason given"
-                raise TaskFailed(f"{kind} task {task_id} {status}: {reason}")
+                if status == "FAILED":
+                    raise TaskFailed(f"{kind} task {task_id} {status}: {reason}")
+                raise MeshyError(f"{kind} task {task_id} {status}: {reason}; check this task on meshy.ai before deciding whether to rebuy")
             if self._clock() >= deadline:
                 raise MeshyError(f"{kind} task {task_id} still {status} after {self._timeout:.0f} s; rerun to keep waiting")
             self._sleep(self._poll)
@@ -138,9 +153,13 @@ class MeshyClient:
 
     def _create(self, kind: str, body: dict[str, Any]) -> str:
         task_id = self._transport("POST", TASK_PATHS[kind], body).get("result")
-        if not isinstance(task_id, str) or not task_id:
-            raise MeshyError(f"{kind}: Meshy returned no task id")
+        if not _valid_task_id(task_id):
+            raise MeshyError(f"{kind}: Meshy returned no task id" + POST_WARNING, may_have_created=True)
         return task_id
+
+
+def _valid_task_id(task_id: object) -> bool:
+    return isinstance(task_id, str) and TASK_ID.fullmatch(task_id) is not None
 
 
 def _allowed(url: str) -> bool:
@@ -162,26 +181,33 @@ def http_transport(api_key: str, base_url: str = BASE_URL, timeout: float = 60.0
         request = urllib.request.Request(base_url + path, data=data, method=method)
         request.add_header("Authorization", f"Bearer {api_key}")
         request.add_header("Content-Type", "application/json")
+        # Whenever a POST gets no usable reply, the task may exist on Meshy and be charged.
+        posting = method == "POST"
         try:
             response = opener.open(request, timeout=timeout)
         except urllib.error.HTTPError as error:
+            unsure = posting and error.code >= 500
             raise MeshyError(
-                f"Meshy {method} {path} failed: HTTP {error.code} {_server_message(error)}",
-                retryable=(method == "GET" and (error.code == 429 or error.code >= 500))
+                f"Meshy {method} {path} failed: HTTP {error.code} {_server_message(error, api_key)}".rstrip() + (POST_WARNING if unsure else ""),
+                retryable=(method == "GET" and (error.code == 429 or error.code >= 500)),
+                may_have_created=unsure,
             ) from None
         except (urllib.error.URLError, OSError, ValueError):
-            raise MeshyError(_lost(method, path), retryable=(method == "GET")) from None
+            raise MeshyError(_lost(method, path), retryable=(method == "GET"), may_have_created=posting) from None
 
         try:
             with response:
                 body_bytes = response.read()
         except (OSError, ValueError):
-            raise MeshyError(_lost(method, path), retryable=(method == "GET")) from None
+            raise MeshyError(_lost(method, path), retryable=(method == "GET"), may_have_created=posting) from None
 
         try:
             return json.loads(body_bytes.decode("utf-8") or "{}")
         except ValueError:
-            raise MeshyError(f"Meshy {method} {path} returned a reply that isn't JSON", retryable=(method == "GET")) from None
+            raise MeshyError(
+                f"Meshy {method} {path} returned a reply that isn't JSON" + (POST_WARNING if posting else ""),
+                retryable=(method == "GET"), may_have_created=posting,
+            ) from None
 
     return call
 
@@ -203,25 +229,32 @@ def http_downloader(url: str, dest: Path) -> None:
         part.unlink(missing_ok=True)
         raise MeshyError(f"download of {dest.name} failed: no reply (timed out or the connection failed); rerun to retry") from None
 
+    size = 0
     try:
         with response, open(part, "wb") as out:
-            shutil.copyfileobj(response, out)
+            while chunk := response.read(DOWNLOAD_CHUNK_BYTES):
+                size += len(chunk)
+                if size > MAX_DOWNLOAD_BYTES:
+                    break
+                out.write(chunk)
     except (OSError, ValueError):
         part.unlink(missing_ok=True)
         raise MeshyError(f"download of {dest.name} failed: no reply (timed out or the connection failed); rerun to retry") from None
 
+    if size > MAX_DOWNLOAD_BYTES:
+        part.unlink(missing_ok=True)
+        raise MeshyError(f"download of {dest.name} exceeded {MAX_DOWNLOAD_BYTES // (1024 * 1024)} MB; refusing")
     part.replace(dest)
 
 
 def _lost(method: str, path: str) -> str:
     message = f"Meshy {method} {path}: no reply (timed out or the connection failed)"
-    if method == "POST":
-        message += "; the task may have been created and charged, so check your API tasks on meshy.ai before rerunning, or you may pay twice"
-    return message
+    return (message + POST_WARNING) if method == "POST" else message
 
 
-def _server_message(error: urllib.error.HTTPError) -> str:
+def _server_message(error: urllib.error.HTTPError, api_key: str) -> str:
+    """Meshy's own message for an error, with the key scrubbed in case it is echoed back."""
     try:
-        return str(json.loads(error.read().decode("utf-8")).get("message", ""))[:200]
+        return str(json.loads(error.read().decode("utf-8")).get("message", "")).replace(api_key, "[redacted]")[:200]
     except (ValueError, AttributeError):
         return ""

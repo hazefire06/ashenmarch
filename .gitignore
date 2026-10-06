@@ -26,3 +26,6 @@ __pycache__/
 
 # Claude Code's local state and worktrees.
 .claude/
+
+# Interrupted downloads and manifest writes leave these behind.
+*.part

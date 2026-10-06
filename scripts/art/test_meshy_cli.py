@@ -1,12 +1,16 @@
 """Tests for meshy.py's flows with a fake client: resume, budget, layout, no URLs."""
 from __future__ import annotations
 
+import contextlib
+import io
 import tempfile
 import unittest
 from pathlib import Path
 from typing import Any
+from unittest import mock
 
 import meshy
+import meshy_client
 from manifest import Manifest
 from meshy_client import MeshyError, TaskFailed
 from unit_spec import load_spec, load_style
@@ -17,13 +21,18 @@ ART_SRC = Path(__file__).resolve().parent.parent.parent / "art-src"
 class FakeClient:
     """Stands in for MeshyClient. Every finished task carries signed-looking URLs."""
 
-    def __init__(self, fail_waits: int = 0, lost_waits: dict[str, str] | None = None) -> None:
+    def __init__(self, fail_waits: int = 0, lost_waits: dict[str, str] | None = None,
+                 create_error: BaseException | None = None, finished_at: Any = 1) -> None:
         self.created: list[tuple[str, Any]] = []
         self.fail_waits = fail_waits
         self.lost_waits = lost_waits or {}
+        self.create_error = create_error
+        self.finished_at = finished_at
         self._n = 0
 
     def _new(self, what: str, arg: Any) -> str:
+        if self.create_error is not None:
+            raise self.create_error
         self._n += 1
         self.created.append((what, arg))
         return f"{what}-{self._n}"
@@ -48,7 +57,7 @@ class FakeClient:
             raise TaskFailed(f"{kind} task {task_id} FAILED: test")
         url = f"https://assets.meshy.ai/{task_id}/out.glb?Expires=1&Signature=SIG"
         return {
-            "id": task_id, "status": "SUCCEEDED", "consumed_credits": 1, "finished_at": 1,
+            "id": task_id, "status": "SUCCEEDED", "consumed_credits": 1, "finished_at": self.finished_at,
             "model_urls": {"glb": url},
             "result": {
                 "rigged_character_glb_url": url, "animation_glb_url": url,
@@ -154,6 +163,119 @@ class FlowTest(unittest.TestCase):
         text = meshy.plan_text(self.spec, self.style, self.manifest)
         self.assertIn("50 credits", text)
         self.assertIn("27 credits", text)
+
+    def test_a_non_integer_finish_time_is_not_stored(self) -> None:
+        for value in ("not-a-number", 1.5, None, True, ["x"]):
+            with self.subTest(finished_at=value):
+                self.manifest = Manifest(self.unit_dir / "manifest.json")
+                self.candidates(FakeClient(finished_at=value))
+                self.assertNotIn("finished_at", Manifest.load(self.manifest.path).find("preview", "cand-1"))
+        self.manifest = Manifest(self.unit_dir / "manifest.json")
+        self.candidates(FakeClient(finished_at=1_760_000_000))
+        self.assertEqual(Manifest.load(self.manifest.path).find("preview", "cand-1")["finished_at"], 1_760_000_000)
+
+    def test_a_canceled_task_stays_pending_and_is_not_bought_again(self) -> None:
+        canceled = {"preview-1": "text-to-3d task preview-1 CANCELED: nobody knows; check this task on meshy.ai before deciding whether to rebuy"}
+        with self.assertRaises(MeshyError) as caught:
+            self.candidates(FakeClient(lost_waits=canceled))
+        self.assertNotIsInstance(caught.exception, TaskFailed)
+        record = Manifest.load(self.manifest.path).find("preview", "cand-1")
+        self.assertEqual((record["status"], record["task_id"]), ("PENDING", "preview-1"))
+
+    def test_an_interrupted_create_stays_creating_and_blocks_the_next_run(self) -> None:
+        with self.assertRaises(KeyboardInterrupt):
+            self.candidates(FakeClient(create_error=KeyboardInterrupt()))
+        record = Manifest.load(self.manifest.path).find("preview", "cand-1")
+        self.assertEqual(record["status"], "CREATING")
+        self.assertNotIn("task_id", record)
+        before = self.manifest.path.read_text(encoding="utf-8")
+
+        self.manifest = Manifest.load(self.manifest.path)
+        again = FakeClient()
+        with self.assertRaises(meshy.InterruptedCreate) as caught:
+            self.candidates(again, max_credits=0)  # the guard comes before the budget check
+        self.assertEqual(
+            str(caught.exception),
+            "a previous run stopped while creating preview cand-1; it may have been created and charged. "
+            "Check your API tasks on meshy.ai. If it exists, note its id; either way, delete that entry "
+            "from manifest.json before rerunning.")
+        self.assertEqual(again.created, [])
+        self.assertEqual(self.manifest.path.read_text(encoding="utf-8"), before)
+
+    def test_a_create_that_may_have_made_a_task_stays_creating(self) -> None:
+        lost = MeshyError("Meshy POST /openapi/v2/text-to-3d: no reply" + meshy_client.POST_WARNING, may_have_created=True)
+        with self.assertRaises(MeshyError):
+            self.candidates(FakeClient(create_error=lost))
+        self.assertEqual(Manifest.load(self.manifest.path).find("preview", "cand-1")["status"], "CREATING")
+        with self.assertRaises(meshy.InterruptedCreate):
+            self.candidates(FakeClient())
+
+    def test_an_unexpected_error_in_create_stays_creating(self) -> None:
+        with self.assertRaises(RuntimeError):
+            self.candidates(FakeClient(create_error=RuntimeError("boom")))
+        self.assertEqual(Manifest.load(self.manifest.path).find("preview", "cand-1")["status"], "CREATING")
+
+    def test_a_definite_rejection_is_marked_failed_and_bought_again(self) -> None:
+        with self.assertRaisesRegex(MeshyError, "HTTP 402"):
+            self.candidates(FakeClient(create_error=MeshyError("Meshy POST /openapi/v2/text-to-3d failed: HTTP 402 Insufficient credits")))
+        record = Manifest.load(self.manifest.path).find("preview", "cand-1")
+        self.assertEqual((record["status"], record["credits"]), ("FAILED", 0))
+        self.assertNotIn("task_id", record)
+        self.manifest = Manifest.load(self.manifest.path)
+        retry = FakeClient()
+        self.candidates(retry)
+        self.assertEqual(retry.created[0], ("preview", "meshy-6-lite"))
+        self.assertEqual(Manifest.load(self.manifest.path).find("preview", "cand-1")["status"], "SUCCEEDED")
+
+    def test_a_build_refuses_to_continue_after_an_interrupted_create(self) -> None:
+        self.candidates(FakeClient())
+        with self.assertRaises(KeyboardInterrupt):
+            meshy.run_build(self.spec, self.manifest, FakeClient(create_error=KeyboardInterrupt()), self.unit_dir, 3, 100, say=self.quiet.append)
+        self.manifest = Manifest.load(self.manifest.path)
+        self.assertEqual(self.manifest.find("refine", "cand-3")["status"], "CREATING")
+        again = FakeClient()
+        with self.assertRaisesRegex(meshy.InterruptedCreate, "creating refine cand-3"):
+            meshy.run_build(self.spec, self.manifest, again, self.unit_dir, 3, 0, say=self.quiet.append)
+        self.assertEqual(again.created, [])
+
+    def test_a_creating_record_counts_as_bought_in_the_estimates(self) -> None:
+        self.manifest.upsert({"kind": "preview", "label": "cand-1", "status": "CREATING", "created_at": 1})
+        self.assertEqual(meshy.candidates_cost(self.spec, self.manifest), 2 * 5 + 2 * 20 - 5)
+
+    def test_plan_text_shows_a_creating_record(self) -> None:
+        self.assertNotIn("stopped while creating", meshy.plan_text(self.spec, self.style, self.manifest))
+        self.manifest.upsert({"kind": "preview", "label": "cand-1", "status": "CREATING", "created_at": 1})
+        self.assertIn("a previous run stopped while creating preview cand-1", meshy.plan_text(self.spec, self.style, self.manifest))
+
+
+class MainTest(unittest.TestCase):
+    def run_main(self, argv: list[str]) -> tuple[int, str, str]:
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            code = meshy.main(argv)
+        return code, out.getvalue(), err.getvalue()
+
+    def test_a_unit_name_that_could_leave_the_repo_is_refused_before_any_path_is_built(self) -> None:
+        for name in ("../evil", "/abs", "..", "a/b", "Shieldman", "9lives", "_x", "", "a" * 33, "x\n"):
+            with self.subTest(unit=name), mock.patch.object(meshy, "load_spec", side_effect=AssertionError("built a path")):
+                code, _, err = self.run_main(["plan", name])
+            self.assertEqual(code, 2)
+            self.assertIn("meshy.py: unit names are lowercase letters, digits and _", err)
+
+    def test_a_clean_unit_name_still_plans(self) -> None:
+        code, out, _ = self.run_main(["plan", "shieldman"])
+        self.assertEqual(code, 0)
+        self.assertIn("shieldman: prompt", out)
+
+    def test_an_interrupted_create_is_reported_and_returns_1(self) -> None:
+        # Everything that could reach the key file, the network or a paid call is patched out.
+        with mock.patch.object(meshy, "load_secret", return_value="not-a-real-key"), \
+                mock.patch.object(meshy, "http_transport"), \
+                mock.patch.object(meshy, "run_candidates", side_effect=meshy.InterruptedCreate("a previous run stopped while creating preview cand-1")):
+            code, out, err = self.run_main(["candidates", "shieldman", "--max-credits", "100"])
+        self.assertEqual(code, 1)
+        self.assertIn("a previous run stopped while creating preview cand-1", err)
+        self.assertNotIn("credits spent", out)
 
 
 if __name__ == "__main__":

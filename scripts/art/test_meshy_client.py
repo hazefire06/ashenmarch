@@ -5,6 +5,7 @@ import io
 import tempfile
 import unittest
 import urllib.error
+import urllib.request
 from pathlib import Path
 from typing import Any
 from unittest import mock
@@ -37,6 +38,10 @@ def client(transport: FakeTransport, sleeps: list[float] | None = None, now: lis
     return MeshyClient(transport, lambda url, dest: None, sleep=sleep, clock=lambda: clock[0], poll_seconds=5.0, timeout_seconds=60.0)
 
 
+def http_error(code: int, body: bytes = b"") -> urllib.error.HTTPError:
+    return urllib.error.HTTPError("https://api.meshy.ai/x", code, "Error", {}, io.BytesIO(body))
+
+
 class CreateTest(unittest.TestCase):
     def test_preview_request_and_task_id(self) -> None:
         t = FakeTransport([{"result": "task-1"}])
@@ -67,6 +72,33 @@ class CreateTest(unittest.TestCase):
         with self.assertRaisesRegex(MeshyError, "no task id"):
             client(FakeTransport([{}])).create_refine("p")
 
+    def test_a_reply_without_a_usable_id_warns_that_a_task_may_exist(self) -> None:
+        for reply in ({}, {"result": ""}, {"result": 123}, {"result": "x?y"}, {"result": "a/../b"}, {"result": "a" * 65}):
+            with self.subTest(reply=reply):
+                with self.assertRaises(MeshyError) as caught:
+                    client(FakeTransport([reply])).create_refine("p")
+                self.assertIn("pay twice", str(caught.exception))
+                self.assertTrue(caught.exception.may_have_created)
+
+    def test_a_clean_create_reply_is_accepted(self) -> None:
+        self.assertEqual(client(FakeTransport([{"result": "0192-AbC-9"}])).create_refine("p"), "0192-AbC-9")
+
+
+class TaskIdTest(unittest.TestCase):
+    def test_a_malformed_task_id_never_reaches_a_url(self) -> None:
+        for bad in ("a/../b", "x?y", "", "a" * 65, "a b", "../x", 7):
+            with self.subTest(task_id=bad):
+                t = FakeTransport([])
+                with self.assertRaisesRegex(MeshyError, "refusing malformed task id for text-to-3d"):
+                    client(t).get("text-to-3d", bad)  # type: ignore[arg-type]
+                self.assertEqual(t.calls, [])
+
+    def test_wait_refuses_a_malformed_task_id_too(self) -> None:
+        t = FakeTransport([])
+        with self.assertRaisesRegex(MeshyError, "malformed task id"):
+            client(t).wait("rigging", "a/../b")
+        self.assertEqual(t.calls, [])
+
 
 class WaitTest(unittest.TestCase):
     def test_polls_until_it_succeeds(self) -> None:
@@ -81,6 +113,19 @@ class WaitTest(unittest.TestCase):
         t = FakeTransport([{"status": "FAILED", "task_error": {"message": "model too complex"}}])
         with self.assertRaisesRegex(TaskFailed, "FAILED: model too complex"):
             client(t).wait("rigging", "r1")
+
+    def test_only_failed_is_refunded_so_only_failed_is_task_failed(self) -> None:
+        with self.assertRaises(TaskFailed):
+            client(FakeTransport([{"status": "FAILED"}])).wait("rigging", "r1")
+        for status in ("CANCELED", "EXPIRED"):
+            with self.subTest(status=status):
+                t = FakeTransport([{"status": status, "task_error": {"message": "stopped"}}])
+                with self.assertRaises(MeshyError) as caught:
+                    client(t).wait("rigging", "r1")
+                self.assertNotIsInstance(caught.exception, TaskFailed)
+                self.assertIn(f"rigging task r1 {status}: stopped", str(caught.exception))
+                self.assertIn("check this task on meshy.ai before deciding whether to rebuy", str(caught.exception))
+                self.assertEqual(len(t.calls), 1)
 
     def test_gives_up_after_the_timeout(self) -> None:
         t = FakeTransport([{"status": "IN_PROGRESS"}] * 20)
@@ -154,6 +199,107 @@ class HttpTest(unittest.TestCase):
             with self.assertRaises(MeshyError) as caught:
                 call("GET", "/openapi/v2/text-to-3d/t1", None)
             self.assertIn("isn't JSON", str(caught.exception))
+
+    def test_a_post_that_got_a_5xx_may_have_created_a_task(self) -> None:
+        errors = [http_error(503), http_error(503)]
+        with mock.patch.object(meshy_client.urllib.request.OpenerDirector, "open", side_effect=errors):
+            call = http_transport("not-a-real-key")
+            with self.assertRaises(MeshyError) as caught:
+                call("POST", "/openapi/v2/text-to-3d", {"mode": "preview"})
+            self.assertIn("pay twice", str(caught.exception))
+            self.assertIn("HTTP 503", str(caught.exception))
+            self.assertTrue(caught.exception.may_have_created)
+            self.assertFalse(caught.exception.retryable)
+            with self.assertRaises(MeshyError) as caught:
+                call("GET", "/openapi/v2/text-to-3d/t1", None)
+            self.assertTrue(caught.exception.retryable)
+            self.assertFalse(caught.exception.may_have_created)
+            self.assertNotIn("pay twice", str(caught.exception))
+
+    def test_a_rejected_post_did_not_create_a_task(self) -> None:
+        for code in (400, 401, 402, 429):
+            with self.subTest(code=code):
+                with mock.patch.object(meshy_client.urllib.request.OpenerDirector, "open", side_effect=http_error(code)):
+                    with self.assertRaises(MeshyError) as caught:
+                        http_transport("not-a-real-key")("POST", "/openapi/v2/text-to-3d", {})
+                self.assertFalse(caught.exception.may_have_created)
+                self.assertNotIn("pay twice", str(caught.exception))
+
+    def test_a_lost_post_may_have_created_a_task(self) -> None:
+        mock_opener = mock.MagicMock()
+        mock_opener.open.side_effect = TimeoutError("timed out")
+        with mock.patch.object(meshy_client.urllib.request, "build_opener", return_value=mock_opener):
+            with self.assertRaises(MeshyError) as caught:
+                http_transport("k")("POST", "/openapi/v2/text-to-3d", {})
+        self.assertIn("pay twice", str(caught.exception))
+        self.assertTrue(caught.exception.may_have_created)
+
+    def test_a_post_reply_that_is_not_json_may_have_created_a_task(self) -> None:
+        mock_response = mock.MagicMock()
+        mock_response.read.return_value = b"<html>"
+        mock_response.__enter__ = mock.MagicMock(return_value=mock_response)
+        mock_response.__exit__ = mock.MagicMock(return_value=None)
+        mock_opener = mock.MagicMock()
+        mock_opener.open.return_value = mock_response
+        with mock.patch.object(meshy_client.urllib.request, "build_opener", return_value=mock_opener):
+            call = http_transport("k")
+            with self.assertRaises(MeshyError) as caught:
+                call("POST", "/openapi/v2/text-to-3d", {})
+            self.assertIn("isn't JSON", str(caught.exception))
+            self.assertIn("pay twice", str(caught.exception))
+            self.assertTrue(caught.exception.may_have_created)
+            self.assertFalse(caught.exception.retryable)
+            with self.assertRaises(MeshyError) as caught:
+                call("GET", "/openapi/v2/text-to-3d/t1", None)
+            self.assertTrue(caught.exception.retryable)
+            self.assertFalse(caught.exception.may_have_created)
+            self.assertNotIn("pay twice", str(caught.exception))
+
+    def test_a_server_message_echoing_the_key_is_scrubbed(self) -> None:
+        with mock.patch.object(meshy_client.urllib.request.OpenerDirector, "open",
+                               side_effect=http_error(401, b'{"message": "Invalid API key FAKEKEY123 for this account"}')):
+            with self.assertRaises(MeshyError) as caught:
+                http_transport("FAKEKEY123")("GET", "/openapi/v2/text-to-3d/t1", None)
+        self.assertIn("HTTP 401 Invalid API key [redacted] for this account", str(caught.exception))
+        self.assertNotIn("FAKEKEY123", str(caught.exception))
+
+    def test_the_key_is_scrubbed_before_the_message_is_cut_short(self) -> None:
+        body = ('{"message": "' + "x" * 195 + 'FAKEKEY123"}').encode()
+        with mock.patch.object(meshy_client.urllib.request.OpenerDirector, "open", side_effect=http_error(401, body)):
+            with self.assertRaises(MeshyError) as caught:
+                http_transport("FAKEKEY123")("GET", "/openapi/v2/text-to-3d/t1", None)
+        self.assertNotIn("FAKE", str(caught.exception))
+
+    def test_a_download_over_the_cap_is_refused_and_leaves_no_partial_file(self) -> None:
+        url = "https://assets.meshy.ai/t/model.glb?Expires=1&Signature=SECRETSIG"
+        mock_opener = mock.MagicMock()
+        mock_opener.open.return_value = io.BytesIO(b"x" * 25)
+        with tempfile.TemporaryDirectory() as tmp, \
+                mock.patch.object(meshy_client, "MAX_DOWNLOAD_BYTES", 10), \
+                mock.patch.object(meshy_client, "DOWNLOAD_CHUNK_BYTES", 4), \
+                mock.patch.object(meshy_client.urllib.request, "build_opener", return_value=mock_opener):
+            dest = Path(tmp) / "m.glb"
+            with self.assertRaisesRegex(MeshyError, "download of m.glb exceeded .* MB; refusing") as caught:
+                http_downloader(url, dest)
+            self.assertFalse(dest.exists())
+            self.assertFalse((Path(tmp) / "m.glb.part").exists())
+        self.assertNotIn("SECRETSIG", str(caught.exception))
+
+    def test_a_download_at_the_cap_is_kept(self) -> None:
+        url = "https://assets.meshy.ai/t/model.glb"
+        mock_opener = mock.MagicMock()
+        mock_opener.open.return_value = io.BytesIO(b"x" * 10)
+        with tempfile.TemporaryDirectory() as tmp, \
+                mock.patch.object(meshy_client, "MAX_DOWNLOAD_BYTES", 10), \
+                mock.patch.object(meshy_client, "DOWNLOAD_CHUNK_BYTES", 4), \
+                mock.patch.object(meshy_client.urllib.request, "build_opener", return_value=mock_opener):
+            dest = Path(tmp) / "m.glb"
+            http_downloader(url, dest)
+            self.assertEqual(dest.read_bytes(), b"x" * 10)
+            self.assertFalse((Path(tmp) / "m.glb.part").exists())
+
+    def test_the_download_cap_is_512_mib(self) -> None:
+        self.assertEqual(meshy_client.MAX_DOWNLOAD_BYTES, 512 * 1024 * 1024)
 
     def test_api_calls_refuse_redirects(self) -> None:
         req = urllib.request.Request("https://api.meshy.ai/x")

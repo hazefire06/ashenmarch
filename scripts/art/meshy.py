@@ -13,11 +13,17 @@ again. A failed task (Meshy refunds those) is bought again on the next run.
 Results download immediately, because Meshy's links expire after about 3
 days. The key is read from ~/.config/ashenmarch/secrets.env and nothing
 else. An interrupted or timed-out wait leaves the task PENDING, and the
-next run waits for the same task.
+next run waits for the same task. A task Meshy cancels or expires stays
+PENDING too, and is never bought again until you have checked it on
+meshy.ai and deleted its entry from manifest.json. A record is written as
+CREATING before each create call. If the run stops with the create
+unresolved, that task may exist and be charged, so the next run refuses to
+continue until you delete the CREATING entry from manifest.json.
 """
 from __future__ import annotations
 
 import argparse
+import re
 import sys
 import time
 from collections.abc import Callable
@@ -47,6 +53,10 @@ class BuildError(Exception):
     """The build can't start, e.g. the picked candidate isn't finished."""
 
 
+class InterruptedCreate(Exception):
+    """A previous run stopped while creating a task, so it may exist and be charged."""
+
+
 def candidate_jobs(spec: UnitSpec) -> list[tuple[str, str]]:
     jobs = [(f"cand-{i + 1}", PREVIEW_MODELS["lite"]) for i in range(spec.lite)]
     jobs += [(f"cand-{spec.lite + i + 1}", PREVIEW_MODELS["full"]) for i in range(spec.full)]
@@ -54,7 +64,23 @@ def candidate_jobs(spec: UnitSpec) -> list[tuple[str, str]]:
 
 
 def _bought(record: dict[str, Any] | None) -> bool:
+    """Only a FAILED task (refunded) can be bought again. A CREATING one may be charged, so it counts."""
     return record is not None and record.get("status") != "FAILED"
+
+
+def _interrupted(manifest: Manifest) -> list[str]:
+    """One message per task whose create was interrupted (status CREATING)."""
+    return [
+        f"a previous run stopped while creating {t.get('kind')} {t.get('label')}; it may have been created and charged. "
+        "Check your API tasks on meshy.ai. If it exists, note its id; either way, delete that entry from manifest.json before rerunning."
+        for t in manifest.tasks if t.get("status") == "CREATING"
+    ]
+
+
+def _refuse_if_interrupted(manifest: Manifest) -> None:
+    messages = _interrupted(manifest)
+    if messages:
+        raise InterruptedCreate(messages[0])
 
 
 def candidates_cost(spec: UnitSpec, manifest: Manifest) -> int:
@@ -84,6 +110,7 @@ def plan_text(spec: UnitSpec, style: Style, manifest: Manifest) -> str:
         f"candidates: {jobs} -> {candidates_cost(spec, manifest)} credits still to buy",
         f"build (after you pick): refine {REFINE_CREDITS} + rig {RIG_CREDITS} + {actions} actions x {CREDITS_PER_ACTION} = {build} credits",
         f"spent on {spec.id} so far: {manifest.credits_spent()} credits",
+        *(f"blocked: {message}" for message in _interrupted(manifest)),
     ])
 
 
@@ -103,7 +130,11 @@ def _finish(manifest: Manifest, client: Any, api_kind: str, record: dict[str, An
     except TaskFailed:
         _store(manifest, {**record, "status": "FAILED", "credits": 0})
         raise
-    _store(manifest, {**record, "status": "SUCCEEDED", "credits": int(task.get("consumed_credits", 0)), "finished_at": task.get("finished_at")})
+    done = {**record, "status": "SUCCEEDED", "credits": int(task.get("consumed_credits", 0))}
+    finished_at = task.get("finished_at")
+    if isinstance(finished_at, int) and not isinstance(finished_at, bool):  # the manifest is public: keep only a plain integer timestamp
+        done["finished_at"] = finished_at
+    _store(manifest, done)
     return task
 
 
@@ -112,7 +143,16 @@ def _start(manifest: Manifest, kind: str, label: str, create: Callable[[], str],
     if _bought(record):
         return dict(record)
     say(f"{label}: creating {kind} task ({note})")
-    return _store(manifest, {"kind": kind, "label": label, "task_id": create(), "status": "PENDING", "created_at": _now(), **extra})
+    # Written before the call: if the run dies mid-create, the task may exist and be charged.
+    creating = {"kind": kind, "label": label, "status": "CREATING", "created_at": _now(), **extra}
+    _store(manifest, creating)
+    try:
+        task_id = create()
+    except MeshyError as error:
+        if not error.may_have_created:  # a definite rejection (400, 401, 402...): nothing was bought
+            _store(manifest, {**creating, "status": "FAILED", "credits": 0})
+        raise
+    return _store(manifest, {**creating, "task_id": task_id, "status": "PENDING"})
 
 
 def _fetch(manifest: Manifest, client: Any, api_kind: str, record: dict[str, Any], unit_dir: Path,
@@ -127,6 +167,7 @@ def _fetch(manifest: Manifest, client: Any, api_kind: str, record: dict[str, Any
 
 def run_candidates(spec: UnitSpec, style: Style, manifest: Manifest, client: Any, unit_dir: Path,
                    max_credits: int, say: Say = print) -> list[Path]:
+    _refuse_if_interrupted(manifest)
     cost = candidates_cost(spec, manifest)
     if cost > max_credits:
         raise BudgetError(f"candidates need {cost} credits; --max-credits is {max_credits}")
@@ -143,6 +184,7 @@ def run_candidates(spec: UnitSpec, style: Style, manifest: Manifest, client: Any
 
 def run_build(spec: UnitSpec, manifest: Manifest, client: Any, unit_dir: Path, pick: int,
               max_credits: int, say: Say = print) -> None:
+    _refuse_if_interrupted(manifest)
     label = f"cand-{pick}"
     candidate = manifest.find("preview", label)
     if candidate is None or candidate.get("status") != "SUCCEEDED":
@@ -181,6 +223,9 @@ def main(argv: list[str] | None = None) -> int:
     build.add_argument("--max-credits", type=int, required=True)
     args = parser.parse_args(argv)
 
+    if not re.fullmatch(r"[a-z][a-z0-9_]{0,31}", args.unit):  # no path pieces: `../x` must not leave art-src
+        print("meshy.py: unit names are lowercase letters, digits and _", file=sys.stderr)
+        return 2
     unit_dir = ART_SRC / "units" / args.unit
     try:
         spec = load_spec(unit_dir / "spec.toml")
@@ -204,7 +249,7 @@ def main(argv: list[str] | None = None) -> int:
         else:
             run_build(spec, manifest, client, unit_dir, args.pick, args.max_credits)
             print(f"Next (free): make art-render UNIT={spec.id}")
-    except (MeshyError, BudgetError, BuildError, SpecError) as error:
+    except (MeshyError, BudgetError, BuildError, InterruptedCreate, SpecError) as error:
         print(f"meshy.py: {error}", file=sys.stderr)
         return 1
     print(f"credits spent on {spec.id} so far: {manifest.credits_spent()}")
