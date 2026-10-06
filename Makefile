@@ -1,7 +1,7 @@
 GODOT ?= godot
 MAC_APP := build/mac/Ashenmarch.app
 
-.PHONY: import run demo demo-projectiles demo-abilities demo-ai test check-sim export-mac maps fixtures hooks check-leaks
+.PHONY: import run demo demo-projectiles demo-abilities demo-ai test check-sim export-mac maps fixtures hooks check-leaks check-layout
 
 # Builds the .godot/ import and class_name cache. A fresh clone has none, and
 # GUT can't resolve class_name types without it.
@@ -63,6 +63,10 @@ hooks:
 	cp scripts/hooks/pre-commit "$$hooks_dir/pre-commit"; \
 	chmod +x "$$hooks_dir/pre-commit"; \
 	echo "hooks: installed $$hooks_dir/pre-commit"
+	git lfs install --local
+
+check-layout:
+	scripts/check_asset_layout.sh
 
 check-leaks:
 	scripts/check_leak_rules.sh

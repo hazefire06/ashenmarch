@@ -19,3 +19,10 @@ export_credentials.cfg
 
 # Python (fixture scripts)
 __pycache__/
+
+# Local secrets never live in the repo (API keys are in ~/.config/ashenmarch/).
+.env
+.env.*
+
+# Claude Code's local state and worktrees.
+.claude/
