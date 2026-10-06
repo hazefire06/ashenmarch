@@ -58,12 +58,23 @@ def add_box(bm: bmesh.types.BMesh, center: tuple[float, float, float], size: tup
         face.material_index = material
 
 
-def build_fixture(path: Path, walk: bool) -> None:
+def build_fixture(path: Path, walk: bool, parented: bool = False) -> None:
+    """Writes the fixture GLB. With parented, the armature hangs under an Empty
+    scaled 0.01 and is itself scaled 100 (net identity), the way some exporters
+    hand over a centimetre-unit rig; the importer keeps that hierarchy. The
+    Empty also sits 0.3 m up, so the renderer has feet to drop back to the ground."""
     rs.reset_scene()
     scene = bpy.context.scene
     arm_data = bpy.data.armatures.new("Rig")
     arm = bpy.data.objects.new("Rig", arm_data)
     scene.collection.objects.link(arm)
+    if parented:
+        top = bpy.data.objects.new("Top", None)
+        top.scale = (0.01, 0.01, 0.01)
+        top.location = (0.0, 0.0, 0.3)
+        scene.collection.objects.link(top)
+        arm.parent = top
+        arm.scale = (100.0, 100.0, 100.0)
     bpy.context.view_layer.objects.active = arm
     bpy.ops.object.mode_set(mode="EDIT")
     bone = arm_data.edit_bones.new("Hips")
@@ -116,18 +127,22 @@ def mean_x(mask: np.ndarray) -> float:
     return float(np.nonzero(mask)[1].mean())
 
 
+def render_fixture(root: Path, parented: bool) -> tuple[Path, Path, dict]:
+    """Builds the fixture unit under root and renders it; returns (unit_dir, out_dir, sidecar)."""
+    unit_dir = root / "art-src" / "units" / "fixture"
+    (unit_dir / "anims").mkdir(parents=True)
+    (unit_dir / "spec.toml").write_text(FIXTURE_SPEC, encoding="utf-8")
+    build_fixture(unit_dir / "anims" / "walk.glb", walk=True, parented=parented)
+    build_fixture(unit_dir / "anims" / "idle.glb", walk=False, parented=parented)
+    sidecar = rs.render_unit("fixture", root / "art-src", root / "assets" / "units", engine="WORKBENCH")
+    return unit_dir, root / "assets" / "units" / "fixture", sidecar
+
+
 class RenderSpritesTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls._tmp = tempfile.TemporaryDirectory()
-        root = Path(cls._tmp.name)
-        cls.unit_dir = root / "art-src" / "units" / "fixture"
-        (cls.unit_dir / "anims").mkdir(parents=True)
-        (cls.unit_dir / "spec.toml").write_text(FIXTURE_SPEC, encoding="utf-8")
-        build_fixture(cls.unit_dir / "anims" / "walk.glb", walk=True)
-        build_fixture(cls.unit_dir / "anims" / "idle.glb", walk=False)
-        cls.out = root / "assets" / "units" / "fixture"
-        cls.sidecar = rs.render_unit("fixture", root / "art-src", root / "assets" / "units", engine="WORKBENCH")
+        cls.unit_dir, cls.out, cls.sidecar = render_fixture(Path(cls._tmp.name), parented=False)
         cls.walk = rs.read_rgba(cls.out / "walk.png")
         cls.idle = rs.read_rgba(cls.out / "idle.png")
 
@@ -172,6 +187,37 @@ class RenderSpritesTest(unittest.TestCase):
         self.assertTrue((self.unit_dir / "review" / "walk.gif").exists())
         self.assertEqual(len(self.sidecar["gib_color"]), 3)
         self.assertTrue(all(0.0 <= c <= 1.0 for c in self.sidecar["gib_color"]))
+
+
+class ParentedRenderTest(unittest.TestCase):
+    """The same fixture with its armature under a scaled parent node. Root
+    motion and the feet offset must work in world space, not the armature's
+    parent-relative location."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls._tmp = tempfile.TemporaryDirectory()
+        _, cls.out, cls.sidecar = render_fixture(Path(cls._tmp.name), parented=True)
+        cls.walk = rs.read_rgba(cls.out / "walk.png")
+        cls.idle = rs.read_rgba(cls.out / "idle.png")
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        cls._tmp.cleanup()
+
+    def test_root_motion_is_removed(self) -> None:
+        xs = [mean_x(cell(self.walk, f, 2)[..., 3] > 0.5) for f in range(12)]
+        self.assertLessEqual(max(xs) - min(xs), 2.0, xs)
+
+    def test_stride_is_measured(self) -> None:
+        self.assertAlmostEqual(self.sidecar["animations"]["walk"]["stride_m"], STRIDE_M, delta=0.03)
+
+    def test_nothing_is_clipped(self) -> None:
+        self.assertEqual(self.sidecar["clipped"], [])
+
+    def test_feet_sit_on_the_pivot(self) -> None:
+        rows = np.nonzero((cell(self.idle, 0, 4)[..., 3] > 0.5).any(axis=1))[0]
+        self.assertTrue(rs.FEET_PX - 8 <= int(rows.min()) <= rs.FEET_PX, int(rows.min()))
 
 
 if __name__ == "__main__":

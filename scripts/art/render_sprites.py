@@ -210,8 +210,25 @@ def mesh_bounds() -> tuple[Vector, Vector]:
     return lo, hi
 
 
+def adopt_imports(camera: bpy.types.Object) -> bpy.types.Object:
+    """Parents every imported root object to a new identity Empty, "Fit".
+
+    The importer keeps the file's node hierarchy, so the model may hang under
+    a scaled or offset parent. Moving and scaling Fit instead of the
+    armature keeps fit() and the root-motion cancel in plain world space.
+    """
+    holder = bpy.data.objects.new("Fit", None)
+    bpy.context.scene.collection.objects.link(holder)
+    for obj in [o for o in bpy.context.scene.objects if o.parent is None and o not in (holder, camera)]:
+        if obj.type != "LIGHT":
+            obj.parent = holder
+    bpy.context.view_layer.update()
+    return holder
+
+
 def fit(target: bpy.types.Object, height_m: float) -> None:
-    """Scales target so the meshes stand height_m tall, feet on z = 0."""
+    """Scales target (an unparented object holding the meshes) so they stand
+    height_m tall, feet on z = 0."""
     lo, hi = mesh_bounds()
     if hi.z - lo.z > 1e-6:
         target.scale = target.scale * (height_m / (hi.z - lo.z))
@@ -221,9 +238,15 @@ def fit(target: bpy.types.Object, height_m: float) -> None:
     bpy.context.view_layer.update()
 
 
-def root_xy(armature: bpy.types.Object, base: Matrix) -> Vector:
-    root = next(b for b in armature.pose.bones if b.parent is None)
-    head = base @ root.head
+def root_xy(armature: bpy.types.Object) -> Vector:
+    """World-space horizontal position of the root bone's head, as posed right now.
+
+    Read through the armature's world matrix, so motion keyed on the armature
+    node itself counts as well as motion keyed on the bone.
+    """
+    evaluated = armature.evaluated_get(bpy.context.evaluated_depsgraph_get())
+    root = next(b for b in evaluated.pose.bones if b.parent is None)
+    head = evaluated.matrix_world @ root.head
     return Vector((head.x, head.y))
 
 
@@ -310,6 +333,7 @@ def render_animation(spec: UnitSpec, glb: Path, entry: AnimEntry, frames_dir: Pa
     configure_render(engine)
     camera = make_camera()
     armature, actions = import_glb(glb)
+    holder = adopt_imports(camera)
     if engine == "WORKBENCH":
         copy_base_colors()
     action = None
@@ -320,24 +344,23 @@ def render_animation(spec: UnitSpec, glb: Path, entry: AnimEntry, frames_dir: Pa
     scene = bpy.context.scene
     start, end = (float(action.frame_range[0]), float(action.frame_range[1])) if action else (1.0, 1.0)
     set_frame(start)
-    fit(armature, spec.height_m)
-    base = armature.matrix_world.copy()
-    base_location = armature.location.copy()
+    fit(holder, spec.height_m)
+    base_location = holder.location.copy()
 
     stride_m = 0.0
     if action is not None and entry.name in ("walk", "run"):
         set_frame(start)
-        first = root_xy(armature, base)
+        first = root_xy(armature)
         set_frame(end)
-        stride_m = (root_xy(armature, base) - first).length
+        stride_m = (root_xy(armature) - first).length
 
     clipped: list[str] = []
     frames = sample_frames(start, end, scene.render.fps / scene.render.fps_base, entry.loop)
     for i, frame in enumerate(frames):
-        armature.location = base_location
+        holder.location = base_location
         set_frame(frame)
-        xy = root_xy(armature, base)
-        armature.location = base_location - Vector((xy.x, xy.y, 0.0))
+        xy = root_xy(armature)
+        holder.location = base_location - Vector((xy.x, xy.y, 0.0))
         bpy.context.view_layer.update()
         for d in range(DIRECTIONS):
             place_camera(camera, d)
@@ -413,11 +436,7 @@ def render_candidates(unit: str, src_root: Path, engine: str = "EEVEE") -> Path:
             configure_render(engine)
             camera = make_camera()
             import_glb(glb, require_armature=False)
-            holder = bpy.data.objects.new("Fit", None)
-            bpy.context.scene.collection.objects.link(holder)
-            for obj in [o for o in bpy.context.scene.objects if o.parent is None and o not in (holder, camera)]:
-                if obj.type != "LIGHT":
-                    obj.parent = holder
+            holder = adopt_imports(camera)
             fit(holder, spec.height_m)
             lo, hi = mesh_bounds()
             holder.location.x -= (lo.x + hi.x) / 2.0
