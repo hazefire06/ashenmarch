@@ -27,6 +27,12 @@ enum Kind {
 	STANDOFF,
 	## A group gave up and fell back toward (x, z).
 	RETREAT,
+	## An escort stopped where it stands, (x, z) the members' centroid, because
+	## its friend fell behind or an enemy came near; `value` is the index of
+	## the waypoint it was walking to.
+	ESCORT_WAIT,
+	## An escort set off again toward waypoint `value`, at (x, z).
+	ESCORT_GO,
 }
 
 ## What happened.

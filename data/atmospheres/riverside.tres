@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="Atmosphere" format=3]
+
+[ext_resource type="Script" path="res://view/atmosphere/atmosphere.gd" id="1_atm01"]
+
+; Riverside: late summer, the blight a rumour. About a tenth of the way from the
+; pastoral default (view/atmosphere/atmosphere.gd's own defaults, main.tscn's
+; old look) to the campaign's end: the same sky and the same light, warmed a
+; shade, with a faint haze lying on the valley. Colors are linear 0..1; a value
+; equal to its default is left out, as Godot would.
+[resource]
+script = ExtResource("1_atm01")
+; A touch warmer than the default sky.
+background_color = Color(0.56, 0.62, 0.66, 1)
+ambient_color = Color(0.78, 0.76, 0.74, 1)
+; Afternoon sun a little lower than the default 30 degrees, a little golden.
+sun_color = Color(1, 0.96, 0.86, 1)
+sun_pitch_degrees = -26.0
+; The faint haze: a quarter of the 0.01 that atmosphere.gd calls a light haze.
+fog_enabled = true
+fog_color = Color(0.74, 0.72, 0.66, 1)
+fog_density = 0.0025
+; The ground barely warmed, nothing drained, no recolor, the water as it is, no ash.
+terrain_tint = Color(1, 0.98, 0.93, 1)

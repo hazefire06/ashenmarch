@@ -159,6 +159,11 @@ var parts_taken: int = 0
 ## type that hides there (Visibility.is_submerged): it has shown itself, and
 ## going back under doesn't un-show it. Never reset.
 var surfaced: bool = false
+## The campaign soldier this unit is, set by DeployCommand: the id the roster
+## knows it by, so a mission's survivors can be matched back to their records
+## afterwards. 0 means not a campaign soldier (every AI unit, the villager, a
+## unit spawned by SpawnUnitCommand). Never changes once set.
+var soldier_id: int = 0
 
 
 func _init(
@@ -282,7 +287,7 @@ func hash_fields() -> PackedInt64Array:
 		ground_x, ground_z, 1 if ground_walked else 0, shot_target_id, aim_left, shot_cooldown_left,
 		ammo_left, special_left, 1 if fire_nocked else 0, knock_vx, knock_vz, burn_credit_id,
 		interact_id, resume_order, act_left, carried_id, parts_taken,
-		1 if surfaced else 0,
+		1 if surfaced else 0, soldier_id,
 	]))
 	for until: int in status_until:
 		fields.append(until)

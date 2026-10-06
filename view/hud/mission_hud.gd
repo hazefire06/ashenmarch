@@ -1,10 +1,12 @@
 class_name MissionHud
 extends Control
-## The mission at a glance: its current objective at the top centre of the
-## screen, and once the mission is decided a Victory or Defeat banner in the
-## middle. Hidden in a world with no mission. MainView calls show_world after
-## every step; the labels only change when the text does. Reads the World;
-## never writes it, and never takes mouse input, so it can't block a click.
+## The mission at a glance: its message line (the text a SET_OBJECTIVE action
+## last set: a hint, a new task) at the top centre of the screen, and once the
+## mission is decided a Victory or Defeat banner in the middle. The list of
+## objectives and how each stands is the ObjectivePanel's. Hidden in a world
+## with no mission. MainView calls show_world after every step; the labels only
+## change when the text does. Reads the World; never writes it, and never takes
+## mouse input, so it can't block a click.
 
 ## Pixels from the top of the screen to the objective. The stats label owns
 ## the top-left corner and its two lines run into the middle, so the

@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="MapInfo" format=3]
+
+[ext_resource type="Script" path="res://sim/map_info.gd" id="1_bo2gi"]
+
+[resource]
+script = ExtResource("1_bo2gi")
+display_name = "Old Mill"
+heightmap_path = "res://maps/old_mill/height.png"
+mask_path = "res://maps/old_mill/mask.png"
+cell_size = 1000
+max_height = 30000
+max_walkable_slope = 1000
+herb_plants = PackedInt32Array(148000, 140000, 176000, 162000, 119000, 110000, 201000, 194000)

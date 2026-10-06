@@ -22,8 +22,9 @@
 [ext_resource type="Resource" path="res://data/units/stormcaller.tres" id="20_stc02"]
 [ext_resource type="Resource" path="res://data/projectiles/lightning.tres" id="21_ltn01"]
 [ext_resource type="Resource" path="res://data/projectiles/body_part.tres" id="22_bpt01"]
+[ext_resource type="Resource" path="res://data/units/villager.tres" id="23_vlg01"]
 
 [resource]
 script = ExtResource("1_netvh")
-types = Array[ExtResource("2_k6cb4")]([ExtResource("3_rw1vc"), ExtResource("4_nbt4h"), ExtResource("5_rvr01"), ExtResource("6_rpr01"), ExtResource("7_lbw01"), ExtResource("8_spr01"), ExtResource("9_dft01"), ExtResource("15_wdn01"), ExtResource("17_bbg01"), ExtResource("20_stc02")])
+types = Array[ExtResource("2_k6cb4")]([ExtResource("3_rw1vc"), ExtResource("4_nbt4h"), ExtResource("5_rvr01"), ExtResource("6_rpr01"), ExtResource("7_lbw01"), ExtResource("8_spr01"), ExtResource("9_dft01"), ExtResource("15_wdn01"), ExtResource("17_bbg01"), ExtResource("20_stc02"), ExtResource("23_vlg01")])
 projectile_types = Array[ExtResource("10_ptp01")]([ExtResource("11_arw01"), ExtResource("12_far01"), ExtResource("13_grn01"), ExtResource("14_stc01"), ExtResource("16_hrb01"), ExtResource("18_gpk01"), ExtResource("19_bbt01"), ExtResource("21_ltn01"), ExtResource("22_bpt01")])

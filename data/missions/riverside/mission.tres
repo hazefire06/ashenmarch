@@ -1,0 +1,59 @@
+[gd_resource type="Resource" script_class="MissionDef" format=3]
+
+[ext_resource type="Script" path="res://sim/missions/mission_def.gd" id="1_mdf01"]
+[ext_resource type="Script" path="res://sim/missions/roster_entry.gd" id="2_ros01"]
+[ext_resource type="Resource" path="res://maps/riverside/riverside.tres" id="3_map01"]
+[ext_resource type="Resource" path="res://data/missions/riverside/rules.tres" id="4_rul01"]
+[ext_resource type="Resource" path="res://data/atmospheres/riverside.tres" id="5_atm01"]
+
+; Riverside, mission one: the tutorial. Something is wrong in the fields. A
+; hand-written MissionDef; the editor drops these comments if it re-saves it.
+; Positions are milli-units (1000 = 1 m). The fixed roster is 14 at tier 2:
+; every slot is filled from the campaign's survivors first, and a fresh recruit
+; takes whatever is empty (the first mission has no survivors, so all are
+; recruits). Every entry carries over (carryover is true, the default), so
+; whoever lives through Riverside is the core of the company that goes on.
+; Entries are listed melee first, which is the order the box lays them out
+; front to back.
+
+[sub_resource type="Resource" id="Roster_shieldman"]
+script = ExtResource("2_ros01")
+type_id = &"shieldman"
+counts = PackedInt32Array(8, 7, 6, 6, 5)
+
+[sub_resource type="Resource" id="Roster_reaver"]
+script = ExtResource("2_ros01")
+type_id = &"reaver"
+counts = PackedInt32Array(3)
+
+[sub_resource type="Resource" id="Roster_longbow"]
+script = ExtResource("2_ros01")
+type_id = &"longbow"
+counts = PackedInt32Array(3)
+
+[sub_resource type="Resource" id="Roster_sapper"]
+script = ExtResource("2_ros01")
+type_id = &"sapper"
+counts = PackedInt32Array(2)
+
+[resource]
+script = ExtResource("1_mdf01")
+id = &"riverside"
+display_name = "Riverside"
+briefing = "The harvest came in late this year, and nobody on the south bank will say why. Three days ago their carts stopped crossing the ford. Last night a drover reached the north road alone, and would only say that the barley stands grey in the fields, the dogs have gone quiet, and something is walking the lanes between the houses that moves like a man who has forgotten how.
+
+You have a small company and a long distrust of rumour. Cross the creek at the ford and clear the village of whatever has settled there. Keep your line tight, mind the water, and do not take the quiet for safety.
+
+Bring home everyone you can."
+map = ExtResource("3_map01")
+rules = ExtResource("4_rul01")
+roster = Array[ExtResource("2_ros01")]([SubResource("Roster_shieldman"), SubResource("Roster_reaver"), SubResource("Roster_longbow"), SubResource("Roster_sapper")])
+; The north bank, above the ford: (290, 180) m, facing south (0, 1) toward the
+; creek, in a box (Formations.Kind 4 = BOX).
+deploy = PackedInt32Array(290000, 180000)
+deploy_facing_x = 0
+deploy_facing_z = 1
+deploy_formation = 4
+; The camera looks at the creek and the south bank beyond the squad.
+camera_start = PackedInt32Array(285000, 240000)
+atmosphere = ExtResource("5_atm01")

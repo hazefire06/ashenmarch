@@ -23,6 +23,17 @@ enum Condition {
 	GROUP_CLEARED,
 	## `faction` has no units left.
 	FACTION_ELIMINATED,
+	## At least `min_count` of the triggers named in `names` have fired, each on
+	## an earlier tick. A link takes a tick, like `after`, so it never sees a
+	## trigger that fired this tick. `min_count` 1 is any-of, the number of
+	## names is all-of. Unlike `after` it can wait on several triggers at once.
+	TRIGGERS_FIRED,
+	## `faction` has no living unit that a player commands (one the AI didn't
+	## spawn), and has had one since the mission started. A Light group the
+	## mission spawns doesn't count either way, so a LOSE on this isn't held off
+	## by allies, and doesn't fire on tick 0 in a mission whose Light units
+	## arrive later.
+	PLAYER_ELIMINATED,
 }
 
 ## Unique within a MissionScript; `after` refers to a trigger by it.
@@ -35,11 +46,15 @@ enum Condition {
 ## AREA_ENTERED: x, z, radius in milli-units.
 @export var area: PackedInt32Array = PackedInt32Array()
 ## AREA_ENTERED: whose units count. FACTION_ELIMINATED: which side must be
-## wiped out.
+## wiped out. PLAYER_ELIMINATED: the side the player commands.
 @export var faction: UnitType.Faction = UnitType.Faction.LIGHT
-## AREA_ENTERED: how many units must be inside at once.
+## AREA_ENTERED: how many units must be inside at once. TRIGGERS_FIRED: how
+## many of `names` must have fired.
 @export var min_count: int = 1
-## UNIT_DIES, GROUP_CLEARED: the groups' names in the MissionScript.
+## UNIT_DIES, GROUP_CLEARED: the groups' names in the MissionScript, or the
+## alias names of a MissionDraw. AREA_ENTERED: the same, optional; when set, only
+## units those groups spawned count, instead of every unit of `faction`.
+## TRIGGERS_FIRED: the names of the triggers to wait for.
 @export var names: Array[StringName] = []
 ## UNIT_DIES: deaths needed, summed across the groups in `names`.
 @export var count: int = 1

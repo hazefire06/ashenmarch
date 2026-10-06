@@ -1,7 +1,9 @@
 extends GutTest
 ## StandoffSpot: where a STANDOFF unit can stand to shoot a target (find),
 ## whether where it stands will do (holds), and whether an enemy is inside its
-## dead zone (threatened). Also Lightning.is_clear_from, the clear-line check
+## dead zone (threatened); an archer under a cliff's lip, whose every arrow
+## from the foot meets the cliff, finds a spot its arrows clear the lip from.
+## Also Lightning.is_clear_from, the clear-line check
 ## from a spot the caster isn't standing on, which must agree with is_clear
 ## from where it is. Pure calls on small worlds; nothing steps.
 
@@ -45,6 +47,36 @@ func _world(terrain: Terrain = null) -> World:
 
 func _spot(x: int, z: int) -> PackedInt64Array:
 	return PackedInt64Array([x, z])
+
+
+## 100 x 40 m: a plain at 0 m, then a cliff rising 2 m per m from x = 50 m to
+## a plateau 6 m up from x = 53 m. Too steep to walk: the plain and the
+## plateau are apart for the living.
+func _cliff() -> Terrain:
+	var size_x: int = 100
+	var size_z: int = 40
+	var heights: PackedInt32Array = PackedInt32Array()
+	var water: PackedByteArray = PackedByteArray()
+	var blocked: PackedByteArray = PackedByteArray()
+	heights.resize(size_x * size_z)
+	water.resize(size_x * size_z)
+	blocked.resize(size_x * size_z)
+	for j: int in size_z:
+		for i: int in size_x:
+			heights[j * size_x + i] = clampi((i - 50) * 2 * M, 0, 6 * M)
+	return Terrain.new(
+		size_x, size_z, TestTerrains.CELL, heights, water, blocked, TestTerrains.WALKABLE_SLOPE
+	)
+
+
+## RangedCombat's own test for a shot of unit at target's chest, launched as
+## if it stood at (x, z): an arrow's flight that clears the ground and friends.
+func _shoots_from(world: World, unit: Unit, target: Unit, x: int, z: int) -> bool:
+	var p: ProjectileType = world.catalog.find_projectile(unit.type.ranged_projectile)
+	var from_y: int = world.terrain.height_at(x, z) + unit.type.hover_height + unit.type.ranged_launch_height
+	var chest: int = RangedCombat.chest_height(target, world.terrain.height_at(target.x, target.z))
+	var launch: FlightState = FlightState.at_mm(x, from_y, z, 0, 0, 0)
+	return RangedCombat.clear_launch_from(world, unit, launch, p, target.x, chest, target.z, true).ok
 
 
 # --- find -------------------------------------------------------------------
@@ -143,6 +175,46 @@ func test_find_for_an_archer_wants_no_friend_near_the_straight_line() -> void:
 	assert_ne(spot, _spot(60 * M - radius, 20 * M), "1.4 m off the line is in the corridor")
 	friend.z = 21_600
 	assert_eq(StandoffSpot.find(world, archer, target), _spot(60 * M - radius, 20 * M), "1.6 m off is not")
+
+
+func test_an_archer_under_a_cliff_lip_wont_hold_and_finds_a_spot_it_can_shoot_over_it_from() -> void:
+	var world: World = _world(_cliff())
+	# 2 m short of the foot, the target 27 m in from the lip, 32 m off: in
+	# range, but every flight from here meets the cliff.
+	var archer: Unit = world.spawn_unit(ARCHER, DARK, 48 * M, 20 * M, 1, 0)
+	var target: Unit = world.spawn_unit(DUMMY, LIGHT, 80 * M, 20 * M, -1, 0)
+	assert_false(_shoots_from(world, archer, target, archer.x, archer.z), "RangedCombat can't shoot from the foot")
+	assert_false(StandoffSpot.holds(world, archer, target), "so the foot won't do, in range or not")
+	var spot: PackedInt64Array = StandoffSpot.find(world, archer, target)
+	assert_eq(spot.size(), 2, "a spot farther back")
+	if spot.size() != 2:
+		return
+	assert_lt(spot[0], archer.x, "on the plain, back from the cliff")
+	assert_true(_shoots_from(world, archer, target, spot[0], spot[1]), "the arrow clears the lip from it")
+	archer.x = spot[0]
+	archer.z = spot[1]
+	assert_true(StandoffSpot.holds(world, archer, target), "and standing there will do")
+
+
+func test_find_offers_no_spot_within_a_moves_arrival_radius_of_the_unit() -> void:
+	var world: World = _world()
+	var target: Unit = world.spawn_unit(DUMMY, LIGHT, 60 * M, 20 * M, -1, 0)
+	var archer: Unit = world.spawn_unit(ARCHER, DARK, 10 * M, 20 * M, 1, 0)
+	# A friend on the line 1.6 m behind the straight-back spot (20, 20): out of
+	# that spot's corridor.
+	world.spawn_unit(DUMMY, DARK, 18_400, 20 * M, 1, 0)
+	assert_eq(StandoffSpot.find(world, archer, target), _spot(20 * M, 20 * M), "from 10 m: the spot will do")
+	# 20 cm past the spot the friend is 1.4 m behind the archer, in its
+	# corridor: where it stands won't do. The spot 20 cm away would, but a move
+	# there ends before it starts, so it would be sent there at every think.
+	archer.x = 19_800
+	assert_false(StandoffSpot.holds(world, archer, target))
+	var spot: PackedInt64Array = StandoffSpot.find(world, archer, target)
+	assert_eq(spot.size(), 2, "swung round instead")
+	if spot.size() != 2:
+		return
+	assert_gt(FixedMath.length(spot[0] - archer.x, spot[1] - archer.z), UnitMovement.ARRIVE_RADIUS)
+	assert_almost_eq(FixedMath.length(spot[0] - target.x, spot[1] - target.z), 40 * M, 2, "on the circle")
 
 
 # --- holds, threatened ------------------------------------------------------

@@ -11,9 +11,13 @@ const MAP_PATH: String = "res://maps/riverside/riverside.tres"
 ## and a half-width covering it plus its ramps.
 const FORD_X: int = 300
 const FORD_ZONE_HALF: int = 12
-## SHA-256 of the heights, water, and blocked samples as Phase 1 generated
-## them. Regenerating the map for ground types must leave them alone.
-const PHASE_1_SHAPE_HASH: String = "f7799cc4332a9cbbf706c0a51ef202e2eca8bb211a6770d4d49d2d0130bc3b34"
+## SHA-256 of the heights, water, and blocked samples. Phase 1 generated them,
+## and regenerating the map for ground types left them alone.
+## Phase 8 adds the south-bank village (raised, blocked houses), so this is now
+## the Phase 1 shape plus the village; the creek, the ford, and everything
+## outside the village are still pinned sample for sample by test_map_builder.gd.
+## The Phase 1 value was f7799cc4332a9cbbf706c0a51ef202e2eca8bb211a6770d4d49d2d0130bc3b34.
+const PHASE_1_SHAPE_HASH: String = "116e779c1ff761c07e19e426426979714abe1d6f64dcbb2c47932cbe901ec37d"
 
 var _terrain: Terrain
 

@@ -28,7 +28,10 @@ static func melee(type_id: StringName, overrides: Dictionary = {}) -> UnitType:
 	for key: String in overrides:
 		t.set(key, overrides[key])
 	var errors: PackedStringArray = t.validate()
-	assert(errors.is_empty(), "invalid test type: %s" % [errors])
+	if not errors.is_empty():
+		# Not assert(): under the debugger that hangs instead of failing the
+		# test. The error fails the running test; the type comes back as built.
+		push_error("TestUnits.melee: invalid test type: %s" % [errors])
 	return t
 
 
@@ -173,7 +176,9 @@ static func projectile(projectile_id: StringName, overrides: Dictionary = {}) ->
 	for key: String in overrides:
 		p.set(key, overrides[key])
 	var errors: PackedStringArray = p.validate()
-	assert(errors.is_empty(), "invalid test projectile: %s" % [errors])
+	if not errors.is_empty():
+		# Not assert() (see melee()).
+		push_error("TestUnits.projectile: invalid test projectile: %s" % [errors])
 	return p
 
 

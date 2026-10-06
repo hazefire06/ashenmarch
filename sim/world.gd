@@ -17,6 +17,12 @@ const TICK_RATE: int = 30
 ## Fixed-point scale: positions are integer milli-units, velocities are
 ## milli-units per tick.
 const UNITS_PER_METER: int = 1000
+## Mixed into the world's seed to seed a mission's draw (roll_bindings), so the
+## draw's stream isn't the one world.rng starts with. Any fixed 63-bit value
+## would do: this is the xorshift* multiplier, chosen only because it is a
+## well-mixed constant. Changing it re-rolls every mission's draw, so treat it
+## as part of the save format.
+const DRAW_SALT: int = 0x2545F4914F6CDD1D
 
 ## Index of the next tick step() will simulate.
 var tick: int = 0
@@ -156,9 +162,10 @@ func step() -> void:
 
 ## Starts a mission from mission_script at this tier (0..4, easiest to
 ## hardest). Only a world that hasn't stepped yet can start one, and only one:
-## the starting groups spawn on the first step. Returns false and says why if
-## the world has no terrain or catalog, has already stepped or started a
-## mission, the script is null, the tier is out of range, or the script
+## the starting groups spawn on the first step, and the script's draws are
+## rolled now from the world's seed (roll_bindings). Returns false and says
+## why if the world has no terrain or catalog, has already stepped or started
+## a mission, the script is null, the tier is out of range, or the script
 ## doesn't validate against the catalog.
 func start_mission(mission_script: MissionScript, tier: int) -> bool:
 	var problem: String = ""
@@ -179,8 +186,42 @@ func start_mission(mission_script: MissionScript, tier: int) -> bool:
 	if problem != "":
 		push_error("World.start_mission: " + problem)
 		return false
-	mission = MissionRuntime.new(mission_script, tier, tick)
+	mission = MissionRuntime.new(mission_script, tier, tick, roll_bindings(mission_script, rng_seed))
 	return true
+
+
+## Rolls the script's draws: for each draw in order and each of its slots, the
+## index of the pool group bound to it, all in one array (MissionRuntime.bindings).
+## Each draw is a partial Fisher-Yates shuffle of its pool, taking `slots` picks;
+## with `ordered`, the picks are then bound in ascending pool order instead of
+## the order drawn.
+##
+## It uses a generator of its own, seeded from `roll_seed` and DRAW_SALT, and
+## never touches `rng`, so a mission with draws consumes the same world random
+## numbers as one without and the RNG draw-order tables in architecture.md
+## still hold. (It lives here rather than in sim/missions, where nothing may
+## mention the world's generator.) The same script and seed always roll the
+## same bindings. The script must have passed validate().
+static func roll_bindings(mission_script: MissionScript, roll_seed: int) -> PackedInt32Array:
+	var generator: RandomNumberGenerator = RandomNumberGenerator.new()
+	generator.seed = roll_seed ^ DRAW_SALT
+	var bound: PackedInt32Array = PackedInt32Array()
+	for draw: MissionDraw in mission_script.draws:
+		var positions: Array[int] = []
+		for i: int in draw.pool.size():
+			positions.append(i)
+		var picks: Array[int] = []
+		for k: int in draw.slots.size():
+			var j: int = generator.randi_range(k, positions.size() - 1)
+			var picked: int = positions[j]
+			positions[j] = positions[k]
+			positions[k] = picked
+			picks.append(picked)
+		if draw.ordered:
+			picks.sort()
+		for position: int in picks:
+			bound.append(mission_script.group_index(draw.pool[position]))
+	return bound
 
 
 func spawn_entity(x: int, y: int, z: int) -> SimEntity:
@@ -218,6 +259,34 @@ func spawn_unit(
 	_register(unit)
 	units.append(unit)
 	return unit
+
+
+## Spawns a block of units on one side laid out in a formation: type_indices
+## (catalog indices, which must all be valid) in order, front to back, on the
+## formation's slots centered on (x, z) and facing (facing_x, facing_z), zero
+## meaning north. Spacing follows the largest body in the block
+## (Formations.spacing_for), so a block of one type packs the same whoever
+## spawns it. The units are returned in list order and numbered in it, so the
+## layout and the entity ids are the same for an AI group (AiDirector) and for
+## a campaign roster (DeployCommand). Spawns nothing without a terrain and a
+## catalog, or for an empty list.
+func spawn_block(
+	type_indices: Array[int], side: UnitType.Faction, x: int, z: int, facing_x: int, facing_z: int,
+	formation: Formations.Kind
+) -> Array[Unit]:
+	var block: Array[Unit] = []
+	if terrain == null or catalog == null:
+		return block
+	var largest_radius: int = 0
+	for type_index: int in type_indices:
+		largest_radius = maxi(largest_radius, catalog.types[type_index].body_radius)
+	var slots: Array[FormationSlot] = Formations.slots(
+		formation, type_indices.size(), x, z, facing_x, facing_z, Formations.spacing_for(largest_radius)
+	)
+	for i: int in type_indices.size():
+		var slot: FormationSlot = slots[i]
+		block.append(spawn_unit(type_indices[i], side, slot.x, slot.z, slot.facing_x, slot.facing_z))
+	return block
 
 
 ## Creates a projectile of catalog type type_index in flight, launched by

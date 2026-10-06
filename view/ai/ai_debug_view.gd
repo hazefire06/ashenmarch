@@ -7,7 +7,8 @@ extends Node3D
 ## - lines laid on the ground (unshaded, drawn over everything): a PATROL's
 ##   waypoints as a loop or a polyline, the circle a GUARD chases within and
 ##   the one that springs an AMBUSH, around the group's anchor, the part of a
-##   FLANK's route still to walk and a line to the unit it is circling, and
+##   FLANK's route still to walk and a line to the unit it is circling, the
+##   part of an ESCORT's route still to walk (nothing once it has arrived), and
 ##   every AREA_ENTERED trigger's circle, gray until it fires and green after.
 ## Reads the World; never writes it. Lines are floats in meters: this is view
 ## code, so the sim's integer rules don't apply.
@@ -33,6 +34,7 @@ const FLANK_COLOR: Color = Color(1.0, 0.4, 0.9)
 const HUNT_COLOR: Color = Color(1.0, 0.95, 0.4)
 const IDLE_COLOR: Color = Color(0.8, 0.8, 0.8)
 const RETREAT_COLOR: Color = Color(0.5, 0.6, 1.0)
+const ESCORT_COLOR: Color = Color(0.65, 1.0, 0.8)
 const TRIGGER_IDLE_COLOR: Color = Color(0.6, 0.6, 0.6)
 const TRIGGER_FIRED_COLOR: Color = Color(0.35, 1.0, 0.4)
 
@@ -163,6 +165,8 @@ static func behavior_color(behavior: AiGroupSpec.Behavior) -> Color:
 			return HUNT_COLOR
 		AiGroupSpec.Behavior.RETREAT:
 			return RETREAT_COLOR
+		AiGroupSpec.Behavior.ESCORT:
+			return ESCORT_COLOR
 	return IDLE_COLOR
 
 
@@ -189,6 +193,8 @@ func _draw_group(group: AiGroup, centroid: Vector2i, color: Color) -> void:
 			_add_ring(anchor, group.spec.alert_radius / float(World.UNITS_PER_METER), color)
 		AiGroupSpec.Behavior.FLANK:
 			_draw_flank(group, centroid, color)
+		AiGroupSpec.Behavior.ESCORT:
+			_draw_escort(group, centroid, color)
 
 
 # The waypoints joined in order, and for a LOOP the last joined back to the
@@ -212,6 +218,19 @@ func _draw_flank(group: AiGroup, centroid: Vector2i, color: Color) -> void:
 	var focus: Unit = _world.get_unit(group.focus_id) if group.focus_id != 0 else null
 	if focus != null and focus.is_alive():
 		_add_line(_meters(centroid), _meters(Vector2i(focus.x, focus.z)), color.darkened(0.4))
+
+
+# From the group to the waypoint it is walking to and on to the last: what is
+# left of the route, which shrinks as it goes. Once it has arrived (phase 2) the
+# members hold and there is nothing left to draw.
+func _draw_escort(group: AiGroup, centroid: Vector2i, color: Color) -> void:
+	if group.phase == 2:
+		return
+	var from: Vector2 = _meters(centroid)
+	for i: int in range(group.waypoint_index, group.spec.waypoints.size() >> 1):
+		var to: Vector2 = _waypoint(group.spec, i)
+		_add_line(from, to, color)
+		from = to
 
 
 func _draw_triggers() -> void:

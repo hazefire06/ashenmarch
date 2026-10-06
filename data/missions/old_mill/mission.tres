@@ -1,0 +1,63 @@
+[gd_resource type="Resource" script_class="MissionDef" format=3]
+
+[ext_resource type="Script" path="res://sim/missions/mission_def.gd" id="1_mdf01"]
+[ext_resource type="Script" path="res://sim/missions/roster_entry.gd" id="2_ros01"]
+[ext_resource type="Resource" path="res://maps/old_mill/old_mill.tres" id="3_map01"]
+[ext_resource type="Resource" path="res://data/missions/old_mill/rules.tres" id="4_rul01"]
+[ext_resource type="Resource" path="res://data/atmospheres/old_mill.tres" id="5_atm01"]
+
+; Old Mill, mission three: hold the line. Ash in the air, the last mill
+; standing. A hand-written MissionDef; the editor drops these comments if it
+; re-saves it. Positions are milli-units (1000 = 1 m). The fixed roster is 20
+; at tier 2, more than before, because what is coming is more than before.
+; Survivors of The Ford fill the slots of their own type first (all carry over)
+; and recruits fill the rest, so a company that has lost men is brought back
+; up to the roster. Entries are listed melee first, which is the order the box
+; lays them out front to back.
+
+[sub_resource type="Resource" id="Roster_shieldman"]
+script = ExtResource("2_ros01")
+type_id = &"shieldman"
+counts = PackedInt32Array(10, 9, 8, 8, 7)
+
+[sub_resource type="Resource" id="Roster_reaver"]
+script = ExtResource("2_ros01")
+type_id = &"reaver"
+counts = PackedInt32Array(3)
+
+[sub_resource type="Resource" id="Roster_longbow"]
+script = ExtResource("2_ros01")
+type_id = &"longbow"
+counts = PackedInt32Array(4)
+
+[sub_resource type="Resource" id="Roster_sapper"]
+script = ExtResource("2_ros01")
+type_id = &"sapper"
+counts = PackedInt32Array(3)
+
+[sub_resource type="Resource" id="Roster_warden"]
+script = ExtResource("2_ros01")
+type_id = &"warden"
+counts = PackedInt32Array(2)
+
+[resource]
+script = ExtResource("1_mdf01")
+id = &"old_mill"
+display_name = "Old Mill"
+briefing = "Ash has been falling since morning, fine as flour, and it does not melt. The fields round the old mill are black to the hedges and the stream runs dark as ink. Everything that could burn has burned, and the rest is burning. Of all the places along this road the mill is the last thing standing, and it stands because it sits on a shelf of rock that can be climbed only by two ramps.
+
+They are coming from every side, in waves, and they do not tire. Hold the plateau. Set your charges on the ramps before the first wave arrives. Keep the healers alive and the archers behind the line.
+
+If the mill falls, nothing stands between the dark and the road home."
+map = ExtResource("3_map01")
+rules = ExtResource("4_rul01")
+roster = Array[ExtResource("2_ros01")]([SubResource("Roster_shieldman"), SubResource("Roster_reaver"), SubResource("Roster_longbow"), SubResource("Roster_sapper"), SubResource("Roster_warden")])
+; On top of the plateau, south-west of the mill: (156, 158) m, facing north
+; (0, -1) toward the first of the waves, in a box (Formations.Kind 4 = BOX).
+deploy = PackedInt32Array(156000, 158000)
+deploy_facing_x = 0
+deploy_facing_z = -1
+deploy_formation = 4
+; The camera looks at the plateau from the south, over the south-east ramp.
+camera_start = PackedInt32Array(160000, 205000)
+atmosphere = ExtResource("5_atm01")

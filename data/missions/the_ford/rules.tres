@@ -1,0 +1,406 @@
+[gd_resource type="Resource" script_class="MissionScript" format=3]
+
+[ext_resource type="Script" path="res://sim/missions/mission_script.gd" id="1_msc01"]
+[ext_resource type="Script" path="res://sim/ai/ai_group_spec.gd" id="2_grp01"]
+[ext_resource type="Script" path="res://sim/ai/ai_unit_entry.gd" id="3_ent01"]
+[ext_resource type="Script" path="res://sim/missions/trigger_spec.gd" id="4_trg01"]
+[ext_resource type="Script" path="res://sim/missions/trigger_action.gd" id="5_act01"]
+[ext_resource type="Script" path="res://sim/missions/objective_spec.gd" id="6_obj01"]
+
+; The Ford, mission two: an escort. One villager has to be walked from the
+; south bank, over the ford, up the north road, and in at the hamlet's gate,
+; and the dead are in the water. The script is hand-written; the editor drops
+; these comments if it re-saves it. Positions are milli-units (1000 = 1 m) on
+; maps/the_ford/the_ford.tres, and every coordinate that comes from the map's
+; generator (scripts/gen_the_ford.gd) is read back against it by
+; tests/sim/test_campaign_missions.gd, so the two can't drift apart:
+;   - the squad deploys at (192, 300) m and the villager starts 7 m from it,
+;     at (186, 304) m;
+;   - the river is 44 m across (z 164 to 207 at x = 192); its only shallow
+;     crossing for living units is the ford at x = 192 m, centred at z = 186 m;
+;   - two deep pools bulge the shoulders, west (166, 196) and east (218, 178),
+;     each depth 4 within 7 m of its centre: the ambushes lie hidden in them;
+;   - the sand road runs straight north over the ford, bends north-east at
+;     (200, 130), and ends at the hamlet's gate area, centred (239, 80.5) m
+;     with radius 7 m. It reaches about 3 m out through the gap, so `home`
+;     fires as the villager reaches the gate mouth: that is accepted.
+; Weather is not set: the Ford is overcast all through (its look, the
+; atmosphere, is in data/atmospheres/the_ford.tres).
+;
+; Enum values used below, from the scripts that declare them (append-only, so
+; these numbers never move). The tests check each one against its name.
+;   AiGroupSpec.Behavior   0 IDLE, 1 PATROL, 2 GUARD, 3 HUNT, 4 FLANK,
+;                          5 AMBUSH, 6 RETREAT, 7 ESCORT
+;   AiGroupSpec.PatrolMode 0 LOOP, 1 PING_PONG
+;   UnitType.Faction       0 LIGHT, 1 DARK
+;   UnitType.Role (bits)   1 MELEE, 2 RANGED, 4 SUPPORT
+;   TriggerSpec.Condition  0 AREA_ENTERED, 1 UNIT_DIES, 2 TIMER,
+;                          3 GROUP_CLEARED, 4 FACTION_ELIMINATED,
+;                          5 TRIGGERS_FIRED, 6 PLAYER_ELIMINATED
+;   TriggerAction.Kind     0 SPAWN_GROUP, 1 SET_WEATHER, 2 SET_OBJECTIVE
+;                          (the message line), 3 WIN, 4 LOSE, 5 SET_BEHAVIOR,
+;                          6 SHOW_OBJECTIVE, 7 COMPLETE_OBJECTIVE,
+;                          8 FAIL_OBJECTIVE
+;
+; Counts that differ by tier list five values (tiers 0 to 4); the rest are one
+; value for every tier.
+
+; ---- unit entries ----
+
+[sub_resource type="Resource" id="Entry_villager"]
+script = ExtResource("3_ent01")
+type_id = &"villager"
+counts = PackedInt32Array(1)
+
+[sub_resource type="Resource" id="Entry_husk_pool"]
+script = ExtResource("3_ent01")
+type_id = &"husk"
+counts = PackedInt32Array(4, 5, 6, 6, 7)
+
+[sub_resource type="Resource" id="Entry_husk_landing"]
+script = ExtResource("3_ent01")
+type_id = &"husk"
+counts = PackedInt32Array(5, 6, 6, 7, 8)
+
+[sub_resource type="Resource" id="Entry_drifter"]
+script = ExtResource("3_ent01")
+type_id = &"drifter"
+counts = PackedInt32Array(3, 4, 4, 5, 6)
+
+[sub_resource type="Resource" id="Entry_ripper"]
+script = ExtResource("3_ent01")
+type_id = &"ripper"
+counts = PackedInt32Array(3, 4, 6, 6, 7)
+
+[sub_resource type="Resource" id="Entry_ripper_rear"]
+script = ExtResource("3_ent01")
+type_id = &"ripper"
+counts = PackedInt32Array(3, 4, 6, 6, 7)
+
+; ---- groups ----
+
+; The villager: the only Light group the mission spawns (faction 0 = LIGHT; the
+; default is Dark). Behavior 7 = ESCORT: the villager walks the waypoints in
+; order, but only while one of the player's soldiers is within 12 m (14 m once
+; already walking), and stops where standing when any visible enemy comes
+; within 10 m. It never fights and never retreats. The route is the
+; generator's ESCORT_WAYPOINTS: the middle of the south bank, the ford, the
+; north landing, the bend of the road, and the gate. It faces north (0, -1)
+; from the first tick.
+[sub_resource type="Resource" id="Group_villager"]
+script = ExtResource("2_grp01")
+name = &"villager"
+faction = 0
+units = Array[ExtResource("3_ent01")]([SubResource("Entry_villager")])
+spawns = PackedInt32Array(186000, 304000)
+facing_x = 0
+facing_z = -1
+spawn_at_start = true
+behavior = 7
+waypoints = PackedInt32Array(192000, 272000, 192000, 226000, 192000, 160000, 200000, 130000, 222000, 104000, 239000, 80000)
+alert_radius = 10000
+escort_radius = 12000
+
+; The west pool's ambush: Husks lying in the depth-4 water on the south shoulder
+; of the river, 26 m west of the ford (behavior 5 = AMBUSH). Every sample
+; within 3 m of the spawn point is depth 3 or more, so the whole group is
+; hidden (Husks hide in depth 3+). They spring when the villager reaches the
+; ford (the `crossing` trigger sets them hunting), or before that if a Light
+; unit comes within 12 m (onto the pool's shallow shelf, which shelves to dry
+; 14 m out), or one of them is hurt or fought, and then hunt (on_alert HUNT,
+; the default). The road is 26 m off, so it is the trigger that springs them
+; in a straight escort.
+[sub_resource type="Resource" id="Group_pool_w"]
+script = ExtResource("2_grp01")
+name = &"pool_w"
+units = Array[ExtResource("3_ent01")]([SubResource("Entry_husk_pool")])
+spawns = PackedInt32Array(166000, 196000)
+spawn_at_start = true
+behavior = 5
+alert_radius = 12000
+
+; The east pool's ambush: the same, on the north shoulder, 26 m east of the
+; ford.
+[sub_resource type="Resource" id="Group_pool_e"]
+script = ExtResource("2_grp01")
+name = &"pool_e"
+units = Array[ExtResource("3_ent01")]([SubResource("Entry_husk_pool")])
+spawns = PackedInt32Array(218000, 178000)
+spawn_at_start = true
+behavior = 5
+alert_radius = 12000
+
+; The north landing's guard: Husks on the dry sand where the road comes out of
+; the water, 19 m north of the river's edge at the ford (behavior 2 = GUARD).
+; They hold the post and chase anything within 15 m of it, then come back, so
+; they take the villager as soon as it lands.
+[sub_resource type="Resource" id="Group_landing"]
+script = ExtResource("2_grp01")
+name = &"landing"
+units = Array[ExtResource("3_ent01")]([SubResource("Entry_husk_landing")])
+spawns = PackedInt32Array(192000, 145000)
+facing_x = 0
+facing_z = 1
+spawn_at_start = true
+behavior = 2
+guard_radius = 15000
+
+; The Drifters, floating archers working the river (behavior 1 = PATROL,
+; patrol_mode 1 = PING_PONG: out along the waypoints and back the same way).
+; One route covers both reaches the generator names: the west reach (110, 192)
+; to (150, 190), across the ford's water, and the east reach (240, 195) to
+; (300, 200). Every point is over depth 3+ water, and Drifters float, so none
+; of it stops them. A Light unit within 25 m of any of them sends the group
+; hunting, standing off at range as Drifters do. Three to six of them, the
+; first thing that finds the squad as it wades.
+[sub_resource type="Resource" id="Group_drifters"]
+script = ExtResource("2_grp01")
+name = &"drifters"
+units = Array[ExtResource("3_ent01")]([SubResource("Entry_drifter")])
+spawns = PackedInt32Array(110000, 192000)
+spawn_at_start = true
+behavior = 1
+waypoints = PackedInt32Array(110000, 192000, 150000, 190000, 240000, 195000, 300000, 200000)
+patrol_mode = 1
+alert_radius = 25000
+
+; The Rippers out of the east woods (behavior 4 = FLANK), spawned by the
+; `flank` trigger, late: once the villager has landed. flank_roles 6 = RANGED
+; (2) and SUPPORT (4): they go for the Longbows, Sappers, Wardens, and the
+; villager itself (a support unit), round the end of any melee screening them.
+; The spawn is (330, 140) m, 138 m east of the landing on the same north bank.
+; Six at tier 2 (3 at tier 0 up to 7 at tier 4).
+[sub_resource type="Resource" id="Group_rippers"]
+script = ExtResource("2_grp01")
+name = &"rippers"
+units = Array[ExtResource("3_ent01")]([SubResource("Entry_ripper")])
+spawns = PackedInt32Array(330000, 140000)
+spawn_at_start = false
+behavior = 4
+flank_roles = 6
+
+; The pack that has been shadowing the escort on the south bank (FLANK, the
+; same roles), spawned by the `rear` trigger three seconds after the villager
+; reaches the ford: out of the grass at (130, 250) m, 75 m south-west of where
+; the road enters the water, so it comes up behind the escort while it is still
+; in the water and fighting the pools. Rippers can't swim, so it crosses at the
+; ford like everyone else. Six at tier 2 (3 at tier 0 up to 7 at tier 4). It is
+; what a squad that marches ahead and leaves the villager to trail behind it
+; pays for. Its timing is the point: from 20 m farther off (or 3 s later) it
+; arrives once the squad is out of the water and is little more than a nuisance.
+[sub_resource type="Resource" id="Group_rippers_rear"]
+script = ExtResource("2_grp01")
+name = &"rippers_rear"
+units = Array[ExtResource("3_ent01")]([SubResource("Entry_ripper_rear")])
+spawns = PackedInt32Array(130000, 250000)
+spawn_at_start = false
+behavior = 4
+flank_roles = 6
+
+; ---- objectives ----
+
+[sub_resource type="Resource" id="Objective_escort"]
+script = ExtResource("6_obj01")
+name = &"escort"
+text = "Bring the villager to the gate"
+
+; Shown when the villager is across (`north`), and optional: the panel marks it
+; so, and winning doesn't need it. It is done when the landing guard is dead
+; (`landing_cleared`), which can come first, when the squad clears the landing
+; before the villager reaches it: then it appears already done. Reaching the
+; gate doesn't complete it.
+[sub_resource type="Resource" id="Objective_clear_landing"]
+script = ExtResource("6_obj01")
+name = &"clear_landing"
+text = "Clear the north landing"
+optional = true
+shown_at_start = false
+
+; ---- trigger actions ----
+
+; Kind 2 = SET_OBJECTIVE, the message line.
+[sub_resource type="Resource" id="Action_say_start"]
+script = ExtResource("5_act01")
+kind = 2
+text = "The villager walks only while your soldiers are near."
+
+[sub_resource type="Resource" id="Action_say_crossing"]
+script = ExtResource("5_act01")
+kind = 2
+text = "Mind the deep water either side."
+
+[sub_resource type="Resource" id="Action_say_rear"]
+script = ExtResource("5_act01")
+kind = 2
+text = "Rippers on the south bank, behind you!"
+
+[sub_resource type="Resource" id="Action_say_flank"]
+script = ExtResource("5_act01")
+kind = 2
+text = "Rippers in the east woods!"
+
+; Kind 6 = SHOW_OBJECTIVE, 7 = COMPLETE_OBJECTIVE, 8 = FAIL_OBJECTIVE.
+[sub_resource type="Resource" id="Action_show_clear_landing"]
+script = ExtResource("5_act01")
+kind = 6
+objective = &"clear_landing"
+
+[sub_resource type="Resource" id="Action_done_escort"]
+script = ExtResource("5_act01")
+kind = 7
+objective = &"escort"
+
+[sub_resource type="Resource" id="Action_done_clear_landing"]
+script = ExtResource("5_act01")
+kind = 7
+objective = &"clear_landing"
+
+[sub_resource type="Resource" id="Action_fail_escort"]
+script = ExtResource("5_act01")
+kind = 8
+objective = &"escort"
+
+; Kind 5 = SET_BEHAVIOR, behavior 3 = HUNT: a pool's ambush springs (its Husks
+; surface) and they come for the nearest of the living.
+[sub_resource type="Resource" id="Action_spring_pool_w"]
+script = ExtResource("5_act01")
+kind = 5
+group = &"pool_w"
+behavior = 3
+
+[sub_resource type="Resource" id="Action_spring_pool_e"]
+script = ExtResource("5_act01")
+kind = 5
+group = &"pool_e"
+behavior = 3
+
+; Kind 0 = SPAWN_GROUP.
+[sub_resource type="Resource" id="Action_spawn_rippers"]
+script = ExtResource("5_act01")
+kind = 0
+group = &"rippers"
+
+[sub_resource type="Resource" id="Action_spawn_rear"]
+script = ExtResource("5_act01")
+kind = 0
+group = &"rippers_rear"
+
+; Kind 3 = WIN, 4 = LOSE.
+[sub_resource type="Resource" id="Action_win"]
+script = ExtResource("5_act01")
+kind = 3
+
+[sub_resource type="Resource" id="Action_lose"]
+script = ExtResource("5_act01")
+kind = 4
+
+; ---- triggers ----
+; All conditions are checked before any trigger fires on a tick, so a trigger
+; that waits on another (`after`, or TRIGGERS_FIRED) opens the tick after it,
+; never the same one, and the order here is only the order the hash walks them.
+
+; Tick 0 (condition 2 = TIMER, ticks 0): how the escort works.
+[sub_resource type="Resource" id="Trigger_start"]
+script = ExtResource("4_trg01")
+name = &"start"
+condition = 2
+ticks = PackedInt32Array(0)
+actions = Array[ExtResource("5_act01")]([SubResource("Action_say_start")])
+
+; The villager within 12 m of the middle of the ford, (192, 186) m (condition
+; 0 = AREA_ENTERED; `names` makes it count only the villager's own group, not
+; every Light unit): the dead in both pools rise as the living pass, whether
+; or not anyone has strayed within their own alert radius.
+[sub_resource type="Resource" id="Trigger_crossing"]
+script = ExtResource("4_trg01")
+name = &"crossing"
+condition = 0
+area = PackedInt32Array(192000, 186000, 12000)
+min_count = 1
+names = Array[StringName]([&"villager"])
+actions = Array[ExtResource("5_act01")]([SubResource("Action_say_crossing"), SubResource("Action_spring_pool_w"), SubResource("Action_spring_pool_e")])
+
+; Three seconds after the villager reaches the ford (condition 2 = TIMER, 90
+; ticks after `crossing`, so its warning follows the crossing's on the message
+; line): the rear pack comes out of the brush behind the escort.
+[sub_resource type="Resource" id="Trigger_rear"]
+script = ExtResource("4_trg01")
+name = &"rear"
+after = &"crossing"
+condition = 2
+ticks = PackedInt32Array(90)
+actions = Array[ExtResource("5_act01")]([SubResource("Action_spawn_rear"), SubResource("Action_say_rear")])
+
+; The villager within 15 m of the landing guard's post, (192, 145) m, which is
+; the last waypoint of the first leg ashore: the optional objective appears.
+[sub_resource type="Resource" id="Trigger_north"]
+script = ExtResource("4_trg01")
+name = &"north"
+condition = 0
+area = PackedInt32Array(192000, 145000, 15000)
+min_count = 1
+names = Array[StringName]([&"villager"])
+actions = Array[ExtResource("5_act01")]([SubResource("Action_show_clear_landing")])
+
+; Every Husk of the landing guard is down (condition 3 = GROUP_CLEARED): the
+; optional objective is done, whether or not the villager has landed yet.
+[sub_resource type="Resource" id="Trigger_landing_cleared"]
+script = ExtResource("4_trg01")
+name = &"landing_cleared"
+condition = 3
+names = Array[StringName]([&"landing"])
+actions = Array[ExtResource("5_act01")]([SubResource("Action_done_clear_landing")])
+
+; Three minutes in at tier 2 (5400 ticks; 6300, 5700, 5400, 4800, 4200 by
+; tier): the Rippers come whether or not the villager has landed. It has no
+; actions of its own; `flank` waits on it.
+[sub_resource type="Resource" id="Trigger_flank_timer"]
+script = ExtResource("4_trg01")
+name = &"flank_timer"
+condition = 2
+ticks = PackedInt32Array(6300, 5700, 5400, 4800, 4200)
+
+; Condition 5 = TRIGGERS_FIRED, min_count 1 of two: whichever of `north` and
+; `flank_timer` fires first.
+[sub_resource type="Resource" id="Trigger_flank"]
+script = ExtResource("4_trg01")
+name = &"flank"
+condition = 5
+min_count = 1
+names = Array[StringName]([&"north", &"flank_timer"])
+actions = Array[ExtResource("5_act01")]([SubResource("Action_spawn_rippers"), SubResource("Action_say_flank")])
+
+; The villager in the gate area: the mission is won.
+[sub_resource type="Resource" id="Trigger_home"]
+script = ExtResource("4_trg01")
+name = &"home"
+condition = 0
+area = PackedInt32Array(239000, 80500, 7000)
+min_count = 1
+names = Array[StringName]([&"villager"])
+actions = Array[ExtResource("5_act01")]([SubResource("Action_done_escort"), SubResource("Action_win")])
+
+; The villager dies (condition 1 = UNIT_DIES, one death across her group):
+; the escort fails and so does the mission.
+[sub_resource type="Resource" id="Trigger_villager_dead"]
+script = ExtResource("4_trg01")
+name = &"villager_dead"
+condition = 1
+names = Array[StringName]([&"villager"])
+count = 1
+actions = Array[ExtResource("5_act01")]([SubResource("Action_fail_escort"), SubResource("Action_lose")])
+
+; No commanded Light unit left (condition 6 = PLAYER_ELIMINATED, faction 0 =
+; Light by default). The villager is an AI-spawned Light unit and doesn't
+; count either way.
+[sub_resource type="Resource" id="Trigger_lose"]
+script = ExtResource("4_trg01")
+name = &"lose"
+condition = 6
+actions = Array[ExtResource("5_act01")]([SubResource("Action_lose")])
+
+[resource]
+script = ExtResource("1_msc01")
+groups = Array[ExtResource("2_grp01")]([SubResource("Group_villager"), SubResource("Group_pool_w"), SubResource("Group_pool_e"), SubResource("Group_landing"), SubResource("Group_drifters"), SubResource("Group_rippers"), SubResource("Group_rippers_rear")])
+triggers = Array[ExtResource("4_trg01")]([SubResource("Trigger_start"), SubResource("Trigger_crossing"), SubResource("Trigger_rear"), SubResource("Trigger_north"), SubResource("Trigger_landing_cleared"), SubResource("Trigger_flank_timer"), SubResource("Trigger_flank"), SubResource("Trigger_home"), SubResource("Trigger_villager_dead"), SubResource("Trigger_lose")])
+objectives = Array[ExtResource("6_obj01")]([SubResource("Objective_escort"), SubResource("Objective_clear_landing")])

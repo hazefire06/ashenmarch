@@ -1,4 +1,4 @@
-[gd_scene load_steps=20 format=3]
+[gd_scene load_steps=22 format=3]
 
 [ext_resource type="Script" path="res://view/main.gd" id="1_main"]
 [ext_resource type="Script" path="res://view/terrain/terrain_view.gd" id="2_terrain"]
@@ -18,8 +18,11 @@
 [ext_resource type="Script" path="res://view/hud/unit_info_panel.gd" id="16_info"]
 [ext_resource type="Script" path="res://view/hud/mission_hud.gd" id="17_mission"]
 [ext_resource type="Script" path="res://view/ai/ai_debug_view.gd" id="18_aidebug"]
+[ext_resource type="Script" path="res://view/hud/pause_menu.gd" id="19_pause"]
+[ext_resource type="Script" path="res://view/hud/objective_panel.gd" id="20_objectives"]
 
 [sub_resource type="Environment" id="Environment_sky"]
+resource_local_to_scene = true
 background_mode = 1
 background_color = Color(0.52, 0.6, 0.68, 1)
 ambient_light_source = 2
@@ -70,6 +73,9 @@ script = ExtResource("3_camera")
 
 [node name="Hud" type="CanvasLayer" parent="."]
 
+[node name="PauseMenu" type="Control" parent="Hud"]
+script = ExtResource("19_pause")
+
 [node name="Selection" type="Control" parent="Hud"]
 script = ExtResource("6_selection")
 
@@ -85,6 +91,9 @@ text = "tick 0"
 
 [node name="MissionHud" type="Control" parent="Hud"]
 script = ExtResource("17_mission")
+
+[node name="ObjectivePanel" type="PanelContainer" parent="Hud"]
+script = ExtResource("20_objectives")
 
 [node name="OverheadMap" type="Control" parent="Hud"]
 script = ExtResource("4_overhead")

@@ -7,10 +7,15 @@ extends SceneTree
 ##   creek, so it is a firebreak; rock on the high crests and steep ground;
 ##   copses of wood and patches of brush; grass everywhere else. The creek
 ##   bed is sand too, though water never burns anyway.
+## - a village on the south bank east of the ford (Phase 8): eight wooden
+##   houses round an open square, sand lanes, and a road heading for the ford.
+##   Raised and blocked houses stop projectiles and path as solid.
 ##
 ## Run with `make maps`. The PNGs it writes are the source of truth and are
 ## committed. Floats and FastNoiseLite are fine here because this runs
-## offline, never inside the sim.
+## offline, never inside the sim. The rasters, stamps, and file writing are
+## MapBuilder's (scripts/mapgen/map_builder.gd); this script holds Riverside's
+## own terrain.
 
 const OUT_DIR: String = "res://maps/riverside/"
 const SIZE: int = 512
@@ -57,6 +62,69 @@ const BRUSH_SEED: int = 1731
 const BRUSH_FREQUENCY: float = 1.0 / 28.0
 const BRUSH_THRESHOLD: float = 0.22
 
+## The south-bank village (Phase 8): the settlement the tutorial mission
+## clears. It is hand-placed, constants not noise, so its layout is readable
+## and stable: eight wooden houses round an open square, sand lanes between
+## them, and a sand road heading for the ford. The houses stand inside x 405 to
+## 485 m, z 335 to 415 m, 25 m or more from the creek. They are raised and
+## blocked (MapBuilder.house), so they stop arrows and grenades and pathing
+## treats them as solid; the view draws them darker.
+## The village and its road keep 10 m clear of every point of
+## data/missions/riverside_ai.tres and of the spots earlier tests pin (listed
+## in tests/sim/test_map_builder.gd), and change nothing but themselves.
+const VILLAGE_SQUARE: Vector2 = Vector2(445.0, 375.0)
+## Open walkable ground round the square's center. The nearest house sample is
+## 17.8 m away, and the nearest unwalkable one (the steep ring the sim leaves
+## round every house) 17 m, so 13 m has room to spare.
+const VILLAGE_SQUARE_RADIUS_M: float = 13.0
+## The packed sand plaza at the square's heart.
+const VILLAGE_PLAZA_RADIUS_M: float = 7.0
+## Houses as (center x, center z, width, depth) in meters, 3 m tall. Clockwise
+## from the north; the gap in the north-west is where the lane comes in. The
+## last is an outbuilding off to the south-east.
+const VILLAGE_HOUSES: Array[Vector4] = [
+	Vector4(447.0, 355.0, 7.0, 6.0),
+	Vector4(463.0, 360.0, 6.0, 6.0),
+	Vector4(466.0, 377.0, 6.0, 8.0),
+	Vector4(459.0, 392.0, 7.0, 6.0),
+	Vector4(443.0, 396.0, 8.0, 6.0),
+	Vector4(428.0, 390.0, 6.0, 7.0),
+	Vector4(425.0, 372.0, 6.0, 8.0),
+	Vector4(478.0, 398.0, 8.0, 5.0),
+]
+const VILLAGE_HOUSE_HEIGHT_M: float = 3.0
+## Lanes (polylines in meters): the main one in from the north-west, then a
+## short spur from the plaza toward each side.
+const LANE_MAIN: PackedVector2Array = [
+	Vector2(410.0, 343.0), Vector2(421.0, 353.0), Vector2(431.0, 363.0), Vector2(439.0, 370.0),
+]
+const LANE_EAST: PackedVector2Array = [Vector2(449.0, 376.0), Vector2(459.0, 377.0)]
+const LANE_SOUTH: PackedVector2Array = [Vector2(445.0, 380.0), Vector2(445.0, 389.0)]
+const LANE_WEST: PackedVector2Array = [Vector2(441.0, 375.0), Vector2(431.0, 374.0)]
+const LANE_NORTH: PackedVector2Array = [Vector2(445.0, 371.0), Vector2(446.0, 361.0)]
+const VILLAGE_LANES: Array[PackedVector2Array] = [LANE_MAIN, LANE_EAST, LANE_SOUTH, LANE_WEST, LANE_NORTH]
+const LANE_MAIN_WIDTH_M: float = 3.0
+const LANE_SPUR_WIDTH_M: float = 2.0
+## The road toward the ford: it meets the main lane at the village's north-west
+## corner and runs back north-west to stop 24 m short of the mission's nearest
+## point, because the patrols and the ambush around the ford landing keep their
+## ground as it was. Ground only (SAND); it moves no height or passability.
+const FORD_ROAD: PackedVector2Array = [
+	Vector2(352.0, 293.0), Vector2(372.0, 304.0), Vector2(392.0, 322.0), Vector2(410.0, 343.0),
+]
+const FORD_ROAD_WIDTH_M: float = 3.0
+## Wood and brush patches in and round the village: (center x, center z,
+## radius) in meters, each taking its ground type wherever Riverside's own wood
+## or brush noise, with this threshold instead of its usual one, is high.
+const VILLAGE_WOOD_PATCHES: Array[Vector3] = [
+	Vector3(415.0, 398.0, 9.0), Vector3(478.0, 376.0, 6.0),
+]
+const VILLAGE_BRUSH_PATCHES: Array[Vector3] = [
+	Vector3(476.0, 348.0, 8.0), Vector3(437.0, 407.0, 7.0), Vector3(413.0, 368.0, 6.0),
+]
+const VILLAGE_PATCH_THRESHOLD: float = -0.1
+
+
 
 func _initialize() -> void:
 	var noise: FastNoiseLite = FastNoiseLite.new()
@@ -66,47 +134,38 @@ func _initialize() -> void:
 	noise.fractal_type = FastNoiseLite.FRACTAL_FBM
 	noise.fractal_octaves = 4
 
-	var wood: FastNoiseLite = _patches(WOOD_SEED, WOOD_FREQUENCY)
-	var brush: FastNoiseLite = _patches(BRUSH_SEED, BRUSH_FREQUENCY)
+	var wood: FastNoiseLite = MapBuilder.patches(WOOD_SEED, WOOD_FREQUENCY)
+	var brush: FastNoiseLite = MapBuilder.patches(BRUSH_SEED, BRUSH_FREQUENCY)
 
-	var cell_m: float = float(CELL_SIZE) / World.UNITS_PER_METER
-	var height: PngRaster = PngRaster.create(SIZE, SIZE, 1, 16)
-	var mask: PngRaster = PngRaster.create(SIZE, SIZE, 3, 8)
-	var heights_m: PackedFloat32Array = PackedFloat32Array()
-	heights_m.resize(SIZE * SIZE)
-	for j: int in SIZE:
-		for i: int in SIZE:
-			var ground: Vector2 = _ground(noise, i * cell_m, j * cell_m)
-			var raw: int = clampi(roundi(ground.x / MAX_HEIGHT_M * 65535.0), 0, 65535)
-			height.set_sample(i, j, 0, raw)
-			mask.set_sample(i, j, 0, Terrain.mask_from_depth(_level(ground.y)))
-			heights_m[j * SIZE + i] = ground.x
-	# Ground types need the slope, so they come once every height is known.
-	for j: int in SIZE:
-		for i: int in SIZE:
-			var x: float = i * cell_m
-			var z: float = j * cell_m
-			var type: int = _ground_type(
-				wood, brush, x, z, heights_m[j * SIZE + i], _slope(heights_m, i, j, cell_m)
-			)
-			mask.set_sample(i, j, 1, Terrain.mask_from_ground(type))
+	var map: MapBuilder = MapBuilder.new(SIZE, SIZE, CELL_SIZE, MAX_HEIGHT_M, MAX_WALKABLE_SLOPE)
+	map.level_depths_m = LEVEL_DEPTHS_M
+	map.fill(
+		func(x: float, z: float) -> Vector2: return _ground(noise, x, z),
+		func(x: float, z: float, height_m: float, slope: float) -> int:
+			return _ground_type(wood, brush, x, z, height_m, slope)
+	)
+	_build_village(map, wood, brush)
+	var info: MapInfo = map.save(OUT_DIR, "riverside", "Riverside", HERB_PLANTS)
+	if info != null:
+		map.report(info)
+	quit(0 if info != null else 1)
 
-	_write(OUT_DIR + "height.png", PngCodec.encode(height))
-	_write(OUT_DIR + "mask.png", PngCodec.encode(mask))
 
-	var info: MapInfo = MapInfo.new()
-	info.display_name = "Riverside"
-	info.heightmap_path = OUT_DIR + "height.png"
-	info.mask_path = OUT_DIR + "mask.png"
-	info.cell_size = CELL_SIZE
-	info.max_height = roundi(MAX_HEIGHT_M * World.UNITS_PER_METER)
-	info.max_walkable_slope = MAX_WALKABLE_SLOPE
-	info.herb_plants = HERB_PLANTS
-	var err: Error = ResourceSaver.save(info, OUT_DIR + "riverside.tres")
-	if err != OK:
-		push_error("saving riverside.tres: %s" % error_string(err))
-	_report(info)
-	quit()
+## Stamps the village (see VILLAGE_SQUARE). Order matters: patches first, so a
+## house or lane overwrites them, then the houses, then the sand, which skips
+## the blocked house samples.
+func _build_village(map: MapBuilder, wood: FastNoiseLite, brush: FastNoiseLite) -> void:
+	for spot: Vector3 in VILLAGE_WOOD_PATCHES:
+		map.patch(Vector2(spot.x, spot.y), spot.z, wood, VILLAGE_PATCH_THRESHOLD, Terrain.Ground.WOOD)
+	for spot: Vector3 in VILLAGE_BRUSH_PATCHES:
+		map.patch(Vector2(spot.x, spot.y), spot.z, brush, VILLAGE_PATCH_THRESHOLD, Terrain.Ground.BRUSH)
+	for house: Vector4 in VILLAGE_HOUSES:
+		map.house(house.x, house.y, house.z, house.w, VILLAGE_HOUSE_HEIGHT_M)
+	# A one-point polyline is a disc.
+	map.road(PackedVector2Array([VILLAGE_SQUARE, VILLAGE_SQUARE]), VILLAGE_PLAZA_RADIUS_M * 2.0)
+	for lane: PackedVector2Array in VILLAGE_LANES:
+		map.road(lane, LANE_MAIN_WIDTH_M if lane == LANE_MAIN else LANE_SPUR_WIDTH_M)
+	map.road(FORD_ROAD, FORD_ROAD_WIDTH_M)
 
 
 ## (ground height, water depth) in meters at (x, z) meters.
@@ -143,28 +202,6 @@ func _ground_type(
 	return Terrain.Ground.GRASS
 
 
-## Steepness at sample (i, j), m per m, by central differences (one-sided at
-## the edges).
-func _slope(heights_m: PackedFloat32Array, i: int, j: int, cell_m: float) -> float:
-	var i0: int = maxi(i - 1, 0)
-	var i1: int = mini(i + 1, SIZE - 1)
-	var j0: int = maxi(j - 1, 0)
-	var j1: int = mini(j + 1, SIZE - 1)
-	var gx: float = (heights_m[j * SIZE + i1] - heights_m[j * SIZE + i0]) / ((i1 - i0) * cell_m)
-	var gz: float = (heights_m[j1 * SIZE + i] - heights_m[j0 * SIZE + i]) / ((j1 - j0) * cell_m)
-	return sqrt(gx * gx + gz * gz)
-
-
-func _patches(noise_seed: int, frequency: float) -> FastNoiseLite:
-	var n: FastNoiseLite = FastNoiseLite.new()
-	n.seed = noise_seed
-	n.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
-	n.frequency = frequency
-	n.fractal_type = FastNoiseLite.FRACTAL_FBM
-	n.fractal_octaves = 3
-	return n
-
-
 ## Perpendicular distance in meters from (x, z) to the creek's centerline,
 ## corrected for its slope.
 func _creek_distance(x: float, z: float) -> float:
@@ -191,46 +228,3 @@ func _ford_cap(x: float) -> float:
 		CHANNEL_DEPTH_M,
 		smoothstep(FORD_HALF_M, FORD_HALF_M + FORD_RAMP_M, along)
 	)
-
-
-func _level(depth_m: float) -> int:
-	var level: int = 0
-	for threshold: float in LEVEL_DEPTHS_M:
-		if depth_m >= threshold:
-			level += 1
-	return level
-
-
-func _write(path: String, bytes: PackedByteArray) -> void:
-	var file: FileAccess = FileAccess.open(path, FileAccess.WRITE)
-	if file == null:
-		push_error("writing %s: %s" % [path, error_string(FileAccess.get_open_error())])
-		return
-	file.store_buffer(bytes)
-	print("wrote %s (%d bytes)" % [path, bytes.size()])
-
-
-## Reloads the written map through the sim and prints what it contains.
-func _report(info: MapInfo) -> void:
-	var terrain: Terrain = Terrain.load_map(info)
-	if terrain == null:
-		return
-	var levels: Array[int] = [0, 0, 0, 0, 0]
-	var grounds: Array[int] = [0, 0, 0, 0, 0]
-	var steep: int = 0
-	var max_slope: int = 0
-	for k: int in terrain.heights.size():
-		levels[terrain.water[k]] += 1
-		grounds[terrain.ground[k]] += 1
-		max_slope = maxi(max_slope, terrain.sample_slopes[k])
-		if terrain.sample_slopes[k] > terrain.max_walkable_slope:
-			steep += 1
-	var heights: Array = Array(terrain.heights)
-	print("terrain %dx%d, heights %d..%d mm" % [
-		terrain.size_x, terrain.size_z, heights.min(), heights.max()
-	])
-	print("water samples by depth level 0..4: %s" % [levels])
-	print("samples by ground (grass, brush, wood, sand, rock): %s" % [grounds])
-	print("max sample slope %d permille; %d samples steeper than %d" % [
-		max_slope, steep, terrain.max_walkable_slope
-	])
