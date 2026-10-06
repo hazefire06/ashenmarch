@@ -15,4 +15,4 @@ id = &"dark_raiders"
 display_name = "Raiders"
 faction = 1
 type_ids = Array[StringName]([&"husk", &"ripper", &"blightbag"])
-shares_permille = PackedInt32Array(350, 500, 150)
+shares_permille = PackedInt32Array(450, 400, 150)

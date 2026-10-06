@@ -247,18 +247,21 @@ func test_plus_and_minus_change_one_count_and_the_totals() -> void:
 	var menu: SkirmishMenu = _menu()
 	_press(menu, "Clear")
 	assert_eq(menu.army().size(), 0)
+	# Costs are read from the catalog, so retuning them doesn't break this.
+	var shield: int = _catalog.find(&"shieldman").cost
+	var bow: int = _catalog.find(&"longbow").cost
 	_press(menu, "Plus_shieldman", 2)
 	_press(menu, "Plus_longbow")
 	assert_eq(_text(menu, "Count_shieldman"), "2")
-	assert_eq(_text(menu, "Subtotal_shieldman"), "60")
+	assert_eq(_text(menu, "Subtotal_shieldman"), str(2 * shield))
 	assert_eq(_text(menu, "Count_longbow"), "1")
-	assert_eq(_text(menu, "Subtotal_longbow"), "45")
-	assert_eq(_text(menu, "PointsLeft"), "Points left: 895")
+	assert_eq(_text(menu, "Subtotal_longbow"), str(bow))
+	assert_eq(_text(menu, "PointsLeft"), "Points left: %d" % (1000 - 2 * shield - bow))
 	assert_eq(_text(menu, "UnitCount"), "Units: 3 / 60")
-	assert_eq(menu.points_left(), 895)
+	assert_eq(menu.points_left(), 1000 - 2 * shield - bow)
 	_press(menu, "Minus_shieldman")
 	assert_eq(_text(menu, "Count_shieldman"), "1")
-	assert_eq(_text(menu, "PointsLeft"), "Points left: 925")
+	assert_eq(_text(menu, "PointsLeft"), "Points left: %d" % (1000 - shield - bow))
 	assert_eq(menu.army().counts, {&"shieldman": 1, &"longbow": 1} as Dictionary[StringName, int])
 
 
@@ -286,17 +289,20 @@ func test_a_minus_that_runs_out_hands_the_keyboard_to_the_plus_beside_it() -> vo
 func test_going_over_the_budget_turns_the_points_red_and_start_off() -> void:
 	var menu: SkirmishMenu = _menu()
 	_press(menu, "Clear")
-	# 19 Sappers are 1045 points on a budget of 1000.
-	_press(menu, "Plus_sapper", 19)
-	assert_eq(menu.points_left(), -45)
-	assert_eq(_text(menu, "PointsLeft"), "Points left: -45")
+	# One Sapper more than a budget of 1000 buys.
+	var cost: int = _catalog.find(&"sapper").cost
+	var n: int = 1000 / cost + 1
+	_press(menu, "Plus_sapper", n)
+	assert_eq(menu.points_left(), 1000 - n * cost)
+	assert_lt(menu.points_left(), 0)
+	assert_eq(_text(menu, "PointsLeft"), "Points left: %d" % (1000 - n * cost))
 	var points: Label = MenuFixtures.named(menu, "PointsLeft") as Label
 	assert_eq(points.get_theme_color("font_color"), MenuKit.BAD_COLOR)
 	assert_true(_button(menu, "Start").disabled)
 	assert_false(menu.can_start())
 	assert_string_contains(_text(menu, "StartHint"), "over the budget")
 	_press(menu, "Minus_sapper")
-	assert_eq(_text(menu, "PointsLeft"), "Points left: 10")
+	assert_eq(_text(menu, "PointsLeft"), "Points left: %d" % (1000 - (n - 1) * cost))
 	assert_eq(points.get_theme_color("font_color"), MenuKit.TEXT_COLOR)
 	assert_false(_button(menu, "Start").disabled)
 	assert_eq(_text(menu, "StartHint"), "")
@@ -573,7 +579,9 @@ func test_a_remembered_choice_is_what_the_screen_opens_on() -> void:
 	assert_eq(_text(menu, "Count_husk"), "30")
 	assert_eq(_text(menu, "Count_ripper"), "10")
 	assert_eq(_text(menu, "ArmyHeading"), "Your army: Dark")
-	assert_eq(_text(menu, "PointsLeft"), "Points left: %d" % (1500 - 30 * 20 - 10 * 35))
+	var husk: int = _catalog.find(&"husk").cost
+	var ripper: int = _catalog.find(&"ripper").cost
+	assert_eq(_text(menu, "PointsLeft"), "Points left: %d" % (1500 - 30 * husk - 10 * ripper))
 
 
 func test_the_choice_survives_a_round_trip_through_the_settings_file() -> void:

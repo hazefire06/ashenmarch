@@ -30,5 +30,5 @@ uphill_range_permille = 400
 ranged_ammo = -1
 ai_tactic = 1
 ai_standoff_permille = 850
-cost = 40
+cost = 44
 placeholder_color = Color(0.55, 0.85, 0.9, 1)

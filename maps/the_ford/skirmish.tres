@@ -12,12 +12,15 @@
 ;
 ; Start A is on the south bank at (192, 330) m facing north (0, -1); start B
 ; on the north bank at (192, 54) m, west of the hamlet's palisade, facing south
-; (0, 1). Three flags: 0 the hill, in the ford itself at (192, 192), so the
-; side that holds it stands in the water; 1 on the south bank to the
-; south-west (110, 250); 2 on the north bank to the north-east (274, 134), at
-; the edge of the east woods. The flag radius is 6 m, not the usual 8, so the
-; ford's flag reaches no deep water (it holds depth 2 at most). Each start is
-; 138 m from the hill and 115 m from "its" flag.
+; (0, 1). Three flags, all at the crossing: 0 the hill, in the ford itself at
+; (192, 192), so the side that holds it stands in the water; 1 on the south
+; landing (192, 218) and 2 on the north landing (192, 154), where the ford
+; comes out of the water. The playtest had them first on the far banks
+; (110, 250) and (274, 134): the dead wade the river anywhere and the living
+; only at the ford, so a Light army lost Capture the Flags there 9 times in 10
+; whoever played it; at the landings every flag is fought for at the ford.
+; The flag radius is 6 m, not the usual 8, so the ford's flag reaches no deep
+; water (it holds depth 2 at most). Each start is 138 m from the hill.
 
 [resource]
 script = ExtResource("1_skm01")
@@ -26,7 +29,7 @@ display_name = "The Ford"
 map = ExtResource("2_map01")
 spawns = PackedInt32Array(192000, 330000, 192000, 54000)
 spawn_facing = PackedInt32Array(0, -1, 0, 1)
-flags = PackedInt32Array(192000, 192000, 110000, 250000, 274000, 134000)
+flags = PackedInt32Array(192000, 192000, 192000, 218000, 192000, 154000)
 hill = 0
 flag_radius = 6000
 atmosphere = ExtResource("3_atm01")
