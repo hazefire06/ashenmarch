@@ -1,7 +1,7 @@
 GODOT ?= godot
 MAC_APP := build/mac/Ashenmarch.app
 
-.PHONY: import run demo demo-projectiles demo-abilities demo-ai test check-sim export-mac maps fixtures playtest skirmish-playtest capture
+.PHONY: import run demo demo-projectiles demo-abilities demo-ai test check-sim export-mac maps fixtures playtest skirmish-playtest capture capture-skirmish
 
 # Builds the .godot/ import and class_name cache. A fresh clone has none, and
 # GUT can't resolve class_name types without it.
@@ -96,6 +96,15 @@ skirmish-playtest: import
 # e.g. CAPTURE=shots MISSIONS=old_mill SECONDS=180 make capture
 capture: import
 	$(GODOT) --path . -s scripts/capture_missions.gd
+
+# Visual check of skirmish, windowed: the setup screen, then per map and mode
+# the opening view, the F7 scoreboard, the overhead map, a mid-battle frame and
+# the end with its banner, into CAPTURE. See the head of
+# scripts/capture_skirmish.gd: CAPTURE=<dir> (required), MAPS, MODES,
+# SIDE=light|dark, SEED, SECONDS, FIRST.
+# e.g. CAPTURE=shots MAPS=old_mill SIDE=dark make capture-skirmish
+capture-skirmish: import
+	$(GODOT) --path . -s scripts/capture_skirmish.gd
 
 test: import check-sim
 	$(GODOT) --headless -d --path . -s addons/gut/gut_cmdln.gd
