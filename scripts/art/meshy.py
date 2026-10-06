@@ -12,7 +12,8 @@ interrupted run resumes by polling the same task instead of buying it
 again. A failed task (Meshy refunds those) is bought again on the next run.
 Results download immediately, because Meshy's links expire after about 3
 days. The key is read from ~/.config/ashenmarch/secrets.env and nothing
-else.
+else. An interrupted or timed-out wait leaves the task PENDING, and the
+next run waits for the same task.
 """
 from __future__ import annotations
 
@@ -29,7 +30,7 @@ sys.path.insert(0, str(HERE))
 from manifest import Manifest  # noqa: E402
 from meshy_client import (  # noqa: E402
     CREDITS_PER_ACTION, PREVIEW_CREDITS, REFINE_CREDITS, RIG_CREDITS,
-    MeshyClient, MeshyError, http_downloader, http_transport,
+    MeshyClient, MeshyError, TaskFailed, http_downloader, http_transport,
 )
 from secrets_file import SecretsError, load_secret  # noqa: E402
 from unit_spec import PREVIEW_MODELS, SpecError, Style, UnitSpec, load_spec, load_style  # noqa: E402
@@ -99,7 +100,7 @@ def _store(manifest: Manifest, record: dict[str, Any]) -> dict[str, Any]:
 def _finish(manifest: Manifest, client: Any, api_kind: str, record: dict[str, Any]) -> dict[str, Any]:
     try:
         task = client.wait(api_kind, record["task_id"])
-    except MeshyError:
+    except TaskFailed:
         _store(manifest, {**record, "status": "FAILED", "credits": 0})
         raise
     _store(manifest, {**record, "status": "SUCCEEDED", "credits": int(task.get("consumed_credits", 0)), "finished_at": task.get("finished_at")})

@@ -8,7 +8,7 @@ from typing import Any
 
 import meshy
 from manifest import Manifest
-from meshy_client import MeshyError
+from meshy_client import MeshyError, TaskFailed
 from unit_spec import load_spec, load_style
 
 ART_SRC = Path(__file__).resolve().parent.parent.parent / "art-src"
@@ -17,9 +17,10 @@ ART_SRC = Path(__file__).resolve().parent.parent.parent / "art-src"
 class FakeClient:
     """Stands in for MeshyClient. Every finished task carries signed-looking URLs."""
 
-    def __init__(self, fail_waits: int = 0) -> None:
+    def __init__(self, fail_waits: int = 0, lost_waits: dict[str, str] | None = None) -> None:
         self.created: list[tuple[str, Any]] = []
         self.fail_waits = fail_waits
+        self.lost_waits = lost_waits or {}
         self._n = 0
 
     def _new(self, what: str, arg: Any) -> str:
@@ -40,9 +41,11 @@ class FakeClient:
         return self._new("animate", (rig_task_id, tuple(action_ids)))
 
     def wait(self, kind: str, task_id: str) -> dict[str, Any]:
+        if task_id in self.lost_waits:
+            raise MeshyError(self.lost_waits[task_id])
         if self.fail_waits:
             self.fail_waits -= 1
-            raise MeshyError(f"{kind} task {task_id} FAILED: test")
+            raise TaskFailed(f"{kind} task {task_id} FAILED: test")
         url = f"https://assets.meshy.ai/{task_id}/out.glb?Expires=1&Signature=SIG"
         return {
             "id": task_id, "status": "SUCCEEDED", "consumed_credits": 1, "finished_at": 1,
@@ -95,12 +98,34 @@ class FlowTest(unittest.TestCase):
         self.assertEqual(client.created, [])
 
     def test_a_failed_task_is_recorded_and_bought_again_next_run(self) -> None:
-        with self.assertRaises(MeshyError):
+        with self.assertRaises(TaskFailed):
             self.candidates(FakeClient(fail_waits=1))
         self.assertEqual(Manifest.load(self.manifest.path).find("preview", "cand-1")["status"], "FAILED")
         retry = FakeClient()
         self.candidates(retry)
         self.assertEqual(retry.created[0], ("preview", "meshy-6-lite"))
+
+    def test_a_lost_wait_leaves_the_task_pending_and_reruns_wait_for_it(self) -> None:
+        with self.assertRaises(MeshyError):
+            self.candidates(FakeClient(lost_waits={"preview-1": "text-to-3d task preview-1 still IN_PROGRESS after 1800 s; rerun to keep waiting"}))
+        record = Manifest.load(self.manifest.path).find("preview", "cand-1")
+        self.assertEqual(record["status"], "PENDING")
+        self.assertEqual(record["task_id"], "preview-1")
+        again = FakeClient()
+        paths = self.candidates(again)
+        self.assertEqual([p.name for p in paths], ["cand-1.glb", "cand-2.glb", "cand-3.glb", "cand-4.glb"])
+        self.assertEqual([a for _, a in again.created], ["meshy-6-lite", "meshy-7.1", "meshy-7.1"])
+
+    def test_a_lost_wait_on_rig_leaves_it_pending_for_rerun(self) -> None:
+        self.candidates(FakeClient())
+        with self.assertRaises(MeshyError):
+            meshy.run_build(self.spec, self.manifest, FakeClient(lost_waits={"refine-1": "text-to-3d task refine-1 still IN_PROGRESS after 1800 s; rerun to keep waiting"}), self.unit_dir, 3, 100, say=self.quiet.append)
+        record = Manifest.load(self.manifest.path).find("refine", "cand-3")
+        self.assertEqual(record["status"], "PENDING")
+        self.assertEqual(record["task_id"], "refine-1")
+        again = FakeClient()
+        meshy.run_build(self.spec, self.manifest, again, self.unit_dir, 3, 17, say=self.quiet.append)
+        self.assertEqual([w for w, _ in again.created], ["rig", "animate"])
 
     def test_build_needs_a_finished_candidate(self) -> None:
         with self.assertRaisesRegex(meshy.BuildError, "cand-3"):

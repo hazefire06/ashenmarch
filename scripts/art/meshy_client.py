@@ -49,6 +49,12 @@ class MeshyError(Exception):
         self.retryable = retryable
 
 
+class TaskFailed(MeshyError):
+    """Meshy says the task itself failed (FAILED, CANCELED or EXPIRED). Meshy
+    refunds those, so it is safe to buy the work again. Any other MeshyError
+    from wait() leaves the task alive and charged: wait again, never re-buy."""
+
+
 class _NoRedirects(urllib.request.HTTPRedirectHandler):
     """A redirect would carry the Authorization header to another host, so the
     API calls refuse them: the 3xx surfaces as an HTTPError."""
@@ -122,7 +128,7 @@ class MeshyClient:
                 return task
             if status in FAILED_STATUSES:
                 reason = (task.get("task_error") or {}).get("message") or "no reason given"
-                raise MeshyError(f"{kind} task {task_id} {status}: {reason}")
+                raise TaskFailed(f"{kind} task {task_id} {status}: {reason}")
             if self._clock() >= deadline:
                 raise MeshyError(f"{kind} task {task_id} still {status} after {self._timeout:.0f} s; rerun to keep waiting")
             self._sleep(self._poll)

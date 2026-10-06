@@ -10,7 +10,7 @@ from typing import Any
 from unittest import mock
 
 import meshy_client
-from meshy_client import MeshyClient, MeshyError, http_downloader, http_transport
+from meshy_client import MeshyClient, MeshyError, TaskFailed, http_downloader, http_transport
 
 
 class FakeTransport:
@@ -79,13 +79,14 @@ class WaitTest(unittest.TestCase):
 
     def test_a_failed_task_raises_with_its_reason(self) -> None:
         t = FakeTransport([{"status": "FAILED", "task_error": {"message": "model too complex"}}])
-        with self.assertRaisesRegex(MeshyError, "FAILED: model too complex"):
+        with self.assertRaisesRegex(TaskFailed, "FAILED: model too complex"):
             client(t).wait("rigging", "r1")
 
     def test_gives_up_after_the_timeout(self) -> None:
         t = FakeTransport([{"status": "IN_PROGRESS"}] * 20)
-        with self.assertRaisesRegex(MeshyError, "still IN_PROGRESS"):
+        with self.assertRaisesRegex(MeshyError, "still IN_PROGRESS") as caught:
             client(t).wait("animations", "a1")
+        self.assertNotIsInstance(caught.exception, TaskFailed)
 
 
 class HttpTest(unittest.TestCase):
