@@ -18,7 +18,7 @@ extends RefCounted
 ## bucket attack-moves at one objective here, going first for an enemy that
 ## threatens one of the group's STANDOFF members (AiTactics.threats, the
 ## bodyguard rule), then for the focus it is given (a FLANK's quarry);
-## STANDOFF and CLUSTER members are handled one by one in AiTactics.
+## STANDOFF, CLUSTER and MEDIC members are handled one by one in AiTactics.
 
 ## Least drift (milli-units) of an objective from where a member was sent
 ## before the member is re-sent after it. See drifted.
@@ -167,6 +167,16 @@ static func engage(
 			UnitType.AiTactic.CLUSTER:
 				for member: Unit in bucket:
 					any_objective = AiTactics.cluster(world, group, member, candidates) or any_objective
+			UnitType.AiTactic.MEDIC:
+				# A MEDIC with herbs tends the group; one without fights as ASSAULT.
+				var fighters: Array[Unit] = []
+				for member: Unit in bucket:
+					if AiTactics.medic(world, group, member):
+						any_objective = true
+					else:
+						fighters.append(member)
+				if not fighters.is_empty():
+					any_objective = _assault(world, group, fighters, candidates, threats, focus) or any_objective
 			_:
 				any_objective = _assault(world, group, bucket, candidates, threats, focus) or any_objective
 	return any_objective

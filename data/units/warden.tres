@@ -26,5 +26,6 @@ heal_hp = 60
 heal_windup_ticks = 15
 veterancy_accuracy_permille = 100
 veterancy_attack_rate_permille = 100
+ai_tactic = 3
 cost = 50
 placeholder_color = Color(0.55, 0.85, 0.6, 1)

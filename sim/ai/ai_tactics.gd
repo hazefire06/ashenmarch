@@ -12,6 +12,10 @@ extends RefCounted
 ## - CLUSTER (Blightbags): walks at the thickest knot of enemies
 ##   (ClusterFinder) without stopping for anything on the way, and
 ##   attack-moves into it once it is close.
+## - MEDIC (Wardens): while it has herbs, heals the group's side's most
+##   wounded nearby, kills an undead enemy that comes close with a herb, and
+##   otherwise stands behind the group (medic). Without herbs it fights as
+##   ASSAULT.
 ## - ASSAULT: AiOrders fights these; here is only which enemies count as
 ##   threats to the group's STANDOFF members, which they go for first (the
 ##   bodyguard rule).
@@ -29,6 +33,14 @@ const SPOT_SLACK: int = 2000
 ## Milli-units a CLUSTER member's knot must drift from where it was sent
 ## before it is sent again.
 const CLUSTER_SLACK: int = 3000
+## Milli-units (center to center) within which a MEDIC looks for a friend to
+## heal.
+const MEDIC_RADIUS: int = 20000
+## A friend is worth a herb below this share of its health, in permille.
+const MEDIC_WOUNDED_PERMILLE: int = 600
+## Milli-units (center to center) within which a MEDIC uses a herb on an
+## undead enemy, which kills it.
+const MEDIC_KILL_RADIUS: int = 8000
 
 
 ## True if the unit's type stands off (UnitType.AiTactic.STANDOFF).
@@ -179,6 +191,104 @@ static func cluster(world: World, group: AiGroup, member: Unit, candidates: Arra
 	var one: Array[Unit] = [member]
 	AiOrders.send(world, group, one, x, z, attack, 0, x, z)
 	return true
+
+
+## MEDIC: one free member of group. Returns false if it has no herbs left, so
+## the caller fights with it as ASSAULT; true otherwise.
+## - A living unit of its side within MEDIC_RADIUS (center to center) below
+##   MEDIC_WOUNDED_PERMILLE of its health, the most wounded first (then the
+##   nearer, then the lower id), that no other MEDIC of the group is already on
+##   its way to: it goes and heals it (Interactions, as a HealCommand would).
+## - Otherwise a visible undead enemy within MEDIC_KILL_RADIUS: it goes and
+##   uses a herb on it, which kills it.
+## - Otherwise it stands behind the rest of the group: STANDOFF_BEHIND from the
+##   centroid of the members in front (front), on its own side of it, sent
+##   only when it has finished its last order farther than SPOT_SLACK from
+##   that point, so it trails the group without being re-sent every think.
+## Each errand is reported as a HEAL event.
+static func medic(world: World, group: AiGroup, member: Unit) -> bool:
+	if member.special_left <= 0:
+		return false
+	if medic_errand(world, group, member):
+		return true
+	var others: Array[Unit] = front(group.living(world), group)
+	if others.has(member):
+		return true
+	var c: Vector2i = AiOrders.centroid(others)
+	var back: Vector2i = FixedMath.normalize(member.x - c.x, member.z - c.y, STANDOFF_BEHIND)
+	if back == Vector2i.ZERO:
+		back = Vector2i(0, STANDOFF_BEHIND)
+	var x: int = c.x + back.x
+	var z: int = c.y + back.y
+	if not AiOrders.is_done(member) or FixedMath.length(member.x - x, member.z - z) <= SPOT_SLACK:
+		return true
+	var one: Array[Unit] = [member]
+	AiOrders.send(world, group, one, x, z, false, 0, x, z)
+	return true
+
+
+## The errand half of medic, for a free MEDIC member with herbs: sends it to
+## heal the friend it should (or to kill a near undead enemy) and returns
+## true, or returns false with nothing to do. A behavior that marches its
+## group (ADVANCE) calls this every think, so the wounded are tended between
+## fights too; engage calls medic.
+static func medic_errand(world: World, group: AiGroup, member: Unit) -> bool:
+	if member.special_left <= 0 or member.type.ai_tactic != UnitType.AiTactic.MEDIC:
+		return false
+	var patient: Unit = _patient(world, group, member)
+	if patient == null:
+		patient = _undead_near(world, member)
+	if patient == null:
+		return false
+	Interactions.order(world, PackedInt32Array([member.id]), patient.id, Interactions.Action.HEAL)
+	if member.order != Unit.Order.INTERACT:
+		return false
+	group.record_order(member.id, patient.x, patient.z, patient.id)
+	world.ai_events.append(AiEvent.new(AiEvent.Kind.HEAL, group.id, patient.x, patient.z, patient.id, member.id))
+	return true
+
+
+# The friend a MEDIC member heals next, or null (see medic).
+static func _patient(world: World, group: AiGroup, member: Unit) -> Unit:
+	var claimed: PackedInt32Array = PackedInt32Array()
+	for other: Unit in group.living(world):
+		if other != member and other.order == Unit.Order.INTERACT:
+			claimed.append(other.interact_id)
+	var best: Unit = null
+	var best_permille: int = 0
+	var best_d: int = 0
+	for friend: Unit in world.units:
+		if not friend.is_alive() or friend.faction != member.faction or friend == member:
+			continue
+		if friend.type.nature != UnitType.Nature.LIVING or claimed.has(friend.id):
+			continue
+		var permille: int = friend.hp * 1000 / friend.type.max_hp
+		if permille >= MEDIC_WOUNDED_PERMILLE:
+			continue
+		var d: int = FixedMath.length(friend.x - member.x, friend.z - member.z)
+		if d > MEDIC_RADIUS:
+			continue
+		if best == null or permille < best_permille or (
+			permille == best_permille and (d < best_d or (d == best_d and friend.id < best.id))
+		):
+			best = friend
+			best_permille = permille
+			best_d = d
+	return best
+
+
+# The nearest visible undead enemy within MEDIC_KILL_RADIUS, or null.
+static func _undead_near(world: World, member: Unit) -> Unit:
+	var best: Unit = null
+	var best_d: int = 0
+	for enemy: Unit in AiOrders.enemies(world, member.faction):
+		if enemy.type.nature != UnitType.Nature.UNDEAD:
+			continue
+		var d: int = FixedMath.length(enemy.x - member.x, enemy.z - member.z)
+		if d <= MEDIC_KILL_RADIUS and (best == null or d < best_d):
+			best = enemy
+			best_d = d
+	return best
 
 
 # Sends a STANDOFF member to spot (a single-unit plain move, recorded with

@@ -478,6 +478,9 @@ static func _escort(world: World, group: AiGroup, units: Array[Unit]) -> void:
 
 
 # ADVANCE, in AiGroup.phase: 0 walking to the anchor, 1 holding it.
+# 0. A free MEDIC member with a wounded friend near (or an undead enemy) goes
+#    and uses a herb (AiTactics.medic_errand), fight or no fight; on its
+#    errand it isn't free, so nothing below re-orders it.
 # 1. Attack-marching (march_attack), visible enemies within engage_radius of
 #    the members' centroid (center to center) are fought first (engage, so the
 #    bodyguard rule and the tactics apply); a member busy fighting is left to
@@ -495,6 +498,9 @@ static func _escort(world: World, group: AiGroup, units: Array[Unit]) -> void:
 static func _advance(world: World, group: AiGroup, units: Array[Unit]) -> void:
 	var ax: int = group.anchor_x
 	var az: int = group.anchor_z
+	for unit: Unit in units:
+		if AiOrders.is_free(world, unit):
+			AiTactics.medic_errand(world, group, unit)
 	if group.march_attack and group.engage_radius > 0:
 		var c: Vector2i = AiOrders.centroid(AiTactics.front(units, group))
 		var near: Array[Unit] = []

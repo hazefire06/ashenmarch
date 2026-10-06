@@ -37,6 +37,9 @@ enum Kind {
 	## group, (x, z) its objective, `value` its Posture, and unit_id the
 	## objective flag's index + 1 (0 when the objective is a point).
 	COMMANDER,
+	## A MEDIC member (unit_id) was sent to use a herb on unit `value`, at
+	## (x, z): a wounded friend it heals, or an undead enemy it kills.
+	HEAL,
 }
 
 ## What happened.

@@ -770,5 +770,7 @@ func test_shipped_tactics() -> void:
 	var blightbag: UnitType = catalog.find(&"blightbag")
 	assert_eq(blightbag.ai_tactic, UnitType.AiTactic.CLUSTER)
 	assert_eq(blightbag.ai_standoff_permille, 0)
-	for type_id: StringName in [&"shieldman", &"reaver", &"longbow", &"sapper", &"warden", &"husk", &"ripper"]:
+	# Phase 9: the Warden heals under the AI (a skirmish commander's Light army).
+	assert_eq(catalog.find(&"warden").ai_tactic, UnitType.AiTactic.MEDIC)
+	for type_id: StringName in [&"shieldman", &"reaver", &"longbow", &"sapper", &"husk", &"ripper"]:
 		assert_eq(catalog.find(type_id).ai_tactic, UnitType.AiTactic.ASSAULT, String(type_id))
