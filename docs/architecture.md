@@ -1761,14 +1761,14 @@ One step is inserted; the rest of Phase 7's list stands:
 ### Data
 - **`UnitType.cost`** (a "Skirmish" export group): the points one unit costs. 0 can't be bought: the villager. Negative is a validation error. The balance pass set the values (see Playtest and balance).
 - **`Army`** is a faction and counts by type id. `validate(catalog, budget)` wants at least one unit, at most `MAX_UNITS` (60, for performance), every type known, on the army's side and buyable, and the cost within budget. **`type_list` sorts by role, then catalog index**, never by dictionary order, because the order a block is laid out in decides entity ids: melee first, so the box puts it in front.
-- **`ArmyTemplate`**: `type_ids` and `shares_permille` in parallel (shares sum to 1000). `fill(budget)` is deterministic: each entry gets what its share buys, rounded down and never past the cap; then the rest goes a unit at a time to the affordable entry furthest below its share in points, ties to the earlier entry.
+- **`ArmyTemplate`**: `type_ids` and `shares_permille` in parallel (shares sum to 1000). `fill(budget)` is deterministic: each entry gets what its share buys, rounded down; over the 60-unit cap the counts are scaled to it in proportion (largest remainders take the left-over slots, ties to the earlier entry) and a type scaled to none takes one back from the most numerous, so a cheap horde never crowds a type out; then the rest goes a unit at a time to the affordable entry furthest below its share in points, ties to the earlier entry.
 - **`SkirmishCatalog`** (`data/skirmish/skirmish.tres`, hand-written): the maps (Riverside, The Ford, Old Mill), the eight templates, budgets 600 / 1000 / 1500 (default 1000) and time limits 5 / 10 / 15 / 20 minutes (default 10). An explicit list, for the reason `UnitCatalog` gives (exported builds rename `.tres` files).
 - **`SkirmishMap`** (`maps/<id>/skirmish.tres`, beside the heightmap; `MapInfo` and the PNGs are untouched): two starts with a facing each, an odd number of flags (3 or 5; odd so all flags owned can't be level), which flag is the hill, `flag_radius` (8 m; 6 m on The Ford so its ford flag reaches no deep water), and a View group (`camera_distance`, `atmosphere`, the mission's own look reused).
 
 | Map | Start A | Start B | Hill | Other flags |
 |---|---|---|---|---|
 | Riverside | (295, 85) north bank, facing south | (310, 430) west of the village, facing north | (300, 262), the dry landing south of the ford | (150, 190), (450, 190) north of the creek; (450, 325), (150, 335) south |
-| The Ford | (192, 330) south bank, facing north | (192, 54) north bank, west of the palisade, facing south | (192, 192), in the ford itself (depth 2 at most) | (110, 250) south-west, (274, 134) north-east |
+| The Ford | (192, 330) south bank, facing north | (192, 54) north bank, west of the palisade, facing south | (192, 192), in the ford itself (depth 2 at most) | (192, 218) and (192, 154), the ford's south and north landings (moved by the balance pass from the far banks) |
 | Old Mill | (68, 40) north-west | (232, 292) south-east, west of the millstream | (166, 157), the mill yard (`YARD_CENTER`) | (119, 104) and (214, 210), the feet of the two ramps |
 
 - **Placed by a probe, pinned by tests.** A throwaway script printed each map's components, depths and path lengths, and the positions were moved until each start is as far from the hill as the other, and, sorted, as far from its own flags as the other is from its own, for living and undead units alike, within 15%. `test_skirmish_maps.gd` re-measures that with `Pathing.find_path` (and insists each path ends on the flag, since `find_path` falls back to the nearest reachable point), and checks every start and flag is passable and in one component for both mobilities, no flag zone reaches depth 3, and a 60-unit box fits at each start.
@@ -1836,3 +1836,67 @@ The commander, ADVANCE, MEDIC and the skirmish rules draw no random numbers; `ma
 - **The App resolves the rest:** the enemy's template (a random choice drawn from `App.rng`), its army filled at the budget, and the world's seed (63 bits, as for a campaign), in that order, so one `App.rng` seed always makes the same skirmish. Rematch keeps both armies and draws a new seed on a copy of the setup; the pause menu's Restart asks, then replays the same seed. The skirmish's signals are wired by launch kind; `mission_ended` stays the campaign's.
 - **`SkirmishResults`**: Victory, Defeat or Draw, why (time ran out, or a side was wiped out), the time played, the mode's final score per side, and per side each type's deployed and lost from the runtime's frozen snapshot, with the AI template's name.
 - **Remembered setup:** `GameSettings` gains a `[skirmish]` section (typed int and String keys) holding the last choice and army ("shieldman:10,longbow:4" with its side). A remembered value that no longer fits is ignored on its own and the rest kept.
+
+### Playtest and balance (`make skirmish-playtest`)
+- **The harness** (`scripts/skirmish_playtest.gd`, `scripts/playtest/skirmish_runner.gd`, `skirmish_result.gd`, `skirmish_report.gd`) builds every world through `SkirmishSetup.create_world`, so a run's settings and seed reproduce in the game. Settings are environment variables (MATRIX, MAPS, MODES, SEEDS, SEED_BASE, BUDGET, MINUTES, PILOTS, PAIRINGS, DARK_TEMPLATES, LIGHT_TEMPLATES, STARTS, RAW, REPORT, OUT, TRACE); an unknown value stops it with exit 1 rather than running a subset. Runs split across processes and `REPORT` merges their RAW files.
+- **Matrix A**, commander against commander (`player_is_ai`): every Light template against Dark Balanced and Light Balanced against every Dark template, every map and mode, from both starts. It is the one measure of the sides under equal control. It measures the AI's two-group layout on both sides, not a human's single deploy block.
+- **Matrix B**: Phase 8's `PlaytestPilot` plays Light against the Dark commander. The pilot gained a mission-less path: `set_route(points, hold_at_end)`, the competent pilot then plays the generic march (never The Ford's escort or Old Mill's ramps), and at the end of its route it holds (King of the Hill: the hill; Capture the Flags: every flag nearest first, then the hill) or hunts (Body Count, from the centre). The campaign playtest gives identical result lines before and after. `PlaytestRunner` reports a DRAW as a draw.
+- **What the pass found and changed** (`docs/phase9-playtest.md` has every table): at the first-guess costs Light won 97% of A and the pilots 94 to 100%, because a Light unit is worth about three Dark ones (a Shieldman's shield takes Husks six for one). Light costs roughly doubled, which keeps Dark's hordes under the cap at 1500 points; per type Rippers came down and Stormcallers and Drifters up; the Raiders template keeps more Husks. The Ford's Capture the Flags (Light 11%) was the map: its flags moved to the ford's landings. Final, 612 runs: A 53% Light, every map and mode 36 to 64%, the worst pairing 86% (Shield Wall against Balanced); B 60% for the competent pilot and 62% for the naive one.
+- **The two pilots play alike in a skirmish** (within a few points at every cost tried), so Matrix B's naive target (20 to 50%) can't be met by costs: the costs were tuned to A, and B is reported as it is.
+
+| Unit | Cost | Unit | Cost |
+|---|---|---|---|
+| Shieldman | 68 | Husk | 20 |
+| Reaver | 68 | Ripper | 22 |
+| Longbow | 95 | Blightbag | 40 |
+| Sapper | 100 | Drifter | 44 |
+| Warden | 98 | Stormcaller | 88 |
+
+### Decisions
+- **Tim chose** (plan approval, 2026-10-06):
+  - **The player picks a side, Light or Dark.** So the commander drives either faction (and MEDIC exists so an AI Light army uses its Wardens), and the view takes the player's side from the launch.
+  - **Costs tuned by a playtest pass,** the Phase 8 method.
+  - **Body Count scores every enemy death, whatever the cause.** Friendly fire scores for the other side; fire and gas deaths, which often have no credited killer, count.
+- **Defaults in the approved plan:** the same budget both sides and no skirmish difficulty (worlds at tier 2); elimination ends any mode; draws at the limit (Capture the Flags breaks a tie by flag-ticks); 5 s alone captures a flag, which stays owned until taken; budgets 600 / 1000 / 1500, limits 5 to 20 minutes, a 60-unit cap; the AI's army from templates, "Random" resolved by the App; no fire arrows, satchels or Blightbag T for the AI; Longbows and Sappers stay ASSAULT; `sim/skirmish/` joins the rng ban.
+- **From the plan's review** (an adversarial pass over the draft before any code): one main group plus raiders, not separate melee and ranged groups (the per-group tactics need them together); a new ADVANCE behavior rather than re-anchoring GUARD (whose leash and provoked rule would have yanked fighters and flipped groups to HUNT); the commander's thresholds with hysteresis, a 10 s minimum per posture and an urgency ramp, because two equal commanders otherwise both wait; staging past the engage radius and Longbow range; the scores and an alive snapshot frozen at the decision; `type_list` in a sorted order.
+- **Rulings during the build,** each with its reason and its cost if wrong:
+  - **Staging moved out to 40 m and the engage radius in to 25 m** after a test: at 30 and 30 a staged army went for the enemy standing on the hill. Cost: a staged army reacts later to an enemy coming at it from the objective's side.
+  - **The skirmish world's tier is 2** and nothing in skirmish reads it but the AI's own groups, which spawn the same at every tier.
+  - **The fairness test compares path lengths,** for living and undead units, within 15%. It doesn't see water slowdown or a crossing's funnel, which the playtest shows matter on the river maps (Light wins 38% from Riverside's start A and 69% from B, commander against commander). Each map averages inside the targets and the player picks the start, so the starts stay. Cost: a player who always takes start A on Riverside as Light has a harder game.
+  - **The Ford's Capture the Flags flags moved to the landings** rather than repricing anything: only that map and mode was off, and by a mechanism (the dead wade anywhere) no price fixes.
+  - **Light costs went up rather than Dark's down,** to keep Dark's hordes under the 60-unit cap at 1500 points. Cost: a Light army is small (12 units at 1000 points against 30 to 45).
+  - **The "before" record is one seed per cell** (198 runs); the full 612-run matrices were run for the after record only.
+  - **The subagents' commits keep their own attribution** (Claude Sonnet 5.5): the match view, the front end and the harness were written by parallel agents in their own worktrees and reviewed before they were applied.
+
+### Behavior changes to earlier phases
+- **`MissionRuntime.Outcome` gained DRAW and `MissionEvent.Kind` gained DRAWN** (appended). Only `conclude()` sets them; no campaign mission can draw. MissionHud shows an amber Draw; `PlaytestRunner` reports a draw instead of a timeout.
+- **`AiTactics.front`, `behind` and `threats` go through `is_back`,** which is the old STANDOFF test unless a group's spec sets `ranged_behind`. Every Phase 7 and 8 AI test passes unchanged.
+- **The Warden's `ai_tactic` is MEDIC.** `ai_tactic` is read only by the AI, so a player's Wardens and the campaign are unchanged; the pinned shipped-tactics test changed on the Warden line only (approved in the plan).
+- **Every buyable unit type has a `cost`;** the villager has none.
+- **The director's hash has a commander count,** and AiGroup's three new fields, so every world's hash differs from Phase 8's; no test pins one.
+- **`World.step()` has a step 2b** (the skirmish), and `World` has `skirmish` and `start_skirmish`.
+- **The main menu's Skirmish opens the skirmish screen;** the Phase 8 stub ("Skirmish arrives in Phase 9") is gone, and its tests were replaced (approved). `test_app.gd`'s App gets a skirmish catalog over the tiny test map.
+- **`MissionLaunch.campaign_mode` is on for a skirmish too** (its comment said a skirmish would leave it off).
+- **CLAUDE.md** gained `sim/skirmish/` in the folder layout, the skirmish spawns and flags under `maps/`, F7 under Controls, and the skirmish rules.
+- **`make check-sim`** bans `rng` under `sim/skirmish` too.
+
+### Measured (M4 Max)
+
+| Scenario | Result |
+|---|---|
+| Playtest, final, 612 runs (`docs/phase9-playtest.md`) | A: Light 53%, Dark 46%, draws 1%, 93% decided by elimination, median 2.4 min; B: competent 60%, naive 62% |
+| Playtest, before (first guesses), 198 runs | A: Light 97%; B: competent 100%, naive 94% |
+| A skirmish headless | 1.7 to 2.4 ms a tick alone with 45 to 50 units (25 to 40 a side), 4 to 6 ms with 14 processes sharing 14 cores; a 10-minute run that goes to time about 30 s alone |
+| The full matrices | 38 minutes for 612 runs on 14 processes, the machine otherwise busy |
+| Windowed (`make capture-skirmish`, GL Compatibility on Metal, 1152x648) | The setup screen, the score line, the F7 scoreboard, the flags on the map and the overhead map, a battle and the Victory banner all drawn as designed, as Light and as Dark. Frame rates weren't measured: the capture steps the sim as fast as it can, and a window macOS hasn't brought forward draws irregularly |
+| Determinism | Two worlds from one setup hash alike every 500 ticks over 1500, for three map-mode pairs and a Dark player, with identical AI event logs; commander logs pinned the same way |
+| Test suite | 1974 tests in 106 scripts, all passing, with `check-sim` ok; about 170 s |
+
+### Not yet
+- **Skirmish difficulty or a handicap.** Both sides get the same budget, and the commander has one temper. The pilots win about 60% against it; a player should do better. A budget handicap, or the commander's thresholds per tier, would be the levers.
+- **The AI using fire arrows, satchels or Blightbag T,** and a Dark pilot for Matrix B (a Dark player's challenge is estimated from Matrix A only).
+- **The starts on the river maps.** Light does better from Riverside's start B and The Ford's start B (see Decisions). A fairness check that weighs water and chokes, or hills placed at the crossings, would even them.
+- **Shield Wall is the strongest Light army** (86% against Dark Balanced, commander against commander, at the 85% line). If it plays dominant, Shieldman and Longbow are the prices to move.
+- **Skirmishes are short:** most end by elimination in 2 to 4 game minutes, one decisive fight, because both commanders go for an unguarded objective at once and armies don't come back. The mode decides where the fight is more than how long it lasts.
+- **Weather in skirmish, more than two sides, remembering a separate army per side, friendly-fire counts on the results screen,** and a lockstep pause command (still the view not stepping).
+- **`make capture-skirmish` needs the window in front:** macOS doesn't draw a window it hasn't brought forward, and a shot then waits up to 2 s for a frame and saves what there is.
