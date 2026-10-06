@@ -209,7 +209,37 @@ Plan mode first. Branch feature/PHASE-10-exports.
 
 ## After v1
 
-- Art pass: replace placeholders with generated or hand-made sprites, 8 directions, walk/attack/die animations. Keep the placeholder pipeline so new units can be added before art exists.
+- Art pass: moved to the parallel art and audio track below.
 - Roster expansion from the "later" list in CLAUDE.md.
 - More missions: escort, rescue, timed assault, capture, stealth.
 - Multiplayer: lockstep over the command stream, LAN first.
+
+---
+
+## Art and audio track (parallel to the phases)
+
+Designed in `docs/specs/2026-10-01-art-audio-design.md`. Work happens in the worktree `../ashenmarch-art`, never in a phase checkout, and never touches `sim/` or `data/units/`. Tim runs every paid API command himself in Terminal.app.
+
+### A1: Unit sprites (Shieldman)
+
+```
+Read CLAUDE.md, the art and audio spec, and docs/plans/2026-10-03-art-audio-a0-a1.md. A0 is merged or open.
+
+Build the sprite pipeline and the Shieldman's art per the plan, Part 2 onward. Stop at the candidate sheet and at the contact sheet for my approval before any Godot code. Branch feature/PHASE-A1-unit-sprites.
+```
+
+### A2: Audio
+
+```
+Read CLAUDE.md and the art and audio spec. A1 is merged.
+
+Plan first: sound generation and processing scripts, the sound bank, AudioDirector, ambience, barks (text first, then the Shieldman's voice), one music loop for Riverside. Branch feature/PHASE-A2-audio.
+```
+
+### A3: The rest of the roster
+
+```
+Read CLAUDE.md and the art and audio spec. A1 and A2 are merged.
+
+Plan first: art and voices for the other nine units, one contact sheet or line list per unit for my approval. Branch feature/PHASE-A3-roster.
+```
