@@ -142,10 +142,21 @@ func test_fill_skips_what_it_cant_afford() -> void:
 func test_fill_stops_at_the_cap_in_both_passes() -> void:
 	var army: Army = _template([&"cheap"], PackedInt32Array([1000])).fill(1000, _catalog)
 	assert_eq(army.size(), Army.MAX_UNITS)
+	# 1500 points: 1350 cheap and 5 pike wanted, 1355 in all. Scaled to 60:
+	# cheap 59 (and the left-over slot), pike 0, which gets one back from the
+	# cheap: a cheap horde never crowds a type out.
 	var mixed: Army = _template([&"cheap", &"pike"], PackedInt32Array([900, 100])).fill(1500, _catalog)
 	assert_eq(mixed.size(), Army.MAX_UNITS)
-	assert_eq(mixed.count_of(&"cheap"), Army.MAX_UNITS, "the first pass hits the cap before the pike")
+	assert_eq(mixed.count_of(&"cheap"), Army.MAX_UNITS - 1)
+	assert_eq(mixed.count_of(&"pike"), 1)
 	assert_eq(mixed.validate(_catalog, 1500), PackedStringArray())
+	# Over the cap, the counts keep their proportions: 1000 points, half each,
+	# want 500 cheap and 16 spear, 516 in all; scaled to 60 that is 58 and 1,
+	# and the left-over slot goes to the larger remainder.
+	var scaled: Army = _template([&"cheap", &"spear"], PackedInt32Array([500, 500])).fill(1000, _catalog)
+	assert_eq(scaled.size(), Army.MAX_UNITS)
+	assert_eq(scaled.count_of(&"cheap") + scaled.count_of(&"spear"), Army.MAX_UNITS)
+	assert_gt(scaled.count_of(&"spear"), 0)
 
 
 func test_fill_of_an_invalid_template_is_empty() -> void:

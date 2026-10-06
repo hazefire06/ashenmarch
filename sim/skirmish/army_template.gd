@@ -60,8 +60,13 @@ func validate(catalog: UnitCatalog) -> PackedStringArray:
 
 ## The army this template fields for a budget, deterministically:
 ## 1. each entry gets as many units as its share of the budget buys, rounded
-##    down, never past Army.MAX_UNITS in all;
-## 2. what is left goes one unit at a time to the affordable entry furthest
+##    down;
+## 2. if that is more than Army.MAX_UNITS in all, the counts are scaled down to
+##    the cap in proportion (rounded down, the slots left going to the largest
+##    remainders, ties to the earlier entry), and an entry scaled to none gets
+##    one back from the entry with the most, so a cheap horde can't crowd a
+##    type out of the army altogether;
+## 3. what is left goes one unit at a time to the affordable entry furthest
 ##    below its share in points (ties to the earlier entry), until nothing is
 ##    affordable or the army is full.
 ## The template must validate; an invalid one gives an empty army.
@@ -75,15 +80,18 @@ func fill(budget: int, catalog: UnitCatalog) -> Army:
 	var counts: PackedInt32Array = PackedInt32Array()
 	costs.resize(n)
 	counts.resize(n)
-	var spent: int = 0
 	var total: int = 0
 	for i: int in n:
 		costs[i] = catalog.find(type_ids[i]).cost
-		var want: int = budget * shares_permille[i] / 1000 / costs[i]
-		var take: int = mini(want, Army.MAX_UNITS - total)
-		counts[i] = take
-		spent += take * costs[i]
-		total += take
+		counts[i] = budget * shares_permille[i] / 1000 / costs[i]
+		total += counts[i]
+	if total > Army.MAX_UNITS:
+		counts = _scaled_to_cap(counts, total)
+	var spent: int = 0
+	total = 0
+	for i: int in n:
+		spent += counts[i] * costs[i]
+		total += counts[i]
 	while total < Army.MAX_UNITS:
 		var best: int = -1
 		var best_deficit: int = 0
@@ -103,3 +111,35 @@ func fill(budget: int, catalog: UnitCatalog) -> Army:
 	for i: int in n:
 		army.set_count(type_ids[i], counts[i])
 	return army
+
+
+# Counts wanted (summing to total, over the cap) scaled down to exactly
+# Army.MAX_UNITS: see fill, step 2.
+static func _scaled_to_cap(wanted: PackedInt32Array, total: int) -> PackedInt32Array:
+	var n: int = wanted.size()
+	var counts: PackedInt32Array = PackedInt32Array()
+	var remainders: PackedInt32Array = PackedInt32Array()
+	counts.resize(n)
+	remainders.resize(n)
+	var placed: int = 0
+	for i: int in n:
+		counts[i] = wanted[i] * Army.MAX_UNITS / total
+		remainders[i] = wanted[i] * Army.MAX_UNITS % total
+		placed += counts[i]
+	while placed < Army.MAX_UNITS:
+		var best: int = 0
+		for i: int in n:
+			if remainders[i] > remainders[best]:
+				best = i
+		counts[best] += 1
+		remainders[best] = -1
+		placed += 1
+	for i: int in n:
+		if wanted[i] > 0 and counts[i] == 0:
+			var most: int = 0
+			for j: int in n:
+				if counts[j] > counts[most]:
+					most = j
+			counts[most] -= 1
+			counts[i] = 1
+	return counts
