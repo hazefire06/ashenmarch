@@ -166,6 +166,40 @@ This runs headless in Blender 5.2.2 LTS (`/Applications/Blender.app/Contents/Mac
   - a JSON sidecar with frame counts, fps, impact frame, stride, figure height in px, and gib colour;
   - the **contact sheet** for Tim's approval.
 
+### 6.2a Props: weapons and gear on bones
+
+Added 2026-10-06 after the Shieldman candidates. All four came back empty-handed: an A-pose leaves nothing in the hands. Held gear is therefore separate. Each prop is its own Meshy model, textured but not rigged, fixed rigidly to one bone of the unit's rig when the sprites are rendered. A prop that bends with the hand would look wrong anyway, and other units reuse the same props mechanism (Reaver's claymore, Longbow's bow, Warden's staff, Stormcaller's staff).
+
+```
+art-src/props/<id>/spec.toml      prompt, length_m (longest axis after import), candidate count and tier, polycount
+art-src/props/<id>/manifest.json  same rules as a unit manifest
+art-src/props/<id>/candidates/    cand-N.glb (LFS)
+art-src/props/<id>/model/         textured.glb (LFS)
+```
+
+| Command | Paid | What it does |
+|---|---|---|
+| `prop-candidates <id>` | yes | Text-to-3D previews with no pose setting, mesh only. `make art-prop-candidates PROP=<id>` (free) renders them side by side. |
+| `prop-build <id> --pick N` | yes | Texture (2K) only, no rig. 10 credits. |
+
+A unit's `spec.toml` lists what it carries:
+
+```toml
+[[attach]]
+prop = "broadsword"
+bone = "<bone name from the unit's rigged.glb>"
+offset = [0.0, 0.0, 0.0]     # metres, in the bone's space
+rotation = [0.0, 0.0, 0.0]   # degrees, XYZ Euler, in the bone's space
+```
+
+- **Blender:** imports each prop's `textured.glb`, scales it so its longest axis is `length_m`, and centres it on its bounding box. It then parents the prop to the bone, applies `offset` and `rotation`, and renders it with the body in every animation and direction.
+- **Tuning:** `make art-attach UNIT=<id>` (free) renders a few frames of idle and attack from the front and side, so Claude can tune offsets and rotations by eye before the full render.
+- **Shieldman:**
+  - broadsword in the right hand;
+  - targe strapped to the left forearm;
+  - bonnet on the head, optional.
+- **Credits:** two lite candidates plus one texture pass is 20 per prop. Sword and targe come to 40, which puts the Shieldman at about 117 in total, or 132 with a single-candidate bonnet. That's under the key's 150-a-month cap.
+
 ### 6.3 Godot builder: `scripts/art/build_unit_art.gd`
 
 Run headless. It turns the sheets and sidecar into `data/art/<id>.tres` and rewrites `data/art/catalog.tres`. The catalog is an explicit list, like the unit catalog. These files are generated and never edited by hand.
