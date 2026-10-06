@@ -41,6 +41,14 @@ extends RefCounted
 ##     cliff), the melee goes out and finishes it (stall_breaks counts these:
 ##     the pilot's own addition, which the naive pilot has not got).
 ##
+## A pilot with no mission (a skirmish, where there is no plan to know) is told
+## its route with set_route: the competent pilot then plays the generic march
+## (the melee at the route point, the rest behind it, the specials), never The
+## Ford's escort or Old Mill's ramps, and the naive pilot plays as it always
+## does. At the end of the route it either hunts the nearest enemy in sight,
+## wherever it is, or holds the last point (hold_at_end), fighting only what
+## comes within CLEAR_M. The pilot always plays Light.
+##
 ## Thinking is in floats (meters), as this is a script outside sim/; every
 ## command it emits is in integer milli-units. A pilot is deterministic: its
 ## decisions are a function of the world it is shown.
@@ -145,7 +153,8 @@ var record: bool = false
 var recorded: Array[SimCommand] = []
 ## Where the pilot is on its route (an index into PlaytestRoutes.route).
 var route_index: int = 0
-## Naive pilot: the army has reached the route's last point, and hunts from now on.
+## The army has reached the route's last point (the naive pilot hunts, or holds,
+## from then on; the competent pilot only notes it).
 var route_done: bool = false
 ## Old Mill: the tick the last Sapper laid its last charge, or -1 while some
 ## charge is still to lay.
@@ -155,9 +164,14 @@ var charges_done_tick: int = -1
 var stall_breaks: int = 0
 
 var _world: World
+# Null for a pilot that has no mission (a skirmish): the route comes from set_route.
 var _mission: MissionDef
 var _route: Array[Vector2] = []
 var _sweep_from: int = -1
+# At the end of the route: stay on its last point (true) or hunt the nearest
+# enemy in sight wherever it is (false). Only a pilot without a mission hunts
+# or holds by this; a mission's pilot keeps its own endings.
+var _hold_at_end: bool = false
 
 # What this think sees; rebuilt by _scan.
 var _mine: Array[Unit] = []
@@ -203,15 +217,33 @@ var _ramps: Array[Dictionary] = []
 var _sapper_rank: Dictionary[int, int] = {}
 
 
-func _init(pilot_kind: Kind, mission: MissionDef) -> void:
+func _init(pilot_kind: Kind, mission: MissionDef = null) -> void:
 	kind = pilot_kind
 	_mission = mission
+	if mission == null:
+		return
 	_route = PlaytestRoutes.route(mission)
 	_sweep_from = PlaytestRoutes.sweep_from(mission)
 	if mission.id == &"the_ford":
 		_escort = PlaytestRoutes.escort(mission)
 	if mission.id == &"old_mill":
 		_ramps = PlaytestRoutes.mill_ramps()
+
+
+## Where a pilot with no mission goes, `points` in milli-units, in order, and what
+## it does at the last: hold it (fight only what comes within CLEAR_M of the
+## army) or hunt the nearest enemy in sight. Starts the route over, so it may be
+## given again. Refused for a pilot with a mission, whose route is its mission's.
+func set_route(points: Array[Vector2i], hold_at_end: bool) -> void:
+	if _mission != null:
+		push_error("PlaytestPilot.set_route: a pilot with a mission keeps the mission's route")
+		return
+	_route.clear()
+	for point: Vector2i in points:
+		_route.append(Vector2(point) / MM)
+	_hold_at_end = hold_at_end
+	route_index = 0
+	route_done = false
 
 
 ## The label a run is printed with.
@@ -237,8 +269,15 @@ func think(world: World) -> void:
 	_scan()
 	if _mine.is_empty():
 		return
+	if _route.is_empty():
+		# No route was set: the army holds where it stands.
+		_route.append(_centroid(_mine))
+		_hold_at_end = true
 	if kind == Kind.NAIVE:
 		_think_naive()
+		return
+	if _mission == null:
+		_think_march()
 		return
 	match _mission.id:
 		&"the_ford":
@@ -321,7 +360,13 @@ func _think_naive() -> void:
 				goal = _route[route_index]
 			else:
 				route_done = true
-		if route_done:
+		if route_done and _hold_at_end and _mission == null:
+			# Held: the last point, or what has come within reach of the army.
+			goal = _route[_route.size() - 1]
+			var near: Array[Unit] = _foes_within(here, CLEAR_M)
+			if not near.is_empty():
+				goal = _pos(_nearest(near, here))
+		elif route_done:
 			if _foes.is_empty():
 				return
 			goal = _pos(_nearest(_foes, here))
@@ -347,6 +392,9 @@ func _think_march() -> void:
 	var goal: Vector2 = _route[route_index]
 	if not near.is_empty():
 		goal = _pos(_nearest(near, here))
+	elif route_done and _mission == null and not _hold_at_end and not _foes.is_empty():
+		# A pilot with no mission, at the end of its route, hunts what it can see.
+		goal = _pos(_nearest(_foes, here))
 	_order_group(&"melee", lead, goal, true)
 	_follow(lead, here, goal)
 	_use_specials()
@@ -364,6 +412,8 @@ func _advance_route() -> void:
 		route_index += 1
 	elif _sweep_from >= 0:
 		route_index = _sweep_from
+	else:
+		route_done = true
 
 
 # The ranged, the Wardens and the Sappers (those not on a task of their own)
@@ -562,7 +612,7 @@ func _lay_charges() -> void:
 # besides grenades; he lays them first) and spots left to lay them at.
 func _has_charges_to_lay(sapper: Unit) -> bool:
 	return (
-		_mission.id == &"old_mill" and sapper.special_left > 0
+		_mission != null and _mission.id == &"old_mill" and sapper.special_left > 0
 		and _charge_next.get(sapper.id, 0) < CHARGES_PER_SAPPER
 	)
 

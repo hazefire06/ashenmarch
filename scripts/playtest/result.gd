@@ -7,6 +7,9 @@ extends RefCounted
 
 const WON: String = "won"
 const LOST: String = "lost"
+## Neither side won (MissionRuntime.Outcome.DRAW). The campaign has no draws, so
+## its tables count one with the timeouts; a skirmish's tables have their own.
+const DRAW: String = "draw"
 ## The run hit MAX_MINUTES without the mission being decided: counted as a
 ## loss in the tables, in a column of its own.
 const TIMEOUT: String = "timeout"
@@ -22,7 +25,7 @@ var campaign_seed: int = 0
 var world_seed: int = 0
 ## True if the soldiers were the campaign's survivors (CHAIN), not recruits.
 var chain: bool = false
-## WON, LOST or TIMEOUT.
+## WON, LOST, DRAW or TIMEOUT.
 var outcome: String = TIMEOUT
 ## The tick the mission ended on, or the cap for a timeout.
 var end_tick: int = 0
