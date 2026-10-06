@@ -1,0 +1,7 @@
+# Appended to every unit's Meshy prompt so the whole roster looks like one game.
+# Spec §5. Original designs only: no names or looks from existing games or books.
+suffix = "Stylized fantasy strategy-game character, chunky heroic proportions, hand-painted textures, strong readable silhouette, muted earthy palette, full body, standing in A-pose, centered, plain background"
+
+[palettes]
+light = "warm tartan reds and greens, steel, woad blue"
+dark = "cold bog brown, bone white, sickly green glow"

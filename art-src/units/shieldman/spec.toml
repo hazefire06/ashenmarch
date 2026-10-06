@@ -1,0 +1,37 @@
+# The Shieldman's art recipe (spec §5, §6.1). meshy.py buys from it;
+# render_sprites.py renders from it. Animation ids are Meshy library actions
+# (https://docs.meshy.ai/en/api/animation-library); clip is the library name,
+# used to find the clip inside the downloaded GLB. Final picks are made from
+# the contact sheet.
+id = "shieldman"
+faction = "light"
+height_m = 1.8
+prompt = "Scottish highland clansman warrior, kilt in red and green tartan, round wooden targe shield with an iron boss on the left arm, basket-hilted broadsword in the right hand, blue woad war paint on the face, wild ginger beard, blue wool bonnet, leather belt and sporran, rough leather boots"
+die_falls_forward = false
+
+[candidates]
+lite = 2
+full = 2
+polycount = 30000
+
+[animations.idle]
+action = 89
+clip = "Combat_Stance"
+
+[animations.walk]
+rig = "walk"
+
+[animations.attack]
+action = 219
+clip = "Right_Hand_Sword_Slash"
+impact = 0.45
+
+# Auditioned on the contact sheet only; the game plays "attack".
+[animations.attack_alt]
+action = 97
+clip = "Left_Slash"
+impact = 0.45
+
+[animations.die]
+action = 189
+clip = "dying_backwards"
