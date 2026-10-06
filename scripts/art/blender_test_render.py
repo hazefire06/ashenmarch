@@ -7,16 +7,18 @@ The fixture is a grey 0.5 x 0.3 x 1.8 m block with a red "nose" on its
 chest, facing -Y (glTF +Z, like Meshy's characters), skinned to a root bone,
 Hips. A second bone, Hand, sticks out sideways (+X) from the chest; no mesh
 follows it, but props attach to it. Its clips:
-- walk: carries it 1.2 m forward in one second with a small bob, and lowers
-  the hand 0.6 m;
+- walk: carries it 1.2 m forward in one second with a small bob, while the
+  hand drops 0.6 m and turns 90 degrees about its own Z;
 - idle: holds still;
 - rise: lifts it 1 m over 30 rendered frames, so its sheet wraps;
-- in place: the root stays put while two foot boxes, on LeftFoot and
-  RightFoot, take turns sliding backward at 1.2 m/s while planted (the way
-  Meshy's rig walk plays).
-The prop, "stick", is a blue 0.2 x 0.2 x 0.6 m box whose recipe sizes it to
-0.9 m. Everything goes through the real glTF export and import, then the
-renderer, with Workbench's flat lighting so the colours are exact.
+- in place, over 1 s (in_place) or 2 s (in_place_slow): the root stays put
+  while two foot boxes, on LeftFoot and RightFoot, take turns sliding
+  backward while planted, one 1.2 m stride per cycle (the way Meshy's rig
+  walk plays).
+The prop, "stick", is a blue 0.6 x 0.2 x 0.2 m box, long along its own X,
+whose recipe sizes it to 0.9 m. Everything goes through the real glTF
+export and import, then the renderer, with Workbench's flat lighting so the
+colours are exact.
 """
 from __future__ import annotations
 
@@ -34,7 +36,7 @@ import bmesh
 import bpy
 import numpy as np
 from bpy_extras.object_utils import world_to_camera_view
-from mathutils import Vector
+from mathutils import Euler, Matrix, Quaternion, Vector
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
@@ -42,12 +44,21 @@ import render_sprites as rs  # noqa: E402
 
 STRIDE_M = 1.2
 HAND_HEAD = (0.25, 0.0, 1.3)
+# Hand's own axes in world space, as built and as imported: X is world -Y, Y (along the bone) is world +X, Z is world +Z.
+HAND_AXES = Matrix(((0.0, 1.0, 0.0), (-1.0, 0.0, 0.0), (0.0, 0.0, 1.0)))
 HAND_DROP_M = 0.6
+HAND_TURN_DEG = 90.0
 RISE_M = 1.0
 RISE_SPAN = 58   # scene frames at 24 fps: 29 steps at 12 fps, so 30 rendered frames (it doesn't loop)
+STICK_SIZE = (0.6, 0.2, 0.2)
+STICK_CENTRE = (0.3, -0.2, 0.5)  # off the origin, so the centring is tested
 STICK_M = 0.9
-STICK_OFFSET = (0.0, 0.5, 0.45)
-STICK_ROTATION = (90.0, 0.0, 0.0)
+# In Hand's axes: 0.1 m toward direction 4's camera (X), 0.6 m further out (Y) and 0.45 m up (Z), which centres the
+# stick at (0.85, -0.1, 1.75). All three angles are set, so the XYZ order matters: they tip the stick's long axis (its
+# X) 30 degrees below level along world +X and roll it 20 degrees about itself. Its top reaches about 2.14 m, over the
+# 1.8 m head, so a fit that counted it would shrink the body by about 11 px.
+STICK_OFFSET = (0.1, 0.6, 0.45)
+STICK_ROTATION = (20.0, 30.0, 90.0)
 ELEVATION = math.radians(rs.ELEVATION_DEG)
 
 HEAD = """id = "fixture"
@@ -63,6 +74,10 @@ WALK = """
 [animations.walk]
 file = "anims/walk.glb"
 """
+RUN = """
+[animations.run]
+file = "anims/run.glb"
+"""
 RISE = """
 [animations.rise]
 file = "anims/rise.glb"
@@ -72,17 +87,6 @@ ATTACK = """
 file = "anims/idle.glb"
 impact = 0.5
 """
-# Hand points along +X, so its own Y axis is world +X and its Z axis world +Z.
-# The offset puts the stick's centre 0.5 m further out and 0.45 m up, so its
-# top (1.9 m) clears the head: a fit that counted it would shrink the body.
-# The rotation turns the stick's long axis (its Z) onto the bone's -Y: level.
-ATTACH = """
-[[attach]]
-prop = "stick"
-bone = "{bone}"
-offset = [0.0, 0.5, 0.45]
-rotation = [90.0, 0.0, 0.0]
-"""
 STICK_SPEC = """id = "stick"
 faction = "light"
 length_m = 0.9
@@ -91,8 +95,14 @@ prompt = "test stick"
 EXTENTS = re.compile(r"extents (\w+): lowest (-?[\d.]+) above the bottom, highest (-?[\d.]+), half-width (-?[\d.]+) \(cell (\d+)\)")
 
 
+def attach_toml(bone: str) -> str:
+    """The unit's [[attach]] table for the stick, from STICK_OFFSET and STICK_ROTATION."""
+    return (f'\n[[attach]]\nprop = "stick"\nbone = "{bone}"\n'
+            f"offset = [{', '.join(map(str, STICK_OFFSET))}]\nrotation = [{', '.join(map(str, STICK_ROTATION))}]\n")
+
+
 def fixture_spec(*parts: str, height: float = 1.8, bone: str = "Hand", attach: bool = False) -> str:
-    return HEAD.format(height=height) + (ATTACH.format(bone=bone) if attach else "") + "".join(parts)
+    return HEAD.format(height=height) + (attach_toml(bone) if attach else "") + "".join(parts)
 
 
 def make_material(name: str, rgba: tuple[float, float, float, float]) -> bpy.types.Material:
@@ -118,16 +128,17 @@ def add_box(bm: bmesh.types.BMesh, center: tuple[float, float, float], size: tup
 
 def foot_path(phase: float) -> Vector:
     """A foot's offset from rest over one cycle: planted for the first half,
-    sliding backward (+Y, the unit faces -Y) at STRIDE_M m/s, then swung
-    forward through the air."""
+    sliding backward (+Y, the unit faces -Y) by half a stride, then swung
+    forward through the air. The ground covers one stride, STRIDE_M, per
+    cycle, however long the cycle lasts."""
     if phase < 0.5:
-        return Vector((0.0, -0.3 + STRIDE_M * phase, 0.0))
+        return Vector((0.0, STRIDE_M * (phase - 0.25), 0.0))
     u = (phase - 0.5) / 0.5
-    return Vector((0.0, 0.3 - 0.6 * u, 0.12 * math.sin(math.pi * u)))
+    return Vector((0.0, STRIDE_M * (0.25 - 0.5 * u), 0.12 * math.sin(math.pi * u)))
 
 
 def build_fixture(path: Path, clip: str, parented: bool = False) -> None:
-    """Writes the fixture GLB with one clip: idle, walk, rise or in_place.
+    """Writes the fixture GLB with one clip: idle, walk, rise, in_place (1 s) or in_place_slow (2 s).
 
     With parented, the armature hangs under an Empty scaled 0.01 and is
     itself scaled 100 (net identity), the way some exporters hand over a
@@ -145,7 +156,7 @@ def build_fixture(path: Path, clip: str, parented: bool = False) -> None:
         scene.collection.objects.link(top)
         arm.parent = top
         arm.scale = (100.0, 100.0, 100.0)
-    feet = {"LeftFoot": 0.15, "RightFoot": -0.15} if clip == "in_place" else {}
+    feet = {"LeftFoot": 0.15, "RightFoot": -0.15} if clip.startswith("in_place") else {}
     bpy.context.view_layer.objects.active = arm
     bpy.ops.object.mode_set(mode="EDIT")
     hips = arm_data.edit_bones.new("Hips")
@@ -183,12 +194,18 @@ def build_fixture(path: Path, clip: str, parented: bool = False) -> None:
         pose.location = arm_data.bones[bone].matrix_local.to_3x3().inverted() @ world_delta
         pose.keyframe_insert("location", frame=frame)
 
-    span = {"idle": 1, "walk": 24, "rise": RISE_SPAN, "in_place": 24}[clip]
+    def turn(bone: str, frame: int, degrees: float) -> None:
+        pose = arm.pose.bones[bone]
+        pose.rotation_quaternion = Quaternion((0.0, 0.0, 1.0), math.radians(degrees))  # about the bone's own Z
+        pose.keyframe_insert("rotation_quaternion", frame=frame)
+
+    span = {"idle": 1, "walk": 24, "rise": RISE_SPAN, "in_place": 24, "in_place_slow": 48}[clip]
     for frame in range(1, span + 2):
         t = (frame - 1) / span
         if clip == "walk":
             key("Hips", frame, Vector((0.0, -STRIDE_M * t, 0.05 * math.sin(4.0 * math.pi * t))))
             key("Hand", frame, Vector((0.0, 0.0, -HAND_DROP_M * t)))
+            turn("Hand", frame, HAND_TURN_DEG * t)
         elif clip == "rise":
             key("Hips", frame, Vector((0.0, 0.0, RISE_M * t)))
         else:
@@ -199,11 +216,11 @@ def build_fixture(path: Path, clip: str, parented: bool = False) -> None:
 
 
 def build_stick(path: Path) -> None:
-    """The prop: a blue 0.2 x 0.2 x 0.6 m box, long along Z, off its origin so the centring is tested."""
+    """The prop: a blue STICK_SIZE box, long along its own X, centred off its origin."""
     rs.reset_scene()
     mesh = bpy.data.meshes.new("Stick")
     bm = bmesh.new()
-    add_box(bm, (0.3, -0.2, 0.5), (0.2, 0.2, 0.6), 0)
+    add_box(bm, STICK_CENTRE, STICK_SIZE, 0)
     bm.to_mesh(mesh)
     bm.free()
     mesh.materials.append(make_material("Blue", (0.0, 0.0, 1.0, 1.0)))
@@ -287,6 +304,38 @@ def opaque(px: np.ndarray) -> np.ndarray:
     return px[..., 3] > 0.5
 
 
+def mask_box(mask: np.ndarray) -> tuple[float, float, float, float]:
+    """Left, right, bottom and top edges of a mask in px; right and top are one past its last pixel."""
+    (left, right), (bottom, top) = columns_of(mask), rows_of(mask)
+    return float(left), float(right + 1), float(bottom), float(top + 1)
+
+
+def alpha_centroid_y(px: np.ndarray) -> float:
+    """The alpha-weighted mean row (row 0 is the bottom). It's sub-pixel, so it tracks a shape that moves by a fraction of a pixel."""
+    alpha = px[..., 3]
+    return float((alpha.sum(axis=1) * np.arange(px.shape[0])).sum() / alpha.sum())
+
+
+def stick_corners(head: tuple[float, float, float], turn_deg: float = 0.0) -> np.ndarray:
+    """World corners (8, 3) of the attached stick, worked out from the fixture's geometry alone.
+
+    Hand's head is at head, and Hand has turned turn_deg about its own Z. The
+    stick is scaled so its longest side is STICK_M, turned by the XYZ Euler
+    rotation, and centred at the head plus the offset, all in Hand's axes."""
+    axes = HAND_AXES @ Matrix.Rotation(math.radians(turn_deg), 3, "Z")
+    rotation = Euler([math.radians(a) for a in STICK_ROTATION], "XYZ").to_matrix()
+    half = Vector(STICK_SIZE) * (STICK_M / max(STICK_SIZE) / 2)
+    centre = Vector(head) + axes @ Vector(STICK_OFFSET)
+    return np.array([tuple(centre + axes @ rotation @ Vector((x * half.x, y * half.y, z * half.z)))
+                     for x in (-1, 1) for y in (-1, 1) for z in (-1, 1)])
+
+
+def box_px(corners: np.ndarray, direction: int) -> tuple[float, float, float, float]:
+    """Left, right, bottom and top of world corners projected into a game cell (rs.project matches Blender's camera; see ProjectionTest)."""
+    x, y = rs.project(corners, direction)
+    return float(x.min()), float(x.max()), float(y.min()), float(y.max())
+
+
 def extents(printed: str) -> dict[str, tuple[float, float, float, int]]:
     return {m[1]: (float(m[2]), float(m[3]), float(m[4]), int(m[5])) for m in EXTENTS.finditer(printed)}
 
@@ -334,13 +383,15 @@ class RenderSpritesTest(unittest.TestCase):
         self.assertLessEqual(self.rise.shape[1], rs.MAX_SHEET_PX)
 
     def test_frames_past_the_last_column_continue_on_the_next_row(self) -> None:
+        # The body rises 1.15 px a frame. Every frame, read where the layout puts it, must stand at its own height to
+        # well within half a frame's rise, so no frame (24 on the next row included) can stand in for its neighbour.
         rise = self.sidecar["animations"]["rise"]
         per_frame = RISE_M / 29 * math.cos(ELEVATION) * rs.PIXELS_PER_METER
-        for d in (0, 4):
-            base = rows_of(opaque(at(self.rise, 2 * d, 0)))[0]
-            for frame in (23, 24, 29):
-                lowest = rows_of(opaque(cell(self.rise, frame, d, rise)))[0]
-                self.assertAlmostEqual(lowest - base, frame * per_frame, delta=1.5, msg=f"d{d} f{frame}")
+        for d in range(rs.DIRECTIONS):
+            base = alpha_centroid_y(at(self.rise, 2 * d, 0))
+            for frame in range(rise["frames"]):
+                height = alpha_centroid_y(cell(self.rise, frame, d, rise)) - base
+                self.assertAlmostEqual(height, frame * per_frame, delta=0.4, msg=f"d{d} f{frame}")
             for column in range(6, 24):  # frames 30..47 don't exist: transparent
                 self.assertEqual(float(at(self.rise, 2 * d + 1, column)[..., 3].max()), 0.0, column)
 
@@ -451,6 +502,19 @@ class PropRenderTest(unittest.TestCase):
         (root / "art-src" / "units" / "fixture" / "spec.toml").write_text(spec, encoding="utf-8")
         return root
 
+    def stage(self, root: Path, name: str) -> rs.Staged:
+        spec = rs.load_spec(root / "art-src" / "units" / "fixture" / "spec.toml")
+        entry = next(e for e in spec.animations if e.name == name)
+        props = rs.resolve_props(spec, root / "art-src", root)
+        return rs.stage_animation(spec, root / "art-src" / "units" / "fixture" / entry.file, entry, props, "WORKBENCH")
+
+    def assert_stick_at(self, staged: rs.Staged, corners: np.ndarray) -> None:
+        """The stick's world bounding box is the one its corners make, to 5 mm."""
+        lo, hi = rs.mesh_bounds(staged.prop_meshes)
+        for axis in range(3):
+            self.assertAlmostEqual(lo[axis], float(corners[:, axis].min()), delta=0.005, msg=f"min {'xyz'[axis]}")
+            self.assertAlmostEqual(hi[axis], float(corners[:, axis].max()), delta=0.005, msg=f"max {'xyz'[axis]}")
+
     def test_prop_is_on_the_hands_side(self) -> None:
         # Hand sticks out along +X, which direction 4 (facing the camera) shows on the right.
         blue = blue_mask(self.front)
@@ -458,17 +522,21 @@ class PropRenderTest(unittest.TestCase):
         self.assertGreater(columns_of(blue)[0], columns_of(grey_mask(self.front))[1], "the stick is clear of the body, on the right")
 
     def test_prop_is_sized_by_its_recipe(self) -> None:
-        # Its long axis lies along world X, which is level across the screen in direction 4.
-        left, right = columns_of(blue_mask(self.front))
-        self.assertAlmostEqual(right + 1 - left, STICK_M * rs.PIXELS_PER_METER, delta=2.0)
+        # Its 0.9 m length, turned as its rotation says, gives this box in direction 4. The longest side is the stick's
+        # own X, so sizing by its Z (or by world Z) would come out a third of the length.
+        left, right, bottom, top = box_px(stick_corners(HAND_HEAD), 4)
+        got = mask_box(blue_mask(self.front))
+        self.assertAlmostEqual(got[1] - got[0], right - left, delta=1.5)
+        self.assertAlmostEqual(got[3] - got[2], top - bottom, delta=1.5)
 
     def test_prop_sits_at_the_bone_head_plus_its_offset(self) -> None:
-        # Centred at the head (not the tail), moved by the offset in the bone's axes: Y is world +X, Z is world +Z.
-        centre_x = HAND_HEAD[0] + STICK_OFFSET[1]
-        centre_z = HAND_HEAD[2] + STICK_OFFSET[2]
+        # Centred at the head (not the tail, about 0.47 m further along), moved by the offset in Hand's axes.
+        x, y = rs.project(np.array([tuple(Vector(HAND_HEAD) + HAND_AXES @ Vector(STICK_OFFSET))]), 4)
         blue = blue_mask(self.front)
-        self.assertAlmostEqual(mean_x(blue) + 0.5, rs.CELL / 2 + centre_x * rs.PIXELS_PER_METER, delta=2.0)
-        self.assertAlmostEqual(mean_y(blue) + 0.5, rs.FEET_PX + centre_z * math.cos(ELEVATION) * rs.PIXELS_PER_METER, delta=2.0)
+        self.assertAlmostEqual(mean_x(blue) + 0.5, float(x[0]), delta=1.0)
+        self.assertAlmostEqual(mean_y(blue) + 0.5, float(y[0]), delta=1.0)
+        for got, want in zip(mask_box(blue), box_px(stick_corners(HAND_HEAD), 4)):
+            self.assertAlmostEqual(got, want, delta=1.5)
 
     def test_fit_ignores_the_prop(self) -> None:
         low, high = body_rows_in_front_view()
@@ -477,31 +545,32 @@ class PropRenderTest(unittest.TestCase):
         self.assertAlmostEqual(rows[1] + 1, high, delta=1.0)
 
     def test_prop_follows_the_bone(self) -> None:
-        # By mid-walk the hand has dropped 0.3 m (the bob is back at zero), and the stick with it.
-        before, after = blue_mask(cell(self.walk, 0, 4)), blue_mask(cell(self.walk, 6, 4))
-        drop = HAND_DROP_M / 2 * math.cos(ELEVATION) * rs.PIXELS_PER_METER
-        self.assertAlmostEqual(mean_y(before) - mean_y(after), drop, delta=1.5)
-        self.assertAlmostEqual(mean_x(before), mean_x(after), delta=1.0)
+        # By mid-walk Hand has dropped 0.3 m and turned 45 degrees about its own Z (the bob is back at zero).
+        head = (HAND_HEAD[0], HAND_HEAD[1], HAND_HEAD[2] - HAND_DROP_M / 2)
+        for got, want in zip(mask_box(blue_mask(cell(self.walk, 6, 4))), box_px(stick_corners(head, HAND_TURN_DEG / 2), 4)):
+            self.assertAlmostEqual(got, want, delta=1.5)
+
+    def test_prop_turns_with_the_bone(self) -> None:
+        # In world metres: bound at the walk's first frame, and at its last, where Hand has dropped 0.6 m and turned 90 degrees.
+        staged = self.stage(self.root, "walk")
+        self.assert_stick_at(staged, stick_corners(HAND_HEAD))
+        rs.pose_at(staged, staged.end)
+        self.assert_stick_at(staged, stick_corners((HAND_HEAD[0], HAND_HEAD[1], HAND_HEAD[2] - HAND_DROP_M), HAND_TURN_DEG))
 
     def test_props_count_in_the_extents(self) -> None:
-        half = extents(self.printed)["idle"][2]
-        self.assertAlmostEqual(half, (HAND_HEAD[0] + STICK_OFFSET[1] + STICK_M / 2) * rs.PIXELS_PER_METER, delta=1.0)
+        corners = stick_corners(HAND_HEAD)
+        reach = max(float(np.abs(rs.project(corners, d)[0] - rs.CELL / 2).max()) for d in range(rs.DIRECTIONS))
+        self.assertAlmostEqual(extents(self.printed)["idle"][2], reach, delta=1.0)
 
     def test_prop_size_and_offset_ignore_the_fit_scale(self) -> None:
-        # A 3.6 m spec doubles the body, but the stick stays 0.9 m long and 0.5 m out, 0.45 m up from the hand.
+        # A 3.6 m spec doubles the body, Hand's head included, but the stick keeps its 0.9 m and its offset in metres.
         root = self.copy_fixture(fixture_spec(IDLE, height=3.6, attach=True))
-        spec = rs.load_spec(root / "art-src" / "units" / "fixture" / "spec.toml")
-        props = rs.resolve_props(spec, root / "art-src", root)
-        entry = spec.animations[0]
-        staged = rs.stage_animation(spec, root / "art-src" / "units" / "fixture" / entry.file, entry, props, "WORKBENCH")
-        lo, hi = rs.mesh_bounds(staged.prop_meshes)
-        self.assertAlmostEqual(max(hi - lo), STICK_M, delta=0.005)
+        staged = self.stage(root, "idle")
+        head = (2 * HAND_HEAD[0], 2 * HAND_HEAD[1], 2 * HAND_HEAD[2])
         armature = staged.armature.evaluated_get(bpy.context.evaluated_depsgraph_get())
-        head = armature.matrix_world @ armature.pose.bones["Hand"].head
-        self.assertAlmostEqual(head.z, 2 * HAND_HEAD[2], delta=0.01, msg="the body did double")
-        offset = (lo + hi) / 2 - head
-        self.assertAlmostEqual(offset.x, STICK_OFFSET[1], delta=0.005)
-        self.assertAlmostEqual(offset.z, STICK_OFFSET[2], delta=0.005)
+        got = armature.matrix_world @ armature.pose.bones["Hand"].head
+        self.assertLess((got - Vector(head)).length, 0.01, "the body did double")
+        self.assert_stick_at(staged, stick_corners(head))
 
     def test_unknown_bone_lists_the_rigs_bones(self) -> None:
         root = self.copy_fixture(fixture_spec(IDLE, bone="Elbow", attach=True))
@@ -510,6 +579,8 @@ class PropRenderTest(unittest.TestCase):
         self.assertIn("Elbow", str(caught.exception))
         self.assertIn("Hand", str(caught.exception))
         self.assertIn("Hips", str(caught.exception))
+        self.assertFalse((root / "assets").exists(), "no empty output folder left behind")
+        self.assertFalse((root / "art-src" / "units" / "fixture" / "review").exists(), "no empty review folder left behind")
 
     def test_missing_prop_model_says_how_to_buy_it(self) -> None:
         root = self.copy_fixture(fixture_spec(IDLE, attach=True))
@@ -530,21 +601,24 @@ class PropRenderTest(unittest.TestCase):
         sheet = rs.read_rgba(dest)
         # Columns: directions 0, 2, 4, 6. Rows: idle, then attack.
         self.assertEqual(sheet.shape[:2], (2 * (size + 2 * rs.GUTTER), 4 * (size + 2 * rs.GUTTER)))
+        expected = [2 * v for v in box_px(stick_corners(HAND_HEAD), 4)]
         for row in (0, 1):
             front = at(sheet, row, 2, size)
-            left, right = columns_of(blue_mask(front))
-            self.assertAlmostEqual(right + 1 - left, 2 * STICK_M * rs.PIXELS_PER_METER, delta=3.0, msg="twice the px per metre")
+            for got, want in zip(mask_box(blue_mask(front)), expected):
+                self.assertAlmostEqual(got, want, delta=2.5, msg="twice the px per metre")
             self.assertAlmostEqual(rows_of(grey_mask(front))[0], 2 * body_rows_in_front_view()[0], delta=2.0, msg="same pivot")
 
 
 class InPlaceWalkTest(unittest.TestCase):
-    """A walk whose root stays put: the stride comes from the feet."""
+    """A walk (1 s) and a run (2 s) whose roots stay put: the stride comes
+    from the feet. Both cover one 1.2 m stride per cycle, the run at half
+    the speed, so the clip's length has to count."""
 
     @classmethod
     def setUpClass(cls) -> None:
         cls._tmp = tempfile.TemporaryDirectory()
         cls.root = Path(cls._tmp.name)
-        cls.unit_dir = make_unit(cls.root, fixture_spec(WALK, IDLE), {"walk": "in_place", "idle": "idle"})
+        cls.unit_dir = make_unit(cls.root, fixture_spec(WALK, RUN, IDLE), {"walk": "in_place", "run": "in_place_slow", "idle": "idle"})
         _, cls.sidecar, cls.printed = render(cls.root)
 
     @classmethod
@@ -552,8 +626,9 @@ class InPlaceWalkTest(unittest.TestCase):
         cls._tmp.cleanup()
 
     def test_stride_comes_from_the_feet(self) -> None:
-        self.assertAlmostEqual(self.sidecar["animations"]["walk"]["stride_m"], STRIDE_M, delta=0.15)
-        self.assertIn("stride walk:", self.printed)
+        for name in ("walk", "run"):
+            self.assertAlmostEqual(self.sidecar["animations"][name]["stride_m"], STRIDE_M, delta=0.15, msg=name)
+            self.assertIn(f"stride {name}:", self.printed)
 
     def test_in_place_walk_without_feet_lists_the_bones(self) -> None:
         # The idle clip as a walk: it doesn't travel, and the rig has no foot bones.
@@ -660,6 +735,45 @@ class PlantedSymlinkTest(unittest.TestCase):
         repo.mkdir()
         message = self.refused(lambda: rs.render_unit("fixture", self.root / "art-src", self.root / "assets" / "units", engine="WORKBENCH", repo=repo))
         self.assertIn("outside", message)
+
+    def test_symlinked_unit_folder_is_refused(self) -> None:
+        real = self.root / "real_fixture"
+        self.unit_dir.rename(real)
+        self.unit_dir.symlink_to(real, target_is_directory=True)
+        self.assertIn("symlink", self.refused(self.render_unit))
+        self.assertFalse((self.root / "assets").exists())
+        self.assertFalse((real / "review").exists())
+
+    def test_symlinked_animation_is_refused(self) -> None:
+        (self.unit_dir / "anims" / "idle.glb").symlink_to(self.elsewhere / "victim.glb")
+        self.assertIn("idle.glb", self.refused(self.render_unit))
+        self.assertFalse((self.root / "assets").exists())
+
+    def test_symlinked_prop_is_refused(self) -> None:
+        # Read through render_unit's resolve_props: first a symlinked prop folder, then a symlinked model in a real one.
+        (self.unit_dir / "spec.toml").write_text(fixture_spec(IDLE, attach=True), encoding="utf-8")
+        real = self.root / "real_stick"
+        (real / "model").mkdir(parents=True)
+        (real / "spec.toml").write_text(STICK_SPEC, encoding="utf-8")
+        (real / "model" / "textured.glb").write_bytes(b"glTF")
+        prop_dir = self.root / "art-src" / "props" / "stick"
+        prop_dir.parent.mkdir(parents=True)
+        prop_dir.symlink_to(real, target_is_directory=True)
+        self.assertIn("symlink", self.refused(self.render_unit))
+        prop_dir.unlink()
+        (prop_dir / "model").mkdir(parents=True)
+        shutil.copy(real / "spec.toml", prop_dir / "spec.toml")
+        (prop_dir / "model" / "textured.glb").symlink_to(real / "model" / "textured.glb")
+        self.assertIn("textured.glb", self.refused(self.render_unit))
+        self.assertFalse((self.root / "assets").exists())
+
+    def test_symlink_between_the_repo_and_a_folder_is_refused(self) -> None:
+        # art-src/units -> another folder inside the repo: it stays inside, but the unit isn't where its path says.
+        units = self.root / "art-src" / "units"
+        units.rename(self.root / "other_units")
+        units.symlink_to(self.root / "other_units", target_is_directory=True)
+        self.assertIn("symlink", self.refused(self.render_unit))
+        self.assertFalse((self.root / "assets").exists())
 
     def test_symlinked_prop_review_is_refused(self) -> None:
         prop_dir = self.root / "art-src" / "props" / "stick"

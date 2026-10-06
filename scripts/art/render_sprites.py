@@ -142,19 +142,31 @@ class Extents:
 
 # --- safety -----------------------------------------------------------------
 
+def repo_root(src_root: Path, repo: Path | None) -> Path:
+    """The repo the renderer may read and write in: given, or the one holding art-src."""
+    return repo if repo is not None else src_root.parent
+
+
 def refuse_planted_links(repo: Path, folders: Iterable[Path]) -> None:
-    """Raises RuntimeError if a folder is a symlink, resolves outside the repo, or holds a symlink.
+    """Raises RuntimeError if a folder is a symlink, isn't where its path says, or holds a symlink.
 
     The repo is public, so a PR could plant a symlinked review/ or sheet and
-    have a render written over a file elsewhere. Checked before anything is
-    rendered or written. Folders that don't exist yet pass.
+    have a render written over a file elsewhere. A folder must resolve to
+    exactly its own path under the repo, so a symlink anywhere between the
+    repo and it (art-src/units -> ../.git, say) is refused too, even one
+    that stays inside the repo. Checked before anything is rendered or
+    written. Folders that don't exist yet pass.
     """
     inside = repo.resolve()
     for folder in folders:
         if folder.is_symlink():  # also true for a dangling one
             raise RuntimeError(f"{folder} is a symlink; replace it with a real folder")
-        if not folder.resolve().is_relative_to(inside):
-            raise RuntimeError(f"{folder} resolves outside {repo} (a folder on its path is a symlink?)")
+        try:
+            expected = inside / folder.relative_to(repo)
+        except ValueError:
+            raise RuntimeError(f"{folder} is outside {repo}") from None
+        if folder.resolve() != expected:
+            raise RuntimeError(f"{folder} resolves to {folder.resolve()}, not {expected}: a folder on its path is a symlink")
         for here, dirs, files in os.walk(folder, followlinks=False):
             for name in dirs + files:
                 if (Path(here) / name).is_symlink():
@@ -394,7 +406,7 @@ def render_to(path: Path) -> None:
 def resolve_props(spec: UnitSpec, src_root: Path, repo: Path | None = None) -> list[Prop]:
     """Finds and loads each prop the unit carries, before anything is rendered."""
     folders = [src_root / "props" / entry.prop for entry in spec.attach]
-    refuse_planted_links(repo or src_root.parent, folders)
+    refuse_planted_links(repo_root(src_root, repo), folders)
     props: list[Prop] = []
     for entry, folder in zip(spec.attach, folders):
         recipe, glb = folder / "spec.toml", folder / "model" / "textured.glb"
@@ -580,6 +592,7 @@ def gif(frames_dir: Path, frames: int, dest: Path) -> None:
     for d in range(DIRECTIONS):
         inputs += ["-framerate", str(FPS), "-i", str(frames_dir / f"d{d}" / "f%03d.png")]
     streams = "".join(f"[{d}:v]" for d in range(DIRECTIONS))
+    dest.parent.mkdir(parents=True, exist_ok=True)
     ffmpeg(*inputs, "-filter_complex",
            f"{streams}hstack=inputs={DIRECTIONS},split[a][b];[a]palettegen=reserve_transparent=1[p];[b][p]paletteuse",
            "-frames:v", str(frames), "-loop", "0", str(dest))
@@ -669,12 +682,13 @@ def render_unit(unit: str, src_root: Path, out_root: Path, engine: str = "EEVEE"
     unit_dir = src_root / "units" / unit
     out_dir = out_root / unit
     review = unit_dir / "review"
-    repo = repo or src_root.parent
+    repo = repo_root(src_root, repo)
     refuse_planted_links(repo, [unit_dir, review, out_dir])
     spec = load_spec(unit_dir / "spec.toml")
     props = resolve_props(spec, src_root, repo)
-    out_dir.mkdir(parents=True, exist_ok=True)
-    review.mkdir(parents=True, exist_ok=True)
+    # out_dir and review/ are made by their first write, so a render that
+    # stops early (an unknown bone shows only once the rig is loaded) leaves
+    # no empty folders behind.
     sidecar: dict[str, Any] = {
         "unit": spec.id, "cell": CELL, "gutter": GUTTER, "stride": STRIDE, "feet_px": FEET_PX,
         "pixels_per_meter": PIXELS_PER_METER, "elevation_deg": ELEVATION_DEG, "directions": DIRECTIONS,
@@ -700,6 +714,7 @@ def render_unit(unit: str, src_root: Path, out_root: Path, engine: str = "EEVEE"
         sidecar["gib_color"] = opaque_mean_color(work / first / "d4" / "f000.png")
     finally:
         shutil.rmtree(work, ignore_errors=True)
+    out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / f"{unit}.json").write_text(json.dumps(sidecar, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     if sidecar["clipped"]:
         print(f"WARNING: {len(sidecar['clipped'])} frames touch the cell edge (clipped): {sidecar['clipped'][:8]} ...")
@@ -715,7 +730,7 @@ def render_attach(unit: str, src_root: Path, engine: str = "EEVEE", repo: Path |
     """
     unit_dir = src_root / "units" / unit
     review = unit_dir / "review"
-    repo = repo or src_root.parent
+    repo = repo_root(src_root, repo)
     refuse_planted_links(repo, [unit_dir, review])
     spec = load_spec(unit_dir / "spec.toml")
     props = resolve_props(spec, src_root, repo)
@@ -730,8 +745,8 @@ def render_attach(unit: str, src_root: Path, engine: str = "EEVEE", repo: Path |
             staged = stage_animation(spec, unit_dir / entry.file, entry, props, engine, size)
             if not cells:
                 print(f"bones of {unit}'s rig: {', '.join(b.name for b in staged.armature.pose.bones)}")
-            k = 0 if entry.name == "idle" else impact_index(entry, len(staged.frames))
-            pose_at(staged, staged.frames[k if k >= 0 else len(staged.frames) // 2])
+            count = len(staged.frames)
+            pose_at(staged, staged.frames[key_frame(entry.name, {"frames": count, "impact_frame": impact_index(entry, count)})])
             for d in ATTACH_VIEWS:
                 place_camera(staged.camera, d)
                 path = Path(tmp) / f"{entry.name}_d{d}.png"
@@ -742,11 +757,16 @@ def render_attach(unit: str, src_root: Path, engine: str = "EEVEE", repo: Path |
     return dest
 
 
+def candidate_files(folder: Path) -> list[Path]:
+    """The Meshy candidates in folder, cand-1.glb first."""
+    return sorted(folder.glob("cand-*.glb"), key=lambda p: int(p.stem.split("-")[1]))
+
+
 def render_candidates(unit: str, src_root: Path, engine: str = "EEVEE", repo: Path | None = None) -> Path:
     unit_dir = src_root / "units" / unit
-    refuse_planted_links(repo or src_root.parent, [unit_dir, unit_dir / "review"])
+    refuse_planted_links(repo_root(src_root, repo), [unit_dir, unit_dir / "review"])
     spec = load_spec(unit_dir / "spec.toml")
-    files = sorted((unit_dir / "candidates").glob("cand-*.glb"), key=lambda p: int(p.stem.split("-")[1]))
+    files = candidate_files(unit_dir / "candidates")
     if not files:
         raise RuntimeError(f"no candidates in {unit_dir / 'candidates'}; run meshy.py candidates first")
     dest = unit_dir / "review" / "candidates.png"
@@ -798,9 +818,9 @@ def render_prop_candidates(prop: str, src_root: Path, repo: Path | None = None) 
     """A prop's candidate sheet: one row per candidates/cand-N.glb, seen from
     the front, side, back and three-quarter above, each framed to its bounds."""
     prop_dir = src_root / "props" / prop
-    refuse_planted_links(repo or src_root.parent, [prop_dir, prop_dir / "review"])
+    refuse_planted_links(repo_root(src_root, repo), [prop_dir, prop_dir / "review"])
     load_prop_spec(prop_dir / "spec.toml")  # checks the recipe is there and its id matches
-    files = sorted((prop_dir / "candidates").glob("cand-*.glb"), key=lambda p: int(p.stem.split("-")[1]))
+    files = candidate_files(prop_dir / "candidates")
     if not files:
         raise RuntimeError(f"no candidates in {prop_dir / 'candidates'}; run meshy.py prop-candidates {prop} first")
     dest = prop_dir / "review" / "candidates.png"
