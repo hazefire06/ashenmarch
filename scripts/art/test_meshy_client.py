@@ -91,7 +91,7 @@ class WaitTest(unittest.TestCase):
 class HttpTest(unittest.TestCase):
     def test_http_errors_carry_status_and_message_but_never_the_key(self) -> None:
         error = urllib.error.HTTPError("https://api.meshy.ai/x", 402, "Payment Required", {}, io.BytesIO(b'{"message": "Insufficient credits"}'))
-        with mock.patch.object(meshy_client.urllib.request, "urlopen", side_effect=error):
+        with mock.patch.object(meshy_client.urllib.request.OpenerDirector, "open", side_effect=error):
             call = http_transport("not-a-real-key")
             with self.assertRaises(MeshyError) as caught:
                 call("POST", "/openapi/v2/text-to-3d", {"mode": "preview"})
@@ -114,12 +114,85 @@ class HttpTest(unittest.TestCase):
     def test_an_expired_link_says_what_to_do_without_the_url(self) -> None:
         url = "https://assets.meshy.ai/t/model.glb?Expires=1&Signature=SECRETSIG"
         error = urllib.error.HTTPError(url, 403, "Forbidden", {}, io.BytesIO(b""))
-        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(meshy_client.urllib.request, "urlopen", side_effect=error):
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(meshy_client.urllib.request.OpenerDirector, "open", side_effect=error):
             with self.assertRaises(MeshyError) as caught:
                 http_downloader(url, Path(tmp) / "m.glb")
             self.assertFalse((Path(tmp) / "m.glb.part").exists())
         self.assertIn("expire", str(caught.exception))
         self.assertNotIn("SECRETSIG", str(caught.exception))
+
+    def test_a_malformed_key_is_refused_without_echoing_it(self) -> None:
+        with self.assertRaisesRegex(MeshyError, "empty|spaces|control"):
+            http_transport("FAKEKEY123\n")
+        with self.assertRaisesRegex(MeshyError, "empty|spaces|control"):
+            http_transport("bad key")
+
+    def test_a_lost_create_warns_about_paying_twice(self) -> None:
+        mock_open = mock.MagicMock()
+        mock_open.open.side_effect = TimeoutError("timed out")
+        with mock.patch.object(meshy_client.urllib.request, "build_opener", return_value=mock_open):
+            call = http_transport("k")
+            with self.assertRaises(MeshyError) as caught:
+                call("POST", "/openapi/v2/text-to-3d", {"mode": "preview"})
+            self.assertIn("pay twice", str(caught.exception))
+            self.assertFalse(caught.exception.retryable)
+            with self.assertRaises(MeshyError) as caught:
+                call("GET", "/openapi/v2/text-to-3d/t1", None)
+            self.assertTrue(caught.exception.retryable)
+            self.assertNotIn("pay twice", str(caught.exception))
+
+    def test_a_reply_that_is_not_json_is_a_meshy_error(self) -> None:
+        mock_response = mock.MagicMock()
+        mock_response.read.return_value = b"<html>"
+        mock_response.__enter__ = mock.MagicMock(return_value=mock_response)
+        mock_response.__exit__ = mock.MagicMock(return_value=None)
+        mock_opener = mock.MagicMock()
+        mock_opener.open.return_value = mock_response
+        with mock.patch.object(meshy_client.urllib.request, "build_opener", return_value=mock_opener):
+            call = http_transport("k")
+            with self.assertRaises(MeshyError) as caught:
+                call("GET", "/openapi/v2/text-to-3d/t1", None)
+            self.assertIn("isn't JSON", str(caught.exception))
+
+    def test_api_calls_refuse_redirects(self) -> None:
+        req = urllib.request.Request("https://api.meshy.ai/x")
+        result = meshy_client._NoRedirects().redirect_request(req, None, 302, "Found", {}, "https://evil.example/")
+        self.assertIsNone(result)
+
+    def test_downloads_follow_redirects_only_to_allowed_hosts(self) -> None:
+        req = urllib.request.Request("https://assets.meshy.ai/m.glb")
+        result = meshy_client._AllowlistedRedirects().redirect_request(req, None, 302, "Found", {}, "https://evil.example/m.glb")
+        self.assertIsNone(result)
+        result = meshy_client._AllowlistedRedirects().redirect_request(req, None, 302, "Found", {}, "https://assets.meshy.ai/other.glb")
+        self.assertIsNotNone(result)
+
+
+class WaitRetryTest(unittest.TestCase):
+    def test_wait_retries_a_blip(self) -> None:
+        sleeps: list[float] = []
+        t = FakeTransport([MeshyError("blip", retryable=True), {"status": "SUCCEEDED"}])
+        task = client(t, sleeps).wait("text-to-3d", "task-1")
+        self.assertEqual(task["status"], "SUCCEEDED")
+        self.assertEqual(sleeps, [5.0])
+
+    def test_wait_gives_up_after_repeated_blips(self) -> None:
+        t = FakeTransport([
+            MeshyError("blip1", retryable=True),
+            MeshyError("blip2", retryable=True),
+            MeshyError("blip3", retryable=True),
+            MeshyError("blip4", retryable=True),
+        ])
+        with self.assertRaises(MeshyError) as caught:
+            client(t).wait("text-to-3d", "task-1")
+        self.assertIn("blip4", str(caught.exception))
+
+    def test_wait_does_not_retry_a_real_error(self) -> None:
+        sleeps: list[float] = []
+        t = FakeTransport([MeshyError("HTTP 401", retryable=False)])
+        with self.assertRaises(MeshyError) as caught:
+            client(t, sleeps).wait("text-to-3d", "task-1")
+        self.assertEqual(sleeps, [])
+        self.assertIn("HTTP 401", str(caught.exception))
 
 
 if __name__ == "__main__":
