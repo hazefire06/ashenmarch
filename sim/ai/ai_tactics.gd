@@ -36,19 +36,35 @@ static func is_standoff(unit: Unit) -> bool:
 	return unit.type.ai_tactic == UnitType.AiTactic.STANDOFF
 
 
-## The units among units that aren't STANDOFF, or all of them if every one
-## is: whose centroid says where a group stands, since its STANDOFF members
-## stop short of where it marches.
-static func front(units: Array[Unit]) -> Array[Unit]:
+## True if the unit keeps behind the rest of group: a STANDOFF member always,
+## and in a group whose spec sets ranged_behind (a skirmish commander's) any
+## ranged or support member and any MEDIC too. These stop short of an attack
+## march's goal (behind), are left out of where the group is said to stand
+## (front), and are who the melee guards (threats).
+static func is_back(group: AiGroup, unit: Unit) -> bool:
+	if is_standoff(unit):
+		return true
+	if group == null or not group.spec.ranged_behind:
+		return false
+	return unit.type.role != UnitType.Role.MELEE or unit.type.ai_tactic == UnitType.AiTactic.MEDIC
+
+
+## The units among units that don't keep behind (is_back; without a group,
+## those that aren't STANDOFF), or all of them if every one does: whose
+## centroid says where a group stands, since the others stop short of where
+## it marches.
+static func front(units: Array[Unit], group: AiGroup = null) -> Array[Unit]:
 	var out: Array[Unit] = []
 	for unit: Unit in units:
-		if not is_standoff(unit):
+		if not is_back(group, unit):
 			out.append(unit)
 	return out if not out.is_empty() else units
 
 
-## Where a march of marched (members of group) to (x, z) sends its STANDOFF
-## members. An attack march stops them STANDOFF_BEHIND short of it, on the
+## Where a march of marched (members of group) to (x, z) sends the members
+## that keep behind (is_back: STANDOFF members, and in a ranged_behind group
+## its ranged and support). An attack march stops them STANDOFF_BEHIND short
+## of it, on the
 ## line from the centroid of marched, so they come up behind the rest and
 ## shoot over them. A plain move (a retreat, a recall, a flank's approach)
 ## sends them to (x, z) itself: nobody is fighting there to stand behind, and
@@ -62,7 +78,7 @@ static func behind(
 	world: World, group: AiGroup, marched: Array[Unit], x: int, z: int, attack: bool
 ) -> Vector2i:
 	var living: Array[Unit] = group.living(world)
-	if not attack or front(living).size() == living.size():
+	if not attack or front(living, group).size() == living.size():
 		return Vector2i(x, z)
 	var c: Vector2i = AiOrders.centroid(marched)
 	var back: Vector2i = FixedMath.normalize(x - c.x, z - c.y, STANDOFF_BEHIND)
@@ -70,12 +86,13 @@ static func behind(
 
 
 ## The visible enemies within PROTECT_RADIUS (center to center) of any
-## living STANDOFF member of group, in ascending id: what its ASSAULT
-## members go for first.
+## living member of group that keeps behind (is_back: a STANDOFF member, or
+## in a ranged_behind group any ranged or support one), in ascending id: what
+## its ASSAULT members go for first.
 static func threats(world: World, group: AiGroup) -> Array[Unit]:
 	var guarded: Array[Unit] = []
 	for unit: Unit in group.living(world):
-		if is_standoff(unit):
+		if is_back(group, unit):
 			guarded.append(unit)
 	var out: Array[Unit] = []
 	if guarded.is_empty():

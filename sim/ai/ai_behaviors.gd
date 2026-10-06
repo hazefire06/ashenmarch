@@ -29,6 +29,9 @@ extends RefCounted
 ##   only while one of the player's units is near, and waits where it stands
 ##   while the friend is far or a visible enemy is close (a villager led
 ##   across a river).
+## - ADVANCE: marches to its anchor and holds it, fighting visible enemies
+##   within its engage radius; a skirmish commander moves the anchor
+##   (AiDirector.advance). See _advance.
 
 ## What a leg (one march to one goal) came to.
 enum LegResult {
@@ -50,6 +53,8 @@ const GUARD_LEASH_PERMILLE: int = 1500
 ## Guard radius for a GUARD group whose spec has none (a group sent to guard
 ## by the AI rather than by its spec).
 const DEFAULT_GUARD_RADIUS: int = 10000
+## An ADVANCE group's hold radius when it has none (AiGroup.hold_radius).
+const DEFAULT_HOLD_RADIUS: int = 6000
 ## How far from the nearest member of a group a visible enemy may stand and
 ## still count against it in a retreat, in milli-units (center to center). An
 ## enemy fighting or shooting a member counts wherever it stands.
@@ -102,7 +107,7 @@ static func switch_to(world: World, group: AiGroup, behavior: AiGroupSpec.Behavi
 ## one retry, sending everyone again (a WAYPOINT_FAILED event with value -1),
 ## and then FAILED. A finished leg is inactive, so calling again for the same
 ## goal starts a new one. Where they ended up is the centroid of the members
-## that aren't STANDOFF (AiTactics.front): those stop short of the goal on
+## that don't keep behind (AiTactics.front): those stop short of the goal on
 ## purpose. A caller that must pull busy members away (a retreat) forces its
 ## own march first.
 static func leg(
@@ -118,7 +123,7 @@ static func leg(
 	AiOrders.march(world, group, units, x, z, attack)
 	if not _leg_done(world, group, units, x, z):
 		return LegResult.RUNNING
-	var c: Vector2i = AiOrders.centroid(AiTactics.front(units))
+	var c: Vector2i = AiOrders.centroid(AiTactics.front(units, group))
 	if FixedMath.length(c.x - x, c.y - z) <= LEG_ARRIVE_RADIUS:
 		group.leg_active = false
 		return LegResult.ARRIVED
@@ -150,6 +155,8 @@ static func _run(world: World, group: AiGroup, units: Array[Unit]) -> void:
 			_retreat(world, group, units)
 		AiGroupSpec.Behavior.ESCORT:
 			_escort(world, group, units)
+		AiGroupSpec.Behavior.ADVANCE:
+			_advance(world, group, units)
 
 
 # Every member has finished, is free, and was last sent to (x, z).
@@ -468,6 +475,65 @@ static func _escort(world: World, group: AiGroup, units: Array[Unit]) -> void:
 	group.waypoint_index = i + 1
 	var next: Vector2i = _waypoint(spec, i + 1)
 	leg(world, group, units, next.x, next.y, false)
+
+
+# ADVANCE, in AiGroup.phase: 0 walking to the anchor, 1 holding it.
+# 1. Attack-marching (march_attack), visible enemies within engage_radius of
+#    the members' centroid (center to center) are fought first (engage, so the
+#    bodyguard rule and the tactics apply); a member busy fighting is left to
+#    it, walking or holding.
+# 2. Walking: one leg to the anchor, attack-moving or not. Arrived or failed,
+#    it holds where it got.
+# 3. Holding: if no member stands within the hold radius of the anchor (a
+#    capture zone with nobody in it, after a chase), the free members walk
+#    back to it; free members that finished a chase farther than
+#    engage_radius out walk back too. One already recorded as sent to the
+#    anchor is sent again with a forced march, since a march skips those.
+# It never force-moves a member that isn't free, never switches behavior and
+# never retreats: the commander decides when to fall back, by moving the
+# anchor with march_attack off.
+static func _advance(world: World, group: AiGroup, units: Array[Unit]) -> void:
+	var ax: int = group.anchor_x
+	var az: int = group.anchor_z
+	if group.march_attack and group.engage_radius > 0:
+		var c: Vector2i = AiOrders.centroid(AiTactics.front(units, group))
+		var near: Array[Unit] = []
+		for enemy: Unit in AiOrders.enemies(world, group.faction):
+			if _distance(enemy, c.x, c.y) <= group.engage_radius:
+				near.append(enemy)
+		if not near.is_empty() and AiOrders.engage(world, group, units, near):
+			return
+	if group.phase == 0:
+		if leg(world, group, units, ax, az, group.march_attack) == LegResult.RUNNING:
+			return
+		group.phase = 1
+	var hold: int = group.hold_radius if group.hold_radius > 0 else DEFAULT_HOLD_RADIUS
+	var anyone_in: bool = false
+	for unit: Unit in units:
+		if _distance(unit, ax, az) <= hold:
+			anyone_in = true
+			break
+	var back: Array[Unit] = []
+	for unit: Unit in units:
+		if not AiOrders.is_free(world, unit):
+			continue
+		var d: int = _distance(unit, ax, az)
+		if (not anyone_in and d > hold) or (d > group.engage_radius and AiOrders.is_done(unit)):
+			back.append(unit)
+	if back.is_empty():
+		return
+	var resend: Array[Unit] = []
+	var fresh: Array[Unit] = []
+	for unit: Unit in back:
+		var i: int = group.member_index(unit.id)
+		if group.ordered_x[i] == ax and group.ordered_z[i] == az:
+			if AiOrders.is_done(unit):
+				resend.append(unit)
+		else:
+			fresh.append(unit)
+	AiOrders.march(world, group, fresh, ax, az, group.march_attack)
+	if not resend.is_empty():
+		AiOrders.march(world, group, resend, ax, az, group.march_attack, true)
 
 
 # True if a friend stands within radius (center to center) of any of units: a

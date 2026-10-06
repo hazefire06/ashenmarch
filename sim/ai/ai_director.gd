@@ -15,6 +15,9 @@ const THINK_TICKS: int = 15
 ## Every group ever spawned, in creation order (ascending id). Emptied groups
 ## stay, so triggers can tell a cleared group from one that never spawned.
 var groups: Array[AiGroup] = []
+## The skirmish commanders, one per side the AI plays, in the order added.
+## Each thinks before the groups, so its orders are planned on the same tick.
+var commanders: Array[SkirmishCommander] = []
 
 var _next_group_id: int = 1
 ## Every unit id any group ever spawned, so controls() is a lookup instead of a
@@ -83,6 +86,40 @@ func set_behavior(world: World, group: AiGroup, behavior: AiGroupSpec.Behavior) 
 	world.ai_events.append(AiEvent.new(AiEvent.Kind.BEHAVIOR, group.id, 0, 0, behavior))
 
 
+## Sends an ADVANCE group to (x, z): it marches there and holds it, fighting
+## visible enemies within engage_radius of its members' centroid on the way
+## and once there, attack-moving if attack (a plain move, which doesn't stop
+## to fight, if not), and walking back to it if nobody is within hold_radius
+## (0: AiBehaviors.DEFAULT_HOLD_RADIUS). A group in another behavior switches
+## to ADVANCE (set_behavior). One already advancing keeps its march unless
+## the new point is far enough from the old one to matter: more than a
+## quarter of the members' distance to it, and at least AiOrders.REORDER_MIN,
+## or attack changed; the radii are updated either way. A new march starts
+## at the group's next update. Returns true if the march changed.
+func advance(
+	world: World, group: AiGroup, x: int, z: int, engage_radius: int, hold_radius: int, attack: bool
+) -> bool:
+	group.engage_radius = engage_radius
+	group.hold_radius = hold_radius
+	if group.behavior == AiGroupSpec.Behavior.ADVANCE and attack == group.march_attack:
+		var moved: int = FixedMath.length(x - group.anchor_x, z - group.anchor_z)
+		var c: Vector2i = AiOrders.centroid(AiTactics.front(group.living(world), group))
+		var slack: int = maxi(AiOrders.REORDER_MIN, FixedMath.length(x - c.x, z - c.y) / 4)
+		if moved <= slack:
+			return false
+	group.anchor_x = x
+	group.anchor_z = z
+	group.march_attack = attack
+	if group.behavior != AiGroupSpec.Behavior.ADVANCE:
+		set_behavior(world, group, AiGroupSpec.Behavior.ADVANCE)
+	else:
+		group.phase = 0
+		group.leg_active = false
+		group.leg_retried = false
+		group.think_now = true
+	return true
+
+
 ## Brings an ambush up: every living member surfaces for good (Unit.surfaced),
 ## so it can be seen and fought in deep water, and one AMBUSH_SPRUNG is
 ## reported at the members' centroid with the member count. A group with no
@@ -107,11 +144,14 @@ func groups_of(spec_index: int) -> Array[AiGroup]:
 	return out
 
 
-## Runs once a tick, after the mission's triggers, group by group in creation
-## order: drops members that died or changed side, then a group that still has
-## members thinks if it is its turn or think_now is set. The think spends the
-## request: think_now is cleared before it.
+## Runs once a tick, after the mission's triggers: first each commander, in
+## the order added, thinks if it is its turn (SkirmishCommander.update); then,
+## group by group in creation order, drops members that died or changed side,
+## and a group that still has members thinks if it is its turn or think_now
+## is set. The think spends the request: think_now is cleared before it.
 func update(world: World) -> void:
+	for commander: SkirmishCommander in commanders:
+		commander.update(world)
 	for group: AiGroup in groups:
 		group.prune(world)
 		if group.members.is_empty():
@@ -121,9 +161,13 @@ func update(world: World) -> void:
 			AiBehaviors.think(world, group)
 
 
-## Everything the AI keeps: the next group id, then each group's fields.
+## Everything the AI keeps: the next group id, then each group's fields, then
+## the commanders (their count first).
 func hash_fields() -> PackedInt64Array:
 	var fields: PackedInt64Array = PackedInt64Array([_next_group_id, groups.size()])
 	for group: AiGroup in groups:
 		fields.append_array(group.hash_fields())
+	fields.append(commanders.size())
+	for commander: SkirmishCommander in commanders:
+		fields.append_array(commander.hash_fields())
 	return fields

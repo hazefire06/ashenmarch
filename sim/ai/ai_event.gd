@@ -33,6 +33,10 @@ enum Kind {
 	ESCORT_WAIT,
 	## An escort set off again toward waypoint `value`, at (x, z).
 	ESCORT_GO,
+	## A skirmish commander thought (SkirmishCommander): group_id is its main
+	## group, (x, z) its objective, `value` its Posture, and unit_id the
+	## objective flag's index + 1 (0 when the objective is a point).
+	COMMANDER,
 }
 
 ## What happened.

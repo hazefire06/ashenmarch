@@ -40,6 +40,11 @@ enum Behavior {
 	## falls behind or an enemy comes within alert_radius (a villager led
 	## across a ford). It never switches on an alert and never retreats.
 	ESCORT,
+	## Marches to its anchor and holds it, fighting visible enemies that come
+	## within its engage radius on the way and once there; a skirmish
+	## commander moves the anchor (AiDirector.advance). It never switches on
+	## its own, never calls a member back from a fight, and never retreats.
+	ADVANCE,
 }
 
 ## How a PATROL walks its waypoints.
@@ -78,7 +83,9 @@ enum PatrolMode {
 @export var waypoints: PackedInt32Array = PackedInt32Array()
 ## PATROL: how it walks the waypoints, round in a loop or out and back.
 @export var patrol_mode: PatrolMode = PatrolMode.LOOP
-## GUARD: how far from its post it chases an enemy.
+## GUARD: how far from its post it chases an enemy. ADVANCE: how far from the
+## members' centroid an enemy may be for the group to fight it (AiGroup's
+## engage_radius starts as this).
 @export var guard_radius: int = 0
 ## PATROL: an enemy this close (center to center, to any member) switches the
 ## group to on_alert; 0 never does. AMBUSH: the radius that springs it, which
@@ -100,6 +107,12 @@ enum PatrolMode {
 @export var retreat_below_permille: int = 0
 ## Where RETREAT falls back to, one x, z pair. Empty: its spawn point.
 @export var retreat_point: PackedInt32Array = PackedInt32Array()
+## True: the group's ranged and support members (and MEDICs) keep behind its
+## melee the way STANDOFF members do: an attack march stops them short of the
+## goal, a leg judges arrival by the rest, and the melee goes first for
+## enemies that threaten them (AiTactics.is_back). A skirmish commander's
+## groups set it; a mission's leave it false, so they act as they always have.
+@export var ranged_behind: bool = false
 ## ESCORT: how close (center to center) a friend must be to any member for the
 ## group to walk, in milli-units. Must be above 0 for an ESCORT. A group that
 ## is already walking tolerates the friend 2 m farther before it waits
@@ -199,6 +212,9 @@ func _param_problems(b: Behavior) -> PackedStringArray:
 		Behavior.GUARD:
 			if guard_radius <= 0:
 				problems.append("GUARD needs guard_radius > 0")
+		Behavior.ADVANCE:
+			if guard_radius <= 0:
+				problems.append("ADVANCE needs guard_radius > 0 (its engage radius)")
 		Behavior.AMBUSH:
 			if alert_radius <= 0:
 				problems.append("AMBUSH needs alert_radius > 0")
