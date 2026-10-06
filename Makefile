@@ -1,7 +1,7 @@
 GODOT ?= godot
 MAC_APP := build/mac/Ashenmarch.app
 
-.PHONY: import run demo demo-projectiles demo-abilities demo-ai test check-sim export-mac maps fixtures playtest skirmish-playtest capture capture-skirmish hooks check-leaks check-layout test-art art-candidates art-render
+.PHONY: import run demo demo-projectiles demo-abilities demo-ai test check-sim export-mac maps fixtures playtest skirmish-playtest capture capture-skirmish hooks check-leaks check-layout test-art art-candidates art-render art-attach art-prop-candidates
 
 # Builds the .godot/ import and class_name cache. A fresh clone has none, and
 # GUT can't resolve class_name types without it.
@@ -163,3 +163,12 @@ art-candidates:
 # Renders UNIT's animations into assets/units/UNIT/ plus its review sheets (free).
 art-render:
 	$(BLENDER_RUN) --python scripts/art/render_sprites.py -- $(UNIT)
+
+# Renders UNIT's idle and attacks with its props into art-src/units/UNIT/review/attach.png,
+# for tuning the [[attach]] offsets and rotations by eye (free).
+art-attach:
+	$(BLENDER_RUN) --python scripts/art/render_sprites.py -- $(UNIT) --attach
+
+# Renders PROP's Meshy candidates into art-src/props/PROP/review/candidates.png (free).
+art-prop-candidates:
+	$(BLENDER_RUN) --python scripts/art/render_sprites.py -- $(PROP) --prop-candidates

@@ -157,13 +157,13 @@ art-src/units/<id>/               downloaded GLB/FBX and candidate thumbnails (L
 
 This runs headless in Blender 5.2.2 LTS (`/Applications/Blender.app/Contents/MacOS/Blender`, overridable with `$BLENDER`). It is free, and Claude runs it.
 
-- **Camera:** orthographic at a fixed 50° elevation (the middle of the in-game 35–65°), 8 yaw angles 45° apart, feet pinned to a fixed pivot.
+- **Camera:** orthographic at a fixed 50° elevation (the middle of the in-game 35–65°), 8 yaw angles 45° apart, feet pinned to a fixed pivot 40 px above the cell's bottom edge, 52 px per metre.
 - **Lighting is fixed relative to the camera,** so every direction reads the same.
-- **Root motion is stripped** so characters animate in place. Walk stride (metres per cycle) is measured and saved.
-- **Frames:** 12 fps by default (configurable per clip), 128 px cells with a 4 px transparent gap so mipmaps don't bleed between frames.
+- **Root motion is stripped** so characters animate in place. Walk stride (metres per cycle) is measured and saved. A clip that already plays in place (its root travels under 5 cm, like Meshy's rig walk) is measured from the feet instead: the planted foot slides backward at ground speed.
+- **Frames:** 12 fps by default (configurable per clip), 160 px cells with a 4 px transparent gap (a 168 px stride) so mipmaps don't bleed between frames. At 128 px with the feet 20 px up, the first Shieldman render clipped dying and attacking frames at the bottom, and props raised overhead need room too.
 - **Output:**
-  - one PNG sheet per animation, 8 rows (one per direction), into `assets/units/<id>/`;
-  - a JSON sidecar with frame counts, fps, impact frame, stride, figure height in px, and gib colour;
+  - one PNG sheet per animation into `assets/units/<id>/`, one band of rows per direction. Sheets wrap at 4096 px wide, since Web (WebGL) may cap textures there: 24 columns, so frame `i` of direction `d` sits at column `i % columns`, row `d * rows_per_direction + i // columns`;
+  - a JSON sidecar with frame counts, fps, impact frame, stride, `columns` and `rows_per_direction` per animation, figure height in px, and gib colour;
   - the **contact sheet** for Tim's approval.
 
 ### 6.2a Props: weapons and gear on bones
@@ -193,7 +193,7 @@ rotation = [0.0, 0.0, 0.0]   # degrees, XYZ Euler, in the bone's space
 ```
 
 - **Blender:** imports each prop's `textured.glb`, scales it so its longest axis is `length_m`, and centres it on its bounding box. It then parents the prop to the bone, applies `offset` and `rotation`, and renders it with the body in every animation and direction.
-- **Tuning:** `make art-attach UNIT=<id>` (free) renders a few frames of idle and attack from the front and side, so Claude can tune offsets and rotations by eye before the full render.
+- **Tuning:** `make art-attach UNIT=<id>` (free, `render_sprites.py <id> --attach`) writes `art-src/units/<id>/review/attach.png`: directions 0, 2, 4 and 6 across; idle, then each attack at its impact frame, down; twice the game cell's pixels per metre. It prints the rig's bone names. Offsets start from the bone's head, in the bone's axes, so Claude tunes them by eye on this sheet before the full render.
 - **Shieldman:**
   - broadsword in the right hand;
   - targe strapped to the left forearm;

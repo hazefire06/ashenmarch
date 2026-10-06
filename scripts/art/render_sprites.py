@@ -3,9 +3,11 @@
 Runs inside Blender, headless:
 
     $BLENDER -b --factory-startup --python-exit-code 1 \
-        --python scripts/art/render_sprites.py -- <unit> [--candidates] [--engine EEVEE|WORKBENCH|CYCLES]
+        --python scripts/art/render_sprites.py -- <name> [--candidates | --attach | --prop-candidates] \
+        [--engine EEVEE|WORKBENCH|CYCLES]
 
-(`make art-render UNIT=shieldman`, `make art-candidates UNIT=shieldman`.)
+(`make art-render UNIT=shieldman`, `make art-candidates UNIT=shieldman`,
+`make art-attach UNIT=shieldman`, `make art-prop-candidates PROP=broadsword`.)
 
 Direction convention, shared with view/units/unit_art.gd: direction d shows
 the unit facing d * 45 degrees counter-clockwise (seen from above) from the
@@ -16,43 +18,62 @@ the importer turns into Blender -Y.
 The camera is orthographic at a fixed elevation, with its lights riding on
 it so every direction is lit alike. The root bone's horizontal travel is
 cancelled, so the unit animates in place; the walk's travel per cycle is
-saved as stride_m, so the game can play the legs at ground speed. Sheets,
-import settings and a JSON sidecar go to assets/units/<unit>/. The contact
-sheet and per-animation GIFs for review go to art-src/units/<unit>/review/.
+saved as stride_m, so the game can play the legs at ground speed. A clip
+that already plays in place (Meshy's rig walk) has its stride measured from
+the planted foot instead. The unit's props (spec §6.2a) are fixed to their
+bones after the height fit, so they never count toward it. Sheets wrap at
+MAX_SHEET_PX wide. Sheets, import settings and a JSON sidecar go to
+assets/units/<unit>/. The contact sheet, per-animation GIFs and the attach
+preview go to art-src/units/<unit>/review/; a prop's candidate sheet to
+art-src/props/<prop>/review/. Nothing is written, or read, through a symlink.
 """
 from __future__ import annotations
 
 import argparse
 import json
 import math
+import os
 import shutil
+import statistics
 import subprocess
 import sys
 import tempfile
+from collections.abc import Iterable
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
 import bpy
 import numpy as np
-from mathutils import Matrix, Vector
+from mathutils import Euler, Matrix, Vector
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 from clips import pick_clip  # noqa: E402
-from unit_spec import AnimEntry, UnitSpec, load_spec  # noqa: E402
+from unit_spec import NAME, AnimEntry, AttachEntry, PropSpec, UnitSpec, load_prop_spec, load_spec  # noqa: E402
 
 REPO = HERE.parent.parent
-CELL = 128
+CELL = 160
 GUTTER = 4
 STRIDE = CELL + 2 * GUTTER
-FEET_PX = 20
+FEET_PX = 40
 PIXELS_PER_METER = 52.0
+# Web (WebGL) may cap textures at 4096 px, so a long animation's frames wrap onto more rows.
+MAX_SHEET_PX = 4096
 ELEVATION_DEG = 50.0
 DIRECTIONS = 8
 FPS = 12
 CAMERA_DISTANCE = 30.0
 FORWARD = Vector((0.0, -1.0, 0.0))
 CANDIDATE_VIEWS = (0, 2, 4, 6)
+ATTACH_VIEWS = (0, 2, 4, 6)
+# A walk or run whose root travels less than this over the clip plays in place; its stride comes from the feet.
+IN_PLACE_M = 0.05
+PROP_CELL = 256
+# (label, camera azimuth from the prop's front in degrees, elevation in degrees); a Meshy model faces -Y, like a unit.
+PROP_VIEWS = (("front", 0.0, 0.0), ("side", 90.0, 0.0), ("back", 180.0, 0.0), ("three-quarter", 45.0, 35.0))
+PROP_BACKDROP = (0.9, 0.9, 0.88)
+PROP_CLAY = (0.6, 0.55, 0.5)
 GAME_ENGINES = {
     "EEVEE": ("BLENDER_EEVEE_NEXT", "BLENDER_EEVEE"),
     "WORKBENCH": ("BLENDER_WORKBENCH",),
@@ -76,13 +97,77 @@ detect_3d/compress_to=0
 """
 
 
+@dataclass(frozen=True)
+class Prop:
+    """One [[attach]] entry, with its recipe and model found and checked."""
+    entry: AttachEntry
+    spec: PropSpec
+    glb: Path
+
+
+@dataclass
+class Staged:
+    """One animation loaded, fitted and carrying its props, ready to pose."""
+    camera: bpy.types.Object
+    armature: bpy.types.Object
+    holder: bpy.types.Object
+    base: Vector
+    action: bpy.types.Action | None
+    start: float
+    end: float
+    frames: list[float]
+    prop_meshes: list[bpy.types.Object] = field(default_factory=list)
+
+
+@dataclass
+class Extents:
+    """How far the figure reaches in its cell, worst over every frame and direction: px above the
+    cell's bottom edge (negative below it) and px either side of its centre line."""
+    lowest: float = math.inf
+    highest: float = -math.inf
+    half_width: float = 0.0
+
+    def add(self, points: np.ndarray, direction: int) -> None:
+        if len(points) == 0:
+            return
+        x, y = project(points, direction)
+        self.lowest = min(self.lowest, float(y.min()))
+        self.highest = max(self.highest, float(y.max()))
+        self.half_width = max(self.half_width, float(np.abs(x - CELL / 2).max()))
+
+    def line(self, name: str) -> str:
+        return (f"extents {name}: lowest {self.lowest:.1f} above the bottom, highest {self.highest:.1f}, "
+                f"half-width {self.half_width:.1f} (cell {CELL})")
+
+
+# --- safety -----------------------------------------------------------------
+
+def refuse_planted_links(repo: Path, folders: Iterable[Path]) -> None:
+    """Raises RuntimeError if a folder is a symlink, resolves outside the repo, or holds a symlink.
+
+    The repo is public, so a PR could plant a symlinked review/ or sheet and
+    have a render written over a file elsewhere. Checked before anything is
+    rendered or written. Folders that don't exist yet pass.
+    """
+    inside = repo.resolve()
+    for folder in folders:
+        if folder.is_symlink():  # also true for a dangling one
+            raise RuntimeError(f"{folder} is a symlink; replace it with a real folder")
+        if not folder.resolve().is_relative_to(inside):
+            raise RuntimeError(f"{folder} resolves outside {repo} (a folder on its path is a symlink?)")
+        for here, dirs, files in os.walk(folder, followlinks=False):
+            for name in dirs + files:
+                if (Path(here) / name).is_symlink():
+                    raise RuntimeError(f"{Path(here) / name} is a symlink; remove it and rerun")
+
+
 # --- scene ---------------------------------------------------------------
 
 def reset_scene() -> None:
     bpy.ops.wm.read_factory_settings(use_empty=True)
 
 
-def configure_render(engine: str) -> None:
+def configure_render(engine: str, size: int = CELL) -> None:
     scene = bpy.context.scene
     # The class-level enum lists only EEVEE (Workbench and Cycles register at
     # runtime), so the only reliable probe is to try the assignment.
@@ -94,8 +179,8 @@ def configure_render(engine: str) -> None:
             continue
     else:
         raise RuntimeError(f"render engine {engine} is not available (tried {GAME_ENGINES[engine]})")
-    scene.render.resolution_x = CELL
-    scene.render.resolution_y = CELL
+    scene.render.resolution_x = size
+    scene.render.resolution_y = size
     scene.render.resolution_percentage = 100
     scene.render.film_transparent = True
     scene.render.image_settings.file_format = "PNG"
@@ -109,6 +194,8 @@ def configure_render(engine: str) -> None:
 
 
 def make_camera() -> bpy.types.Object:
+    """The game camera. The image's size doesn't change its framing: a bigger
+    one (the attach preview) just has more pixels per metre."""
     scene = bpy.context.scene
     data = bpy.data.cameras.new("SpriteCamera")
     data.type = "ORTHO"
@@ -139,9 +226,22 @@ def camera_location(direction: int) -> Vector:
     return -forward * (CAMERA_DISTANCE * math.cos(elevation)) + Vector((0.0, 0.0, CAMERA_DISTANCE * math.sin(elevation)))
 
 
+def camera_matrix(direction: int) -> Matrix:
+    location = camera_location(direction)
+    return Matrix.Translation(location) @ (-location).to_track_quat("-Z", "Y").to_matrix().to_4x4()
+
+
 def place_camera(camera: bpy.types.Object, direction: int) -> None:
-    camera.location = camera_location(direction)
-    camera.rotation_euler = (-camera.location).to_track_quat("-Z", "Y").to_euler()
+    camera.matrix_world = camera_matrix(direction)
+
+
+def project(points: np.ndarray, direction: int) -> tuple[np.ndarray, np.ndarray]:
+    """World points (N, 3) to game-cell pixels seen from direction: x from the
+    cell's left edge, y up from its bottom edge. The camera looks at the
+    origin, which lands on the pivot (CELL / 2, FEET_PX)."""
+    inverse = np.array(camera_matrix(direction).inverted())
+    local = points @ inverse[:3, :3].T + inverse[:3, 3]
+    return CELL / 2 + local[:, 0] * PIXELS_PER_METER, FEET_PX + local[:, 1] * PIXELS_PER_METER
 
 
 def drop_importer_helpers() -> None:
@@ -158,10 +258,12 @@ def drop_importer_helpers() -> None:
 
 
 def import_glb(path: Path, require_armature: bool = True) -> tuple[bpy.types.Object | None, list[bpy.types.Action]]:
+    """Imports a GLB; returns its armature (None if it has none) and its actions."""
     before = set(bpy.data.actions)
+    objects_before = set(bpy.context.scene.objects)
     bpy.ops.import_scene.gltf(filepath=str(path))
     drop_importer_helpers()
-    armature = next((o for o in bpy.context.scene.objects if o.type == "ARMATURE"), None)
+    armature = next((o for o in bpy.context.scene.objects if o.type == "ARMATURE" and o not in objects_before), None)
     if armature is None and require_armature:
         raise RuntimeError(f"{path.name}: no armature")
     if armature is not None:
@@ -187,27 +289,38 @@ def copy_base_colors() -> None:
             material.diffuse_color = bsdf.inputs["Base Color"].default_value
 
 
+def scene_fps() -> float:
+    return bpy.context.scene.render.fps / bpy.context.scene.render.fps_base
+
+
 def set_frame(frame: float) -> None:
     whole = math.floor(frame)
     bpy.context.scene.frame_set(int(whole), subframe=frame - whole)
 
 
-def mesh_bounds() -> tuple[Vector, Vector]:
-    """World-space min and max corners of every mesh, as deformed right now."""
+def world_vertices(objects: Iterable[bpy.types.Object] | None = None) -> np.ndarray:
+    """World-space positions (N, 3) of every mesh's vertices, or only objects', as deformed right now."""
     depsgraph = bpy.context.evaluated_depsgraph_get()
-    lo = Vector((math.inf, math.inf, math.inf))
-    hi = Vector((-math.inf, -math.inf, -math.inf))
-    for obj in bpy.context.scene.objects:
+    chunks = [np.zeros((0, 3))]
+    for obj in (bpy.context.scene.objects if objects is None else objects):
         if obj.type != "MESH":
             continue
         evaluated = obj.evaluated_get(depsgraph)
         mesh = evaluated.to_mesh()
-        for v in mesh.vertices:
-            p = evaluated.matrix_world @ v.co
-            lo = Vector((min(lo.x, p.x), min(lo.y, p.y), min(lo.z, p.z)))
-            hi = Vector((max(hi.x, p.x), max(hi.y, p.y), max(hi.z, p.z)))
+        co = np.empty(len(mesh.vertices) * 3, dtype=np.float32)
+        mesh.vertices.foreach_get("co", co)
+        matrix = np.array(evaluated.matrix_world)
+        chunks.append(co.reshape(-1, 3).astype(np.float64) @ matrix[:3, :3].T + matrix[:3, 3])
         evaluated.to_mesh_clear()
-    return lo, hi
+    return np.concatenate(chunks)
+
+
+def mesh_bounds(objects: Iterable[bpy.types.Object] | None = None) -> tuple[Vector, Vector]:
+    """World-space min and max corners of every mesh (or only objects'), as deformed right now."""
+    points = world_vertices(objects)
+    if len(points) == 0:
+        return Vector((math.inf,) * 3), Vector((-math.inf,) * 3)
+    return Vector(points.min(axis=0)), Vector(points.max(axis=0))
 
 
 def adopt_imports(camera: bpy.types.Object) -> bpy.types.Object:
@@ -250,8 +363,21 @@ def root_xy(armature: bpy.types.Object) -> Vector:
     return Vector((head.x, head.y))
 
 
-def sample_frames(start: float, end: float, scene_fps: float, loop: bool) -> list[float]:
-    seconds = max((end - start) / scene_fps, 1.0 / FPS)
+def bone_head(armature: bpy.types.Object, bone: str) -> Vector:
+    """World-space head of a posed bone. Heads, not tails: the importer guesses tails."""
+    evaluated = armature.evaluated_get(bpy.context.evaluated_depsgraph_get())
+    return evaluated.matrix_world @ evaluated.pose.bones[bone].head
+
+
+def bone_frame(armature: bpy.types.Object, bone: str) -> Matrix:
+    """The posed bone's own axes at its head, in world space and metres: no scale from the armature or what holds it."""
+    evaluated = armature.evaluated_get(bpy.context.evaluated_depsgraph_get())
+    axes = (evaluated.matrix_world.to_3x3() @ evaluated.pose.bones[bone].matrix.to_3x3()).normalized().to_quaternion()
+    return Matrix.Translation(bone_head(armature, bone)) @ axes.to_matrix().to_4x4()
+
+
+def sample_frames(start: float, end: float, scene_rate: float, loop: bool) -> list[float]:
+    seconds = max((end - start) / scene_rate, 1.0 / FPS)
     count = max(1, round(seconds * FPS))
     step = (end - start) / count
     return [start + i * step for i in range(count if loop else count + 1)]
@@ -261,6 +387,127 @@ def render_to(path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     bpy.context.scene.render.filepath = str(path)
     bpy.ops.render.render(write_still=True)
+
+
+# --- props -------------------------------------------------------------------
+
+def resolve_props(spec: UnitSpec, src_root: Path, repo: Path | None = None) -> list[Prop]:
+    """Finds and loads each prop the unit carries, before anything is rendered."""
+    folders = [src_root / "props" / entry.prop for entry in spec.attach]
+    refuse_planted_links(repo or src_root.parent, folders)
+    props: list[Prop] = []
+    for entry, folder in zip(spec.attach, folders):
+        recipe, glb = folder / "spec.toml", folder / "model" / "textured.glb"
+        if not recipe.is_file():
+            raise RuntimeError(f"{spec.id} carries {entry.prop}, but {recipe} is missing; write its recipe "
+                               f"(spec §6.2a), then run meshy.py prop-candidates and prop-build {entry.prop}")
+        if not glb.is_file():
+            raise RuntimeError(f"{glb} is missing; buy {spec.id}'s {entry.prop} with "
+                               f"`python3 scripts/art/meshy.py prop-build {entry.prop} --pick N` (after prop-candidates)")
+        props.append(Prop(entry, load_prop_spec(recipe), glb))
+    return props
+
+
+def attach_props(armature: bpy.types.Object, props: list[Prop], frame: float) -> list[bpy.types.Object]:
+    """Imports each prop and fixes it to its bone; returns the props' meshes.
+
+    The prop is sized so its longest axis is length_m in world metres and
+    centred on its bounding box. Its centre sits at the posed bone's head
+    (Blender would hang a bone child at the tail), moved by offset and turned
+    by rotation in the bone's own axes, as the bone stands at frame (the
+    clip's start). Neither the armature's scale nor Fit's reaches it. From
+    then on it follows the bone, so the root-motion cancel and every pose
+    carry it.
+    """
+    scene = bpy.context.scene
+    meshes: list[bpy.types.Object] = []
+    for prop in props:
+        bone = prop.entry.bone
+        if bone not in armature.pose.bones:
+            raise RuntimeError(f"{prop.spec.id}: the rig has no bone {bone!r}; its bones are "
+                               f"{', '.join(b.name for b in armature.pose.bones)}")
+        before = set(scene.objects)
+        import_glb(prop.glb, require_armature=False)
+        added = [o for o in scene.objects if o not in before]
+        set_frame(frame)
+        lo, hi = mesh_bounds(added)
+        longest = max(hi - lo)
+        if not math.isfinite(longest) or longest <= 1e-9:
+            raise RuntimeError(f"{prop.glb}: no mesh to attach")
+        mount = bpy.data.objects.new(f"Prop {prop.spec.id}", None)
+        scene.collection.objects.link(mount)
+        mount.parent = armature
+        mount.parent_type = "BONE"
+        mount.parent_bone = bone
+        bpy.context.view_layer.update()
+        # With no parent inverse, the mount sits where Blender hangs a bone
+        # child. Inverting that cancels it at this frame, so the basis below
+        # is the mount's world matrix now, and later poses carry it along.
+        hang = mount.evaluated_get(bpy.context.evaluated_depsgraph_get()).matrix_world.copy()
+        mount.matrix_parent_inverse = hang.inverted_safe()
+        mount.matrix_basis = (bone_frame(armature, bone)
+                              @ Matrix.Translation(prop.entry.offset)
+                              @ Euler([math.radians(a) for a in prop.entry.rotation], "XYZ").to_matrix().to_4x4()
+                              @ Matrix.Scale(prop.spec.length_m / longest, 4)
+                              @ Matrix.Translation(-(lo + hi) / 2))
+        for obj in added:
+            if obj.parent is None:  # the import's world space becomes the mount's
+                obj.parent = mount
+        bpy.context.view_layer.update()
+        meshes += [o for o in added if o.type == "MESH"]
+    return meshes
+
+
+# --- stride ------------------------------------------------------------------
+
+def foot_bones(armature: bpy.types.Object) -> list[str]:
+    names = [b.name for b in armature.pose.bones if "foot" in b.name.lower() and "toe" not in b.name.lower()]
+    if not names:
+        raise RuntimeError(f"the clip plays in place, so its stride comes from the feet, but the rig has no foot bone "
+                           f"(a name with 'foot' and not 'toe'); its bones are {', '.join(b.name for b in armature.pose.bones)}")
+    return names
+
+
+def stride_from_feet(armature: bpy.types.Object, start: float, end: float) -> float:
+    """Metres per cycle of a walk that plays in place, from its planted foot.
+
+    Sampled at the render rate, the lower foot (by its head's height) is the
+    one on the ground. Where the same foot is lower at both ends of a step,
+    it slid backward along the unit's facing at ground speed. The median of
+    those slides over the step time is the speed; times the clip's length,
+    the stride.
+    """
+    feet = foot_bones(armature)
+    if end <= start:
+        raise RuntimeError("the clip plays in place and has no length, so its stride can't be measured")
+    samples = sample_frames(start, end, scene_fps(), loop=False)
+    step_s = (samples[1] - samples[0]) / scene_fps()
+    slides: list[float] = []
+    previous: tuple[str, Vector] | None = None
+    for frame in samples:
+        set_frame(frame)
+        heads = {name: bone_head(armature, name) for name in feet}
+        low = min(feet, key=lambda name: heads[name].z)
+        if previous is not None and previous[0] == low:
+            slides.append((heads[low] - previous[1]).dot(-FORWARD))
+        previous = (low, heads[low])
+    if not slides:
+        raise RuntimeError("the clip plays in place, and no foot stays lowest across a sampled step, so its stride can't be measured")
+    return statistics.median(slides) / step_s * (end - start) / scene_fps()
+
+
+def measure_stride(staged: Staged, entry: AnimEntry) -> float:
+    """Metres the unit covers per cycle of a walk or run, at its fitted size."""
+    set_frame(staged.start)
+    first = root_xy(staged.armature)
+    set_frame(staged.end)
+    travel = (root_xy(staged.armature) - first).length
+    if travel >= IN_PLACE_M:
+        print(f"stride {entry.name}: {travel:.3f} m (the root's travel)")
+        return travel
+    stride = stride_from_feet(staged.armature, staged.start, staged.end)
+    print(f"stride {entry.name}: {stride:.3f} m (from the feet; the root travels {travel:.3f} m)")
+    return stride
 
 
 # --- images ---------------------------------------------------------------
@@ -297,15 +544,34 @@ def ffmpeg(*args: str) -> None:
     subprocess.run([exe, "-hide_banner", "-loglevel", "error", "-y", *args], check=True)
 
 
-def tile(cells: list[Path], columns: int, rows: int, dest: Path) -> None:
-    """Pads each cell by GUTTER and tiles them row-major into one PNG."""
+def tile(cells: list[Path | None], columns: int, rows: int, dest: Path, size: int = CELL) -> None:
+    """Pads each size-px cell by GUTTER and tiles them row-major into one PNG. None leaves a cell transparent."""
     with tempfile.TemporaryDirectory() as tmp:
+        blank = Path(tmp) / "blank.png"
+        if None in cells:
+            ffmpeg("-f", "lavfi", "-i", f"color=c=black@0.0:s={size}x{size},format=rgba", "-frames:v", "1", str(blank))
         for k, path in enumerate(cells):
-            shutil.copy(path, Path(tmp) / f"{k:05d}.png")
+            shutil.copy(path if path is not None else blank, Path(tmp) / f"{k:05d}.png")
         dest.parent.mkdir(parents=True, exist_ok=True)
+        padded = size + 2 * GUTTER
         ffmpeg("-i", str(Path(tmp) / "%05d.png"),
-               "-vf", f"format=rgba,pad={STRIDE}:{STRIDE}:{GUTTER}:{GUTTER}:color=black@0,tile={columns}x{rows}",
+               "-vf", f"format=rgba,pad={padded}:{padded}:{GUTTER}:{GUTTER}:color=black@0,tile={columns}x{rows}",
                "-frames:v", "1", str(dest))
+
+
+def sheet_layout(frames: int) -> tuple[int, int]:
+    """(columns, rows per direction) for an animation's sheet, which wraps at MAX_SHEET_PX wide."""
+    columns = min(frames, MAX_SHEET_PX // STRIDE)
+    return columns, math.ceil(frames / columns)
+
+
+def sheet_cells(frames_dir: Path, frames: int) -> list[Path | None]:
+    """The sheet's cells, row-major: frame i of direction d sits at column
+    i % columns, row d * rows_per_direction + i // columns. None pads a
+    direction's last row."""
+    columns, rows = sheet_layout(frames)
+    return [frames_dir / f"d{d}" / f"f{i:03d}.png" if i < frames else None
+            for d in range(DIRECTIONS) for i in range(rows * columns)]
 
 
 def gif(frames_dir: Path, frames: int, dest: Path) -> None:
@@ -328,49 +594,65 @@ def write_import_settings(sheet: Path) -> None:
 
 # --- rendering --------------------------------------------------------------
 
-def render_animation(spec: UnitSpec, glb: Path, entry: AnimEntry, frames_dir: Path, engine: str) -> dict[str, Any]:
+def stage_animation(spec: UnitSpec, glb: Path, entry: AnimEntry, props: list[Prop], engine: str, size: int = CELL) -> Staged:
+    """Loads one animation into a fresh scene, fits the body to height_m, then attaches the props."""
     reset_scene()
-    configure_render(engine)
+    configure_render(engine, size)
     camera = make_camera()
     armature, actions = import_glb(glb)
     holder = adopt_imports(camera)
-    if engine == "WORKBENCH":
-        copy_base_colors()
     action = None
     if actions:
         name = pick_clip([a.name for a in actions], entry.clip)
         action = next(a for a in actions if a.name == name)
         assign(armature, action)
-    scene = bpy.context.scene
     start, end = (float(action.frame_range[0]), float(action.frame_range[1])) if action else (1.0, 1.0)
     set_frame(start)
     fit(holder, spec.height_m)
-    base_location = holder.location.copy()
+    prop_meshes = attach_props(armature, props, start)  # after fit(), so props never count toward the height
+    if engine == "WORKBENCH":
+        copy_base_colors()
+    return Staged(camera, armature, holder, holder.location.copy(), action, start, end,
+                  sample_frames(start, end, scene_fps(), entry.loop), prop_meshes)
 
+
+def pose_at(staged: Staged, frame: float) -> None:
+    """Poses the animation at frame, with the root's horizontal travel cancelled."""
+    staged.holder.location = staged.base
+    set_frame(frame)
+    xy = root_xy(staged.armature)
+    staged.holder.location = staged.base - Vector((xy.x, xy.y, 0.0))
+    bpy.context.view_layer.update()
+
+
+def impact_index(entry: AnimEntry, frames: int) -> int:
+    return round(entry.impact * (frames - 1)) if entry.impact is not None else -1
+
+
+def render_animation(spec: UnitSpec, glb: Path, entry: AnimEntry, props: list[Prop], frames_dir: Path, engine: str) -> dict[str, Any]:
+    staged = stage_animation(spec, glb, entry, props, engine)
     stride_m = 0.0
-    if action is not None and entry.name in ("walk", "run"):
-        set_frame(start)
-        first = root_xy(armature)
-        set_frame(end)
-        stride_m = (root_xy(armature) - first).length
+    if staged.action is not None and entry.name in ("walk", "run"):
+        stride_m = measure_stride(staged, entry)
 
     clipped: list[str] = []
-    frames = sample_frames(start, end, scene.render.fps / scene.render.fps_base, entry.loop)
-    for i, frame in enumerate(frames):
-        holder.location = base_location
-        set_frame(frame)
-        xy = root_xy(armature)
-        holder.location = base_location - Vector((xy.x, xy.y, 0.0))
-        bpy.context.view_layer.update()
+    extents = Extents()
+    for i, frame in enumerate(staged.frames):
+        pose_at(staged, frame)
+        points = world_vertices()
         for d in range(DIRECTIONS):
-            place_camera(camera, d)
+            place_camera(staged.camera, d)
+            extents.add(points, d)
             path = frames_dir / f"d{d}" / f"f{i:03d}.png"
             render_to(path)
             if touches_border(path):
                 clipped.append(f"{entry.name}/d{d}f{i}")
-    impact = round(entry.impact * (len(frames) - 1)) if entry.impact is not None else -1
-    return {"sheet": f"{entry.name}.png", "frames": len(frames), "fps": FPS, "loop": entry.loop,
-            "impact_frame": impact, "stride_m": round(stride_m, 4), "clipped": clipped}
+    print(extents.line(entry.name))
+    frames = len(staged.frames)
+    columns, rows = sheet_layout(frames)
+    return {"sheet": f"{entry.name}.png", "frames": frames, "fps": FPS, "loop": entry.loop,
+            "impact_frame": impact_index(entry, frames), "stride_m": round(stride_m, 4),
+            "columns": columns, "rows_per_direction": rows, "clipped": clipped}
 
 
 def key_frame(name: str, info: dict[str, Any]) -> int:
@@ -383,11 +665,14 @@ def key_frame(name: str, info: dict[str, Any]) -> int:
     return info["impact_frame"] if info["impact_frame"] >= 0 else info["frames"] // 2
 
 
-def render_unit(unit: str, src_root: Path, out_root: Path, engine: str = "EEVEE") -> dict[str, Any]:
+def render_unit(unit: str, src_root: Path, out_root: Path, engine: str = "EEVEE", repo: Path | None = None) -> dict[str, Any]:
     unit_dir = src_root / "units" / unit
-    spec = load_spec(unit_dir / "spec.toml")
     out_dir = out_root / unit
     review = unit_dir / "review"
+    repo = repo or src_root.parent
+    refuse_planted_links(repo, [unit_dir, review, out_dir])
+    spec = load_spec(unit_dir / "spec.toml")
+    props = resolve_props(spec, src_root, repo)
     out_dir.mkdir(parents=True, exist_ok=True)
     review.mkdir(parents=True, exist_ok=True)
     sidecar: dict[str, Any] = {
@@ -398,14 +683,13 @@ def render_unit(unit: str, src_root: Path, out_root: Path, engine: str = "EEVEE"
     }
     work = Path(tempfile.mkdtemp(prefix=f"render-{unit}-"))
     try:
-        contact: list[Path] = []
+        contact: list[Path | None] = []
         for entry in spec.animations:
             frames_dir = work / entry.name
-            info = render_animation(spec, unit_dir / entry.file, entry, frames_dir, engine)
+            info = render_animation(spec, unit_dir / entry.file, entry, props, frames_dir, engine)
             sidecar["clipped"] += info.pop("clipped")
             sheet = out_dir / info["sheet"]
-            tile([frames_dir / f"d{d}" / f"f{i:03d}.png" for d in range(DIRECTIONS) for i in range(info["frames"])],
-                 info["frames"], DIRECTIONS, sheet)
+            tile(sheet_cells(frames_dir, info["frames"]), info["columns"], DIRECTIONS * info["rows_per_direction"], sheet)
             write_import_settings(sheet)
             gif(frames_dir, info["frames"], review / f"{entry.name}.gif")
             k = key_frame(entry.name, info)
@@ -422,15 +706,52 @@ def render_unit(unit: str, src_root: Path, out_root: Path, engine: str = "EEVEE"
     return sidecar
 
 
-def render_candidates(unit: str, src_root: Path, engine: str = "EEVEE") -> Path:
+def render_attach(unit: str, src_root: Path, engine: str = "EEVEE", repo: Path | None = None) -> Path:
+    """The attach preview, for tuning offsets by eye: review/attach.png.
+
+    Columns are directions 0, 2, 4 and 6; rows are idle's first frame, then
+    each attack* animation at its impact frame. Cells are twice the game
+    cell, through the same camera and pivot, so twice the pixels per metre.
+    """
     unit_dir = src_root / "units" / unit
+    review = unit_dir / "review"
+    repo = repo or src_root.parent
+    refuse_planted_links(repo, [unit_dir, review])
+    spec = load_spec(unit_dir / "spec.toml")
+    props = resolve_props(spec, src_root, repo)
+    rows = [e for e in spec.animations if e.name == "idle"] + [e for e in spec.animations if e.name.startswith("attack")]
+    if not rows:
+        raise RuntimeError(f"{unit} has no idle or attack animation to preview")
+    dest = review / "attach.png"
+    size = 2 * CELL
+    with tempfile.TemporaryDirectory() as tmp:
+        cells: list[Path | None] = []
+        for entry in rows:
+            staged = stage_animation(spec, unit_dir / entry.file, entry, props, engine, size)
+            if not cells:
+                print(f"bones of {unit}'s rig: {', '.join(b.name for b in staged.armature.pose.bones)}")
+            k = 0 if entry.name == "idle" else impact_index(entry, len(staged.frames))
+            pose_at(staged, staged.frames[k if k >= 0 else len(staged.frames) // 2])
+            for d in ATTACH_VIEWS:
+                place_camera(staged.camera, d)
+                path = Path(tmp) / f"{entry.name}_d{d}.png"
+                render_to(path)
+                cells.append(path)
+        tile(cells, len(ATTACH_VIEWS), len(rows), dest, size)
+    print(f"attach: {dest} (rows = {[e.name for e in rows]}; columns = directions {list(ATTACH_VIEWS)}: back, left, front, right)")
+    return dest
+
+
+def render_candidates(unit: str, src_root: Path, engine: str = "EEVEE", repo: Path | None = None) -> Path:
+    unit_dir = src_root / "units" / unit
+    refuse_planted_links(repo or src_root.parent, [unit_dir, unit_dir / "review"])
     spec = load_spec(unit_dir / "spec.toml")
     files = sorted((unit_dir / "candidates").glob("cand-*.glb"), key=lambda p: int(p.stem.split("-")[1]))
     if not files:
         raise RuntimeError(f"no candidates in {unit_dir / 'candidates'}; run meshy.py candidates first")
     dest = unit_dir / "review" / "candidates.png"
     with tempfile.TemporaryDirectory() as tmp:
-        cells: list[Path] = []
+        cells: list[Path | None] = []
         for glb in files:
             reset_scene()
             configure_render(engine)
@@ -452,18 +773,81 @@ def render_candidates(unit: str, src_root: Path, engine: str = "EEVEE") -> Path:
     return dest
 
 
+def configure_prop_review() -> bpy.types.Object:
+    """Workbench studio light with cavity, clay on a plain light backdrop; returns the camera."""
+    configure_render("WORKBENCH", PROP_CELL)
+    scene = bpy.context.scene
+    scene.render.film_transparent = False
+    scene.world = bpy.data.worlds.new("Backdrop")
+    scene.world.color = PROP_BACKDROP
+    shading = scene.display.shading
+    shading.light = "STUDIO"
+    shading.color_type = "SINGLE"
+    shading.single_color = PROP_CLAY
+    shading.show_cavity = True
+    shading.cavity_type = "BOTH"
+    data = bpy.data.cameras.new("PropCamera")
+    data.type = "ORTHO"
+    camera = bpy.data.objects.new("PropCamera", data)
+    scene.collection.objects.link(camera)
+    scene.camera = camera
+    return camera
+
+
+def render_prop_candidates(prop: str, src_root: Path, repo: Path | None = None) -> Path:
+    """A prop's candidate sheet: one row per candidates/cand-N.glb, seen from
+    the front, side, back and three-quarter above, each framed to its bounds."""
+    prop_dir = src_root / "props" / prop
+    refuse_planted_links(repo or src_root.parent, [prop_dir, prop_dir / "review"])
+    load_prop_spec(prop_dir / "spec.toml")  # checks the recipe is there and its id matches
+    files = sorted((prop_dir / "candidates").glob("cand-*.glb"), key=lambda p: int(p.stem.split("-")[1]))
+    if not files:
+        raise RuntimeError(f"no candidates in {prop_dir / 'candidates'}; run meshy.py prop-candidates {prop} first")
+    dest = prop_dir / "review" / "candidates.png"
+    with tempfile.TemporaryDirectory() as tmp:
+        cells: list[Path | None] = []
+        for glb in files:
+            reset_scene()
+            camera = configure_prop_review()
+            import_glb(glb, require_armature=False)
+            lo, hi = mesh_bounds()
+            centre, reach = (lo + hi) / 2, max((hi - lo).length, 1e-3)
+            camera.data.ortho_scale = reach * 1.08  # the bounding sphere fits every view
+            camera.data.clip_start = 0.1 * reach
+            camera.data.clip_end = 4.0 * reach
+            for label, azimuth, elevation in PROP_VIEWS:
+                tilt = math.radians(elevation)
+                away = Matrix.Rotation(math.radians(azimuth), 3, "Z") @ (FORWARD * math.cos(tilt) + Vector((0.0, 0.0, math.sin(tilt))))
+                camera.matrix_world = Matrix.Translation(centre + away * 2.0 * reach) @ (-away).to_track_quat("-Z", "Y").to_matrix().to_4x4()
+                path = Path(tmp) / f"{glb.stem}_{label}.png"
+                render_to(path)
+                cells.append(path)
+        tile(cells, len(PROP_VIEWS), len(files), dest, PROP_CELL)
+    print(f"prop candidates: {dest} (rows = {[f.stem for f in files]}; columns = {[v[0] for v in PROP_VIEWS]})")
+    return dest
+
+
 def main(argv: list[str]) -> int:
     args = argv[argv.index("--") + 1:] if "--" in argv else []
     parser = argparse.ArgumentParser(prog="render_sprites.py")
-    parser.add_argument("unit")
-    parser.add_argument("--candidates", action="store_true")
+    parser.add_argument("name", help="the unit, or with --prop-candidates the prop")
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--candidates", action="store_true", help="the unit's Meshy candidates, side by side")
+    mode.add_argument("--attach", action="store_true", help="idle and attacks with props, for tuning offsets")
+    mode.add_argument("--prop-candidates", action="store_true", help="the prop's Meshy candidates, side by side (Workbench)")
     parser.add_argument("--engine", default="EEVEE", choices=sorted(GAME_ENGINES))
     parsed = parser.parse_args(args)
-    if parsed.candidates:
-        render_candidates(parsed.unit, REPO / "art-src", parsed.engine)
+    if NAME.fullmatch(parsed.name) is None:  # it becomes a folder name under art-src and assets
+        parser.error(f"{parsed.name!r} is not a unit or prop name (lowercase letters, digits and _)")
+    if parsed.prop_candidates:
+        render_prop_candidates(parsed.name, REPO / "art-src", REPO)
+    elif parsed.candidates:
+        render_candidates(parsed.name, REPO / "art-src", parsed.engine, REPO)
+    elif parsed.attach:
+        render_attach(parsed.name, REPO / "art-src", parsed.engine, REPO)
     else:
-        sidecar = render_unit(parsed.unit, REPO / "art-src", REPO / "assets" / "units", parsed.engine)
-        print(f"rendered {parsed.unit}: {sorted(sidecar['animations'])} -> assets/units/{parsed.unit}/")
+        sidecar = render_unit(parsed.name, REPO / "art-src", REPO / "assets" / "units", parsed.engine, REPO)
+        print(f"rendered {parsed.name}: {sorted(sidecar['animations'])} -> assets/units/{parsed.name}/")
     return 0
 
 
