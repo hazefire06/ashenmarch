@@ -1,7 +1,7 @@
 GODOT ?= godot
 MAC_APP := build/mac/Ashenmarch.app
 
-.PHONY: import run demo demo-projectiles demo-abilities demo-ai test check-sim export-mac maps fixtures
+.PHONY: import run demo demo-projectiles demo-abilities demo-ai test check-sim export-mac maps fixtures hooks check-leaks
 
 # Builds the .godot/ import and class_name cache. A fresh clone has none, and
 # GUT can't resolve class_name types without it.
@@ -50,3 +50,19 @@ fixtures:
 export-mac: import
 	mkdir -p $(dir $(MAC_APP))
 	$(GODOT) --headless --path . --export-release "macOS" $(MAC_APP)
+
+# Installs the leak-scan pre-commit hook into the repo's shared hooks folder.
+# It runs in every worktree, and does nothing in a checkout without
+# .gitleaks.toml (see scripts/hooks/pre-commit). Refuses to overwrite a
+# different hook.
+hooks:
+	@hooks_dir="$$(git rev-parse --git-common-dir)/hooks"; \
+	if [ -e "$$hooks_dir/pre-commit" ] && ! cmp -s scripts/hooks/pre-commit "$$hooks_dir/pre-commit"; then \
+		echo "hooks: $$hooks_dir/pre-commit exists and differs; not overwriting it"; exit 1; \
+	fi; \
+	cp scripts/hooks/pre-commit "$$hooks_dir/pre-commit"; \
+	chmod +x "$$hooks_dir/pre-commit"; \
+	echo "hooks: installed $$hooks_dir/pre-commit"
+
+check-leaks:
+	scripts/check_leak_rules.sh
