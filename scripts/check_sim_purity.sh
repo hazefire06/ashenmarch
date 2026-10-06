@@ -3,11 +3,11 @@
 # CLAUDE.md: no Nodes, no frame callbacks, no wall clock, no unseeded
 # randomness, no Godot physics, no transcendental float math (libm differs in
 # the last bit between platforms; use FixedMath), and no float vectors (use
-# ints or Vector2i). Also fails if the enemy AI or the mission triggers
-# (sim/ai, sim/missions) touch the world's seeded RNG at all: they draw no
-# random numbers, so their choices follow from sim state alone and the RNG
-# draw-order tables in docs/architecture.md stay valid. Comment lines are
-# ignored.
+# ints or Vector2i). Also fails if the enemy AI, the mission triggers, or a
+# skirmish's scoring (sim/ai, sim/missions, sim/skirmish) touch the world's
+# seeded RNG at all: they draw no random numbers, so their choices follow from
+# sim state alone and the RNG draw-order tables in docs/architecture.md stay
+# valid. Comment lines are ignored.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -33,9 +33,9 @@ for pattern in "${patterns[@]}"; do
 done
 
 rng_pattern='(^|[^[:alnum:]_])rng([^[:alnum:]_]|$)'
-hits=$(grep -rnE --include='*.gd' "$rng_pattern" sim/ai/ sim/missions/ | grep -vE '^[^:]+:[0-9]+:[[:space:]]*#' || true)
+hits=$(grep -rnE --include='*.gd' "$rng_pattern" sim/ai/ sim/missions/ sim/skirmish/ | grep -vE '^[^:]+:[0-9]+:[[:space:]]*#' || true)
 if [[ -n "$hits" ]]; then
-	echo "sim purity violation (sim/ai and sim/missions draw no random numbers; /$rng_pattern/):"
+	echo "sim purity violation (sim/ai, sim/missions and sim/skirmish draw no random numbers; /$rng_pattern/):"
 	echo "$hits"
 	status=1
 fi

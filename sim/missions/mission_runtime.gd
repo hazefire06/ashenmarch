@@ -23,6 +23,9 @@ enum Outcome {
 	WON,
 	## A LOSE action fired.
 	LOST,
+	## Neither side won (a skirmish level at the time limit, or both armies
+	## wiped out on one tick). Only conclude() sets it.
+	DRAW,
 }
 
 ## Where an objective stands. Append only: the states are hashed.
@@ -156,6 +159,24 @@ func update(world: World) -> void:
 		world.mission_events.append(MissionEvent.new(MissionEvent.Kind.WON, win_trigger))
 	if outcome != Outcome.NONE:
 		outcome_tick = world.tick
+
+
+## Ends the mission from outside the triggers, with WON, LOST or DRAW: a
+## skirmish's rules decide this way (SkirmishRuntime). Returns false and
+## changes nothing if the mission already has an outcome or `decided` is NONE.
+## The outcome event names no trigger (-1).
+func conclude(world: World, decided: Outcome) -> bool:
+	if outcome != Outcome.NONE or decided == Outcome.NONE:
+		return false
+	outcome = decided
+	outcome_tick = world.tick
+	var kind: MissionEvent.Kind = MissionEvent.Kind.DRAWN
+	if decided == Outcome.WON:
+		kind = MissionEvent.Kind.WON
+	elif decided == Outcome.LOST:
+		kind = MissionEvent.Kind.LOST
+	world.mission_events.append(MissionEvent.new(kind, -1))
+	return true
 
 
 ## Everything the mission keeps, for state_hash().
