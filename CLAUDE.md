@@ -33,9 +33,10 @@ sim/            # pure gameplay logic, no Nodes
   fire.gd       # brush fire spread
   ai/           # enemy tactical AI, mission scripts
   missions/     # objectives, triggers, win/loss, carryover
+  skirmish/     # skirmish armies and templates, scoring, the skirmish world builder
 view/           # Godot scenes: camera, sprites, HUD, overhead map, effects
 data/           # unit .tres files, formation definitions, map data
-maps/           # heightmaps, passability masks, spawn/trigger layouts
+maps/           # heightmaps, passability masks, spawn/trigger layouts, skirmish spawns and flags
 assets/         # placeholder art and audio (original only)
 tests/          # GUT tests for sim/
 docs/           # design notes, prompts.md
@@ -77,6 +78,7 @@ scripts/        # dev tooling (sim purity check)
 - Selection: click, drag box, shift-click add, double-click selects all of that type on screen. Groups saved with Cmd/Ctrl+1..0, recalled with Option/Alt+1..0 (plain 1..0 are formations). Stop: H. Pause: P (the sim stops stepping; Esc opens the pause menu, after cancelling an armed order).
 - Formations, chosen after selection and applied on the next move order, keys 1-0: short line, long line, loose line, staggered line, box, rabble, shallow encirclement, deep encirclement, wedge, circle.
 - Special ability: T. Attack-move (Cmd/Ctrl+right-click) and ground-target attack (Cmd/Ctrl+left-click; Cmd on macOS, where Ctrl+click is a right click) supported.
+- Skirmish scoreboard: F7.
 - Bottom control bar mirrors all of the above so the game is playable with mouse only.
 
 ### Status effects
@@ -112,6 +114,9 @@ Five tiers. Higher tiers add enemies, change spawn positions, and shorten timers
 
 ### Skirmish vs AI (after campaign v1)
 Modes: Body Count, King of the Hill, Capture the Flags. Pre-game unit trading with a point budget. Same maps.
+- The player picks Light or Dark; the AI plays the other side with a commander driving Phase 7 groups. Both sides buy from the same budget; every unit type's cost is data.
+- Body Count scores every enemy death, whatever the cause (your friendly fire scores for the enemy). King of the Hill scores time holding the hill alone. Capture the Flags scores flags owned at the time limit (5 s alone at a flag captures it; it stays owned until taken). A side wiped out loses at once, in any mode.
+- Each map's skirmish spawns and flags live beside it (maps/<id>/skirmish.tres), placed so neither start is favored.
 
 ### Later: multiplayer
 Lockstep over the command stream. Not in scope until skirmish is done. The determinism rules above exist for this.
