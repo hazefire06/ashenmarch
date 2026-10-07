@@ -197,12 +197,103 @@ func test_layout_ignores_animations_the_game_does_not_play() -> void:
 	assert_eq(UnitArtBuilder.layout_errors(side, sheets), PackedStringArray())
 
 
+func test_a_wrapped_sheet_must_reach_its_second_row() -> void:
+	# 30 frames in 24 columns wrap to a second row, which sits in the last
+	# direction's rows. Without counting that row, a sheet one stride short would pass.
+	var side: Dictionary = TestArt.sidecar(&"x")
+	var attack: Dictionary = side["animations"]["attack"]
+	attack["frames"] = 30
+	attack["columns"] = 24
+	attack["rows_per_direction"] = 2
+	var sheets: Dictionary = TestArt.sheets(side)
+	var s: int = TestArt.STRIDE
+	var wide: int = 24 * s
+	var short: Image = Image.create_empty(wide, (UnitArt.DIRECTIONS * 2 - 1) * s, false, Image.FORMAT_RGBA8)
+	sheets[&"attack"] = ImageTexture.create_from_image(short)
+	assert_string_contains(" ".join(UnitArtBuilder.layout_errors(side, sheets)), "attack: frames reach outside")
+
+
+func test_a_sheet_that_exactly_holds_its_last_cell_fits() -> void:
+	# The last cell ends a gutter and a cell past its stride origin; the
+	# trailing gutter isn't needed. One pixel less and the cell is cut off.
+	var side: Dictionary = TestArt.sidecar(&"x")
+	var attack: Dictionary = side["animations"]["attack"]
+	attack["frames"] = 30
+	attack["columns"] = 24
+	attack["rows_per_direction"] = 2
+	var sheets: Dictionary = TestArt.sheets(side)
+	var s: int = TestArt.STRIDE
+	var right: int = 23 * s + TestArt.GUTTER + TestArt.CELL
+	var bottom: int = (7 * 2 + 1) * s + TestArt.GUTTER + TestArt.CELL
+	sheets[&"attack"] = _blank_sheet(right, bottom)
+	assert_eq(UnitArtBuilder.layout_errors(side, sheets), PackedStringArray(), "exactly the size of the last cell's far corner")
+	sheets[&"attack"] = _blank_sheet(right, bottom - 1)
+	assert_string_contains(" ".join(UnitArtBuilder.layout_errors(side, sheets)), "attack: frames reach outside", "one pixel too short")
+	sheets[&"attack"] = _blank_sheet(right - 1, bottom)
+	assert_string_contains(" ".join(UnitArtBuilder.layout_errors(side, sheets)), "attack: frames reach outside", "one pixel too narrow")
+
+
+func test_a_sidecar_with_every_key_has_no_sidecar_errors() -> void:
+	assert_eq(UnitArtBuilder.sidecar_errors(TestArt.sidecar(&"x")), PackedStringArray())
+
+
+func test_sidecar_errors_name_a_missing_top_level_key() -> void:
+	var side: Dictionary = TestArt.sidecar(&"x")
+	side.erase("stride")
+	side.erase("pixels_per_meter")
+	var errors: String = " ".join(UnitArtBuilder.sidecar_errors(side))
+	assert_string_contains(errors, "no \"stride\"")
+	assert_string_contains(errors, "no \"pixels_per_meter\"")
+
+
+func test_sidecar_errors_catch_animations_that_are_not_an_object() -> void:
+	var side: Dictionary = TestArt.sidecar(&"x")
+	side["animations"] = ["idle", "walk"]
+	assert_string_contains(" ".join(UnitArtBuilder.sidecar_errors(side)), "\"animations\" is not an object")
+	side.erase("animations")
+	var errors: String = " ".join(UnitArtBuilder.sidecar_errors(side))
+	assert_string_contains(errors, "no \"animations\"")
+	assert_false("is not an object" in errors, "missing is reported once, as missing")
+
+
+func test_sidecar_errors_name_a_missing_key_of_a_game_animation() -> void:
+	var side: Dictionary = TestArt.sidecar(&"x")
+	side["animations"]["walk"].erase("frames")
+	side["animations"]["attack"].erase("sheet")
+	side["animations"]["idle"].erase("fps")
+	side["animations"]["die"].erase("loop")
+	var errors: String = " ".join(UnitArtBuilder.sidecar_errors(side))
+	assert_string_contains(errors, "walk: no \"frames\"")
+	assert_string_contains(errors, "attack: no \"sheet\"")
+	assert_string_contains(errors, "idle: no \"fps\"")
+	assert_string_contains(errors, "die: no \"loop\"")
+	side["animations"]["die"] = 7
+	assert_string_contains(" ".join(UnitArtBuilder.sidecar_errors(side)), "die: not an object")
+
+
+func test_sidecar_errors_ignore_animations_the_game_does_not_play() -> void:
+	var side: Dictionary = TestArt.sidecar(&"x", {
+		"idle": [1, 12, true, -1], "walk": [12, 12, true, -1],
+		"attack": [6, 12, false, 3], "attack_alt": [6, 12, false, 3], "die": [4, 12, false, -1],
+	})
+	side["animations"]["attack_alt"].erase("frames")
+	assert_eq(UnitArtBuilder.sidecar_errors(side), PackedStringArray())
+
+
+# A blank texture of exactly this size.
+func _blank_sheet(width: int, height: int) -> Texture2D:
+	return ImageTexture.create_from_image(Image.create_empty(width, height, false, Image.FORMAT_RGBA8))
+
+
 func test_the_real_shieldman_sidecar_has_a_sound_layout() -> void:
 	var folder: String = "res://assets/units/shieldman/"
-	var side: Variant = JSON.parse_string(FileAccess.get_file_as_string(folder + "shieldman.json"))
+	var side: Variant = null
+	if FileAccess.file_exists(folder + "shieldman.json"):
+		side = JSON.parse_string(FileAccess.get_file_as_string(folder + "shieldman.json"))
 	if not side is Dictionary:
 		pending("%sshieldman.json is not rendered; run make art-render UNIT=shieldman" % folder)
 		return
+	assert_eq(UnitArtBuilder.sidecar_errors(side), PackedStringArray(), "the real sidecar has every key the builder reads")
 	var sheets: Dictionary = {}
 	for key: String in side["animations"]:
 		var sheet: Texture2D = load(folder + String(side["animations"][key]["sheet"])) as Texture2D

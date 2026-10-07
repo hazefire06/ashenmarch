@@ -38,7 +38,14 @@ func test_a_missing_catalog_is_empty() -> void:
 
 
 func test_a_file_that_is_not_a_catalog_is_empty() -> void:
-	var catalog: UnitArtCatalog = UnitArtCatalog.load_or_new("res://data/units/shieldman.tres")
+	# A UnitArt is a Resource that isn't a catalog, and loading it pulls in no
+	# sim scripts. (The unit data would compile them inside the test body, and
+	# GUT counts the engine warnings from that as errors when this file runs alone.)
+	if not ResourceLoader.exists(SHIELDMAN_PATH):
+		pending("%s is not built; run make art-build UNIT=shieldman" % SHIELDMAN_PATH)
+		return
+	var catalog: UnitArtCatalog = UnitArtCatalog.load_or_new(SHIELDMAN_PATH)
+	assert_not_null(catalog)
 	assert_eq(catalog.arts.size(), 0)
 
 
@@ -58,6 +65,11 @@ func test_the_committed_shieldman_art_is_valid_and_laid_out_like_the_render() ->
 	assert_almost_eq(art.stride_m, 1.49, 0.01)
 	assert_eq(art.cell_px, 160)
 	assert_eq(art.feet_px, 40)
+	# Not written to the file while they equal UnitArt's defaults, so pin them here.
+	assert_eq(art.pixels_per_meter, 52.0)
+	assert_eq(art.impact_frames.get(&"attack"), 8)
+	assert_true(art.frames.get_animation_loop(&"walk_0"))
+	assert_false(art.frames.get_animation_loop(&"die_0"))
 
 
 func test_the_committed_catalog_lists_the_shieldman_by_reference() -> void:

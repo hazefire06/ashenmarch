@@ -7,7 +7,6 @@ extends SceneTree
 
 const SOURCE: String = "res://assets/units/%s/"
 const OUTPUT: String = "res://data/art/%s.tres"
-const SIDECAR_KEYS: Array[String] = ["unit", "cell", "stride", "gutter", "feet_px", "pixels_per_meter", "animations"]
 
 
 func _init() -> void:
@@ -16,10 +15,13 @@ func _init() -> void:
 		printerr("usage: godot --headless --path . -s scripts/art/build_unit_art.gd -- <unit_id>")
 		quit(2)
 		return
-	quit(_build(args[0]))
+	quit(0 if _build(args[0]) else 1)
 
 
-func _build(unit: String) -> int:
+## True when the art was built and listed. A function that hits a script error
+## returns its type's default, so _build returns bool: false is the failure
+## value, and an unforeseen error exits non-zero instead of looking like success.
+func _build(unit: String) -> bool:
 	var folder: String = SOURCE % unit
 	var sidecar_path: String = folder + unit + ".json"
 	var sidecar: Variant = null
@@ -27,11 +29,14 @@ func _build(unit: String) -> int:
 		sidecar = JSON.parse_string(FileAccess.get_file_as_string(sidecar_path))
 	if not sidecar is Dictionary:
 		printerr("build_unit_art: %s is missing or not JSON; run make art-render UNIT=%s" % [sidecar_path, unit])
-		return 1
-	for key: String in SIDECAR_KEYS:
-		if not (sidecar as Dictionary).has(key):
-			printerr("build_unit_art: %s has no \"%s\"; run make art-render UNIT=%s" % [sidecar_path, key, unit])
-			return 1
+		return false
+	var missing: PackedStringArray = UnitArtBuilder.sidecar_errors(sidecar)
+	if not missing.is_empty():
+		printerr("build_unit_art: %s is incomplete; run make art-render UNIT=%s\n%s" % [sidecar_path, unit, "\n".join(missing)])
+		return false
+	if String(sidecar["unit"]) != unit:
+		printerr("build_unit_art: %s is for unit \"%s\", not \"%s\"" % [sidecar_path, sidecar["unit"], unit])
+		return false
 	var sheets: Dictionary = {}
 	var anims: Dictionary = sidecar["animations"]
 	for key: String in anims:
@@ -41,32 +46,33 @@ func _build(unit: String) -> int:
 		var sheet: Texture2D = load(path) as Texture2D
 		if sheet == null:
 			printerr("build_unit_art: %s did not load; run `make import` first" % path)
-			return 1
+			return false
 		sheets[StringName(key)] = sheet
 	var layout: PackedStringArray = UnitArtBuilder.layout_errors(sidecar, sheets)
 	if not layout.is_empty():
 		printerr("build_unit_art: %s does not fit its sheets:\n%s" % [sidecar_path, "\n".join(layout)])
-		return 1
+		return false
 	var art: UnitArt = UnitArtBuilder.build(sidecar, sheets)
 	var errors: PackedStringArray = art.validate()
 	if not errors.is_empty():
 		printerr("build_unit_art: %s" % "\n".join(errors))
-		return 1
+		return false
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("res://data/art"))
 	var out: String = OUTPUT % unit
 	if ResourceSaver.save(art, out) != OK:
 		printerr("build_unit_art: could not save %s" % out)
-		return 1
+		return false
 	var catalog: UnitArtCatalog = UnitArtCatalog.load_or_new()
-	# The saved file, reloaded past the cache, so the catalog refers to it instead
-	# of embedding a copy (and a rerun doesn't list a stale one).
+	# Read the saved file back: it must load as a UnitArt, and the catalog then
+	# holds the file-backed resource, so it saves a reference to the file
+	# instead of embedding a copy of the art.
 	var saved: UnitArt = ResourceLoader.load(out, "", ResourceLoader.CACHE_MODE_REPLACE) as UnitArt
 	if saved == null:
 		printerr("build_unit_art: %s did not load back as a UnitArt" % out)
-		return 1
+		return false
 	catalog.put(saved)
 	if ResourceSaver.save(catalog, UnitArtCatalog.DEFAULT_PATH) != OK:
 		printerr("build_unit_art: could not save %s" % UnitArtCatalog.DEFAULT_PATH)
-		return 1
+		return false
 	print("built %s (%d animations) and listed it in %s" % [out, art.frames.get_animation_names().size(), UnitArtCatalog.DEFAULT_PATH])
-	return 0
+	return true

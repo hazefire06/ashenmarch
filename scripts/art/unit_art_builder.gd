@@ -13,6 +13,36 @@ const GAME_ANIMS: Array[StringName] = [
 	&"idle", &"walk", &"attack", &"die", &"shoot", &"throw", &"cast", &"place",
 ]
 
+## What build() and layout_errors() read from the sidecar without a default.
+const SIDECAR_KEYS: Array[String] = ["unit", "cell", "stride", "gutter", "feet_px", "pixels_per_meter", "animations"]
+const ANIMATION_KEYS: Array[String] = ["sheet", "frames", "fps", "loop"]
+
+
+## Which keys the sidecar lacks, or an empty array if it has all that build()
+## and layout_errors() need. Run before them: a missing key would be a script
+## error deep inside them, far from its cause. Only the animations the game
+## plays are checked.
+static func sidecar_errors(sidecar: Dictionary) -> PackedStringArray:
+	var errors: PackedStringArray = PackedStringArray()
+	for key: String in SIDECAR_KEYS:
+		if not sidecar.has(key):
+			errors.append("no \"%s\"" % key)
+	if not sidecar.get("animations") is Dictionary:
+		if sidecar.has("animations"):
+			errors.append("\"animations\" is not an object")
+		return errors
+	var anims: Dictionary = sidecar["animations"]
+	for key: String in anims:
+		if StringName(key) not in GAME_ANIMS:
+			continue
+		if not anims[key] is Dictionary:
+			errors.append("%s: not an object" % key)
+			continue
+		for needed: String in ANIMATION_KEYS:
+			if not (anims[key] as Dictionary).has(needed):
+				errors.append("%s: no \"%s\"" % [key, needed])
+	return errors
+
 
 ## Why the sidecar's layout doesn't fit its sheets, or an empty array if it
 ## does. Only the animations the game plays are checked. Run before build():
