@@ -17,7 +17,7 @@ Decisions made in Phase 0 that later phases build on. CLAUDE.md has the rules; t
 - Unit commands (Phase 2): `SpawnUnitCommand` (type id, side, position, facing), `MoveUnitsCommand` (unit ids, target, formation), `StopUnitsCommand` (unit ids). Phase 3 adds `AttackMoveCommand` (same fields as a move), and Phase 8 `DeployCommand` (a campaign roster, with each soldier's kills and health, at tick 0). Group commands sort and dedupe their ids and skip missing or dead units, so the order the player selected in doesn't matter.
 - `World.enqueue()` rejects ticks already simulated. At the start of each tick, that tick's commands apply in enqueue order.
 - Commands are immutable data. A command targeting a missing entity is a no-op.
-- This is the stream that lockstep multiplayer and replays will serialize. Serialization is not built yet.
+- This is the stream that lockstep multiplayer and replays serialize. Phase 10's `CommandCodec` encodes it; see Replays (Phase 10).
 
 ## Randomness
 - Gameplay randomness comes only from `World.rng`, a `RandomNumberGenerator` seeded in `World._init`. Use its integer methods (`randi`, `randi_range`) in sim code. One exception, Phase 8's mission wave draw, uses a generator of its own and never touches `world.rng`; see Mission framework and campaign (Phase 8), RNG.
@@ -82,8 +82,8 @@ Passability takes a `Terrain.Mobility`; each `UnitType` has a `mobility` field.
 - Mesh vertices equal the sim's sample heights exactly (tested in `tests/view/test_terrain_mesh_builder.gd`).
 - If Phase 4 bounces look wrong against the facets, switch `height_at`/`gradient_at` to triangle interpolation on the same diagonal. That's a one-function change.
 
-### Not in `state_hash` yet
-The terrain is static in Phase 1. When explosions start scarring it (Phase 4), add a terrain hash to `World.state_hash()`.
+### In `state_hash` since Phase 4
+The terrain was static in Phase 1. Phase 4's craters scar it, and the scars are hashed (`Terrain.scar_hash_fields`); the base heightfield isn't, being the map file's.
 
 ## Map format
 A map is a folder `maps/<name>/` holding three files.
@@ -625,7 +625,7 @@ The environment changes tactics:
   - rain soaks (1000 ticks, about 33 s);
   - cover melts once snow stops (5000 ticks);
   - the ground dries once rain stops (4000 ticks).
-- **Schedules are commands.** A `WeatherSchedule` is `WeatherChange`s in strictly ascending tick order. `commands()` turns them into `SetWeatherCommand`s that are enqueued at mission start, like the spawns, so a replay's command stream carries the weather. Phase 7's SET_WEATHER trigger action calls `change_to()` directly, the call `SetWeatherCommand.apply` makes: a trigger is sim state, not an outside change, so it isn't in the command stream (see Enemy AI and mission triggers).
+- **Schedules are commands.** A `WeatherSchedule` is `WeatherChange`s in strictly ascending tick order. `commands()` turns them into `SetWeatherCommand`s. (Phase 10 found nothing enqueues them: a mission's weather comes from its triggers, below, which are sim state and need no commands, so replays don't need this.) Phase 7's SET_WEATHER trigger action calls `change_to()` directly, the call `SetWeatherCommand.apply` makes: a trigger is sim state, not an outside change, so it isn't in the command stream (see Enemy AI and mission triggers).
 - **Riverside test schedule** (`data/weather/riverside_showers.tres`):
   - a breeze;
   - showers at 70 % from 45 s;
@@ -1578,7 +1578,7 @@ Hashes from before Phase 8 aren't comparable with later ones. The replay a locks
 - **`Briefing`:** the mission's text, the objectives that `shown_at_start`, the roster slot by slot from `plan_deploy` (veteran: name, type, kills, accuracy / attack-rate / speed bonuses as a percentage from `Veterancy.bonus_permille` and the type's caps, hp / max, wounded in amber; or "Recruit"), a Bench checkbox on every fielded veteran that plans again, and the reserve (a benched veteran waits there with his box still ticked). Nothing is committed by planning.
 - **`Results`:** Victory / Defeat, time, enemies killed by type, Light losses and friendly-fire deaths by name, each objective's final state (hidden ones left out), and a table of every soldier who deployed (kills this mission, total, bonuses, hp, status Survived / Fallen / Recruit). It is built from `MissionStats`, the finished world and the plan alone.
 - **`GameSettings`** (`view/settings/settings.gd`): static helpers over a `ConfigFile` (`user://settings.cfg`, path injectable), `[display] fullscreen` and `[controls] edge_scroll`, both off by default. Damaged files and wrongly typed values read as the defaults; a setter loads, changes one key and saves, so Phase 10's keys survive. The Settings screen applies only what was saved: a write that fails puts the box back and says "the change was not applied", since the App re-reads the file. The window mode is applied by the App at boot (only if fullscreen is on) and when the Fullscreen choice itself changes, never for another toggle, so flipping Edge scroll can't drop the player out of fullscreen; it is skipped without a window (`DisplayServer.get_name() == "headless"`).
-- **Not checked:** the save's rename over an existing file on Windows and Web, `user://` persistence on Web, and the glyphs without system fonts: see Not yet. Keybinds, volume and resolution are Phase 10; Skirmish is Phase 9.
+- **Not checked:** the save's rename over an existing file on Windows and Web, `user://` persistence on Web, and the glyphs without system fonts: see Not yet. Keybinds, volume and resolution came in Phase 10; Skirmish in Phase 9.
 
 ### Maps (`MapBuilder`, the generators)
 - **`MapBuilder`** (`scripts/mapgen/map_builder.gd`) is the offline tool code the three generators share (floats and `FastNoiseLite` are fine there: it never runs in the sim):
@@ -1708,7 +1708,7 @@ Hashes from before Phase 8 aren't comparable with later ones. The replay a locks
 - **Line of sight around corners.** Raised terrain and walls stop projectiles and the direct-shot `is_clear`, but a ranged unit can still target something it can't see round a corner (CLAUDE.md: it cannot). None of the three v1 maps depends on it.
 - **`AiTactics._has_shot` is range only,** no line. With no standoff spot at all a STANDOFF member holding with an enemy in range stays where it is, shot or no shot. The spot check itself now needs a real flight, so this is rarer, but a unit penned where every spot fails could still wait for ever. A STANDOFF unit whose target keeps moving re-spots instead of casting (Phase 7), and seen once more in Phase 8: on a tier-4 candidate one step harder than the shipped one (seed 1007) the last Drifter and both Stormcallers circled the map edge for ten minutes and the run timed out. It did not occur in the 300 final runs.
 - **A lockstep pause command.** Pause is the view not stepping. Multiplayer needs a command in the stream (and a rule for who may pause), which Phase 9 or later decides.
-- **Keybinds, volume and resolution are Phase 10,** with Skirmish (Phase 9, a stub panel now). `GameSettings` keeps unknown keys, so Phase 10's survive.
+- **Keybinds, volume and resolution** (done in Phase 10, which also checked Web persistence and the save's rename there: both work).
 - **Windows and Web.** Not checked: that `DirAccess.rename_absolute` overwrites an existing file there (the save's atomic write; the store returns the error and keeps the old save if not), `user://` persistence in a Web export, the objective panel's glyphs (○ ✓ ✗ rendered with a macOS fallback font; the menus use ASCII and drawn icons), depth fog and the grade shader on WebGL2, and the atmospheres on anything but Metal. The map regeneration test byte-compares PNGs, which pins the generating platform (`FastNoiseLite` and libm may differ on x86 or Windows), hides the child process's stderr and has no timeout.
 - **The Ford's length, for Tim.** The Ford is about 2.4 minutes against a 4-minute target (see Decisions). The lever that would lengthen it without a map change is a gate that stays shut until the Rippers are dead (the briefing says the hamlet "will open its gate to no one it cannot name"); a slower or more cautious villager, or a longer road (a map change), are the others.
 - **Riverside's naive pilot wins 90 to 95%,** at the edge of its 60 to 90% target (90% on seeds 1000 to 1019, 95% over 40). It loses 39% of its roster, but a squad that marches as one block through one group at a time rarely loses outright. Every variant that took it lower used 7 or more Rippers or a bigger guard, which took the competent pilot past 25% lost or the raid past CLAUDE.md's "a few Rippers" for Riverside, so the tutorial keeps 5 Rippers at tier 2 (7 at tier 4).
@@ -1900,3 +1900,159 @@ The commander, ADVANCE, MEDIC and the skirmish rules draw no random numbers; `ma
 - **Skirmishes are short:** most end by elimination in 2 to 4 game minutes, one decisive fight, because both commanders go for an unguarded objective at once and armies don't come back. The mode decides where the fight is more than how long it lasts.
 - **Weather in skirmish, more than two sides, remembering a separate army per side, friendly-fire counts on the results screen,** and a lockstep pause command (still the view not stepping).
 - **`make capture-skirmish` needs the window in front:** macOS doesn't draw a window it hasn't brought forward, and a shot then waits up to 2 s for a frame and saves what there is.
+
+## Exports, replays, determinism, performance, settings (Phase 10)
+
+### Exports
+- **Presets** (`export_presets.cfg`; `make export-mac`, `export-windows`, `export-web`, `export-all`):
+  - **macOS:** universal, built-in ad-hoc signing (`codesign/codesign=1`), no notarization. It runs here and on any Mac it is copied to directly. A downloaded copy needs `xattr -dr com.apple.quarantine Ashenmarch.app`, or System Settings > Privacy & Security > Open Anyway.
+  - **Windows:** x86_64 with the pck embedded, plus `Ashenmarch.console.exe` for command-line runs that print. Godot 4.5+ edits the exe's resources itself, so no rcedit or Wine is needed.
+  - **Web:** single-threaded, Godot 4.7's default (Tim's call). It needs no cross-origin isolation headers, so any static host serves it.
+- **Excluded from builds:** `tests/`, `addons/gut/`, `scripts/` and `docs/`. **Included:** `data/replays/*`, the golden replays, which aren't resources.
+- `build/` holds a `.gdignore`, so Godot never scans its own output.
+- **`scripts/serve_web.py`** (`make serve-web`) serves `build/web` on 127.0.0.1:8060. It still sends COOP/COEP, so a threaded export would run there unchanged.
+- **The version is in `application/config/version`** (0.10.0). Replays stamp it.
+- **Web findings:**
+  - Fullscreen at boot is skipped, since browsers grant it only from a gesture.
+  - `user://` (settings, the campaign save's tmp-and-rename, replays) survives a reload.
+  - The canvas renders at devicePixelRatio, which is why the interface scale (below) defaults to Auto.
+
+### Replays (`sim/replay/`, `sim/commands/command_codec.gd`, `view/replay/`)
+- **`CommandCodec`** encodes a command as `[kind, tick, fields...]`, holding only ints, Strings and packed arrays, so `var_to_bytes` stores it identically everywhere. This is the lockstep wire unit too.
+  - Kinds are append-only: a new kind never breaks an old replay.
+  - `decode` validates count, types and enum ranges, and returns null rather than a command that would apply garbage.
+- **`Replay`** holds:
+  - the setup: the mission's resource path, tier, seed and encoded `DeployCommand` (which carries the carryover roster), or `SkirmishSetup.to_dict()`;
+  - the commands in enqueue order;
+  - a checkpoint every 300 ticks: `state_hash` plus `subsystem_hashes`;
+  - the end tick and final hash, and a summary for the list.
+  - A format number is checked on load.
+- **Recording.** `World.enqueue` hands every command it accepts to `world.recorder` (`ReplayRecorder`), which also takes the checkpoints after each step.
+  - MainView attaches the recorder after `MissionSetup`/`SkirmishSetup.create_world`, so the setup's own tick-0 commands aren't recorded twice.
+  - Games built in code (no resource path) aren't recorded.
+- **Playback.** `ReplayPlayer` rebuilds the world through the same setup and queues each tick's commands just before that tick's step. Queuing all of them up front would change every checkpoint, since `state_hash` counts pending commands.
+  - It keeps the first checkpoint that differs and the subsystems that differ.
+- **`World.subsystem_hashes()`** splits `state_hash()` into header, movement, weather, ai, mission, skirmish, terrain, fire and entities; `entity_hashes()` goes one level further. `state_hash()` itself is unchanged.
+- **Files.** `ReplayStore` writes `user://replays/<unix>_<title>.amr` as zstd-compressed `store_var` with no objects, keeping the newest 30. App.show_screen saves the outgoing MainView's recording, so every way out of a game (results, quit, restart, Retry) saves it, as does closing the window.
+- **Viewer.** Main menu > Replays lists the games with Watch and Delete. Watching:
+  - selection, tooltips and the camera work; orders are blocked;
+  - the ReplayBar plays, pauses, runs at 1/2/4/8 ticks a frame (each drawn, since the views read each tick's events), watches again or leaves;
+  - it notes "Left the recording at m:ss" on a divergence;
+  - it freezes at the end without sending `mission_ended`, so watching can't change a campaign;
+  - in a replay the pause menu's Restart reads "Watch again", and Quit leaves without asking.
+
+### Determinism across platforms
+- **Golden replays** (`data/replays/golden`, `make golden-replays`): Riverside at Normal and Old Mill at the hardest tier, played by the playtest pilot, and an AI-against-AI Capture the Flags on The Ford.
+  - They are recorded once. The pilot thinks in float vectors, so it must never be re-run on another platform to make "the same" game.
+  - **Regenerate them whenever the sim's behavior changes.** `make verify-replays` (and the in-suite tests that play them) fail until then, which is the point.
+- **Verify mode:** `<game> --headless -- --verify-replays [--trace=FROM-TO] [--trace-entities]`, or `?verify=1` on the web, plays the goldens.
+  - It prints one line each and exits 1 on a divergence.
+  - A trace dumps per-tick subsystem and entity hashes, to diff two platforms down to the first tick and entity that differ.
+  - Make targets: `verify-replays` (editor), `verify-replays-app` (release app, arm64), `verify-replays-x86` (the app under Rosetta).
+
+| Platform | old_mill_t4 (15058 ticks) | riverside_t2 (7323) | skirmish_ctf (5144) |
+|---|---|---|---|
+| Editor, macOS arm64 | 50/50, final `0c2e4a2f…` | 24/24, `1ef0b170…` | 17/17, `a2ae64d0…` |
+| Release app, macOS arm64 | identical | identical | identical |
+| Release app, macOS x86_64 (Rosetta) | identical | identical | identical |
+| Web, Chrome wasm32 | identical | identical | identical |
+
+- **No divergence was found,** so nothing in `sim/` needed fixing. The Phase 0–9 rules held: integer and fixed-point math everywhere, a committed sine table, and integer-weighted A*.
+- **Not run:**
+  - Windows, deferred to Phase 11 (Tim's call).
+  - Firefox and Safari. WebAssembly's integer and IEEE float semantics are engine-independent, and the build uses fixed-width SIMD only.
+- **The purity check now bans** float types, casts, literals, constants (`INF`, `NAN`, `PI`, `TAU`), float rounding and interpolation, float-only math functions, float-based Godot types and float RNG calls in `sim/`.
+  - Six safe lines say why with `# purity-ok: <reason>`: isqrt's corrected guess, AStarGrid2D's integer weights, the save's number validation and the view-only placeholder colors.
+  - `test_pathing.gd` pins that no shipped map can push AStarGrid2D's float32 scores past 2^24.
+
+### Settings (`view/settings/`, `view/input_bindings.gd`)
+- **Three tabs:**
+  - **Display:** fullscreen; window size in points (multiplied by the screen's scale); vsync; frame cap; 3D render scale (bilinear, which Compatibility supports); interface size. Web shows fullscreen, frame cap, interface and 3D only.
+  - **Audio:** a volume per bus.
+  - **Controls:** edge scroll, every gameplay action, the two group modifiers, and Reset all.
+- **Interface size defaults to Auto,** the screen's scale. This Mac's display is 4K at 2x and the web canvas runs at devicePixelRatio, so the HUD had been drawn at half size on both.
+  - `Window.content_scale_factor` scales the canvas with stretch disabled; a probe confirmed it.
+  - Picking still lines up at 2x: checked in the web build.
+- **Saving and applying.** Each control saves the moment it changes, and the App applies the file at boot and after each change (`apply_bindings`, `apply_audio`, `apply_display`). The window is resized only when its size was the change.
+- **Rebinding:**
+  - Press a key or mouse button with any modifiers; Esc cancels.
+  - A key already in use swaps, so nothing is left unbound.
+  - Group keys stay on the number row; only their modifiers change.
+  - Debug keys aren't rebindable.
+  - Bindings are saved as text (`key:T+cmdorctrl`, `mouse:2`, `joy_button:0`, `joy_axis:1:minus`), so Phase 11's pad bindings need no format change.
+  - The control bar, the pause menu's label and the scoreboard's hint name whatever the keys are now.
+- **Myth II's layout for two keys** (Tim's call; see `docs/controls-myth2.md`): H centers the camera on the selection (it glides there, and moving the camera by hand stops it), and Stop moved to Space. The bar has a Center button.
+
+### Sound (`view/audio/`, `assets/audio/sfx/`)
+- **Sixteen original placeholder effects,** synthesized by `scripts/gen_sfx.py` (`make sfx`): stdlib only, deterministic, 571 KB of 22 kHz mono WAVs. Nobody has auditioned them yet.
+- **Buses:** Master, Effects, Ambient, Interface (`default_bus_layout.tres`).
+- **`SfxPlayer`** turns `combat_events`, `projectile_events` and new gas clouds into positional sounds.
+  - It uses a 24-voice pool and caps each sound at 3 and all sounds at 8 a tick.
+  - Melee sounds play only for blows between units within 4 m (farther, the arrow or blast has its own sound).
+  - Nothing more than 160 m from the camera's focus plays.
+- **`Ambience`:** rain and fire beds follow the weather and the number of burning cells.
+- **`UiSounds`:** a click for every button added to the tree, wherever.
+- **Order acknowledgement** via `SelectionController.order_given`.
+
+### Performance
+- **`make bench`** (windowed) stages the target. Its load lives in `scripts/bench_scenario.gd`:
+  - Riverside, AI against AI, 50 against 50, health topped up between ticks so the hundred keep fighting;
+  - arrows dropped over the fight to hold 200 projectiles in the air;
+  - it prints frame-time percentiles, tick (step plus views) and step-alone times, draw calls and nodes.
+- **`make profile-sim`** plays the same load headless and times every stage of `World.step()` through a mirror it checks against `step()` by hash.
+- **The first measurement put the cost in the sim:**
+  - Rendering and the views were about 1 ms of an 8 ms tick at 520 draw calls.
+  - Movement was 45% of the tick, and spiked to about 100 ms whenever an AI commander sent a group across the map: each of 50 units ran its own 13 to 19 ms A* along the same route, six a tick.
+  - **Fix: route sharing** (see Pathing). One A* per group order, not one per unit.
+
+| M4 Max, 60 s, 100 units, ~197 projectiles in the air, vsync off | Before | After |
+|---|---|---|
+| Worst sim tick | 88 to 110 ms | 40 ms |
+| Mean tick (step + views) / step alone | 8.0 / 7.0 ms | 7.8 / 6.7 ms |
+| Frame p50 / p95 / p99, 1920x1080 windowed | 3.6 / 12.5 / 15.8 ms (17.8 on another run) | 3.6–5.3 / 12.5–15.0 / 15.5–17.5 ms over three runs |
+| Frame p99, 3840x2160 fullscreen | 13.6 ms | 14.4 ms |
+| Average fps | 160 to 190 | 160 to 190 |
+
+- **Reading the table.** Frame p99 sits at or under the 16.7 ms that 60 fps needs. The windowed figure moves about 2 ms with what else is on screen: macOS throttles a window that isn't frontmost, which accounts for the frames that stall with no tick in them.
+- **What still spikes:** the 30 to 50 ms ticks when the four AI groups are re-ordered at once (four leader solves of about 14 ms each, every 3.5 s in this load), and occasional 15 to 20 ms aiming spikes in `ranged`. The next levers:
+  - caching solved routes across ticks;
+  - the count-based aim budget Phase 4 left ready.
+- **Tick 0 takes about 200 ms** building the pathing layers, before the first frame of play.
+
+### Pathing: route sharing (`UnitMovement._share`, `Pathing.adapt_path`)
+- **After each A* solve, the route is offered to queued requests.** Takers must have the same mobility, set out within 12 m of where it set out, and be going within 20 m of where it was going.
+- **How a taker follows it:**
+  - straight to where the route set out;
+  - along the route; its legs are trusted, a ford crossing included;
+  - straight on from its end to the taker's own goal, string-pulled.
+  - Only the two new legs are checked, strictly: walkable straight without wading deeper than their ends. A taker whose legs fail keeps its place in the queue.
+- **Budget:** at most 48 routes are handed on a tick. Once that is spent no more solves start that tick.
+- **Deterministic:** it depends on the queue order and positions only.
+- **Behavior change:** a group sets out together rather than over four ticks. A 20-unit box behind a wall takes 44 s rather than 39 s to settle into its slots, because the column reaches the box at once.
+- **Balance:** a 60-run playtest (tier 2, 10 seeds, both pilots) is within noise of Phase 8's.
+
+| Pilot | Mission | Won | Roster lost (Phase 8 in brackets) |
+|---|---|---|---|
+| Competent | Riverside | 100% | 14% (17%) |
+| Competent | The Ford | 90% | 16% (21%) |
+| Competent | Old Mill | 90% | 30% (30%) |
+| Naive | Riverside | 100% | 41% (39%) |
+| Naive | The Ford | 50% | 41% (42%) |
+| Naive | Old Mill | 70% | 66% (78%) |
+
+### Decisions
+- **Single-threaded web** (Tim). The serve script still sends COOP/COEP.
+- **Windows determinism deferred to Phase 11** (Tim). The exe is exported but not run here.
+- **Placeholder sounds now** (Tim), rather than volume sliders over silence.
+- **H center, Space stop** (Tim). Every other missing Myth II command is in Phase 11.
+- **Replays are binary `store_var`, not JSON.** JSON parses every number as a double, and seeds are 64-bit.
+- **Recording at `World.enqueue`.** It is the one place every outside command passes, whoever sends it.
+
+### Not yet
+- **Windows:** the determinism run and a play test (Phase 11, on the Parallels VM).
+- **Browser shortcuts:** not checked whether Chrome swallows Cmd/Ctrl+1..0 (group save) on the web. Synthetic key events reach the page whatever the browser does with real ones, so this needs a real keyboard. If it does, Settings > Controls can move saving to Shift.
+- **Not auditioned:** the sounds' character, and 3D sample playback's panning on the web (no errors, but nobody has listened).
+- **Formation arrival:** units squeezing into a box already filled keep making 10 cm of "progress" and never give up. The route-sharing column makes it more visible.
+- **Old Mill: a stuck Sapper at (178, 169)** on seed 1000. The playtest flags stuck units on Old Mill in every run (Sapper #17 near tick 1170, Husks near (127, 106) late on). It is not route sharing: `main` has the identical stall at the identical spot.
+- **Route caching across ticks,** and the aim budget, for the remaining 30 to 50 ms ticks.
+- **The web build at 100 units** runs at 36 to 60 fps (the sim is about 3x native in wasm). Not a target this phase.
