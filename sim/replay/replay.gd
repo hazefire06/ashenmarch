@@ -17,6 +17,13 @@ extends RefCounted
 ## format it doesn't know. New command kinds don't need a bump (CommandCodec
 ## only ever appends kinds).
 const FORMAT: int = 1
+## The longest replay accepted (4 hours of play); a mission is capped at 25
+## minutes, a skirmish at 20. A file claiming more is refused rather than
+## played for ever.
+const MAX_END_TICK: int = 4 * 60 * 60 * World.TICK_RATE
+## Where the resources a replay names may live: shipped missions and maps.
+const MISSION_DIR: String = "res://data/missions/"
+const MAP_DIR: String = "res://maps/"
 
 enum Kind {
 	## A campaign mission: MissionSetup builds the world.
@@ -71,6 +78,17 @@ static func for_skirmish(skirmish_setup: SkirmishSetup) -> Replay:
 	replay.kind = Kind.SKIRMISH
 	replay.setup = skirmish_setup.to_dict()
 	return replay
+
+
+## True for a path a replay may load: a .tres under `dir` (MISSION_DIR or
+## MAP_DIR), already simplified and with no "..". A replay file is untrusted:
+## "res://../" climbs out of the project, and load() runs a script's static
+## code before any type check could refuse it, so nothing else is loaded.
+static func is_safe_path(path: String, dir: String) -> bool:
+	return (
+		path.begins_with(dir) and not path.contains("..") and path.simplify_path() == path
+		and path.get_extension() == "tres"
+	)
 
 
 ## Seconds of game time it covers.
@@ -146,14 +164,16 @@ func decoded_commands() -> Array[SimCommand]:
 
 # Why the fields don't hold together, or "".
 func _check() -> String:
-	if end_tick < 0:
-		return "negative length"
+	if end_tick < 0 or end_tick > MAX_END_TICK:
+		return "a length out of range"
 	if kind == Kind.MISSION:
 		if (
 			not setup.get("mission") is String or not setup.get("tier") is int
 			or not setup.get("seed") is int or not setup.get("deploy") is Array
 		):
 			return "the mission setup is incomplete"
+		if not is_safe_path(setup["mission"], MISSION_DIR):
+			return "the mission's path isn't a shipped mission"
 		if not CommandCodec.decode(setup["deploy"]) is DeployCommand:
 			return "the mission's deploy doesn't decode"
 	var last_tick: int = 0

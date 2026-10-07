@@ -1933,6 +1933,12 @@ The commander, ADVANCE, MEDIC and the skirmish rules draw no random numbers; `ma
 - **Playback.** `ReplayPlayer` rebuilds the world through the same setup and queues each tick's commands just before that tick's step. Queuing all of them up front would change every checkpoint, since `state_hash` counts pending commands.
   - It keeps the first checkpoint that differs and the subsystems that differ.
 - **`World.subsystem_hashes()`** splits `state_hash()` into header, movement, weather, ai, mission, skirmish, terrain, fire and entities; `entity_hashes()` goes one level further. `state_hash()` itself is unchanged.
+- **A replay file is untrusted input** (a security review found the first cut could run arbitrary GDScript):
+  - Only a `.tres` under `res://data/missions/` or `res://maps/`, simplified and without `..`, is ever loaded (`Replay.is_safe_path`). `res://../` climbs out of the project, and `load()` runs a script's static code before any type check.
+  - Every number in a record is under 2^30 in magnitude: `INT64_MIN` as a facing used to hang `FixedMath.normalize`.
+  - Lists hold at most 256 entries, a replay at most 4 hours of ticks.
+  - Files are refused over 8 MB on disk, or over 32 MB decompressed. The stored length is checked before anything is allocated for it.
+  - `settings.cfg` is refused if it constructs a `Resource(` or `Object(`, which ConfigFile would load while parsing.
 - **Files.** `ReplayStore` writes `user://replays/<unix>_<title>.amr` as zstd-compressed `store_var` with no objects, keeping the newest 30. App.show_screen saves the outgoing MainView's recording, so every way out of a game (results, quit, restart, Retry) saves it, as does closing the window.
 - **Viewer.** Main menu > Replays lists the games with Watch and Delete. Watching:
   - selection, tooltips and the camera work; orders are blocked;
@@ -2055,4 +2061,5 @@ The commander, ADVANCE, MEDIC and the skirmish rules draw no random numbers; `ma
 - **Formation arrival:** units squeezing into a box already filled keep making 10 cm of "progress" and never give up. The route-sharing column makes it more visible.
 - **Old Mill: a stuck Sapper at (178, 169)** on seed 1000. The playtest flags stuck units on Old Mill in every run (Sapper #17 near tick 1170, Husks near (127, 106) late on). It is not route sharing: `main` has the identical stall at the identical spot.
 - **Route caching across ticks,** and the aim budget, for the remaining 30 to 50 ms ticks.
+- **Lockstep must allowlist command kinds.** `CommandCodec` decodes every kind, including the setup and debug ones (spawns, statuses, velocities, a mid-game deploy) that a replay never holds from a player. Taken from a peer, they would be cheats.
 - **The web build at 100 units** runs at 36 to 60 fps (the sim is about 3x native in wasm). Not a target this phase.

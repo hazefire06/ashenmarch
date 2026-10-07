@@ -126,7 +126,7 @@ func test_damaged_replays_are_refused_with_a_reason() -> void:
 		]),
 		"checkpoint is malformed": _with(good, "checkpoints", [[300, "abc"]]),
 		"deploy doesn't decode": _with(good, "setup", {
-			"mission": "res://x.tres", "tier": 2, "seed": 1, "deploy": [1, 0],
+			"mission": "res://data/missions/riverside/mission.tres", "tier": 2, "seed": 1, "deploy": [1, 0],
 		}),
 	}
 	for reason: String in cases:
@@ -253,3 +253,29 @@ func _with(data: Dictionary, key: String, value: Variant) -> Dictionary:
 	var changed: Dictionary = data.duplicate(true)
 	changed[key] = value
 	return changed
+
+
+func test_only_shipped_missions_and_maps_are_loaded() -> void:
+	# A crafted path must never reach load(): it runs a script's static code
+	# before any cast could refuse it.
+	for path: String in [
+		"res://../outside.tres", "res://data/missions/../../x.tres", "res://data/missions/a/../../../x.tres",
+		"res:///../x.tres", "res://data/missions/evil.gd", "user://mission.tres", "res://data/missions//a.tres",
+		"/tmp/mission.tres",
+	]:
+		assert_false(Replay.is_safe_path(path, Replay.MISSION_DIR), path)
+	assert_true(Replay.is_safe_path("res://data/missions/riverside/mission.tres", Replay.MISSION_DIR))
+	var crafted: Dictionary = _mission_replay.to_dict()
+	crafted["setup"]["mission"] = "res://data/missions/../../outside.tres"
+	var problems: Array[String] = []
+	assert_null(Replay.from_dict(crafted, problems))
+	assert_string_contains(problems[0], "shipped mission")
+	var map_data: Dictionary = _skirmish_setup().to_dict()
+	map_data["map"] = "res://maps/../../outside.tres"
+	assert_null(SkirmishSetup.from_dict(map_data))
+
+
+func test_a_replay_claiming_hours_of_play_is_refused() -> void:
+	var problems: Array[String] = []
+	assert_null(Replay.from_dict(_with(_mission_replay.to_dict(), "end_tick", Replay.MAX_END_TICK + 1), problems))
+	assert_string_contains(problems[0], "length")

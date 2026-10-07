@@ -142,3 +142,24 @@ func test_the_verifier_reports_a_missing_file_as_a_failure() -> void:
 	watch_signals(verifier)
 	verifier.start({"paths": PackedStringArray([DIR + "/none.amr"])})
 	assert_signal_emitted_with_parameters(verifier, "finished", [false])
+
+
+func test_oversized_or_lying_files_are_refused() -> void:
+	DirAccess.make_dir_recursive_absolute(DIR)
+	var big: FileAccess = FileAccess.open(DIR + "/big.amr", FileAccess.WRITE)
+	var chunk: PackedByteArray = PackedByteArray()
+	chunk.resize(1024 * 1024)
+	for i: int in 9:
+		big.store_buffer(chunk)
+	big.close()
+	var problems: Array[String] = []
+	assert_null(ReplayStore.load_file(DIR + "/big.amr", problems))
+	assert_string_contains(problems[0], "too big")
+	# A compressed file whose stored length claims more than it holds.
+	var lying: FileAccess = FileAccess.open_compressed(DIR + "/lying.amr", FileAccess.WRITE, FileAccess.COMPRESSION_ZSTD)
+	lying.store_32(1 << 30)
+	lying.store_buffer(PackedByteArray([1, 2, 3]))
+	lying.close()
+	problems.clear()
+	assert_null(ReplayStore.load_file(DIR + "/lying.amr", problems))
+	assert_string_contains(problems[0], "damaged")

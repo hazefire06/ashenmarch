@@ -17,6 +17,8 @@ extends RefCounted
 const TIER: int = 2
 ## Milli-units between the AI's main block and its raiders, side by side.
 const RAIDER_GAP: int = 4000
+## from_dict refuses more flag coordinates than this (16 flags).
+const MAX_FLAG_INTS: int = 32
 
 var map: SkirmishMap
 var rules: SkirmishRules
@@ -189,7 +191,10 @@ static func from_dict(data: Dictionary) -> SkirmishSetup:
 	):
 		return null
 	var map_path: String = data["map"]
-	if not map_path.begins_with("res://") or not ResourceLoader.exists(map_path):
+	# A replay file is untrusted: only a shipped map is loaded (Replay.is_safe_path).
+	if not Replay.is_safe_path(map_path, Replay.MAP_DIR) or not ResourceLoader.exists(map_path):
+		return null
+	if (data["flags"] as PackedInt32Array).size() > MAX_FLAG_INTS or (data["armies"] as Array).size() != 2:
 		return null
 	var loaded_map: SkirmishMap = load(map_path) as SkirmishMap
 	if loaded_map == null:

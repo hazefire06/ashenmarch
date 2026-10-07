@@ -111,7 +111,7 @@ func _build(catalog: UnitCatalog) -> World:
 	match replay.kind:
 		Replay.Kind.MISSION:
 			var path: String = replay.setup["mission"]
-			if not path.begins_with("res://") or not ResourceLoader.exists(path):
+			if not Replay.is_safe_path(path, Replay.MISSION_DIR) or not ResourceLoader.exists(path):
 				error = "this build has no mission %s" % path
 				return null
 			var mission: MissionDef = load(path) as MissionDef

@@ -320,9 +320,15 @@ static func apply_window_mode(enabled: bool) -> void:
 
 
 # The file's contents, or an empty ConfigFile if it is missing or won't parse.
+# A file that constructs a Resource or an Object counts as damaged: ConfigFile
+# would load the named resource (and run its script) while parsing, and no
+# setting is ever one.
 static func _read(path: String) -> ConfigFile:
 	var config: ConfigFile = ConfigFile.new()
-	if config.load(path) != OK:
+	if not FileAccess.file_exists(path):
+		return config
+	var text: String = FileAccess.get_file_as_string(path)
+	if text.contains("Resource(") or text.contains("Object(") or config.parse(text) != OK:
 		config.clear()
 	return config
 

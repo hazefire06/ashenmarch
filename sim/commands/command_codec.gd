@@ -10,9 +10,14 @@ extends RefCounted
 ## or reuse one, or old replays decode as the wrong command.
 ##
 ## decode() trusts nothing: a record from a damaged file (or, one day, a peer)
-## with the wrong length, a wrongly typed field, an enum value out of range or
-## a negative tick decodes to null, never to a command that would apply
-## garbage.
+## with the wrong length, a wrongly typed field, an enum value out of range, a
+## negative tick, a number of MAX_MAGNITUDE or more (FixedMath works in
+## ranges far below int64, and INT64_MIN hangs normalize()) or a list longer
+## than MAX_LIST decodes to null, never to a command that would apply garbage.
+##
+## Every kind decodes, including the setup and debug ones (spawns, statuses,
+## velocities) a replay never holds from a player. When lockstep takes
+## commands from peers it must accept only the player-order kinds.
 
 enum Kind {
 	MOVE = 1,
@@ -31,6 +36,13 @@ enum Kind {
 	SET_VELOCITY = 14,
 	DESPAWN_ENTITY = 15,
 }
+
+## Every number in a record, the tick included, is under this in magnitude:
+## about 1000 km in milli-units, far beyond any map, far inside what
+## FixedMath can square.
+const MAX_MAGNITUDE: int = 1 << 30
+## Most entries a list in a record may have (unit ids, a deploy's roster).
+const MAX_LIST: int = 256
 
 ## A record's field types, after kind and tick, per kind. I is an int, U a
 ## PackedInt32Array of unit ids, S a PackedStringArray. Enum fields are I and
@@ -124,7 +136,7 @@ static func decode(record: Array) -> SimCommand:
 		return null
 	var kind: int = record[0]
 	var tick: int = record[1]
-	if not LAYOUTS.has(kind) or tick < 0 or not _fits(record, LAYOUTS[kind]):
+	if not LAYOUTS.has(kind) or tick < 0 or tick >= MAX_MAGNITUDE or not _fits(record, LAYOUTS[kind]):
 		return null
 	var f: Array = record.slice(2)
 	match kind:
@@ -193,13 +205,14 @@ static func _fits(record: Array, layout: String) -> bool:
 		var value: Variant = record[2 + i]
 		match layout[i]:
 			"I":
-				if not value is int:
+				# Both bounds explicitly: absi(INT64_MIN) is INT64_MIN.
+				if not value is int or value <= -MAX_MAGNITUDE or value >= MAX_MAGNITUDE:
 					return false
 			"U":
-				if not value is PackedInt32Array:
+				if not value is PackedInt32Array or (value as PackedInt32Array).size() > MAX_LIST:
 					return false
 			"S":
-				if not value is PackedStringArray:
+				if not value is PackedStringArray or (value as PackedStringArray).size() > MAX_LIST:
 					return false
 	return true
 

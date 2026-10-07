@@ -66,7 +66,7 @@ static func for_replay(to_watch: Replay) -> MissionLaunch:
 		launch.world_seed = launch.skirmish.world_seed
 		return launch
 	var path: String = to_watch.setup["mission"]
-	if not path.begins_with("res://") or not ResourceLoader.exists(path):
+	if not Replay.is_safe_path(path, Replay.MISSION_DIR) or not ResourceLoader.exists(path):
 		return null
 	launch.mission = load(path) as MissionDef
 	if launch.mission == null:

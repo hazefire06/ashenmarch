@@ -113,3 +113,21 @@ func test_a_command_the_codec_does_not_know_encodes_to_nothing() -> void:
 
 func _name(command: SimCommand) -> String:
 	return command.get_script().resource_path.get_file()
+
+
+func test_numbers_and_lists_out_of_range_decode_to_null() -> void:
+	# INT64_MIN as a facing used to hang FixedMath.normalize (absi(INT64_MIN)
+	# is INT64_MIN); 2^40 overflows a square; a million ids is a denial of
+	# service. A replay file is untrusted input.
+	var int64_min: int = -9223372036854775807 - 1
+	var huge_ids: PackedInt32Array = PackedInt32Array()
+	huge_ids.resize(CommandCodec.MAX_LIST + 1)
+	var cases: Dictionary[String, Array] = {
+		"INT64_MIN facing": [CommandCodec.Kind.SPAWN_UNIT, 0, PackedStringArray(["husk"]), 1, 0, 0, int64_min, 0],
+		"2^40 coordinate": [CommandCodec.Kind.MOVE, 0, PackedInt32Array([1]), 1 << 40, 0, 0],
+		"tick at the bound": [CommandCodec.Kind.STOP, CommandCodec.MAX_MAGNITUDE, PackedInt32Array([1])],
+		"too many ids": [CommandCodec.Kind.STOP, 0, huge_ids],
+	}
+	for case: String in cases:
+		assert_null(CommandCodec.decode(cases[case]), case)
+	assert_not_null(CommandCodec.decode([CommandCodec.Kind.MOVE, 0, PackedInt32Array([1]), CommandCodec.MAX_MAGNITUDE - 1, 0, 0]), "just inside")

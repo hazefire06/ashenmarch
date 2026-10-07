@@ -13,6 +13,11 @@ const DEFAULT_DIR: String = "user://replays"
 const GOLDEN_DIR: String = "res://data/replays/golden"
 ## Replays kept in DEFAULT_DIR; save_new drops the oldest past this.
 const KEEP: int = 30
+## Files are refused above this on disk, and above MAX_DATA_BYTES once
+## decompressed: a replay file is untrusted, and a small zstd file can claim
+## a huge payload. A long campaign mission is about 15 KB.
+const MAX_FILE_BYTES: int = 8 * 1024 * 1024
+const MAX_DATA_BYTES: int = 32 * 1024 * 1024
 
 
 ## Writes `replay` to `path`, creating its folder. Returns OK or the error.
@@ -32,17 +37,34 @@ static func save(replay: Replay, path: String) -> Error:
 ## The replay at `path`, or null; the reason, if any, is appended to
 ## `problems` ("can't open", "damaged", or Replay.from_dict's).
 static func load_file(path: String, problems: Array[String] = []) -> Replay:
+	var raw: FileAccess = FileAccess.open(path, FileAccess.READ)
+	if raw == null:
+		problems.append("can't open %s" % path)
+		return null
+	var raw_size: int = raw.get_length()
+	raw.close()
+	if raw_size > MAX_FILE_BYTES:
+		problems.append("%s is too big to be a replay" % path)
+		return null
 	var file: FileAccess = FileAccess.open_compressed(path, FileAccess.READ, FileAccess.COMPRESSION_ZSTD)
 	if file == null:
 		problems.append("can't open %s" % path)
 		return null
-	var data: Variant = file.get_var(false)
-	var error: Error = file.get_error()
-	file.close()
-	if error != OK and error != ERR_FILE_EOF:
+	# store_var's layout, read by hand so the length is checked before
+	# anything is allocated for it: a 32-bit length, then that many bytes,
+	# decoded with no objects allowed.
+	var total: int = file.get_length()
+	var size: int = file.get_32() if total >= 4 else -1
+	if total > MAX_DATA_BYTES or size < 0 or size > total - 4:
+		file.close()
 		problems.append("%s is damaged" % path)
 		return null
-	return Replay.from_dict(data, problems)
+	var bytes: PackedByteArray = file.get_buffer(size)
+	file.close()
+	if bytes.size() != size:
+		problems.append("%s is damaged" % path)
+		return null
+	return Replay.from_dict(bytes_to_var(bytes), problems)
 
 
 ## Saves a new replay in `dir` under a name from the summary's recorded_at and
