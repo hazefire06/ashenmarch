@@ -12,6 +12,7 @@ config_version=5
 
 config/name="Ashenmarch"
 config/description="A real-time strategy (RTS) tactics game."
+config/version="0.10.0"
 run/main_scene="res://view/app/app.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 

@@ -129,8 +129,10 @@ func _ready() -> void:
 	add_child(_overlay_layer)
 	_build_notice()
 	# Only fullscreen needs asking for: the window starts windowed, and a
-	# command-line --fullscreen shouldn't be undone by a default.
-	_fullscreen_applied = GameSettings.fullscreen(settings_path)
+	# command-line --fullscreen shouldn't be undone by a default. A browser
+	# grants fullscreen only from a click or key press, so on the web it is
+	# left to the Settings checkbox, whose click is one.
+	_fullscreen_applied = GameSettings.fullscreen(settings_path) and not OS.has_feature("web")
 	if _fullscreen_applied:
 		apply_window_mode.call(true)
 	show_main_menu()

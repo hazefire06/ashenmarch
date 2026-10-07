@@ -1,7 +1,9 @@
 GODOT ?= godot
 MAC_APP := build/mac/Ashenmarch.app
+WIN_EXE := build/windows/Ashenmarch.exe
+WEB_HTML := build/web/index.html
 
-.PHONY: import run demo demo-projectiles demo-abilities demo-ai test check-sim export-mac maps fixtures playtest skirmish-playtest capture capture-skirmish
+.PHONY: import run demo demo-projectiles demo-abilities demo-ai test check-sim export-mac export-windows export-web export-all serve-web maps fixtures playtest skirmish-playtest capture capture-skirmish
 
 # Builds the .godot/ import and class_name cache. A fresh clone has none, and
 # GUT can't resolve class_name types without it.
@@ -123,6 +125,31 @@ maps: import
 fixtures:
 	python3 tests/fixtures/png/make_png_fixtures.py
 
-export-mac: import
+# Exports. build/ holds a .gdignore so Godot never scans its own output.
+# macOS is universal and ad-hoc signed: it runs on this Mac and anything it is
+# copied to directly; a downloaded copy needs `xattr -dr com.apple.quarantine`.
+export-mac: import build/.gdignore
 	mkdir -p $(dir $(MAC_APP))
 	$(GODOT) --headless --path . --export-release "macOS" $(MAC_APP)
+
+# Windows x86_64, the .pck embedded in the .exe, plus Ashenmarch.console.exe
+# for command-line runs that print (--verify-replays).
+export-windows: import build/.gdignore
+	mkdir -p $(dir $(WIN_EXE))
+	$(GODOT) --headless --path . --export-release "Windows Desktop" $(WIN_EXE)
+
+# Web, single-threaded: needs no cross-origin isolation headers, so any static
+# host serves it. `make serve-web` runs it locally.
+export-web: import build/.gdignore
+	mkdir -p $(dir $(WEB_HTML))
+	$(GODOT) --headless --path . --export-release "Web" $(WEB_HTML)
+
+export-all: export-mac export-windows export-web
+
+build/.gdignore:
+	mkdir -p build
+	touch build/.gdignore
+
+# Serves build/web at http://127.0.0.1:8060/ with the COOP/COEP headers.
+serve-web:
+	python3 scripts/serve_web.py
