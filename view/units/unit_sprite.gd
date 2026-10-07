@@ -1,12 +1,13 @@
 class_name UnitSprite
 extends Node3D
-## Placeholder look for one unit until the art pass: a flat-colored quad that
-## always faces the camera, pivoting on its feet at this node's origin, the
-## type's name above it, a tick on the ground showing which way it faces, a
-## ring when selected, and a health bar when hurt or selected. A full
-## billboard (rather than one turning only about the vertical axis) keeps the
-## quad a clean upright rectangle on screen at the steep RTS camera pitch,
-## where a vertical quad would look squashed and lean with perspective.
+## One unit's look: its type's art (below) or, without art, a placeholder: a
+## flat-colored quad that always faces the camera, pivoting on its feet at
+## this node's origin, with a tick on the ground showing which way it faces.
+## Either way the type's name floats above it, a ring shows when selected,
+## and a health bar when hurt or selected. A full billboard (rather than one
+## turning only about the vertical axis) keeps the quad a clean upright
+## rectangle on screen at the steep RTS camera pitch, where a vertical quad
+## would look squashed and lean with perspective.
 ##
 ## A hit or block tints the quad for FLASH_TIME (a heal tints it green), and
 ## show_notice() floats a line of text over the unit for NOTICE_TIME. Status
@@ -21,7 +22,8 @@ extends Node3D
 ## the quad: the frames for the direction it faces on screen (face_camera,
 ## every frame), playing what UnitAnimator picks from the sim each tick
 ## (animate). Its overlays are the same, minus the facing tick, since the art
-## shows facing. Flashes and status tints become the sprite's modulate. A
+## shows facing. Flashes and status tints become the sprite's modulate,
+## which can only darken, so a hit flashes ART_HIT_TINT rather than white. A
 ## dead art body turns to face the blow (away from it if its death falls
 ## forward) and its last death frame stays as the corpse, still a billboard.
 ## hold() stops it on its frame while the sim isn't stepping.
@@ -67,6 +69,8 @@ const LYING_LIFT: float = 0.06
 const MIN_DIRECTION_SQUARED: float = 0.0001
 ## How dark a dead art body gets (the placeholder uses DEAD_TINT).
 const ART_DEAD_TINT: Color = Color(0.7, 0.7, 0.7)
+## An art body's hit flash: modulate only darkens, so it cuts green and blue.
+const ART_HIT_TINT: Color = Color(1.0, 0.45, 0.4)
 
 var unit_id: int
 var type_index: int
@@ -195,13 +199,13 @@ func set_hp(hp: int, max_hp: int) -> void:
 	_refresh_overlays()
 
 
-## Tints the body briefly: white for a HIT, steel blue for a BLOCK, green for
-## a HEAL. Other kinds, and a dead unit, do nothing.
+## Tints the body briefly: white for a HIT (ART_HIT_TINT on art), steel blue
+## for a BLOCK, green for a HEAL. Other kinds, and a dead unit, do nothing.
 func flash(kind: CombatEvent.Kind) -> void:
 	if _dead:
 		return
 	if kind == CombatEvent.Kind.HIT:
-		_flash_color = HIT_FLASH_COLOR
+		_flash_color = ART_HIT_TINT if _art_body != null else HIT_FLASH_COLOR
 	elif kind == CombatEvent.Kind.BLOCK:
 		_flash_color = BLOCK_FLASH_COLOR
 	elif kind == CombatEvent.Kind.HEAL:
@@ -313,6 +317,7 @@ func is_pickable() -> bool:
 	return not _gibbed
 
 
+## True if the body is the type's art, false for the placeholder quad.
 func has_art() -> bool:
 	return _art_body != null
 

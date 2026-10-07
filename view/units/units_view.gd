@@ -57,6 +57,9 @@ var _art_enabled: bool = true
 var _camera_forward: Vector2 = Vector2(0.0, -1.0)
 ## Units whose bodies burst into gibs, so a rebuilt sprite stays hidden.
 var _gibbed: Dictionary[int, bool] = {}
+## Each dead unit's killing-blow direction (ground x, z), so a rebuilt corpse
+## lies or faces the way it fell.
+var _blows: Dictionary[int, Vector2] = {}
 ## True while the sim isn't stepping (paused, or the mission is decided): the
 ## sprites stand at the latest tick instead of interpolating toward a next one
 ## that never comes, which the physics frames' fraction would otherwise swing
@@ -102,7 +105,8 @@ func after_step() -> void:
 		# The sprite still standing is what marks a death as new: the body
 		# lies down on this tick and never again.
 		if not unit.is_alive() and not sprite.is_dead():
-			sprite.set_dead(true, blows.get(unit.id, Vector2.ZERO), _ground_normal(unit))
+			_blows[unit.id] = blows.get(unit.id, Vector2.ZERO)
+			sprite.set_dead(true, _blows[unit.id], _ground_normal(unit))
 		if sprite.has_art():
 			sprite.animate(_animator_input(unit, launched))
 	_react_to_projectile_events()
@@ -112,6 +116,8 @@ func after_step() -> void:
 			_sprites.erase(unit_id)
 			_previous.erase(unit_id)
 			_current.erase(unit_id)
+			_blows.erase(unit_id)
+			_gibbed.erase(unit_id)
 
 
 ## Where the unit's sprite stands now (meters), for markers.
@@ -144,7 +150,10 @@ func set_art_enabled(enabled: bool) -> void:
 	if enabled == _art_enabled:
 		return
 	_art_enabled = enabled
+	# Out of the tree now, not at the end of the frame, so the new sprites
+	# get their names and nothing finds the old ones among the children.
 	for unit_id: int in _sprites:
+		remove_child(_sprites[unit_id])
 		_sprites[unit_id].queue_free()
 	_sprites.clear()
 	for unit: Unit in _world.units:
@@ -157,7 +166,7 @@ func set_art_enabled(enabled: bool) -> void:
 		)
 		sprite.visible = Visibility.seen_by(_world, unit, _viewer)
 		if not unit.is_alive():
-			sprite.set_dead(true, Vector2.ZERO, _ground_normal(unit))
+			sprite.set_dead(true, _blows.get(unit.id, Vector2.ZERO), _ground_normal(unit))
 			sprite.skip_to_corpse()
 		if _gibbed.has(unit.id):
 			sprite.set_gibbed()
@@ -300,8 +309,9 @@ func _sprite_for(unit: Unit) -> UnitSprite:
 		add_child(sprite)
 		sprite.setup(unit, _art_for(unit))
 		sprite.set_selected(_selection.is_selected(unit.id))
-		# Made while the sim isn't stepping: it stands still like the rest.
-		sprite.hold(frozen)
+		# In step with the rest: held while _process has the view frozen. A
+		# change of frozen since reaches it with all the others.
+		sprite.hold(_held)
 		_sprites[unit.id] = sprite
 		_current[unit.id] = _position_of(unit)
 	return sprite
