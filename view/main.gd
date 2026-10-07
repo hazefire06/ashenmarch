@@ -28,6 +28,17 @@ extends Node3D
 ##   end is skirmish_ended. It also has its own views: FlagsView in the world,
 ##   and SkirmishHud (the score line, and the F7 scoreboard) under the HUD.
 ##
+## - A replay, with a MissionLaunch.for_replay: ReplayPlayer builds the world
+##   and feeds it the recorded commands; the player watches with the camera,
+##   selection and tooltips but can't order anyone; the ReplayBar plays,
+##   pauses, speeds up (several ticks per physics frame), restarts and leaves.
+##   It freezes at the replay's end and never sends mission_ended or
+##   skirmish_ended, so nothing in a campaign changes.
+##
+## Every mission and skirmish played (not the sandbox, not a replay) is
+## recorded: `recording` is filled as the world steps, and finished_replay()
+## stamps it for the App to save.
+##
 ## Pause stops the stepping and nothing else, so the sim, which never hears of
 ## it, stays deterministic: Esc opens the pause menu (unless an order is armed,
 ## which Esc cancels first), P pauses without it, and a campaign mission also
@@ -113,6 +124,10 @@ var paused: bool = false:
 ## caller (the AI demo) can start its own on the fresh world with
 ## World.start_mission before the first step.
 var mission_path: String = MISSION_PATH
+## The replay being recorded of this game: null in the sandbox, while watching
+## a replay, and for a mission built in code (with no resource path to replay
+## it from).
+var recording: Replay
 
 var _sim_ms: float = 0.0
 ## The DebugWeather preset F6 last picked.
@@ -129,6 +144,10 @@ var _stats_begun: bool = false
 ## outside a skirmish.
 var _flags_view: FlagsView
 var _skirmish_hud: SkirmishHud
+## Watching a replay: what plays it, its bar, and ticks per physics frame.
+var _replay_player: ReplayPlayer
+var _replay_bar: ReplayBar
+var _replay_speed: int = 1
 
 @onready var _terrain_view: TerrainView = $TerrainView
 @onready var _units_view: UnitsView = $Units
@@ -167,6 +186,7 @@ func _ready() -> void:
 		set_physics_process(false)
 		build_failed.emit.call_deferred()
 		return
+	_start_recording()
 	# The World's copy, which explosions scar. The views draw this one.
 	var terrain: Terrain = world.terrain
 	var loaded_ms: int = Time.get_ticks_msec()
@@ -227,6 +247,8 @@ func _ready() -> void:
 	_pause_menu.restart_requested.connect(restart_requested.emit)
 	_pause_menu.settings_requested.connect(settings_requested.emit)
 	_pause_menu.quit_requested.connect(quit_requested.emit)
+	if _replay_player != null:
+		_build_replay_bar()
 	_apply_pause()
 	print(
 		"terrain loaded %dx%d in %d ms; meshes and overhead map built in %d ms"
@@ -237,8 +259,52 @@ func _ready() -> void:
 func _physics_process(_delta: float) -> void:
 	if paused or _frozen:
 		return
+	# A replay at speed plays several ticks a frame, each drawn into the views
+	# (their after_step reads that tick's events, which the next step clears).
+	var steps: int = _replay_speed if _replay_player != null else 1
+	for i: int in steps:
+		_advance()
+		if _frozen:
+			return
+
+
+## Stamps the recording with where the game stopped (its tick, its hash, how
+## it ended, and the time) and returns it, for the App to save; null if
+## nothing was recorded or nothing has been played yet.
+func finished_replay() -> Replay:
+	if recording == null or world == null or world.tick == 0 or world.recorder == null:
+		return null
+	world.recorder.finish(world)
+	var outcome: MissionRuntime.Outcome = (
+		world.mission.outcome if world.mission != null else MissionRuntime.Outcome.NONE
+	)
+	recording.summary["outcome"] = MissionRuntime.Outcome.keys()[outcome]
+	recording.summary["recorded_at"] = int(Time.get_unix_time_from_system())
+	return recording
+
+
+## True while watching a replay.
+func is_replay() -> bool:
+	return _replay_player != null
+
+
+## The replay's speed in ticks per physics frame (1, 2, 4 or 8); 1 when
+## playing.
+func replay_speed() -> int:
+	return _replay_speed
+
+
+func set_replay_speed(speed: int) -> void:
+	_replay_speed = clampi(speed, 1, ReplayBar.SPEEDS[ReplayBar.SPEEDS.size() - 1])
+
+
+# One tick: step (or play the replay's next tick), then show it.
+func _advance() -> void:
 	var started_us: int = Time.get_ticks_usec()
-	world.step()
+	if _replay_player != null:
+		_replay_player.step()
+	else:
+		world.step()
 	var step_ms: float = (Time.get_ticks_usec() - started_us) / 1000.0
 	_sim_ms = lerpf(_sim_ms, step_ms, SIM_TIME_SMOOTHING)
 	if stats != null:
@@ -264,6 +330,8 @@ func _physics_process(_delta: float) -> void:
 	_terrain_view.set_weather(world.weather)
 	# Only a launched mission freezes; the sandbox plays on whatever it decides.
 	if launch != null and world.mission != null and world.mission.outcome != MissionRuntime.Outcome.NONE:
+		_freeze()
+	elif _replay_player != null and _replay_player.is_done():
 		_freeze()
 
 
@@ -309,6 +377,8 @@ func _process(delta: float) -> void:
 	if _count_down_to_the_end(delta):
 		# The App may free this scene in response; there is nothing left to draw.
 		return
+	if _replay_bar != null:
+		_show_replay_state()
 	var w: Weather = world.weather
 	var hints: String = "(F5 AI overlay)" if _campaign() else "(F5 AI overlay, F6 weather)"
 	if _skirmish_hud != null:
@@ -330,6 +400,11 @@ func _process(delta: float) -> void:
 # The world to play: the launch's mission, set up by MissionSetup, or the
 # sandbox's bare world on Riverside. Null, after push_error, if it can't be made.
 func _create_world() -> World:
+	if launch != null and launch.is_replay():
+		_replay_player = ReplayPlayer.new(launch.replay, _load_catalog())
+		if _replay_player.world == null:
+			push_error("MainView: the replay can't be played: %s" % _replay_player.error)
+		return _replay_player.world
 	if launch != null and launch.is_skirmish():
 		return SkirmishSetup.create_world(launch.skirmish, _load_catalog())
 	if launch != null:
@@ -401,6 +476,59 @@ func _build_skirmish_views() -> void:
 	_skirmish_hud.setup(world, launch.player_faction())
 
 
+# Every launched mission and skirmish is recorded from its first command after
+# setup (see ReplayRecorder): not the sandbox, not a replay, and not a mission
+# or skirmish map built in code, which has no resource path to be replayed
+# from.
+func _start_recording() -> void:
+	if launch == null or launch.is_replay():
+		return
+	var summary: Dictionary = {}
+	if launch.is_skirmish():
+		if launch.skirmish.map.resource_path.is_empty():
+			return
+		recording = Replay.for_skirmish(launch.skirmish)
+		summary["title"] = launch.skirmish.map.display_name
+		summary["mode"] = SkirmishRules.Mode.keys()[launch.skirmish.rules.mode].capitalize()
+	else:
+		if launch.mission.resource_path.is_empty():
+			return
+		recording = Replay.for_mission(
+			launch.mission.resource_path, launch.tier, launch.world_seed, launch.deploy
+		)
+		summary["title"] = launch.mission.display_name
+		summary["mode"] = "Campaign"
+		summary["tier"] = launch.tier
+	recording.summary = summary
+	recording.game_version = str(ProjectSettings.get_setting("application/config/version", ""))
+	world.recorder = ReplayRecorder.new(recording)
+
+
+func _build_replay_bar() -> void:
+	_replay_bar = ReplayBar.new()
+	$Hud.add_child(_replay_bar)
+	_replay_bar.pause_pressed.connect(toggle_pause)
+	_replay_bar.speed_chosen.connect(set_replay_speed)
+	_replay_bar.restart_pressed.connect(restart_requested.emit)
+	_replay_bar.exit_pressed.connect(quit_requested.emit)
+	_pause_menu.set_replay_mode()
+	_show_replay_state()
+
+
+func _show_replay_state() -> void:
+	var note: String = ""
+	if not _replay_player.divergence.is_empty():
+		note = "Left the recording at %s: recorded with version %s" % [
+			MenuKit.clock((_replay_player.divergence["tick"] as int) / World.TICK_RATE),
+			launch.replay.game_version,
+		]
+	elif _replay_player.is_done():
+		note = "End of replay"
+	_replay_bar.show_state(
+		world.tick, launch.replay.end_tick, paused, _replay_speed, note
+	)
+
+
 # True in a campaign mission: no debug cheats, and the window's focus matters.
 func _campaign() -> bool:
 	return launch != null and launch.campaign_mode
@@ -413,6 +541,11 @@ func _freeze() -> void:
 	_frozen = true
 	if stats != null:
 		stats.finish(world)
+	if _replay_player != null:
+		# No results follow a replay: the menu and the bar stay, to watch again
+		# or leave.
+		paused = false
+		return
 	# No pausing now: the end is on its way, and a menu with Restart and Quit on
 	# it, opened by Esc or the bar's Menu button, would race mission_ended.
 	_pause_menu.close()
@@ -426,7 +559,7 @@ func _freeze() -> void:
 # The end of the freeze: after end_delay real seconds, once, the results are
 # due. True if that was just now.
 func _count_down_to_the_end(delta: float) -> bool:
-	if not _frozen or _ended:
+	if not _frozen or _ended or _replay_player != null:
 		return false
 	_since_outcome += delta
 	if _since_outcome < end_delay:
@@ -447,8 +580,9 @@ func _apply_pause() -> void:
 	if _selection == null:
 		return
 	var still: bool = paused or _frozen
-	_selection.paused = still
-	_control_bar.set_paused(still)
+	# Nobody takes orders in a replay, but selection and tooltips still work.
+	_selection.paused = still or _replay_player != null
+	_control_bar.set_paused(still or _replay_player != null)
 	_units_view.frozen = still
 	_projectiles_view.frozen = still
 	_pause_menu.show_paused_label(paused)

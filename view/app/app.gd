@@ -72,6 +72,8 @@ var skirmish: SkirmishCatalog
 var store: CampaignStore
 ## Where the settings are kept; likewise.
 var settings_path: String = GameSettings.DEFAULT_PATH
+## Where played games are recorded (ReplayStore); a test's own folder in tests.
+var replays_dir: String = ReplayStore.DEFAULT_DIR
 ## How long a notice stays up, in real seconds; public so a test can shorten it.
 var notice_seconds: float = NOTICE_SECONDS
 ## What puts the window in or out of fullscreen; GameSettings' by default. A
@@ -111,6 +113,8 @@ var _result_world: World
 # says once it is filled.
 var _skirmish_setup: SkirmishSetup
 var _skirmish_ai_choice: StringName = SkirmishMenu.RANDOM_AI
+# The replay being watched, for Watch again.
+var _watching: MissionLaunch
 
 
 func _ready() -> void:
@@ -180,6 +184,10 @@ func current_plan() -> DeployPlan:
 ## first to see a key) can consume Esc before a mission's pause menu does.
 func show_screen(screen: Node) -> void:
 	_close_overlay()
+	# Leaving a mission or skirmish by any way (its results, Quit, Restart, a
+	# Retry) passes here, so this is where its replay is saved.
+	if _screen is MainView:
+		_save_replay_of(_screen as MainView)
 	if _screen != null:
 		remove_child(_screen)
 		_screen.queue_free()
@@ -194,6 +202,7 @@ func show_main_menu() -> void:
 	var menu: MainMenu = MainMenu.new()
 	menu.campaign_pressed.connect(show_campaign_menu)
 	menu.skirmish_pressed.connect(show_skirmish_menu)
+	menu.replays_pressed.connect(show_replays_menu)
 	menu.settings_pressed.connect(open_settings)
 	menu.quit_pressed.connect(quit_game)
 	show_screen(menu)
@@ -311,6 +320,30 @@ func show_skirmish_results(outcome: MissionRuntime.Outcome, world: World) -> voi
 	results.change_army_pressed.connect(_on_skirmish_change_army)
 	results.main_menu_pressed.connect(_on_results_main_menu)
 	show_screen(results)
+
+
+## The recorded games, newest first.
+func show_replays_menu() -> void:
+	var menu: ReplaysMenu = ReplaysMenu.new()
+	menu.setup(ReplayStore.list(replays_dir))
+	menu.watch_requested.connect(watch_replay)
+	menu.delete_requested.connect(_on_delete_replay)
+	menu.back_requested.connect(show_main_menu)
+	show_screen(menu)
+
+
+## Plays the replay at `path`. One that won't load, or was recorded from a
+## mission or map this build lacks, gets a notice and the list again.
+func watch_replay(path: String) -> void:
+	var problems: Array[String] = []
+	var replay: Replay = ReplayStore.load_file(path, problems)
+	var launch: MissionLaunch = MissionLaunch.for_replay(replay) if replay != null else null
+	if launch == null:
+		show_replays_menu()
+		show_notice("That replay can't be played%s." % (": " + problems[0] if not problems.is_empty() else ""))
+		return
+	_watching = launch
+	_launch_replay()
 
 
 ## Opens Settings over whatever is showing. Over a mission, the mission can't
@@ -573,6 +606,59 @@ func _reseeded(setup: SkirmishSetup) -> SkirmishSetup:
 	again.player_is_ai = setup.player_is_ai
 	again.world_seed = _new_seed()
 	return again
+
+
+# --- replays -------------------------------------------------------------------
+
+
+func _launch_replay() -> void:
+	var main: MainView = MAIN_SCENE.instantiate() as MainView
+	main.launch = _watching
+	main.edge_scroll = GameSettings.edge_scroll(settings_path)
+	main.restart_requested.connect(_launch_replay)
+	main.settings_requested.connect(open_settings)
+	main.quit_requested.connect(_on_replay_left)
+	main.build_failed.connect(_on_replay_build_failed.bind(main))
+	show_screen(main)
+
+
+func _on_replay_left() -> void:
+	_watching = null
+	show_replays_menu()
+
+
+# The replay's world couldn't be built (ReplayPlayer has said why). Ignored if
+# the screen has already changed (the signal is deferred).
+func _on_replay_build_failed(failed: MainView) -> void:
+	if _screen != failed:
+		return
+	_watching = null
+	show_replays_menu()
+	show_notice("That replay can't be played. See the log.")
+
+
+func _on_delete_replay(path: String) -> void:
+	ask("Delete this replay?", "Delete", "Keep it", func() -> void:
+		ReplayStore.delete(path)
+		show_replays_menu()
+	)
+
+
+# Saves the game a MainView recorded, if it recorded one and anything was
+# played. A failed write is logged, not shown: losing a replay is not worth
+# interrupting the player for.
+func _save_replay_of(main: MainView) -> void:
+	var replay: Replay = main.finished_replay()
+	if replay == null:
+		return
+	if ReplayStore.save_new(replay, replays_dir) == "":
+		push_warning("App: couldn't save the replay in %s" % replays_dir)
+
+
+# Closing the window mid-game still keeps its replay.
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_CLOSE_REQUEST and _screen is MainView:
+		_save_replay_of(_screen as MainView)
 
 
 # --- overlays -------------------------------------------------------------------

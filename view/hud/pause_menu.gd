@@ -67,6 +67,8 @@ var _restart: Button
 var _settings: Button
 var _quit: Button
 var _keep_playing: Button
+# False in a replay (set_replay_mode): Quit leaves without the question.
+var _quit_asks: bool = true
 
 
 func _ready() -> void:
@@ -128,6 +130,14 @@ func set_app_buttons_visible(shown: bool) -> void:
 	_quit.visible = shown
 
 
+## For a replay being watched: Restart watches it again, and Quit goes back to
+## the replays without asking, since nothing is lost.
+func set_replay_mode() -> void:
+	_restart.text = "Watch again"
+	_quit.text = "Back to replays"
+	_quit_asks = false
+
+
 # Esc: open, close, or take back the quit question. The controller consumes it
 # first while an order is armed (see the class comment).
 func _unhandled_input(event: InputEvent) -> void:
@@ -145,6 +155,13 @@ func _unhandled_input(event: InputEvent) -> void:
 func _resume_pressed() -> void:
 	close()
 	resume_requested.emit()
+
+
+func _quit_pressed() -> void:
+	if _quit_asks:
+		_show_confirm(true)
+	else:
+		quit_requested.emit()
 
 
 func _show_confirm(asking: bool) -> void:
@@ -208,7 +225,7 @@ func _build() -> void:
 	_settings = _menu_button("SettingsButton", "Settings")
 	_settings.pressed.connect(func() -> void: settings_requested.emit())
 	_quit = _menu_button("QuitButton", "Quit to main menu")
-	_quit.pressed.connect(func() -> void: _show_confirm(true))
+	_quit.pressed.connect(_quit_pressed)
 
 	_confirm = VBoxContainer.new()
 	_confirm.add_theme_constant_override("separation", 12)
