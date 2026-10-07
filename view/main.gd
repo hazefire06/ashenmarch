@@ -4,7 +4,9 @@ extends Node3D
 ## it one tick per physics frame. The terrain view, camera, overhead map, and
 ## unit, projectile, explosion, fire, and weather views read the World; only
 ## commands change it. The gas cloud and herb plant views read it too, and so
-## do the mission HUD, the objective panel, and the F5 AI overlay.
+## do the mission HUD, the objective panel, and the F5 AI overlay. Units whose
+## type has art are drawn with it (load_art), and F10 switches every unit to its
+## placeholder and back.
 ## Everything that draws the ground is built from the World's own terrain,
 ## not the one loaded from the map: explosions scar the World's copy.
 ##
@@ -182,7 +184,7 @@ func _ready() -> void:
 	elif not launch.is_skirmish():
 		# MissionSetup queued the roster and the herb plants and started the mission.
 		stats = MissionStats.new()
-	_units_view.setup(world, _selection.selection, _gibs)
+	_units_view.setup(world, _selection.selection, _gibs, load_art())
 	_projectiles_view.setup(world)
 	_explosions_view.setup(world, _terrain_view, _gibs)
 	_fire_view.setup(world)
@@ -296,6 +298,11 @@ func _unhandled_input(event: InputEvent) -> void:
 		world.enqueue(DebugWeather.command(_weather_preset, world.tick))
 		print("weather: %s" % DebugWeather.name_of(_weather_preset))
 		get_viewport().set_input_as_handled()
+	elif event.is_action_pressed(InputBindings.TOGGLE_ART):
+		# View-only, so it works paused, decided, and in a campaign.
+		_units_view.set_art_enabled(not _units_view.art_enabled())
+		print("unit art: %s" % ("on" if _units_view.art_enabled() else "placeholders"))
+		get_viewport().set_input_as_handled()
 
 
 # A campaign mission pauses when the window loses focus, so alt-tabbing away
@@ -310,9 +317,9 @@ func _process(delta: float) -> void:
 		# The App may free this scene in response; there is nothing left to draw.
 		return
 	var w: Weather = world.weather
-	var hints: String = "(F5 AI overlay)" if _campaign() else "(F5 AI overlay, F6 weather)"
+	var hints: String = "(F5 AI overlay, F10 art)" if _campaign() else "(F5 AI overlay, F6 weather, F10 art)"
 	if _skirmish_hud != null:
-		hints = "(F5 AI overlay, F7 scoreboard)"
+		hints = "(F5 AI overlay, F7 scoreboard, F10 art)"
 	_stats_label.text = "tick %d   %d fps   %d draw calls   sim %.2f ms/tick   %d units   %d projectiles   %d paths queued\nrain %d%%   snow %d%%   wet %d%%   snow cover %d%%   %d cells burning   %s" % [
 		world.tick,
 		Performance.get_monitor(Performance.TIME_FPS),
@@ -341,6 +348,17 @@ func _create_world() -> World:
 		push_error("MainView: could not load %s" % MAP_PATH)
 		return null
 	return World.new(WORLD_SEED, map_terrain, _load_catalog())
+
+
+## The unit art catalog the units are drawn with: the entries that pass
+## validation. Each one that fails is reported once (a warning naming why), and
+## its unit stays a placeholder, so a broken art file never stops the game. No
+## catalog file at all is an empty catalog.
+static func load_art(path: String = UnitArtCatalog.DEFAULT_PATH) -> UnitArtCatalog:
+	var arts: UnitArtCatalog = UnitArtCatalog.load_or_new(path)
+	for reason: String in arts.invalid_reasons():
+		push_warning("MainView: unit art left out: %s" % reason)
+	return arts.without_invalid()
 
 
 func _load_catalog() -> UnitCatalog:

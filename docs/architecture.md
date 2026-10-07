@@ -1900,3 +1900,35 @@ The commander, ADVANCE, MEDIC and the skirmish rules draw no random numbers; `ma
 - **Skirmishes are short:** most end by elimination in 2 to 4 game minutes, one decisive fight, because both commanders go for an unguarded objective at once and armies don't come back. The mode decides where the fight is more than how long it lasts.
 - **Weather in skirmish, more than two sides, remembering a separate army per side, friendly-fire counts on the results screen,** and a lockstep pause command (still the view not stepping).
 - **`make capture-skirmish` needs the window in front:** macOS doesn't draw a window it hasn't brought forward, and a shot then waits up to 2 s for a frame and saves what there is.
+
+## Unit art (track A1)
+
+Designed in `docs/specs/2026-10-01-art-audio-design.md`; built by `docs/plans/2026-10-03-art-audio-a0-a1.md`.
+
+### Pipeline (offline)
+- `art-src/units/<id>/spec.toml` is a unit's recipe: Meshy prompt, height, candidate counts, each animation's source (a Meshy library action and its clip name, the rig's free walk/run, or a local GLB), and the props it carries. `art-src/style.toml` is appended to every prompt.
+- `scripts/art/meshy.py` (`plan` and `prop-plan` free; `candidates`, `build`, `prop-candidates` and `prop-build` paid, run by Tim with a credit cap) buys previews, then texture, rig and animations, downloading at once (links expire in about 3 days). `manifest.json` records each task as it is created, allowlisted fields only and no URLs, so reruns resume instead of paying twice.
+- **Props** (sword, targe) are separate Meshy models in `art-src/props/<id>/`, textured but not rigged. The renderer fixes each rigidly to a bone of the unit's rig (`[[attach]]` in the spec: bone, offset, rotation) at render time and sizes it by its longest principal axis. `make art-attach` renders a tuning sheet for the offsets. A prop is never part of the unit's own model.
+- `scripts/art/render_sprites.py` (headless Blender, `make art-render UNIT=<id>`) renders each animation from 8 directions with an orthographic camera at 50°, lights riding on the camera, root motion cancelled. A clip that already plays in place (Meshy's rig walk) has its walk stride measured from the feet instead of the root. Output in `assets/units/<id>/`:
+  - one sheet per animation, one band of rows per direction, 160 px cells with a 4 px gutter, the feet 40 px up from the cell's bottom edge, at 52 px per metre;
+  - sheets wrap at 4096 px wide (WebGL's texture limit): the sidecar's `columns` and `rows_per_direction` say how, so frame `i` of direction `d` is at column `i % columns`, row `d * rows_per_direction + i // columns`;
+  - `<id>.json`, the sidecar (frame counts, fps, impact frames, stride, wrap, cell, feet, gib colour), and `.png.import` files (mipmaps, VRAM compressed).
+  - `art-src/units/<id>/review/` gets the contact sheet and per-animation GIFs for Tim's approval. A clip auditioned there but not in the game's animation set (`attack_alt`) is rendered and not built.
+- `scripts/art/build_unit_art.gd` (headless Godot, `make art-build UNIT=<id>`) turns them into `data/art/<id>.tres` (`UnitArt`) and lists it in `data/art/catalog.tres` (`UnitArtCatalog`). Both are generated; never hand-edit them.
+- Keys live in `~/.config/ashenmarch/secrets.env` (700/600), never in the repo; gitleaks rules (`make hooks`, CI) catch a leak.
+
+### Direction convention
+- Direction `d` shows the unit facing `d × 45°` counter-clockwise (seen from above) from the camera's horizontal forward: 0 back, 2 screen-left, 4 front, 6 screen-right.
+- Shared by the renderer (camera placement) and `UnitArt.direction_index`. A Blender fixture test and a Godot test through a real `Camera3D` both pin it.
+
+### In game
+- `MainView` loads the catalog at startup (`MainView.load_art`) and passes it to `UnitsView.setup`. `UnitsView` looks up each unit's type in it. With art, `UnitSprite` builds an `AnimatedSprite3D` billboard (alpha-cut, mipmapped, feet on the node's origin) instead of the quad; the overlays are the same minus the facing tick. Without art it is the placeholder exactly as before.
+- Each frame `UnitsView` passes the camera's horizontal forward, and each sprite shows the matching direction; a direction change mid-swing keeps the frame.
+- Each tick `UnitAnimator` (pure, tested) picks the animation from sim state: a wind-up starting (`windup_left`, `aim_left`, `act_left` rising from 0) plays the strike stretched so its impact frame lands on the blow's tick, clamped to 0.25–4×. A zero-tick shot shows its release. Walking plays at the ground speed the unit actually covered (so wading slows the legs) over the sheet's `stride_m`. Paralysis freezes. Death plays once, the body facing the blow, and the last frame is the corpse.
+- Art bodies tint through `modulate`, which can only darken, so a hit flashes the reddish `ART_HIT_TINT` instead of the placeholder's near-white. While the game is frozen (paused, or the mission decided) art bodies hold their frame instead of walking or swinging in place.
+- **F10** (view-only; works paused, decided, and in the campaign) rebuilds every sprite as its placeholder or back (`UnitsView.set_art_enabled`). The dead stay dead and the gibbed stay gone; the stats line names the key.
+- Art that fails `UnitArt.validate()` is left out at startup, with a warning per reason; its unit stays a placeholder and the game starts. A missing catalog file is an empty catalog.
+
+### Not yet
+- Barks, audio and the other nine units (A2, A3). The Sapper's satchel drop has no `place` trigger yet (A3).
+- Direction hysteresis and two-elevation renders only if the in-engine check needs them; MultiMesh only if profiling does.

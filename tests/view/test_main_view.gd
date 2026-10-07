@@ -12,6 +12,8 @@ extends GutTest
 
 const LIGHT: UnitType.Faction = UnitType.Faction.LIGHT
 const NEVER: int = ViewFixtures.NEVER
+## Where a test writes a catalog of its own.
+const ART_DIR: String = "user://test_main_view_art"
 
 var _physics_rate: int = 0
 
@@ -681,6 +683,167 @@ func test_the_sandbox_menu_can_only_resume() -> void:
 	assert_false(_button(main.pause_menu(), "SettingsButton").visible)
 	assert_false(_button(main.pause_menu(), "QuitButton").visible)
 	assert_true(_button(main.pause_menu(), "ResumeButton").visible)
+
+
+# --- unit art ----------------------------------------------------------------
+
+
+func _units_of(main: MainView) -> UnitsView:
+	return main.get_node("Units") as UnitsView
+
+
+# Every sprite the Light side sees, with the unit it stands for.
+func _drawn(main: MainView) -> Dictionary[UnitSprite, Unit]:
+	var out: Dictionary[UnitSprite, Unit] = {}
+	for sprite: UnitSprite in _units_of(main).sprites():
+		out[sprite] = main.world.get_unit(sprite.unit_id)
+	return out
+
+
+func _skip_unless_art_is_built() -> bool:
+	if ResourceLoader.exists(UnitArtCatalog.DEFAULT_PATH):
+		return false
+	pending("%s is not built; run make art-build UNIT=shieldman" % UnitArtCatalog.DEFAULT_PATH)
+	return true
+
+
+func test_the_shieldmen_are_drawn_from_the_committed_art_and_nothing_else_is() -> void:
+	if _skip_unless_art_is_built():
+		return
+	var main: MainView = _sandbox()
+	_step(main)
+	var shieldmen: int = 0
+	var others: int = 0
+	var drawn: Dictionary[UnitSprite, Unit] = _drawn(main)
+	for sprite: UnitSprite in drawn:
+		var is_shieldman: bool = drawn[sprite].type.id == &"shieldman"
+		assert_eq(sprite.has_art(), is_shieldman, "%s" % drawn[sprite].type.id)
+		if is_shieldman:
+			shieldmen += 1
+		else:
+			others += 1
+	assert_eq(shieldmen, MainView.TEST_SQUAD_SIZE, "the test squad's Shieldmen")
+	assert_gt(others, 0, "and the rest of the squad as placeholders")
+
+
+func test_a_campaign_soldier_is_drawn_from_the_art_too() -> void:
+	if _skip_unless_art_is_built():
+		return
+	var main: MainView = _view()
+	_step(main)
+	var sprite: UnitSprite = null
+	for candidate: UnitSprite in _drawn(main):
+		if candidate.unit_id == _soldier(main).id:
+			sprite = candidate
+	assert_not_null(sprite)
+	assert_true(sprite.has_art())
+
+
+func test_f10_switches_every_unit_to_its_placeholder_and_back() -> void:
+	if _skip_unless_art_is_built():
+		return
+	var main: MainView = _sandbox()
+	_step(main)
+	var view: UnitsView = _units_of(main)
+	assert_true(view.art_enabled(), "art is the default")
+	_push(_key(KEY_F10))
+	assert_false(view.art_enabled())
+	assert_gt(_drawn(main).size(), 0)
+	for sprite: UnitSprite in _drawn(main):
+		assert_false(sprite.has_art())
+	_push(_key(KEY_F10))
+	assert_true(view.art_enabled())
+	for sprite: UnitSprite in _drawn(main):
+		assert_eq(sprite.has_art(), main.world.get_unit(sprite.unit_id).type.id == &"shieldman")
+
+
+func test_f10_leaves_corpses_as_corpses() -> void:
+	if _skip_unless_art_is_built():
+		return
+	var main: MainView = _sandbox()
+	_step(main)
+	var victim: Unit = null
+	for unit: Unit in main.world.units:
+		if unit.type.id == &"shieldman":
+			victim = unit
+			break
+	victim.kill()
+	_step(main)
+	var tick: int = main.world.tick
+	var view: UnitsView = _units_of(main)
+	for _i: int in 2:
+		_push(_key(KEY_F10))
+		for sprite: UnitSprite in _drawn(main):
+			if sprite.unit_id == victim.id:
+				assert_true(sprite.is_dead(), "still down, art %s" % view.art_enabled())
+				assert_eq(sprite.has_art(), view.art_enabled())
+	assert_eq(main.world.tick, tick, "and the sim never heard of it")
+
+
+func test_f10_works_paused_and_in_a_campaign() -> void:
+	if _skip_unless_art_is_built():
+		return
+	var main: MainView = _view()
+	_step(main)
+	_push(_key(KEY_P))
+	assert_true(main.paused)
+	var before: String = main.world.state_hash()
+	_push(_key(KEY_F10))
+	assert_false(_units_of(main).art_enabled())
+	assert_eq(main.world.state_hash(), before, "view-only: nothing was enqueued")
+	for sprite: UnitSprite in _drawn(main):
+		assert_false(sprite.has_art())
+	_push(_key(KEY_F10))
+	assert_true(_units_of(main).art_enabled())
+
+
+func test_f10_works_once_the_mission_is_decided() -> void:
+	var main: MainView = _view(1)
+	_step(main, 2)
+	assert_true(main.is_frozen())
+	_push(_key(KEY_F10))
+	assert_false(_units_of(main).art_enabled())
+
+
+func test_the_stats_line_names_f10_in_a_campaign_and_in_the_sandbox() -> void:
+	var campaign: MainView = _view()
+	campaign._process(0.016)
+	var label: Label = campaign.get_node("Hud/StatsLabel") as Label
+	assert_true(label.text.contains("(F5 AI overlay, F10 art)"), label.text)
+	var sandbox: MainView = _sandbox()
+	sandbox._process(0.016)
+	label = sandbox.get_node("Hud/StatsLabel") as Label
+	assert_true(label.text.contains("(F5 AI overlay, F6 weather, F10 art)"), label.text)
+
+
+func test_load_art_gives_the_committed_shieldman_art() -> void:
+	if _skip_unless_art_is_built():
+		return
+	var arts: UnitArtCatalog = MainView.load_art()
+	assert_not_null(arts.find(&"shieldman"))
+	assert_null(arts.find(&"husk"))
+
+
+func test_load_art_is_empty_without_a_catalog() -> void:
+	var arts: UnitArtCatalog = MainView.load_art("res://data/art/no_such_catalog.tres")
+	assert_eq(arts.arts.size(), 0, "every unit is then a placeholder")
+
+
+func test_load_art_leaves_out_art_that_fails_validation_and_keeps_the_rest() -> void:
+	DirAccess.make_dir_recursive_absolute(ART_DIR)
+	var catalog: UnitArtCatalog = UnitArtCatalog.new()
+	catalog.put(TestArt.art(&"shieldman"))
+	var broken: UnitArt = TestArt.art(&"reaver")
+	broken.frames.remove_animation(&"idle_5")
+	catalog.put(broken)
+	var path: String = ART_DIR + "/catalog.tres"
+	assert_eq(ResourceSaver.save(catalog, path), OK)
+	var usable: UnitArtCatalog = MainView.load_art(path)
+	assert_not_null(usable.find(&"shieldman"))
+	assert_null(usable.find(&"reaver"), "the broken one is a placeholder, and the game starts")
+	assert_eq(usable.arts.size(), 1)
+	DirAccess.remove_absolute(path)
+	DirAccess.remove_absolute(ART_DIR)
 
 
 # --- one more helper, below its users -----------------------------------------

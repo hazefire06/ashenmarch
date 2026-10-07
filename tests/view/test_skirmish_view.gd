@@ -682,7 +682,7 @@ func test_the_stats_label_points_at_the_scoreboard_key() -> void:
 	var main: MainView = _main()
 	main._process(0.016)
 	var label: Label = main.get_node("Hud/StatsLabel") as Label
-	assert_true(label.text.contains("(F5 AI overlay, F7 scoreboard)"), label.text)
+	assert_true(label.text.contains("(F5 AI overlay, F7 scoreboard, F10 art)"), label.text)
 	assert_false(label.text.contains("F6"))
 
 
