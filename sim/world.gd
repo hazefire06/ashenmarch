@@ -81,6 +81,10 @@ var ai_events: Array[AiEvent] = []
 ## What the mission did during the last step (triggers fired, objectives set,
 ## the outcome). Output only, like ai_events.
 var mission_events: Array[MissionEvent] = []
+## Records the commands queued from outside and a checkpoint hash every
+## ReplayRecorder.CHECKPOINT_TICKS while a replay is being made; null
+## otherwise. It only watches, so it isn't part of state_hash().
+var recorder: ReplayRecorder
 ## True from when ProjectileSystem starts in the current step to the end of
 ## it; false between ticks. Explosions.catch reads it to keep chain delays
 ## exact: the pass counts down what was there when it began, so a charge
@@ -109,6 +113,8 @@ func enqueue(command: SimCommand) -> bool:
 	if command.tick < tick:
 		return false
 	_pending.append(command)
+	if recorder != null:
+		recorder.record(command)
 	return true
 
 
@@ -164,6 +170,8 @@ func step() -> void:
 		_drop_spent_clouds()
 	projectile_pass_begun = false
 	tick += 1
+	if recorder != null:
+		recorder.after_step(self)
 
 
 ## Starts a mission from mission_script at this tier (0..4, easiest to
@@ -465,30 +473,80 @@ func get_unit(unit_id: int) -> Unit:
 func state_hash() -> String:
 	var ctx: HashingContext = HashingContext.new()
 	ctx.start(HashingContext.HASH_SHA256)
+	for part: Array in _hash_parts():
+		for chunk: PackedByteArray in part[1]:
+			ctx.update(chunk)
+	return ctx.finish().hex_encode()
+
+
+## SHA-256 of each part state_hash() covers, by name: header (tick, seed, RNG
+## state, next id, pending commands, queued explosions), movement, weather, ai,
+## mission, skirmish, terrain, fire and entities. When two worlds' state_hash
+## differ, the parts that differ say where to look. A part the world lacks (no
+## mission, no terrain) is absent.
+func subsystem_hashes() -> Dictionary[String, String]:
+	var hashes: Dictionary[String, String] = {}
+	for part: Array in _hash_parts():
+		var ctx: HashingContext = HashingContext.new()
+		ctx.start(HashingContext.HASH_SHA256)
+		for chunk: PackedByteArray in part[1]:
+			ctx.update(chunk)
+		hashes[part[0]] = ctx.finish().hex_encode()
+	return hashes
+
+
+## SHA-256 of each entity's fields, by id: where to look once
+## subsystem_hashes() has said "entities".
+func entity_hashes() -> Dictionary[int, String]:
+	var hashes: Dictionary[int, String] = {}
+	for entity_id: int in _sorted_entity_ids():
+		var ctx: HashingContext = HashingContext.new()
+		ctx.start(HashingContext.HASH_SHA256)
+		ctx.update(entities[entity_id].hash_fields().to_byte_array())
+		hashes[entity_id] = ctx.finish().hex_encode()
+	return hashes
+
+
+# state_hash()'s input as named parts, each a list of byte chunks, in the
+# order the hash reads them. Empty chunks are left out: HashingContext rejects
+# them, and an empty update wouldn't change the digest anyway.
+func _hash_parts() -> Array[Array]:
+	var parts: Array[Array] = []
 	var header: PackedInt64Array = PackedInt64Array(
 		[tick, rng_seed, rng.state, _next_entity_id, _pending.size(), explosions.queued()]
 	)
-	ctx.update(header.to_byte_array())
-	ctx.update(movement.hash_fields().to_byte_array())
-	ctx.update(weather.hash_fields().to_byte_array())
-	ctx.update(ai.hash_fields().to_byte_array())
+	_add_part(parts, "header", [header.to_byte_array()])
+	_add_part(parts, "movement", [movement.hash_fields().to_byte_array()])
+	_add_part(parts, "weather", [weather.hash_fields().to_byte_array()])
+	_add_part(parts, "ai", [ai.hash_fields().to_byte_array()])
 	if mission != null:
-		ctx.update(mission.hash_fields().to_byte_array())
+		_add_part(parts, "mission", [mission.hash_fields().to_byte_array()])
 	if skirmish != null:
-		ctx.update(skirmish.hash_fields().to_byte_array())
+		_add_part(parts, "skirmish", [skirmish.hash_fields().to_byte_array()])
 	if terrain != null:
-		ctx.update(terrain.scar_hash_fields().to_byte_array())
+		_add_part(parts, "terrain", [terrain.scar_hash_fields().to_byte_array()])
 	if fire != null:
-		ctx.update(fire.hash_fields().to_byte_array())
-		if not fire.state.is_empty():
-			# HashingContext rejects an empty buffer.
-			ctx.update(fire.state)
+		_add_part(parts, "fire", [fire.hash_fields().to_byte_array(), fire.state])
+	var chunks: Array[PackedByteArray] = []
+	for entity_id: int in _sorted_entity_ids():
+		chunks.append(entities[entity_id].hash_fields().to_byte_array())
+	_add_part(parts, "entities", chunks)
+	return parts
+
+
+static func _add_part(parts: Array[Array], part_name: String, chunks: Array) -> void:
+	var kept: Array[PackedByteArray] = []
+	for chunk: PackedByteArray in chunks:
+		if not chunk.is_empty():
+			kept.append(chunk)
+	parts.append([part_name, kept])
+
+
+func _sorted_entity_ids() -> Array[int]:
 	var ids: Array[int] = []
 	ids.assign(entities.keys())
 	ids.sort()
-	for entity_id: int in ids:
-		ctx.update(entities[entity_id].hash_fields().to_byte_array())
-	return ctx.finish().hex_encode()
+	return ids
 
 
 func _apply_commands() -> void:
