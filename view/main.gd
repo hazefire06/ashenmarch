@@ -128,6 +128,9 @@ var mission_path: String = MISSION_PATH
 ## a replay, and for a mission built in code (with no resource path to replay
 ## it from).
 var recording: Replay
+## How long the last tick's World.step() took, in milliseconds (the HUD shows
+## a smoothed average; the benchmark reads this).
+var last_step_ms: float = 0.0
 
 var _sim_ms: float = 0.0
 ## The DebugWeather preset F6 last picked.
@@ -319,6 +322,7 @@ func _advance() -> void:
 	else:
 		world.step()
 	var step_ms: float = (Time.get_ticks_usec() - started_us) / 1000.0
+	last_step_ms = step_ms
 	_sim_ms = lerpf(_sim_ms, step_ms, SIM_TIME_SMOOTHING)
 	if stats != null:
 		# The first step applies the deploy, so the soldiers' starting kills are

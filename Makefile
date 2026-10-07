@@ -3,7 +3,7 @@ MAC_APP := build/mac/Ashenmarch.app
 WIN_EXE := build/windows/Ashenmarch.exe
 WEB_HTML := build/web/index.html
 
-.PHONY: import run demo demo-projectiles demo-abilities demo-ai test check-sim export-mac export-windows export-web export-all serve-web sfx golden-replays verify-replays verify-replays-app verify-replays-x86 maps fixtures playtest skirmish-playtest capture capture-skirmish
+.PHONY: import run demo demo-projectiles demo-abilities demo-ai test check-sim export-mac export-windows export-web export-all serve-web sfx bench profile-sim golden-replays verify-replays verify-replays-app verify-replays-x86 maps fixtures playtest skirmish-playtest capture capture-skirmish
 
 # Builds the .godot/ import and class_name cache. A fresh clone has none, and
 # GUT can't resolve class_name types without it.
@@ -107,6 +107,18 @@ capture: import
 # e.g. CAPTURE=shots MAPS=old_mill SIDE=dark make capture-skirmish
 capture-skirmish: import
 	$(GODOT) --path . -s scripts/capture_skirmish.gd
+
+# The performance benchmark, windowed: 100 units fighting and 200 projectiles
+# in the air on Riverside, vsync off, one result line. See scripts/bench.gd:
+#   DURATION=60 WARMUP=5 WINDOW=1920x1080 FULLSCREEN=0 PROJECTILES=200 OUT=<file>
+# e.g. FULLSCREEN=1 make bench
+bench: import
+	$(GODOT) --path . -s scripts/bench.gd
+
+# Where a sim tick's time goes under the benchmark's load, headless: mean and
+# max per World.step() stage and the slowest ticks. TICKS=1800 PROJECTILES=200.
+profile-sim: import
+	$(GODOT) --headless --path . -s scripts/profile_sim.gd
 
 # Records the golden replays (data/replays/golden) that every build is
 # checked against: Riverside and Old Mill played by the playtest pilot, and an

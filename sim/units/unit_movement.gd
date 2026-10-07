@@ -6,7 +6,12 @@ extends RefCounted
 ## Each tick:
 ## 1. Solve up to MAX_PATH_SOLVES_PER_TICK queued A* requests, oldest first.
 ##    The cap is a count, not a time budget, so every peer solves the same
-##    requests on the same tick.
+##    requests on the same tick. Each solved route is offered to the queued
+##    requests setting out near it for near its goal (Phase 10): those that
+##    can follow it (Pathing.adapt_path) take it instead of an A* of their
+##    own, up to SHARE_PER_TICK a tick (then the rest wait for the next).
+##    A group ordered across the map costs a solve or two rather than one
+##    per unit, which at 50 units was 100 ms ticks.
 ## 2. Advance waypoints, detect arrival and being stuck (state changes).
 ## 3. Steer: every velocity is computed from start-of-tick positions and the
 ##    states fixed in step 2, so the result doesn't depend on update order.
@@ -28,6 +33,13 @@ extends RefCounted
 ## lies on the ground, so a floating unit that dies drops.
 
 const MAX_PATH_SOLVES_PER_TICK: int = 6
+## Who may share a solved route: setting out within this of where it set out,
+## and going within this of where it was going (milli-units).
+const SHARE_START_RADIUS: int = 12000
+const SHARE_GOAL_RADIUS: int = 20000
+## Routes handed on per tick, so sharing (a few straight-line checks each)
+## stays cheap however big the queue.
+const SHARE_PER_TICK: int = 48
 ## Milli-units within which an intermediate waypoint counts as reached.
 const WAYPOINT_RADIUS: int = 500
 ## Milli-units within which the final waypoint counts as reached.
@@ -140,19 +152,59 @@ func _set_path(unit: Unit, path: PackedInt64Array) -> void:
 
 func _solve_paths(world: World) -> void:
 	var solved: int = 0
-	while solved < MAX_PATH_SOLVES_PER_TICK and not _path_queue.is_empty():
+	var sharing_left: int = SHARE_PER_TICK
+	# Once the tick's sharing is spent the rest wait: what is left is most
+	# likely the same big order, cheaper shared next tick than solved now.
+	while solved < MAX_PATH_SOLVES_PER_TICK and sharing_left > 0 and not _path_queue.is_empty():
 		var unit: Unit = world.get_unit(_path_queue.pop_front())
 		if unit == null or not unit.is_alive() or not unit.path_pending:
 			continue
 		solved += 1
-		var path: PackedInt64Array = world.pathing.find_path(
-			unit.x, unit.z, unit.goal_x, unit.goal_z, unit.type.mobility
-		)
+		var from_x: int = unit.x
+		var from_z: int = unit.z
+		var to_x: int = unit.goal_x
+		var to_z: int = unit.goal_z
+		var path: PackedInt64Array = world.pathing.find_path(from_x, from_z, to_x, to_z, unit.type.mobility)
 		if path.is_empty():
 			unit.path_pending = false
 			_settle(unit, false)
 		else:
 			_set_path(unit, path)
+			sharing_left -= _share(world, unit.type.mobility, from_x, from_z, to_x, to_z, path, sharing_left)
+
+
+# Hands `route`, just solved from (from_x, from_z) toward (to_x, to_z), to up
+# to `budget` queued requests of the same mobility setting out and going near
+# there, in queue order, each that can follow it (Pathing.adapt_path); they
+# leave the queue. Returns how many took it.
+func _share(
+	world: World, mobility: Terrain.Mobility, from_x: int, from_z: int, to_x: int, to_z: int,
+	route: PackedInt64Array, budget: int
+) -> int:
+	var kept: Array[int] = []
+	var shared: int = 0
+	for unit_id: int in _path_queue:
+		var other: Unit = world.get_unit(unit_id)
+		if (
+			shared < budget and other != null and other.is_alive() and other.path_pending
+			and other.type.mobility == mobility
+			and _within(other.x - from_x, other.z - from_z, SHARE_START_RADIUS)
+			and _within(other.goal_x - to_x, other.goal_z - to_z, SHARE_GOAL_RADIUS)
+		):
+			var path: PackedInt64Array = world.pathing.adapt_path(
+				other.x, other.z, other.goal_x, other.goal_z, from_x, from_z, route, mobility
+			)
+			if not path.is_empty():
+				_set_path(other, path)
+				shared += 1
+				continue
+		kept.append(unit_id)
+	_path_queue = kept
+	return shared
+
+
+static func _within(dx: int, dz: int, radius: int) -> bool:
+	return absi(dx) <= radius and absi(dz) <= radius and dx * dx + dz * dz <= radius * radius
 
 
 # Waypoint advance, arrival, and stuck handling for a MOVING unit.

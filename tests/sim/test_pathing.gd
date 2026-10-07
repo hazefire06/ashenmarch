@@ -262,3 +262,46 @@ func _sampled_line_of_sight(t: Terrain, ax: int, az: int, bx: int, bz: int) -> b
 		if not t.is_passable(ax + (bx - ax) * s / n, az + (bz - az) * s / n, LIVING):
 			return false
 	return true
+
+
+# A 60 x 40 map with a wall down column 30 for its first 35 rows.
+func _walled() -> Pathing:
+	var rows: Array[String] = []
+	for j: int in 40:
+		var row: String = ".".repeat(60)
+		if j < 35:
+			row = row.substr(0, 30) + "#" + row.substr(31)
+		rows.append(row)
+	return Pathing.new(TestTerrains.from_ascii(rows))
+
+
+func test_a_neighbour_can_follow_a_solved_route() -> void:
+	var p: Pathing = _walled()
+	var route: PackedInt64Array = p.find_path(5 * M, 5 * M, 50 * M, 10 * M, LIVING)
+	assert_gt(route.size(), 2, "around the wall's end")
+	var follow: PackedInt64Array = p.adapt_path(7 * M, 6 * M, 52 * M, 11 * M, 5 * M, 5 * M, route, LIVING)
+	assert_false(follow.is_empty())
+	assert_eq(follow[follow.size() - 2], 52 * M, "to its own goal")
+	assert_eq(follow[follow.size() - 1], 11 * M)
+	var ax: int = 7 * M
+	var az: int = 6 * M
+	for k: int in range(0, follow.size(), 2):
+		assert_true(p.has_line_of_sight(ax, az, follow[k], follow[k + 1], LIVING), "leg %d is walkable" % (k / 2))
+		ax = follow[k]
+		az = follow[k + 1]
+
+
+func test_a_route_is_not_followed_from_the_wrong_side() -> void:
+	var p: Pathing = _walled()
+	var route: PackedInt64Array = p.find_path(5 * M, 5 * M, 50 * M, 10 * M, LIVING)
+	# Across the wall from where the route set out: the leg back to it is blocked.
+	assert_true(p.adapt_path(35 * M, 5 * M, 50 * M, 30 * M, 5 * M, 5 * M, route, LIVING).size() <= 2,
+		"it walks straight to its goal instead of crossing back over the wall")
+	assert_eq(p.adapt_path(40 * M, 5 * M, 10 * M, 10 * M, 5 * M, 5 * M, route, LIVING),
+		PackedInt64Array(), "and a start that can't reach the route gets nothing")
+
+
+func test_a_goal_in_plain_sight_needs_no_route() -> void:
+	var p: Pathing = _walled()
+	var route: PackedInt64Array = p.find_path(5 * M, 5 * M, 50 * M, 10 * M, LIVING)
+	assert_eq(p.adapt_path(5 * M, 5 * M, 20 * M, 5 * M, 5 * M, 5 * M, route, LIVING), PackedInt64Array([20 * M, 5 * M]))

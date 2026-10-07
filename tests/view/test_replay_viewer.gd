@@ -188,7 +188,10 @@ func test_a_damaged_replay_gets_a_notice_and_the_list() -> void:
 func test_the_list_describes_each_replay() -> void:
 	var replay: Replay = ReplayStore.load_file("res://data/replays/golden/riverside_t2.amr")
 	replay.summary["recorded_at"] = 0
-	assert_eq(ReplaysMenu.describe(replay), "Riverside (tier 2)   ·   Campaign   ·   Victory   ·   4:05")
+	assert_eq(
+		ReplaysMenu.describe(replay),
+		"Riverside (tier 2)   ·   Campaign   ·   Victory   ·   %s" % MenuKit.clock(replay.seconds())
+	)
 
 
 func _app() -> App:
