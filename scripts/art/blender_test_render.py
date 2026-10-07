@@ -16,7 +16,9 @@ follows it, but props attach to it. Its clips:
   backward while planted, one 1.2 m stride per cycle (the way Meshy's rig
   walk plays).
 The prop, "stick", is a blue 0.6 x 0.2 x 0.2 m box, long along its own X,
-whose recipe sizes it to 0.9 m. Everything goes through the real glTF
+whose recipe sizes it to 0.9 m. A second prop, "slant", is a thin stick
+with a pommel, generated lying diagonally in its own frame the way the
+bought broadsword was; it too is 0.9 m long by its recipe. Everything goes through the real glTF
 export and import, then the renderer, with Workbench's flat lighting so the
 colours are exact.
 """
@@ -59,6 +61,13 @@ STICK_M = 0.9
 # 1.8 m head, so a fit that counted it would shrink the body by about 11 px.
 STICK_OFFSET = (0.1, 0.6, 0.45)
 STICK_ROTATION = (20.0, 30.0, 90.0)
+# The slant: a thin 0.6 m stick with a 0.1 m pommel past its +X end (0.65 m in all), turned 45 degrees about Y before
+# export. Its bounding box is only 0.52 m on its longest side, so sizing by the box would make it 1.13 m, not 0.9.
+# The pommel puts its vertices' mean 0.12 m from its bounding box's centre, which is where it must be centred.
+SLANT_PARTS = (((0.0, 0.0, 0.0), (0.6, 0.06, 0.06)), ((0.3, 0.0, 0.0), (0.1, 0.1, 0.1)))  # (centre, size) before the tilt
+SLANT_LENGTH = 0.65
+SLANT_TILT_DEG = 45.0
+SLANT_ROTATION = (0.0, -45.0, 90.0)  # undoes the tilt, then lays the stick along Hand's Y: level along world +X
 ELEVATION = math.radians(rs.ELEVATION_DEG)
 
 HEAD = """id = "fixture"
@@ -95,10 +104,10 @@ prompt = "test stick"
 EXTENTS = re.compile(r"extents (\w+): lowest (-?[\d.]+) above the bottom, highest (-?[\d.]+), half-width (-?[\d.]+) \(cell (\d+)\)")
 
 
-def attach_toml(bone: str) -> str:
-    """The unit's [[attach]] table for the stick, from STICK_OFFSET and STICK_ROTATION."""
-    return (f'\n[[attach]]\nprop = "stick"\nbone = "{bone}"\n'
-            f"offset = [{', '.join(map(str, STICK_OFFSET))}]\nrotation = [{', '.join(map(str, STICK_ROTATION))}]\n")
+def attach_toml(bone: str, prop: str = "stick", rotation: tuple[float, float, float] = STICK_ROTATION) -> str:
+    """The unit's [[attach]] table for a prop, at STICK_OFFSET and (by default) STICK_ROTATION."""
+    return (f'\n[[attach]]\nprop = "{prop}"\nbone = "{bone}"\n'
+            f"offset = [{', '.join(map(str, STICK_OFFSET))}]\nrotation = [{', '.join(map(str, rotation))}]\n")
 
 
 def fixture_spec(*parts: str, height: float = 1.8, bone: str = "Hand", attach: bool = False) -> str:
@@ -228,6 +237,40 @@ def build_stick(path: Path) -> None:
     bpy.context.scene.collection.objects.link(stick)
     path.parent.mkdir(parents=True, exist_ok=True)
     bpy.ops.export_scene.gltf(filepath=str(path), export_format="GLB")
+
+
+def slant_points() -> np.ndarray:
+    """The slant's box corners (16, 3) as exported: each part around the origin, turned about Y, then moved to STICK_CENTRE."""
+    tilt = Matrix.Rotation(math.radians(SLANT_TILT_DEG), 3, "Y")
+    return np.array([tuple(tilt @ Vector((cx + x * sx / 2, cy + y * sy / 2, cz + z * sz / 2)) + Vector(STICK_CENTRE))
+                     for (cx, cy, cz), (sx, sy, sz) in SLANT_PARTS for x in (-1, 1) for y in (-1, 1) for z in (-1, 1)])
+
+
+def build_slant(path: Path) -> None:
+    """The diagonal prop: the corners of slant_points(), as two blue boxes."""
+    rs.reset_scene()
+    mesh = bpy.data.meshes.new("Slant")
+    bm = bmesh.new()
+    for centre, size in SLANT_PARTS:
+        add_box(bm, centre, size, 0)
+    bmesh.ops.rotate(bm, verts=list(bm.verts), cent=(0.0, 0.0, 0.0), matrix=Matrix.Rotation(math.radians(SLANT_TILT_DEG), 3, "Y"))
+    bmesh.ops.translate(bm, verts=list(bm.verts), vec=STICK_CENTRE)
+    bm.to_mesh(mesh)
+    bm.free()
+    mesh.materials.append(make_material("Blue", (0.0, 0.0, 1.0, 1.0)))
+    slant = bpy.data.objects.new("Slant", mesh)
+    bpy.context.scene.collection.objects.link(slant)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    bpy.ops.export_scene.gltf(filepath=str(path), export_format="GLB")
+
+
+def slant_corners(head: tuple[float, float, float]) -> np.ndarray:
+    """World corners of the attached slant, worked out from its geometry: scaled so it is STICK_M long along the
+    stick (its longest principal axis), centred on its bounding box, offset and turned in Hand's axes."""
+    points = slant_points()
+    centre = (points.min(axis=0) + points.max(axis=0)) / 2
+    turn = np.array(HAND_AXES @ Euler([math.radians(a) for a in SLANT_ROTATION], "XYZ").to_matrix())
+    return np.array(Vector(head) + HAND_AXES @ Vector(STICK_OFFSET)) + (STICK_M / SLANT_LENGTH) * (points - centre) @ turn.T
 
 
 def make_unit(root: Path, spec: str, clips: dict[str, str], parented: bool = False, stick: bool = False) -> Path:
@@ -607,6 +650,37 @@ class PropRenderTest(unittest.TestCase):
             for got, want in zip(mask_box(blue_mask(front)), expected):
                 self.assertAlmostEqual(got, want, delta=2.5, msg="twice the px per metre")
             self.assertAlmostEqual(rows_of(grey_mask(front))[0], 2 * body_rows_in_front_view()[0], delta=2.0, msg="same pivot")
+
+
+class DiagonalPropTest(unittest.TestCase):
+    """A prop generated lying diagonally in its own frame, like the bought
+    broadsword: it is sized along its length, not by its bounding box, and
+    still centred on its bounding box."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls._tmp = tempfile.TemporaryDirectory()
+        cls.root = Path(cls._tmp.name)
+        make_unit(cls.root, HEAD.format(height=1.8) + attach_toml("Hand", "slant", SLANT_ROTATION) + IDLE, {"idle": "idle"})
+        prop_dir = cls.root / "art-src" / "props" / "slant"
+        prop_dir.mkdir(parents=True)
+        (prop_dir / "spec.toml").write_text(STICK_SPEC.replace('"stick"', '"slant"'), encoding="utf-8")
+        build_slant(prop_dir / "model" / "textured.glb")
+        cls.out, cls.sidecar, _ = render(cls.root)
+        cls.front = cell(rs.read_rgba(cls.out / "idle.png"), 0, 4)
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        cls._tmp.cleanup()
+
+    def test_long_side_is_its_recipe_length(self) -> None:
+        # Laid level along world X, which is level across the screen in direction 4: 0.9 m end to end.
+        left, right = columns_of(blue_mask(self.front))
+        self.assertAlmostEqual(right + 1 - left, STICK_M * rs.PIXELS_PER_METER, delta=1.5)
+
+    def test_sits_where_its_bounding_box_centre_says(self) -> None:
+        for got, want in zip(mask_box(blue_mask(self.front)), box_px(slant_corners(HAND_HEAD), 4)):
+            self.assertAlmostEqual(got, want, delta=1.5)
 
 
 class InPlaceWalkTest(unittest.TestCase):

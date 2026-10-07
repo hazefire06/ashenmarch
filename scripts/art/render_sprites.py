@@ -420,14 +420,25 @@ def resolve_props(spec: UnitSpec, src_root: Path, repo: Path | None = None) -> l
     return props
 
 
+def principal_length(points: np.ndarray) -> float:
+    """How long points (N, 3) are along their longest principal axis: the
+    spread of their projections onto the first right-singular vector of the
+    centred points. A model can come out lying diagonally in its own frame
+    (the bought broadsword did), and then its bounding box is shorter than
+    it is."""
+    centred = points - points.mean(axis=0)
+    along = centred @ np.linalg.svd(centred, full_matrices=False)[2][0]
+    return float(along.max() - along.min())
+
+
 def attach_props(armature: bpy.types.Object, props: list[Prop], frame: float) -> list[bpy.types.Object]:
     """Imports each prop and fixes it to its bone; returns the props' meshes.
 
-    The prop is sized so its longest axis is length_m in world metres and
-    centred on its bounding box. Its centre sits at the posed bone's head
-    (Blender would hang a bone child at the tail), moved by offset and turned
-    by rotation in the bone's own axes, as the bone stands at frame (the
-    clip's start). Neither the armature's scale nor Fit's reaches it. From
+    The prop is sized so its length along its longest principal axis is
+    length_m in world metres, and centred on its bounding box. Its centre
+    sits at the posed bone's head (Blender would hang a bone child at the
+    tail), moved by offset and turned by rotation in the bone's own axes,
+    as the bone stands at frame (the clip's start). Neither the armature's scale nor Fit's reaches it. From
     then on it follows the bone, so the root-motion cancel and every pose
     carry it.
     """
@@ -442,10 +453,11 @@ def attach_props(armature: bpy.types.Object, props: list[Prop], frame: float) ->
         import_glb(prop.glb, require_armature=False)
         added = [o for o in scene.objects if o not in before]
         set_frame(frame)
-        lo, hi = mesh_bounds(added)
-        longest = max(hi - lo)
-        if not math.isfinite(longest) or longest <= 1e-9:
+        points = world_vertices(added)
+        length = principal_length(points) if len(points) > 1 else 0.0
+        if not math.isfinite(length) or length <= 1e-9:
             raise RuntimeError(f"{prop.glb}: no mesh to attach")
+        lo, hi = Vector(points.min(axis=0)), Vector(points.max(axis=0))
         mount = bpy.data.objects.new(f"Prop {prop.spec.id}", None)
         scene.collection.objects.link(mount)
         mount.parent = armature
@@ -460,7 +472,7 @@ def attach_props(armature: bpy.types.Object, props: list[Prop], frame: float) ->
         mount.matrix_basis = (bone_frame(armature, bone)
                               @ Matrix.Translation(prop.entry.offset)
                               @ Euler([math.radians(a) for a in prop.entry.rotation], "XYZ").to_matrix().to_4x4()
-                              @ Matrix.Scale(prop.spec.length_m / longest, 4)
+                              @ Matrix.Scale(prop.spec.length_m / length, 4)
                               @ Matrix.Translation(-(lo + hi) / 2))
         for obj in added:
             if obj.parent is None:  # the import's world space becomes the mount's

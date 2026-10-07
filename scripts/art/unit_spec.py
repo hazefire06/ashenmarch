@@ -92,7 +92,7 @@ class UnitSpec:
 
 @dataclass(frozen=True)
 class PropSpec:
-    """A weapon or piece of gear bought as its own model (spec §6.2a). length_m is its longest axis."""
+    """A weapon or piece of gear bought as its own model (spec §6.2a). length_m is its length along its longest principal axis."""
     id: str
     faction: str
     length_m: float

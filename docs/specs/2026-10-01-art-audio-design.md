@@ -171,7 +171,7 @@ This runs headless in Blender 5.2.2 LTS (`/Applications/Blender.app/Contents/Mac
 Added 2026-10-06 after the Shieldman candidates. All four came back empty-handed: an A-pose leaves nothing in the hands. Held gear is therefore separate. Each prop is its own Meshy model, textured but not rigged, fixed rigidly to one bone of the unit's rig when the sprites are rendered. A prop that bends with the hand would look wrong anyway, and other units reuse the same props mechanism (Reaver's claymore, Longbow's bow, Warden's staff, Stormcaller's staff).
 
 ```
-art-src/props/<id>/spec.toml      prompt, length_m (longest axis after import), candidate count and tier, polycount
+art-src/props/<id>/spec.toml      prompt, length_m (length along its longest principal axis), candidate count and tier, polycount
 art-src/props/<id>/manifest.json  same rules as a unit manifest
 art-src/props/<id>/candidates/    cand-N.glb (LFS)
 art-src/props/<id>/model/         textured.glb (LFS)
@@ -192,7 +192,7 @@ offset = [0.0, 0.0, 0.0]     # metres, in the bone's space
 rotation = [0.0, 0.0, 0.0]   # degrees, XYZ Euler, in the bone's space
 ```
 
-- **Blender:** imports each prop's `textured.glb`, scales it so its longest axis is `length_m`, and centres it on its bounding box. It then parents the prop to the bone, applies `offset` and `rotation`, and renders it with the body in every animation and direction.
+- **Blender:** imports each prop's `textured.glb`, scales it so its length along its longest principal axis is `length_m` (a model can come out lying diagonally in its own frame, where its bounding box is shorter than it is), and centres it on its bounding box. It then parents the prop to the bone, applies `offset` and `rotation`, and renders it with the body in every animation and direction.
 - **Tuning:** `make art-attach UNIT=<id>` (free, `render_sprites.py <id> --attach`) writes `art-src/units/<id>/review/attach.png`: directions 0, 2, 4 and 6 across; idle, then each attack at its impact frame, down; twice the game cell's pixels per metre. It prints the rig's bone names. Offsets start from the bone's head, in the bone's axes, so Claude tunes them by eye on this sheet before the full render.
 - **Shieldman:**
   - broadsword in the right hand;
