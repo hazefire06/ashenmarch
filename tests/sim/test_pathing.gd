@@ -172,6 +172,29 @@ func test_astar_settings_are_pinned_for_determinism() -> void:
 	assert_eq(l.astar.get_point_weight_scale(Vector2i(0, 0)), 1.0)
 
 
+func test_no_shipped_map_can_reach_an_inexact_astar_score() -> void:
+	# AStarGrid2D sums scores in float32, exact for integers below 2^24. The
+	# worst path visits every cell once at the heaviest weight; the estimate
+	# adds at most the map's diagonal, which is smaller than that.
+	var heaviest: int = 0
+	for w: int in PathLayer.LIVING_WATER_WEIGHTS:
+		heaviest = maxi(heaviest, w)
+	for path: String in [
+		"res://maps/riverside/riverside.tres", "res://maps/the_ford/the_ford.tres",
+		"res://maps/old_mill/old_mill.tres",
+	]:
+		var info: MapInfo = load(path) as MapInfo
+		var file: FileAccess = FileAccess.open(info.heightmap_path, FileAccess.READ)
+		assert_not_null(file, path)
+		if file == null:
+			continue
+		# A PNG's width and height are big-endian at bytes 16 and 20.
+		file.big_endian = true
+		file.seek(16)
+		var cells: int = file.get_32() * file.get_32()
+		assert_lt(cells * heaviest * 2, 1 << 24, "%s: %d cells" % [path, cells])
+
+
 func test_riverside_living_path_crosses_at_the_ford() -> void:
 	var from: Vector2i = Vector2i(150 * M, 200 * M)
 	var to: Vector2i = Vector2i(150 * M, 360 * M)

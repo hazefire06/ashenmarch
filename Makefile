@@ -3,7 +3,7 @@ MAC_APP := build/mac/Ashenmarch.app
 WIN_EXE := build/windows/Ashenmarch.exe
 WEB_HTML := build/web/index.html
 
-.PHONY: import run demo demo-projectiles demo-abilities demo-ai test check-sim export-mac export-windows export-web export-all serve-web maps fixtures playtest skirmish-playtest capture capture-skirmish
+.PHONY: import run demo demo-projectiles demo-abilities demo-ai test check-sim export-mac export-windows export-web export-all serve-web golden-replays verify-replays verify-replays-app verify-replays-x86 maps fixtures playtest skirmish-playtest capture capture-skirmish
 
 # Builds the .godot/ import and class_name cache. A fresh clone has none, and
 # GUT can't resolve class_name types without it.
@@ -107,6 +107,30 @@ capture: import
 # e.g. CAPTURE=shots MAPS=old_mill SIDE=dark make capture-skirmish
 capture-skirmish: import
 	$(GODOT) --path . -s scripts/capture_skirmish.gd
+
+# Records the golden replays (data/replays/golden) that every build is
+# checked against: Riverside and Old Mill played by the playtest pilot, and an
+# AI-against-AI skirmish. Rerun deliberately when a change alters what the sim
+# does; verify-replays fails until then. See scripts/make_golden_replays.gd.
+golden-replays: import
+	$(GODOT) --headless --path . -s scripts/make_golden_replays.gd
+
+# The determinism check: plays every golden replay and compares each
+# checkpoint and the final hash with the recording. One line per replay; exit
+# status 1 on any divergence. TRACE=FROM-TO adds per-tick subsystem hashes
+# (ENTITIES=1 per-entity ones too) for diffing two platforms' output.
+VERIFY_ARGS = --verify-replays $(if $(TRACE),--trace=$(TRACE)) $(if $(ENTITIES),--trace-entities)
+verify-replays: import
+	$(GODOT) --headless --path . -- $(VERIFY_ARGS)
+
+# The same check in the exported macOS app, natively (arm64) and under Rosetta
+# (x86_64). Run make export-mac first. The web build checks itself at
+# http://127.0.0.1:8060/?verify=1 (make export-web serve-web).
+verify-replays-app:
+	$(MAC_APP)/Contents/MacOS/Ashenmarch --headless -- $(VERIFY_ARGS)
+
+verify-replays-x86:
+	arch -x86_64 $(MAC_APP)/Contents/MacOS/Ashenmarch --headless -- $(VERIFY_ARGS)
 
 test: import check-sim
 	$(GODOT) --headless -d --path . -s addons/gut/gut_cmdln.gd

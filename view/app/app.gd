@@ -114,6 +114,11 @@ var _skirmish_ai_choice: StringName = SkirmishMenu.RANDOM_AI
 
 
 func _ready() -> void:
+	# A determinism check run (ReplayVerifier) replaces the game entirely.
+	var verify: Dictionary = ReplayVerifier.requested()
+	if not verify.is_empty():
+		_run_verifier(verify)
+		return
 	InputBindings.install()
 	if campaign == null:
 		campaign = load(CAMPAIGN_PATH) as CampaignDef
@@ -136,6 +141,23 @@ func _ready() -> void:
 	if _fullscreen_applied:
 		apply_window_mode.call(true)
 	show_main_menu()
+
+
+# Plays the requested replays instead of showing the menus, then quits with
+# status 0 if every one reproduced its hashes and 1 if not (on the web the
+# page stays, showing the result).
+func _run_verifier(request: Dictionary) -> void:
+	var verifier: ReplayVerifier = ReplayVerifier.new()
+	verifier.name = "ReplayVerifier"
+	verifier.catalog = load(CATALOG_PATH) as UnitCatalog
+	if OS.has_feature("web"):
+		verifier.ticks_per_frame = 60
+	verifier.finished.connect(func(all_ok: bool) -> void:
+		if not OS.has_feature("web"):
+			get_tree().quit(0 if all_ok else 1)
+	)
+	add_child(verifier)
+	verifier.start(request)
 
 
 ## The screen on show: a MenuScreen, or the MainView while a mission is played.

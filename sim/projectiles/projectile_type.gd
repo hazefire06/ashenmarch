@@ -126,7 +126,7 @@ enum Pickup {
 
 @export_group("View")
 ## Placeholder color until the art pass. View only.
-@export var placeholder_color: Color = Color.WHITE
+@export var placeholder_color: Color = Color.WHITE  # purity-ok: view only
 ## Milli-units: drawn length (arrows) or size. View only.
 @export var length: int = 0
 
