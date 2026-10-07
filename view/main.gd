@@ -148,6 +148,9 @@ var _skirmish_hud: SkirmishHud
 var _replay_player: ReplayPlayer
 var _replay_bar: ReplayBar
 var _replay_speed: int = 1
+## The battle's sounds and its rain and fire beds.
+var _sfx: SfxPlayer
+var _ambience: Ambience
 
 @onready var _terrain_view: TerrainView = $TerrainView
 @onready var _units_view: UnitsView = $Units
@@ -209,6 +212,14 @@ func _ready() -> void:
 	_gas_view.setup(world)
 	_plants_view.setup(world)
 	_precipitation.setup(world, _camera)
+	_sfx = SfxPlayer.new()
+	_sfx.name = "Sfx"
+	add_child(_sfx)
+	_sfx.setup(world, _camera)
+	_ambience = Ambience.new()
+	_ambience.name = "Ambience"
+	add_child(_ambience)
+	_ambience.setup(world)
 	if launch != null:
 		# After the views it grades exist: the terrain's material and the ash layer.
 		var look: Atmosphere = (
@@ -241,6 +252,8 @@ func _ready() -> void:
 	# With no App around the menu (the sandbox) it can only resume.
 	_pause_menu.set_app_buttons_visible(launch != null)
 	_control_bar.menu_requested.connect(_pause_menu.open)
+	_control_bar.center_requested.connect(center_on_selection)
+	_selection.order_given.connect(_sfx.acknowledge)
 	_pause_menu.opened.connect(_on_pause_menu_opened)
 	_pause_menu.closed.connect(_on_pause_menu_closed)
 	_pause_menu.resume_requested.connect(_on_resume_requested)
@@ -321,6 +334,8 @@ func _advance() -> void:
 	_gas_view.after_step()
 	_plants_view.after_step()
 	_ai_debug.after_step()
+	_sfx.after_step()
+	_ambience.after_step()
 	_mission_hud.show_world(world)
 	_objectives.show_world(world)
 	if _skirmish_hud != null:
@@ -353,10 +368,37 @@ func pause_menu() -> PauseMenu:
 	return _pause_menu
 
 
+## Glides the camera to the middle of the living selected units (H, and the
+## bar's Center). Nothing selected, nothing moves.
+func center_on_selection() -> void:
+	var sum: Vector2 = Vector2.ZERO
+	var count: int = 0
+	for unit_id: int in _selection.selection.ids():
+		var unit: Unit = world.get_unit(unit_id)
+		if unit != null and unit.is_alive():
+			sum += Vector2(unit.x, unit.z)
+			count += 1
+	if count > 0:
+		_camera.glide_to(sum / count / float(World.UNITS_PER_METER))
+
+
+## Puts the current key bindings into everything that names them: the control
+## bar, the pause menu's label, the scoreboard's hint. The App calls it after
+## the controls change.
+func refresh_key_labels() -> void:
+	_control_bar.refresh_key_labels()
+	_pause_menu.refresh_key_labels()
+	if _skirmish_hud != null:
+		_skirmish_hud.refresh_key_labels()
+
+
 func _unhandled_input(event: InputEvent) -> void:
 	if world == null:
 		return
-	if event.is_action_pressed(InputBindings.PAUSE):
+	if event.is_action_pressed(InputBindings.CAM_CENTER, false, true):
+		center_on_selection()
+		get_viewport().set_input_as_handled()
+	elif event.is_action_pressed(InputBindings.PAUSE):
 		toggle_pause()
 		get_viewport().set_input_as_handled()
 	elif event.is_action_pressed(InputBindings.CYCLE_WEATHER) and not _campaign() and not paused:
@@ -382,7 +424,7 @@ func _process(delta: float) -> void:
 	var w: Weather = world.weather
 	var hints: String = "(F5 AI overlay)" if _campaign() else "(F5 AI overlay, F6 weather)"
 	if _skirmish_hud != null:
-		hints = "(F5 AI overlay, F7 scoreboard)"
+		hints = "(F5 AI overlay, %s scoreboard)" % InputBindings.label_for(InputBindings.TOGGLE_SCOREBOARD)
 	_stats_label.text = "tick %d   %d fps   %d draw calls   sim %.2f ms/tick   %d units   %d projectiles   %d paths queued\nrain %d%%   snow %d%%   wet %d%%   snow cover %d%%   %d cells burning   %s" % [
 		world.tick,
 		Performance.get_monitor(Performance.TIME_FPS),

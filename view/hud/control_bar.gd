@@ -6,14 +6,18 @@ extends PanelContainer
 ## selection, how many units are alive on each side, the side being
 ## controlled); and the orders: Stop, Move, Attack-move and Ground attack (each
 ## arms that order for the next left click on the ground, once), Ability (the
-## selection's special), Switch side (debug; the campaign hides it), and Menu
-## (the pause menu, which Esc opens too; it is how a mouse alone reaches it).
+## selection's special), Center (the camera on the selection), Switch side
+## (debug; the campaign hides it), and Menu (the pause menu, which Esc opens
+## too; it is how a mouse alone reaches it). The keys named on the buttons and
+## in their tooltips are the current bindings (refresh_key_labels).
 ## All actions go through the SelectionController, so keys and buttons can't
 ## drift apart. While the game is paused the order buttons are disabled:
 ## nothing would be enqueued, and a greyed button says so.
 
 ## The Menu button was pressed: open the pause menu (MainView connects it).
 signal menu_requested
+## The Center button was pressed: the camera to the selection (MainView).
+signal center_requested
 
 ## Space kept below the last row of buttons: as deep as the camera's edge-scroll
 ## zone, so the bottom strip of the window is bar background and not a button,
@@ -35,6 +39,9 @@ var _ground_attack_toggle: Button
 var _order_buttons: Array[Button] = []
 var _side_button: Button
 var _menu_button: Button
+var _stop_button: Button
+var _ability_button: Button
+var _center_button: Button
 var _status: Label
 ## Living units per side, recounted when the tick changes.
 var _light_alive: int = 0
@@ -68,10 +75,9 @@ func _build() -> void:
 	formations.add_child(_caption("Formation"))
 	var group: ButtonGroup = ButtonGroup.new()
 	for kind: int in Formations.Kind.size():
-		var b: Button = _button("%s %s" % [GROUP_LABELS[kind], Formations.DISPLAY_NAMES[kind]])
+		var b: Button = _button(Formations.DISPLAY_NAMES[kind])
 		b.toggle_mode = true
 		b.button_group = group
-		b.tooltip_text = "Formation for the next move order (key %s)" % GROUP_LABELS[kind]
 		b.pressed.connect(_controller.set_formation.bind(kind))
 		formations.add_child(b)
 		_formation_buttons.append(b)
@@ -82,9 +88,6 @@ func _build() -> void:
 	for slot: int in UnitSelection.GROUP_COUNT:
 		var b: Button = _button(GROUP_LABELS[slot])
 		b.custom_minimum_size.x = 34.0
-		b.tooltip_text = "Recall group %s (Opt/Alt+%s); save with Set or Cmd/Ctrl+%s" % [
-			GROUP_LABELS[slot], GROUP_LABELS[slot], GROUP_LABELS[slot]
-		]
 		b.pressed.connect(_on_group_pressed.bind(slot))
 		groups.add_child(b)
 		_group_buttons.append(b)
@@ -99,37 +102,26 @@ func _build() -> void:
 
 	var orders: HBoxContainer = HBoxContainer.new()
 	orders.add_child(_caption("Orders"))
-	var stop: Button = _button("Stop")
-	stop.tooltip_text = "Halt the selection (H)"
-	stop.pressed.connect(_controller.stop_selected)
-	orders.add_child(stop)
-	_order_buttons.append(stop)
-	_move_toggle = _arm_button(
-		"Move", SelectionController.ArmedOrder.MOVE,
-		"Then left-click the ground to move there (or just right-click)"
-	)
+	_stop_button = _button("Stop")
+	_stop_button.pressed.connect(_controller.stop_selected)
+	orders.add_child(_stop_button)
+	_order_buttons.append(_stop_button)
+	_move_toggle = _arm_button("Move", SelectionController.ArmedOrder.MOVE)
 	orders.add_child(_move_toggle)
 	_order_buttons.append(_move_toggle)
-	_attack_move_toggle = _arm_button(
-		"Attack-move", SelectionController.ArmedOrder.ATTACK_MOVE,
-		"Then left-click the ground to attack-move there (or Cmd/Ctrl + right-click)"
-	)
+	_attack_move_toggle = _arm_button("Attack-move", SelectionController.ArmedOrder.ATTACK_MOVE)
 	orders.add_child(_attack_move_toggle)
 	_order_buttons.append(_attack_move_toggle)
-	_ground_attack_toggle = _arm_button(
-		"Ground attack", SelectionController.ArmedOrder.GROUND_ATTACK,
-		"Then left-click the ground to bombard it with the selected archers and grenadiers (or Cmd/Ctrl + left-click)"
-	)
+	_ground_attack_toggle = _arm_button("Ground attack", SelectionController.ArmedOrder.GROUND_ATTACK)
 	orders.add_child(_ground_attack_toggle)
 	_order_buttons.append(_ground_attack_toggle)
-	var ability: Button = _button("Ability (T)")
-	ability.tooltip_text = (
-		"Use the selection's special (T): a Sapper drops a satchel charge, a Longbow nocks its fire arrow, "
-		+ "a Blightbag bursts. With a Warden, then click a unit to heal it (an undead one dies of it)"
-	)
-	ability.pressed.connect(_controller.use_special_selected)
-	orders.add_child(ability)
-	_order_buttons.append(ability)
+	_ability_button = _button("Ability")
+	_ability_button.pressed.connect(_controller.use_special_selected)
+	orders.add_child(_ability_button)
+	_order_buttons.append(_ability_button)
+	_center_button = _button("Center")
+	_center_button.pressed.connect(center_requested.emit)
+	orders.add_child(_center_button)
 	_side_button = _button("Switch side")
 	_side_button.tooltip_text = "Debug: command the other side (F9)"
 	_side_button.pressed.connect(_controller.switch_side)
@@ -139,9 +131,38 @@ func _build() -> void:
 	_menu_button.pressed.connect(menu_requested.emit)
 	orders.add_child(_menu_button)
 	rows.add_child(orders)
+	refresh_key_labels()
 
 	set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE, Control.PRESET_MODE_MINSIZE)
 	grow_vertical = Control.GROW_DIRECTION_BEGIN
+
+
+## Names the current bindings on the buttons and in their tooltips. Called
+## once built, and again by MainView after the controls are changed.
+func refresh_key_labels() -> void:
+	for kind: int in _formation_buttons.size():
+		var key: String = InputBindings.label_for(InputBindings.FORMATIONS[kind])
+		_formation_buttons[kind].text = "%s %s" % [key, Formations.DISPLAY_NAMES[kind]]
+		_formation_buttons[kind].tooltip_text = "Formation for the next move order (%s)" % key
+	for slot: int in _group_buttons.size():
+		_group_buttons[slot].tooltip_text = "Recall group %s (%s); save with Set or %s" % [
+			GROUP_LABELS[slot], InputBindings.label_for(InputBindings.GROUP_RECALLS[slot]),
+			InputBindings.label_for(InputBindings.GROUP_SAVES[slot]),
+		]
+	var ability_key: String = InputBindings.label_for(InputBindings.ABILITY)
+	_stop_button.tooltip_text = "Halt the selection (%s)" % InputBindings.label_for(InputBindings.STOP)
+	_move_toggle.tooltip_text = "Then left-click the ground to move there (or %s)" % InputBindings.label_for(InputBindings.COMMAND)
+	_attack_move_toggle.tooltip_text = "Then left-click the ground to attack-move there (or %s)" % InputBindings.label_for(InputBindings.ATTACK_MOVE)
+	_ground_attack_toggle.tooltip_text = (
+		"Then left-click the ground to bombard it with the selected archers and grenadiers (or %s)"
+		% InputBindings.label_for(InputBindings.GROUND_ATTACK)
+	)
+	_ability_button.text = "Ability (%s)" % ability_key
+	_ability_button.tooltip_text = (
+		"Use the selection's special (%s): a Sapper drops a satchel charge, a Longbow nocks its fire arrow, " % ability_key
+		+ "a Blightbag bursts. With a Warden, then click a unit to heal it (an undead one dies of it)"
+	)
+	_center_button.tooltip_text = "Center the camera on the selection (%s)" % InputBindings.label_for(InputBindings.CAM_CENTER)
 
 
 ## Shows or hides the debug Switch side button. The campaign hides it.
@@ -225,10 +246,9 @@ func _on_armed_order_changed(order: SelectionController.ArmedOrder) -> void:
 # A toggle that arms order while pressed. Pressing it again disarms. The
 # controller's signal keeps both toggles in step with each other and with Esc
 # or right-click cancels.
-func _arm_button(text: String, order: SelectionController.ArmedOrder, tip: String) -> Button:
+func _arm_button(text: String, order: SelectionController.ArmedOrder) -> Button:
 	var b: Button = _button(text)
 	b.toggle_mode = true
-	b.tooltip_text = tip
 	b.toggled.connect(func(pressed: bool) -> void:
 		_controller.arm(order if pressed else SelectionController.ArmedOrder.NONE))
 	return b

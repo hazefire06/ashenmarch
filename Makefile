@@ -3,7 +3,7 @@ MAC_APP := build/mac/Ashenmarch.app
 WIN_EXE := build/windows/Ashenmarch.exe
 WEB_HTML := build/web/index.html
 
-.PHONY: import run demo demo-projectiles demo-abilities demo-ai test check-sim export-mac export-windows export-web export-all serve-web golden-replays verify-replays verify-replays-app verify-replays-x86 maps fixtures playtest skirmish-playtest capture capture-skirmish
+.PHONY: import run demo demo-projectiles demo-abilities demo-ai test check-sim export-mac export-windows export-web export-all serve-web sfx golden-replays verify-replays verify-replays-app verify-replays-x86 maps fixtures playtest skirmish-playtest capture capture-skirmish
 
 # Builds the .godot/ import and class_name cache. A fresh clone has none, and
 # GUT can't resolve class_name types without it.
@@ -144,6 +144,13 @@ check-sim:
 # generator is picked up by name, with no change here.
 maps: import
 	for script in scripts/gen_*.gd; do $(GODOT) --headless --path . -s $$script || exit 1; done
+
+# Regenerates the placeholder sound effects (assets/audio/sfx), synthesized
+# from scratch and deterministic. The WAVs are committed; rerun only when
+# scripts/gen_sfx.py changes. rain_loop and fire_loop loop forward (their
+# .import files say so).
+sfx:
+	python3 scripts/gen_sfx.py
 
 # Regenerates the PNG test fixtures with an independent Python encoder.
 fixtures:

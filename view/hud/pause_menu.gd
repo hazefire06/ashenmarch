@@ -50,6 +50,9 @@ const MENU_LAYER: int = 10
 ## The label for a pause with no menu: it says how to end it, since there is no
 ## Resume button to find.
 const PAUSED_LABEL_TEXT: String = "Paused (P to resume)"
+## The label with the pause key's current binding in it; PAUSED_LABEL_TEXT is
+## what it reads on the default binding.
+const PAUSED_LABEL_FORMAT: String = "Paused (%s to resume)"
 const QUIT_QUESTION: String = "Quit to the main menu?\nThis mission's progress is lost."
 
 ## While false the menu can't be opened, by Esc or open() (MainView turns it
@@ -130,6 +133,11 @@ func set_app_buttons_visible(shown: bool) -> void:
 	_quit.visible = shown
 
 
+## Names the pause key's current binding in the Paused label.
+func refresh_key_labels() -> void:
+	_paused_label.text = PAUSED_LABEL_FORMAT % InputBindings.label_for(InputBindings.PAUSE)
+
+
 ## For a replay being watched: Restart watches it again, and Quit goes back to
 ## the replays without asking, since nothing is lost.
 func set_replay_mode() -> void:
@@ -178,7 +186,7 @@ func _build() -> void:
 	_layer.layer = MENU_LAYER
 	add_child(_layer)
 	_paused_label = Label.new()
-	_paused_label.text = PAUSED_LABEL_TEXT
+	_paused_label.text = PAUSED_LABEL_FORMAT % InputBindings.label_for(InputBindings.PAUSE)
 	_paused_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_paused_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_paused_label.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)

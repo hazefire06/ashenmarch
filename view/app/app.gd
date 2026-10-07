@@ -96,6 +96,8 @@ var _notice_serial: int = 0
 # touches the window when that choice itself changes (flipping Edge scroll must
 # not drop the player out of fullscreen).
 var _fullscreen_applied: bool = false
+# The window size choice last applied (GameSettings.window_size).
+var _window_size_applied: int = -1
 # Where the keyboard was when an overlay opened, so closing it puts it back.
 var _focus_before_overlay: Control
 # The roster the current mission was launched with, and who is benched in it:
@@ -124,6 +126,13 @@ func _ready() -> void:
 		_run_verifier(verify)
 		return
 	InputBindings.install()
+	GameSettings.apply_bindings(settings_path)
+	GameSettings.apply_audio(settings_path)
+	GameSettings.apply_display(get_window(), true, settings_path)
+	_window_size_applied = GameSettings.window_size(settings_path)
+	var clicks: UiSounds = UiSounds.new()
+	clicks.name = "UiSounds"
+	add_child(clicks)
 	if campaign == null:
 		campaign = load(CAMPAIGN_PATH) as CampaignDef
 	if catalog == null:
@@ -696,6 +705,15 @@ func _hold_mission(held: bool) -> void:
 
 
 func _on_settings_changed() -> void:
+	GameSettings.apply_bindings(settings_path)
+	GameSettings.apply_audio(settings_path)
+	# The window is only resized when its size was the change, so a window the
+	# player dragged to a size isn't snapped back by an unrelated setting.
+	var size_choice: int = GameSettings.window_size(settings_path)
+	GameSettings.apply_display(get_window(), size_choice != _window_size_applied, settings_path)
+	_window_size_applied = size_choice
+	if _screen is MainView:
+		(_screen as MainView).refresh_key_labels()
 	var wanted: bool = GameSettings.fullscreen(settings_path)
 	if wanted == _fullscreen_applied:
 		return
