@@ -14,6 +14,49 @@ const GAME_ANIMS: Array[StringName] = [
 ]
 
 
+## Why the sidecar's layout doesn't fit its sheets, or an empty array if it
+## does. Only the animations the game plays are checked. Run before build():
+## a sidecar that disagrees with its sheets would otherwise cut cells from
+## past a texture's edge (or divide by zero) and fail far from the cause.
+## sheets is as for build().
+static func layout_errors(sidecar: Dictionary, sheets: Dictionary) -> PackedStringArray:
+	var errors: PackedStringArray = PackedStringArray()
+	var cell: int = int(sidecar["cell"])
+	var stride: int = int(sidecar["stride"])
+	var gutter: int = int(sidecar["gutter"])
+	var anims: Dictionary = sidecar["animations"]
+	for key: String in anims:
+		var anim: StringName = StringName(key)
+		if anim not in GAME_ANIMS:
+			continue
+		var info: Dictionary = anims[key]
+		var count: int = int(info["frames"])
+		var columns: int = int(info.get("columns", count))
+		var rows_per_direction: int = int(info.get("rows_per_direction", 1))
+		if columns <= 0:
+			errors.append("%s: columns must be positive, not %d" % [key, columns])
+		if rows_per_direction <= 0:
+			errors.append("%s: rows_per_direction must be positive, not %d" % [key, rows_per_direction])
+		if columns <= 0 or rows_per_direction <= 0:
+			continue
+		if columns * rows_per_direction < count:
+			errors.append("%s: %d columns x %d rows hold %d frames, not %d" % [key, columns, rows_per_direction, columns * rows_per_direction, count])
+			continue
+		var sheet: Texture2D = sheets.get(anim) as Texture2D
+		if sheet == null:
+			errors.append("%s: no sheet" % key)
+			continue
+		# The far corner of the last frame of the last direction.
+		@warning_ignore("integer_division") # Floor on purpose: the wrapped row.
+		var last_row: int = (UnitArt.DIRECTIONS - 1) * rows_per_direction + (count - 1) / columns
+		var right: int = (mini(count, columns) - 1) * stride + gutter + cell
+		var bottom: int = last_row * stride + gutter + cell
+		var size: Vector2 = sheet.get_size()
+		if right > size.x or bottom > size.y:
+			errors.append("%s: frames reach outside the %dx%d sheet, which would need %dx%d" % [key, int(size.x), int(size.y), right, bottom])
+	return errors
+
+
 ## sheets maps each animation name (StringName) to its Texture2D.
 static func build(sidecar: Dictionary, sheets: Dictionary) -> UnitArt:
 	var art: UnitArt = UnitArt.new()
