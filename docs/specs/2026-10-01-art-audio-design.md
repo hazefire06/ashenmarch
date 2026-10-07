@@ -212,8 +212,10 @@ Run headless. It turns the sheets and sidecar into `data/art/<id>.tres` and rewr
 - `unit_id` (matches `UnitType.id`);
 - `frames: SpriteFrames` with animations named `<anim>_<dir>`, dir 0–7. `idle`, `walk` and `attack` are required. `die` is required unless `bursts_on_death` is set (the Blightbag, whose body becomes gibs). `shoot`, `throw`, `cast` and `place` are optional;
 - the impact frame of each attack-type animation;
-- `stride_m`, `pixels_per_meter`, `cell_px`, `feet_px` (together these give the sprite's scale and its pivot at the feet), `gib_color`, `die_falls_forward`;
+- `stride_m`, `pixels_per_meter`, `cell_px`, `feet_px` (together these give the sprite's scale and its pivot at the feet; the render's 160 px cell with the feet 40 px up is the default), `gib_color`, `die_falls_forward`;
 - `validate()`: every required animation has all 8 directions, and impact frames are in range.
+
+`UnitArtBuilder` (`scripts/art/unit_art_builder.gd`) reads `cell`, `feet_px`, `columns` and `rows_per_direction` from the sidecar. Frame `i` of direction `d` is at column `i % columns`, row `d * rows_per_direction + i // columns`, so long animations wrap under 4096 px (the keys default to the frame count and 1).
 
 ### 7.2 Body
 
