@@ -58,8 +58,9 @@ var _last_aim: int = 0
 var _last_act: int = 0
 var _strike: StringName = &""
 var _strike_speed: float = 1.0
-## Seconds of the strike still to play, at its speed.
-var _strike_left: float = 0.0
+## Ticks the strike still shows after the one it started on. Whole ticks, so
+## float drift can't hold the last frame a tick too long.
+var _strike_hold: int = 0
 var _dead: bool = false
 
 
@@ -81,10 +82,14 @@ func after_tick(input: AnimInput) -> Play:
 	if strike != null:
 		_strike = strike.anim
 		_strike_speed = strike.speed_scale
-		_strike_left = _seconds(strike.anim, strike.start_frame) / strike.speed_scale
+		var seconds: float = _seconds(strike.anim, strike.start_frame) / strike.speed_scale
+		_strike_hold = maxi(roundi(seconds * World.TICK_RATE) - 1, 0)
 		play = strike
-	elif _strike_left > 0.0:
-		_strike_left -= 1.0 / World.TICK_RATE
+	elif _strike_hold > 0:
+		# A paralyzed body is frozen mid-strike, so the strike resumes where it
+		# stopped instead of running out under the freeze.
+		if not input.paralyzed:
+			_strike_hold -= 1
 		play.anim = _strike
 		play.speed_scale = _strike_speed
 	elif input.moving and input.ground_speed >= MIN_WALK_SPEED:
