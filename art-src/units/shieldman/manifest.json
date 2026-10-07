@@ -1,0 +1,104 @@
+{
+  "tasks": [
+    {
+      "ai_model": "meshy-6-lite",
+      "created_at": 1791314874,
+      "credits": 5,
+      "files": [
+        "candidates/cand-1.glb"
+      ],
+      "finished_at": 1791314924306,
+      "kind": "preview",
+      "label": "cand-1",
+      "prompt": "Scottish highland clansman warrior, kilt in red and green tartan, round wooden targe shield with an iron boss on the left arm, basket-hilted broadsword in the right hand, blue woad war paint on the face, wild ginger beard, blue wool bonnet, leather belt and sporran, rough leather boots. Palette: warm tartan reds and greens, steel, woad blue. Stylized fantasy strategy-game character, chunky heroic proportions, hand-painted textures, strong readable silhouette, muted earthy palette, full body, standing in A-pose, centered, plain background",
+      "status": "SUCCEEDED",
+      "task_id": "01a112af-d14f-7461-8a4d-78a0cd472e5a"
+    },
+    {
+      "ai_model": "meshy-6-lite",
+      "created_at": 1791314927,
+      "credits": 5,
+      "files": [
+        "candidates/cand-2.glb"
+      ],
+      "finished_at": 1791314968219,
+      "kind": "preview",
+      "label": "cand-2",
+      "prompt": "Scottish highland clansman warrior, kilt in red and green tartan, round wooden targe shield with an iron boss on the left arm, basket-hilted broadsword in the right hand, blue woad war paint on the face, wild ginger beard, blue wool bonnet, leather belt and sporran, rough leather boots. Palette: warm tartan reds and greens, steel, woad blue. Stylized fantasy strategy-game character, chunky heroic proportions, hand-painted textures, strong readable silhouette, muted earthy palette, full body, standing in A-pose, centered, plain background",
+      "status": "SUCCEEDED",
+      "task_id": "01a112b0-9f09-71fd-956e-b46c12b198f3"
+    },
+    {
+      "ai_model": "meshy-7.1",
+      "created_at": 1791314972,
+      "credits": 20,
+      "files": [
+        "candidates/cand-3.glb"
+      ],
+      "finished_at": 1791315048397,
+      "kind": "preview",
+      "label": "cand-3",
+      "prompt": "Scottish highland clansman warrior, kilt in red and green tartan, round wooden targe shield with an iron boss on the left arm, basket-hilted broadsword in the right hand, blue woad war paint on the face, wild ginger beard, blue wool bonnet, leather belt and sporran, rough leather boots. Palette: warm tartan reds and greens, steel, woad blue. Stylized fantasy strategy-game character, chunky heroic proportions, hand-painted textures, strong readable silhouette, muted earthy palette, full body, standing in A-pose, centered, plain background",
+      "status": "SUCCEEDED",
+      "task_id": "01a112b1-4fb4-7372-8c1b-6889caa14a3a"
+    },
+    {
+      "ai_model": "meshy-7.1",
+      "created_at": 1791315052,
+      "credits": 20,
+      "files": [
+        "candidates/cand-4.glb"
+      ],
+      "finished_at": 1791315124112,
+      "kind": "preview",
+      "label": "cand-4",
+      "prompt": "Scottish highland clansman warrior, kilt in red and green tartan, round wooden targe shield with an iron boss on the left arm, basket-hilted broadsword in the right hand, blue woad war paint on the face, wild ginger beard, blue wool bonnet, leather belt and sporran, rough leather boots. Palette: warm tartan reds and greens, steel, woad blue. Stylized fantasy strategy-game character, chunky heroic proportions, hand-painted textures, strong readable silhouette, muted earthy palette, full body, standing in A-pose, centered, plain background",
+      "status": "SUCCEEDED",
+      "task_id": "01a112b2-888c-7614-bf50-25d862734f59"
+    },
+    {
+      "created_at": 1791316426,
+      "credits": 10,
+      "files": [
+        "model/textured.glb"
+      ],
+      "finished_at": 1791316483652,
+      "kind": "refine",
+      "label": "cand-1",
+      "status": "SUCCEEDED",
+      "task_id": "01a112c7-816f-7290-bc30-99167f6318a6"
+    },
+    {
+      "created_at": 1791316487,
+      "credits": 5,
+      "files": [
+        "anims/rig_run.glb",
+        "anims/rig_walk.glb",
+        "model/rigged.glb"
+      ],
+      "finished_at": 1791316502325,
+      "kind": "rig",
+      "label": "cand-1",
+      "status": "SUCCEEDED",
+      "task_id": "01a112c8-6e9c-750f-9774-b83ee2227f9f"
+    },
+    {
+      "action_ids": [
+        89,
+        97,
+        189,
+        219
+      ],
+      "created_at": 1791316504,
+      "credits": 12,
+      "files": [
+        "anims/actions.glb"
+      ],
+      "finished_at": 1791316513387,
+      "kind": "animate",
+      "label": "cand-1:89,97,189,219",
+      "status": "SUCCEEDED",
+      "task_id": "01a112c8-af36-7083-88b2-d83e7a4cb1c5"
+    }
+  ]
+}

@@ -1,0 +1,44 @@
+{
+  "tasks": [
+    {
+      "ai_model": "meshy-6-lite",
+      "created_at": 1791383336,
+      "credits": 5,
+      "files": [
+        "candidates/cand-1.glb"
+      ],
+      "finished_at": 1791383377049,
+      "kind": "preview",
+      "label": "cand-1",
+      "prompt": "Scottish basket-hilted broadsword, straight double-edged steel blade, steel basket guard lined with red leather, leather-wrapped wooden grip, round pommel. Palette: warm tartan reds and greens, steel, woad blue. Stylized fantasy strategy-game prop, chunky readable shape, hand-painted textures, muted earthy palette, single object on its own, no hands or figure, centered, plain background",
+      "status": "SUCCEEDED",
+      "task_id": "01a116c4-76f8-7684-a2fa-6a55ecd0d61d"
+    },
+    {
+      "ai_model": "meshy-6-lite",
+      "created_at": 1791383382,
+      "credits": 5,
+      "files": [
+        "candidates/cand-2.glb"
+      ],
+      "finished_at": 1791383409427,
+      "kind": "preview",
+      "label": "cand-2",
+      "prompt": "Scottish basket-hilted broadsword, straight double-edged steel blade, steel basket guard lined with red leather, leather-wrapped wooden grip, round pommel. Palette: warm tartan reds and greens, steel, woad blue. Stylized fantasy strategy-game prop, chunky readable shape, hand-painted textures, muted earthy palette, single object on its own, no hands or figure, centered, plain background",
+      "status": "SUCCEEDED",
+      "task_id": "01a116c5-29cd-7212-b7ca-a6d9ffff97cd"
+    },
+    {
+      "created_at": 1791404673,
+      "credits": 10,
+      "files": [
+        "model/textured.glb"
+      ],
+      "finished_at": 1791404716480,
+      "kind": "refine",
+      "label": "cand-1",
+      "status": "SUCCEEDED",
+      "task_id": "01a1180a-093b-7479-b368-e992f9a915b7"
+    }
+  ]
+}

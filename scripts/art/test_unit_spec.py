@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import math
 import tempfile
 import unittest
 from pathlib import Path
@@ -31,11 +32,11 @@ class ShieldmanSpecTest(unittest.TestCase):
         self.assertIn("warm tartan reds", prompt)
 
     def test_the_shieldman_carries_a_sword_and_a_targe(self) -> None:
+        # Offsets and rotations are tuned by eye with `make art-attach`, so only what carries what is pinned.
         spec = load_spec(ART_SRC / "units" / "shieldman" / "spec.toml")
-        self.assertEqual(spec.attach, (
-            AttachEntry("broadsword", "RightHand", (0.0, 0.0, 0.0), (0.0, 0.0, 0.0)),
-            AttachEntry("targe", "LeftForeArm", (0.0, 0.0, 0.0), (0.0, 0.0, 0.0)),
-        ))
+        self.assertEqual([(a.prop, a.bone) for a in spec.attach], [("broadsword", "RightHand"), ("targe", "LeftForeArm")])
+        for entry in spec.attach:
+            self.assertTrue(all(math.isfinite(v) for v in entry.offset + entry.rotation), entry)
 
     def test_a_unit_is_previewed_in_an_a_pose(self) -> None:
         self.assertEqual(load_spec(ART_SRC / "units" / "shieldman" / "spec.toml").pose_mode, "a-pose")
