@@ -63,6 +63,9 @@ var fire: Fire
 ## The mission in progress: its triggers, objective, and outcome. Null in a
 ## world with no mission (start_mission).
 var mission: MissionRuntime
+## The skirmish in progress: its score, flags, clock, and winner. Null in a
+## world that isn't a skirmish (start_skirmish).
+var skirmish: SkirmishRuntime
 ## Every AI group in the world. Empty without a mission, or until one spawns.
 var ai: AiDirector = AiDirector.new()
 ## What happened in fights during the last step, for the view. Output only:
@@ -113,6 +116,7 @@ func enqueue(command: SimCommand) -> bool:
 ## 1. apply this tick's commands in enqueue order;
 ## 2. run the mission's triggers (which may spawn groups, start weather
 ##    changes, or end the mission);
+##    2b. score a skirmish (which may end it);
 ## 3. update the AI groups;
 ## 4. advance the weather (ramps, snow cover, wetness);
 ## 5. status effects (wear-offs, water putting out the burning, burns);
@@ -139,6 +143,8 @@ func step() -> void:
 	_apply_commands()
 	if mission != null:
 		mission.update(self)
+	if skirmish != null:
+		skirmish.update(self)
 	if not ai.groups.is_empty():
 		ai.update(self)
 	weather.update(tick)
@@ -187,6 +193,35 @@ func start_mission(mission_script: MissionScript, tier: int) -> bool:
 		push_error("World.start_mission: " + problem)
 		return false
 	mission = MissionRuntime.new(mission_script, tier, tick, roll_bindings(mission_script, rng_seed))
+	return true
+
+
+## Makes this world's mission a skirmish played by these rules: from the
+## first step SkirmishRuntime scores it and decides its outcome. Call it after
+## start_mission (the AI's army is the mission's starting groups) and before
+## the first step. Returns false and says why if the world has no terrain or
+## catalog, has already stepped, has no mission or already a skirmish, or the
+## rules are null or don't validate.
+func start_skirmish(rules: SkirmishRules) -> bool:
+	var problem: String = ""
+	if terrain == null or catalog == null:
+		problem = "the world has no terrain or unit catalog"
+	elif tick != 0:
+		problem = "the world has already stepped"
+	elif mission == null:
+		problem = "there is no mission"
+	elif skirmish != null:
+		problem = "a skirmish has already started"
+	elif rules == null:
+		problem = "there are no rules"
+	else:
+		var errors: PackedStringArray = rules.validate()
+		if not errors.is_empty():
+			problem = "the rules are invalid: %s" % "; ".join(errors)
+	if problem != "":
+		push_error("World.start_skirmish: " + problem)
+		return false
+	skirmish = SkirmishRuntime.new(rules, tick)
 	return true
 
 
@@ -439,6 +474,8 @@ func state_hash() -> String:
 	ctx.update(ai.hash_fields().to_byte_array())
 	if mission != null:
 		ctx.update(mission.hash_fields().to_byte_array())
+	if skirmish != null:
+		ctx.update(skirmish.hash_fields().to_byte_array())
 	if terrain != null:
 		ctx.update(terrain.scar_hash_fields().to_byte_array())
 	if fire != null:

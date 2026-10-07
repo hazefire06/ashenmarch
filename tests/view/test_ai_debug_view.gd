@@ -199,6 +199,167 @@ func test_drawing_does_not_change_the_world() -> void:
 	assert_eq(_world.state_hash(), before)
 
 
+# --- ADVANCE and the skirmish commanders --------------------------------------
+
+
+func test_advance_has_a_color_of_its_own() -> void:
+	var advance: Color = AiDebugView.behavior_color(AiGroupSpec.Behavior.ADVANCE)
+	assert_eq(advance, AiDebugView.ADVANCE_COLOR)
+	assert_ne(advance, AiDebugView.IDLE_COLOR, "not the fallback gray")
+	for behavior: AiGroupSpec.Behavior in [
+		AiGroupSpec.Behavior.PATROL, AiGroupSpec.Behavior.GUARD, AiGroupSpec.Behavior.AMBUSH,
+		AiGroupSpec.Behavior.FLANK, AiGroupSpec.Behavior.HUNT, AiGroupSpec.Behavior.RETREAT,
+		AiGroupSpec.Behavior.ESCORT,
+	]:
+		assert_ne(AiDebugView.behavior_color(behavior), advance)
+
+
+func test_an_advance_group_shows_its_anchor_and_its_engage_and_hold_circles() -> void:
+	var group: AiGroup = _spawn(_spec(&"army", AiGroupSpec.Behavior.ADVANCE, {"guard_radius": 25 * M}), 20, 20)
+	group.anchor_x = 40 * M
+	group.anchor_z = 20 * M
+	_view.toggle()
+	assert_eq(_view.label_texts(), PackedStringArray(["army: ADVANCE"]))
+	# The line from the group to its anchor (20 m, five pieces), the anchor's
+	# cross (two lines), the engage circle and the hold circle.
+	assert_eq(_view.line_count(), 5 + 2 + 2 * AiDebugView.CIRCLE_SEGMENTS)
+
+
+func test_an_advance_group_with_no_engage_radius_draws_no_engage_circle() -> void:
+	var group: AiGroup = _spawn(_spec(&"army", AiGroupSpec.Behavior.ADVANCE), 20, 20)
+	assert_eq(group.engage_radius, 0)
+	group.anchor_x = 40 * M
+	group.anchor_z = 20 * M
+	_view.toggle()
+	assert_eq(_view.line_count(), 5 + 2 + AiDebugView.CIRCLE_SEGMENTS, "the hold circle is the default one")
+
+
+func test_the_engage_circle_dims_while_the_group_is_marching_without_fighting() -> void:
+	var group: AiGroup = _spawn(_spec(&"army", AiGroupSpec.Behavior.ADVANCE, {"guard_radius": 25 * M}), 20, 20)
+	group.anchor_x = 40 * M
+	group.anchor_z = 20 * M
+	_view.toggle()
+	assert_eq(
+		_ends_in(AiDebugView.ADVANCE_COLOR), 2 * (2 + 2 * AiDebugView.CIRCLE_SEGMENTS),
+		"the cross and both circles, in full color"
+	)
+	group.march_attack = false
+	_view.after_step()
+	assert_eq(
+		_ends_in(AiDebugView.ADVANCE_COLOR), 2 * (2 + AiDebugView.CIRCLE_SEGMENTS),
+		"the engage circle went dim"
+	)
+	assert_eq(_view.line_count(), 5 + 2 + 2 * AiDebugView.CIRCLE_SEGMENTS, "but it is still there")
+
+
+func test_a_guard_still_draws_its_own_radius() -> void:
+	_spawn(_spec(&"post", AiGroupSpec.Behavior.GUARD, {"guard_radius": 6 * M}), 50, 50)
+	_view.toggle()
+	assert_eq(_view.line_count(), AiDebugView.CIRCLE_SEGMENTS)
+	assert_eq(_ends_in(AiDebugView.GUARD_COLOR), 2 * AiDebugView.CIRCLE_SEGMENTS)
+
+
+func test_a_commander_is_not_drawn_before_it_has_thought() -> void:
+	_spawn(_spec(&"hunters", AiGroupSpec.Behavior.HUNT), 20, 20)
+	_commander()
+	_view.toggle()
+	assert_eq(_view.label_texts(), PackedStringArray(["hunters: HUNT"]))
+	assert_eq(_view.line_count(), 0)
+
+
+func test_a_commander_draws_its_objective_line_stage_circle_and_posture() -> void:
+	_spawn(_spec(&"hunters", AiGroupSpec.Behavior.HUNT), 20, 20)
+	var commander: SkirmishCommander = _commander(DARK)
+	_decided(commander, Vector2i(60, 20), Vector2i(30, 20), SkirmishCommander.Posture.COMMIT)
+	_view.toggle()
+	assert_eq(
+		_view.label_texts(), PackedStringArray(["hunters: HUNT", "dark commander: COMMIT"]),
+		"the group's label, then the commander's"
+	)
+	var at: Vector3 = _view.label_position(1)
+	assert_almost_eq(at.x, 30.0, 0.01, "the posture is named at the staging point")
+	assert_almost_eq(at.z, 20.0, 0.01)
+	# From the group to the objective: 40 m, ten pieces; and the staging circle.
+	assert_eq(_view.line_count(), 10 + AiDebugView.STAGE_SEGMENTS)
+	assert_eq(_ends_in(SideColors.DARK), 2 * (10 + AiDebugView.STAGE_SEGMENTS), "in its side's color")
+
+
+func test_a_light_commander_is_drawn_in_lights_color() -> void:
+	_spawn(_spec(&"hunters", AiGroupSpec.Behavior.HUNT), 20, 20)
+	var commander: SkirmishCommander = _commander(UnitType.Faction.LIGHT)
+	_decided(commander, Vector2i(60, 20), Vector2i(30, 20), SkirmishCommander.Posture.STAGE)
+	_view.toggle()
+	assert_eq(_ends_in(SideColors.LIGHT), 2 * (10 + AiDebugView.STAGE_SEGMENTS))
+	assert_true(_view.label_texts().has("light commander: STAGE"), "%s" % [_view.label_texts()])
+
+
+func test_a_commanders_label_names_each_posture() -> void:
+	var commander: SkirmishCommander = _commander(DARK)
+	for posture: SkirmishCommander.Posture in SkirmishCommander.Posture.values():
+		commander.posture = posture
+		assert_eq(
+			AiDebugView.commander_label(commander),
+			"dark commander: %s" % SkirmishCommander.Posture.find_key(posture)
+		)
+	commander.posture = SkirmishCommander.Posture.DEFEND
+	assert_eq(AiDebugView.commander_label(commander), "dark commander: DEFEND")
+	commander.posture = SkirmishCommander.Posture.STAGE
+	assert_eq(AiDebugView.commander_label(commander), "dark commander: STAGE")
+
+
+func test_a_commander_follows_its_main_group_and_falls_back_on_its_raiders() -> void:
+	var main: AiGroup = _spawn(_spec(&"main", AiGroupSpec.Behavior.HUNT), 20, 20)
+	_spawn(_spec(&"raiders", AiGroupSpec.Behavior.HUNT), 10, 50)
+	var commander: SkirmishCommander = _commander(DARK, 0, 1)
+	_decided(commander, Vector2i(60, 50), Vector2i(30, 50), SkirmishCommander.Posture.COMMIT)
+	_view.toggle()
+	# From the main group at (20, 20) to (60, 50): 50 m, thirteen pieces.
+	assert_eq(_view.line_count(), 13 + AiDebugView.STAGE_SEGMENTS)
+	_kill_all(main)
+	_view.after_step()
+	# From the raiders at (10, 50) to (60, 50): 50 m, thirteen pieces.
+	assert_eq(_view.line_count(), 13 + AiDebugView.STAGE_SEGMENTS)
+	assert_true(_view.label_texts().has("dark commander: COMMIT"))
+
+
+func test_a_commander_with_no_group_left_is_not_drawn() -> void:
+	var group: AiGroup = _spawn(_spec(&"main", AiGroupSpec.Behavior.HUNT), 20, 20)
+	var commander: SkirmishCommander = _commander(DARK)
+	_decided(commander, Vector2i(60, 20), Vector2i(30, 20), SkirmishCommander.Posture.COMMIT)
+	_view.toggle()
+	assert_eq(_view.label_texts().size(), 2)
+	_kill_all(group)
+	_view.after_step()
+	assert_eq(_view.label_texts(), PackedStringArray())
+	assert_eq(_view.line_count(), 0)
+
+
+func test_commanders_are_only_drawn_while_the_overlay_is_shown() -> void:
+	_spawn(_spec(&"hunters", AiGroupSpec.Behavior.HUNT), 20, 20)
+	var commander: SkirmishCommander = _commander(DARK)
+	_decided(commander, Vector2i(60, 20), Vector2i(30, 20), SkirmishCommander.Posture.COMMIT)
+	_view.after_step()
+	assert_eq(_view.line_count(), 0, "hidden: nothing drawn")
+	_view.toggle()
+	assert_gt(_view.line_count(), 0)
+	_view.toggle()
+	commander.posture = SkirmishCommander.Posture.DEFEND
+	_view.after_step()
+	_view.toggle()
+	assert_true(_view.label_texts().has("dark commander: DEFEND"), "shown again: what is there now")
+
+
+func test_drawing_commanders_and_advance_groups_does_not_change_the_world() -> void:
+	var group: AiGroup = _spawn(_spec(&"army", AiGroupSpec.Behavior.ADVANCE, {"guard_radius": 25 * M}), 20, 20)
+	group.anchor_x = 40 * M
+	var commander: SkirmishCommander = _commander(DARK)
+	_decided(commander, Vector2i(60, 20), Vector2i(30, 20), SkirmishCommander.Posture.STAGE)
+	var before: String = _world.state_hash()
+	_view.toggle()
+	_view.after_step()
+	assert_eq(_world.state_hash(), before)
+
+
 # --- helpers ------------------------------------------------------------------
 
 
@@ -214,6 +375,44 @@ func _spec(group_name: StringName, behavior: AiGroupSpec.Behavior, fields: Dicti
 	for field: String in fields:
 		spec.set(field, fields[field])
 	return spec
+
+
+# A commander of `side` over the group spawned from the spec at `main_index`
+# (the first group is spec index 0), added to the world's commanders.
+func _commander(
+	side: UnitType.Faction = DARK, main_index: int = 0, raider_index: int = -1
+) -> SkirmishCommander:
+	var commander: SkirmishCommander = SkirmishCommander.new(
+		_world.ai.commanders.size() + 1, side, main_index, raider_index, Vector2i(40 * M, 40 * M)
+	)
+	_world.ai.commanders.append(commander)
+	return commander
+
+
+# What the commander has after a think, set by hand: an objective, a staging
+# point (metres) and a posture.
+func _decided(
+	commander: SkirmishCommander, objective: Vector2i, stage: Vector2i, posture: SkirmishCommander.Posture
+) -> void:
+	commander.objective_x = objective.x * M
+	commander.objective_z = objective.y * M
+	commander.stage_x = stage.x * M
+	commander.stage_z = stage.y * M
+	commander.posture = posture
+
+
+# How many line ends are this color.
+func _ends_in(color: Color) -> int:
+	var count: int = 0
+	for end: Color in _view.line_colors():
+		if end == color:
+			count += 1
+	return count
+
+
+func _kill_all(group: AiGroup) -> void:
+	for unit: Unit in group.living(_world):
+		unit.state = Unit.State.DEAD
 
 
 # Spawns the spec's group at (x, z) metres and returns it. The group's spec

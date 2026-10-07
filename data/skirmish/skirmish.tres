@@ -1,0 +1,32 @@
+[gd_resource type="Resource" script_class="SkirmishCatalog" format=3]
+
+[ext_resource type="Script" path="res://sim/skirmish/skirmish_catalog.gd" id="1_skc01"]
+[ext_resource type="Script" path="res://sim/skirmish/army_template.gd" id="2_atp01"]
+[ext_resource type="Resource" path="res://data/skirmish/templates/dark_horde.tres" id="3_tpl01"]
+[ext_resource type="Resource" path="res://data/skirmish/templates/dark_raiders.tres" id="4_tpl02"]
+[ext_resource type="Resource" path="res://data/skirmish/templates/dark_storm.tres" id="5_tpl03"]
+[ext_resource type="Resource" path="res://data/skirmish/templates/dark_balanced.tres" id="6_tpl04"]
+[ext_resource type="Resource" path="res://data/skirmish/templates/light_shield_wall.tres" id="7_tpl05"]
+[ext_resource type="Resource" path="res://data/skirmish/templates/light_shock.tres" id="8_tpl06"]
+[ext_resource type="Resource" path="res://data/skirmish/templates/light_siege.tres" id="9_tpl07"]
+[ext_resource type="Resource" path="res://data/skirmish/templates/light_balanced.tres" id="10_tpl08"]
+[ext_resource type="Script" path="res://sim/skirmish/skirmish_map.gd" id="11_skm01"]
+[ext_resource type="Resource" path="res://maps/riverside/skirmish.tres" id="12_map01"]
+[ext_resource type="Resource" path="res://maps/the_ford/skirmish.tres" id="13_map02"]
+[ext_resource type="Resource" path="res://maps/old_mill/skirmish.tres" id="14_map03"]
+
+; What the skirmish screen offers (SkirmishCatalog): the maps (each map's
+; spawns and flags live beside it, in maps/<id>/skirmish.tres), the AI's army
+; templates, both sides', in the order the screen lists them, and the budget
+; and time limit choices with the ones it starts on. Both armies get the same
+; budget (CLAUDE.md). Hand-written; the editor drops these comments if it
+; re-saves the file.
+
+[resource]
+script = ExtResource("1_skc01")
+maps = Array[ExtResource("11_skm01")]([ExtResource("12_map01"), ExtResource("13_map02"), ExtResource("14_map03")])
+templates = Array[ExtResource("2_atp01")]([ExtResource("6_tpl04"), ExtResource("3_tpl01"), ExtResource("4_tpl02"), ExtResource("5_tpl03"), ExtResource("10_tpl08"), ExtResource("7_tpl05"), ExtResource("8_tpl06"), ExtResource("9_tpl07")])
+budgets = PackedInt32Array(600, 1000, 1500)
+default_budget = 1000
+time_limits_minutes = PackedInt32Array(5, 10, 15, 20)
+default_time_limit_minutes = 10

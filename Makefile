@@ -1,7 +1,7 @@
 GODOT ?= godot
 MAC_APP := build/mac/Ashenmarch.app
 
-.PHONY: import run demo demo-projectiles demo-abilities demo-ai test check-sim export-mac maps fixtures playtest capture
+.PHONY: import run demo demo-projectiles demo-abilities demo-ai test check-sim export-mac maps fixtures playtest skirmish-playtest capture capture-skirmish
 
 # Builds the .godot/ import and class_name cache. A fresh clone has none, and
 # GUT can't resolve class_name types without it.
@@ -55,6 +55,36 @@ demo-ai: import
 playtest: import
 	$(GODOT) --headless --path . -s scripts/playtest.gd
 
+# Skirmish balance playtest: plays skirmishes headless through the real sim and
+# prints a line per run, then win/length/loss tables. Matrix A is commander
+# against commander (each Light army template against dark_balanced, and
+# light_balanced against each Dark one, from both starts); matrix B is a
+# playtest pilot as Light against the Dark commander. Settings are environment
+# variables, all optional:
+#   MATRIX=A,B                            which matrices (default both)
+#   MAPS=riverside,the_ford,old_mill      which maps (default all)
+#   MODES=body_count,king_of_the_hill,capture_the_flags   which modes (default all)
+#   SEEDS=2                               runs per cell (default 2 for A, 5 for B)
+#   SEED_BASE=1000                        first world seed; run i uses SEED_BASE+i, so
+#                                         SEED_BASE=<seed> SEEDS=1 replays one run
+#   BUDGET=1000                           points each army is bought with
+#   MINUTES=10                            the skirmish's time limit in game minutes
+#   PILOTS=competent,naive                (B) which bots (default both)
+#   PAIRINGS=light_balanced:dark_horde,.. (A) <light template>:<dark template> list
+#                                         (default 7: each Light vs dark_balanced, and
+#                                         light_balanced vs each other Dark)
+#   DARK_TEMPLATES=dark_horde,..          (B) the commander's armies (default all four)
+#   LIGHT_TEMPLATES=light_siege,..        (B) the pilot's armies (default light_balanced)
+#   STARTS=A,B                            the starts Light plays from, each run once per
+#                                         start (default: A both; B alternates by seed parity)
+#   RAW=runs.jsonl                        write each run as a JSON line as it finishes
+#   REPORT=a.jsonl,b.jsonl                merge RAW files into tables instead of playing
+#   OUT=tables.md                         write the tables here (Markdown)
+#   TRACE=10                              print a status line every 10 game seconds
+# e.g. MATRIX=B MAPS=old_mill MODES=king_of_the_hill SEEDS=10 PILOTS=competent make skirmish-playtest
+skirmish-playtest: import
+	$(GODOT) --headless --path . -s scripts/skirmish_playtest.gd
+
 # Visual check, windowed: launches each mission the way the campaign does and
 # saves three screenshots of it (the opening view, the overhead map, and a
 # mid-battle frame after the competent playtest pilot has played 90 s of game
@@ -66,6 +96,15 @@ playtest: import
 # e.g. CAPTURE=shots MISSIONS=old_mill SECONDS=180 make capture
 capture: import
 	$(GODOT) --path . -s scripts/capture_missions.gd
+
+# Visual check of skirmish, windowed: the setup screen, then per map and mode
+# the opening view, the F7 scoreboard, the overhead map, a mid-battle frame and
+# the end with its banner, into CAPTURE. See the head of
+# scripts/capture_skirmish.gd: CAPTURE=<dir> (required), MAPS, MODES,
+# SIDE=light|dark, SEED, SECONDS, FIRST.
+# e.g. CAPTURE=shots MAPS=old_mill SIDE=dark make capture-skirmish
+capture-skirmish: import
+	$(GODOT) --path . -s scripts/capture_skirmish.gd
 
 test: import check-sim
 	$(GODOT) --headless -d --path . -s addons/gut/gut_cmdln.gd

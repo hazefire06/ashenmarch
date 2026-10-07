@@ -18,7 +18,7 @@ extends RefCounted
 ## bucket attack-moves at one objective here, going first for an enemy that
 ## threatens one of the group's STANDOFF members (AiTactics.threats, the
 ## bodyguard rule), then for the focus it is given (a FLANK's quarry);
-## STANDOFF and CLUSTER members are handled one by one in AiTactics.
+## STANDOFF, CLUSTER and MEDIC members are handled one by one in AiTactics.
 
 ## Least drift (milli-units) of an objective from where a member was sent
 ## before the member is re-sent after it. See drifted.
@@ -99,8 +99,10 @@ static func centroid(units: Array[Unit]) -> Vector2i:
 ## go; with force, every living member in units goes, busy or not (a retry, a
 ## recall). One UnitOrders.move and one ORDER event per bucket, and each
 ## member's goal is recorded as (x, z) with no objective. On an attack march
-## STANDOFF members stop short of it, behind the rest (AiTactics.behind);
-## their recorded goal is still (x, z), so a leg sees them as sent there.
+## the members that keep behind (STANDOFF ones, and in a ranged_behind group
+## the ranged and support) stop short of it, behind the rest
+## (AiTactics.behind); their recorded goal is still (x, z), so a leg sees them
+## as sent there.
 static func march(
 	world: World, group: AiGroup, units: Array[Unit], x: int, z: int, attack: bool, force: bool = false
 ) -> void:
@@ -119,7 +121,7 @@ static func march(
 	var behind: Vector2i = AiTactics.behind(world, group, picked, x, z, attack)
 	for key: int in keys:
 		var bucket: Array[Unit] = _bucket(world, picked, key)
-		var to: Vector2i = behind if AiTactics.is_standoff(bucket[0]) else Vector2i(x, z)
+		var to: Vector2i = behind if AiTactics.is_back(group, bucket[0]) else Vector2i(x, z)
 		send(world, group, bucket, to.x, to.y, attack, 0, x, z)
 
 
@@ -165,6 +167,16 @@ static func engage(
 			UnitType.AiTactic.CLUSTER:
 				for member: Unit in bucket:
 					any_objective = AiTactics.cluster(world, group, member, candidates) or any_objective
+			UnitType.AiTactic.MEDIC:
+				# A MEDIC with herbs tends the group; one without fights as ASSAULT.
+				var fighters: Array[Unit] = []
+				for member: Unit in bucket:
+					if AiTactics.medic(world, group, member):
+						any_objective = true
+					else:
+						fighters.append(member)
+				if not fighters.is_empty():
+					any_objective = _assault(world, group, fighters, candidates, threats, focus) or any_objective
 			_:
 				any_objective = _assault(world, group, bucket, candidates, threats, focus) or any_objective
 	return any_objective

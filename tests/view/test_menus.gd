@@ -1,8 +1,8 @@
 extends GutTest
-## The small front-end screens: the main menu (with its Skirmish note), the
-## campaign menu (Continue, the difficulty select, the replace-your-save
-## question), the Settings overlay, and the yes/no dialog. Each is built alone
-## from fixtures; the App's wiring of them is test_app.
+## The small front-end screens: the main menu, the campaign menu (Continue, the
+## difficulty select, the replace-your-save question), the Settings overlay, and
+## the yes/no dialog. Each is built alone from fixtures; the App's wiring of
+## them is test_app. (The skirmish screens have their own files.)
 
 const SETTINGS_DIR: String = "user://test_menus"
 
@@ -50,38 +50,35 @@ func test_the_main_menu_shows_the_title_and_four_buttons() -> void:
 		assert_true(_button(menu, pair[0]).visible)
 
 
-func test_campaign_settings_and_quit_are_signals() -> void:
+func test_campaign_skirmish_settings_and_quit_are_signals() -> void:
 	var menu: MainMenu = _main_menu()
 	watch_signals(menu)
 	MenuFixtures.press(menu, "CampaignButton")
+	MenuFixtures.press(menu, "SkirmishButton")
 	MenuFixtures.press(menu, "SettingsButton")
 	MenuFixtures.press(menu, "QuitButton")
 	assert_signal_emit_count(menu, "campaign_pressed", 1)
+	assert_signal_emit_count(menu, "skirmish_pressed", 1)
 	assert_signal_emit_count(menu, "settings_pressed", 1)
 	assert_signal_emit_count(menu, "quit_pressed", 1)
 
 
-func test_skirmish_opens_a_note_with_a_back() -> void:
+func test_skirmish_is_a_signal_for_the_app_and_opens_nothing_in_place() -> void:
 	var menu: MainMenu = _main_menu()
-	assert_false(menu.is_skirmish_open())
 	MenuFixtures.press(menu, "SkirmishButton")
-	assert_true(menu.is_skirmish_open())
-	assert_eq((MenuFixtures.named(menu, "SkirmishNote") as Label).text, "Skirmish arrives in Phase 9.")
-	assert_false(_button(menu, "CampaignButton").is_visible_in_tree(), "the buttons give way to the note")
-	MenuFixtures.press(menu, "SkirmishBackButton")
-	assert_false(menu.is_skirmish_open())
-	assert_true(_button(menu, "CampaignButton").is_visible_in_tree())
+	assert_true(_button(menu, "CampaignButton").is_visible_in_tree(), "the buttons stay: the App changes the screen")
+	assert_null(MenuFixtures.named(menu, "SkirmishPanel"), "the Phase 8 stub note is gone")
+	assert_false(MenuFixtures.mentions(menu, "Phase 9"))
 
 
-func test_esc_closes_the_skirmish_note_and_does_nothing_on_the_buttons() -> void:
+func test_esc_on_the_main_menu_does_nothing_and_never_quits() -> void:
 	var menu: MainMenu = _main_menu()
 	watch_signals(menu)
 	_key(KEY_ESCAPE)
-	assert_false(menu.is_skirmish_open())
-	MenuFixtures.press(menu, "SkirmishButton")
-	_key(KEY_ESCAPE)
-	assert_false(menu.is_skirmish_open())
 	assert_signal_not_emitted(menu, "quit_pressed", "Esc never quits")
+	assert_signal_not_emitted(menu, "campaign_pressed")
+	assert_signal_not_emitted(menu, "skirmish_pressed")
+	assert_true(_button(menu, "CampaignButton").is_visible_in_tree())
 
 
 func test_the_main_menu_hides_what_is_under_it_and_starts_on_campaign() -> void:

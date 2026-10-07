@@ -1,0 +1,28 @@
+[gd_resource type="Resource" script_class="SkirmishMap" format=3]
+
+[ext_resource type="Script" path="res://sim/skirmish/skirmish_map.gd" id="1_skm01"]
+[ext_resource type="Resource" path="res://maps/old_mill/old_mill.tres" id="2_map01"]
+[ext_resource type="Resource" path="res://data/atmospheres/old_mill.tres" id="3_atm01"]
+
+; Old Mill as a skirmish map (SkirmishMap). Positions are milli-units (1000 =
+; 1 m); z grows southward. The mill stands on a plateau 12 m up whose only ways
+; up are two ramps, north-west and south-east; each start has its own ramp.
+; Hand-written; the editor drops these comments if it re-saves the file.
+;
+; Start A is north-west at (68, 40) m and start B south-east at (232, 292) m,
+; west of the millstream, each facing the plateau. Three flags: 0 the hill, the
+; mill yard at (166, 157) (the generator's YARD_CENTER); 1 at the foot of the
+; north-west ramp (119, 104); 2 at the foot of the south-east ramp (214, 210).
+; Each start is about 154 m from the hill, 83 m from its own ramp's flag and
+; 225 m from the other's.
+
+[resource]
+script = ExtResource("1_skm01")
+id = &"old_mill"
+display_name = "Old Mill"
+map = ExtResource("2_map01")
+spawns = PackedInt32Array(68000, 40000, 232000, 292000)
+spawn_facing = PackedInt32Array(98, 117, -66, -135)
+flags = PackedInt32Array(166000, 157000, 119000, 104000, 214000, 210000)
+hill = 0
+atmosphere = ExtResource("3_atm01")

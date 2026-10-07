@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="ArmyTemplate" format=3]
+
+[ext_resource type="Script" path="res://sim/skirmish/army_template.gd" id="1_atp01"]
+
+; An AI skirmish army (ArmyTemplate): Ripper packs that go for archers and healers, Husks to hold the front.
+; Each entry spends its share of the budget (permille, together 1000) on its
+; type; ArmyTemplate.fill rounds down, then spends what is left on whichever
+; entry is furthest below its share. Hand-written; the editor drops these
+; comments if it re-saves the file.
+; faction: 0 LIGHT, 1 DARK
+
+[resource]
+script = ExtResource("1_atp01")
+id = &"dark_raiders"
+display_name = "Raiders"
+faction = 1
+type_ids = Array[StringName]([&"husk", &"ripper", &"blightbag"])
+shares_permille = PackedInt32Array(450, 400, 150)

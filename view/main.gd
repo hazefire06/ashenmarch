@@ -21,6 +21,12 @@ extends Node3D
 ##   is won or lost the sim stops stepping on that very tick, the view keeps
 ##   drawing, the banner shows, and after MISSION_END_DELAY real seconds
 ##   mission_ended says how it ended, for the App to put up the results.
+## - A skirmish, with a MissionLaunch.for_skirmish: the same, but the world is
+##   built by SkirmishSetup, the camera starts over the player's army looking
+##   the way it faces, the look is the map's, the player may be either side,
+##   there are no MissionStats (the skirmish keeps its own score), and the
+##   end is skirmish_ended. It also has its own views: FlagsView in the world,
+##   and SkirmishHud (the score line, and the F7 scoreboard) under the HUD.
 ##
 ## Pause stops the stepping and nothing else, so the sim, which never hears of
 ## it, stays deterministic: Esc opens the pause menu (unless an order is armed,
@@ -31,6 +37,9 @@ extends Node3D
 ## How the mission ended, and its numbers (finished). Emitted once, a while
 ## after the outcome, so the banner is seen.
 signal mission_ended(outcome: MissionRuntime.Outcome, stats: MissionStats)
+## How a skirmish ended, from the player's side, once, a while after the
+## outcome, like mission_ended. world.skirmish has the score, frozen.
+signal skirmish_ended(outcome: MissionRuntime.Outcome)
 ## The pause menu's Restart mission, Settings and Quit (after its confirmation),
 ## passed on for the App. Resume is handled here.
 signal restart_requested
@@ -65,6 +74,9 @@ const TEST_WARDEN_COUNT: int = 3
 ## Where the camera starts: south of the squads at the ford, looking north.
 const CAMERA_START: Vector2 = Vector2(285.0, 245.0)
 const CAMERA_START_DISTANCE: float = 75.0
+## How far ahead of the player's skirmish army the camera starts looking, in
+## meters, so the block isn't under the control bar.
+const SKIRMISH_CAMERA_LEAD: float = 15.0
 ## Weight of the newest sample in the sim-time moving average.
 const SIM_TIME_SMOOTHING: float = 0.05
 ## Real seconds between the mission being decided and mission_ended: long
@@ -76,7 +88,7 @@ var world: World
 ## scene enters the tree: _ready reads it.
 var launch: MissionLaunch
 ## The numbers of the mission being played (what MissionStats says about it),
-## null in the sandbox. Finished once the mission is decided.
+## null in the sandbox and in a skirmish. Finished once the mission is decided.
 var stats: MissionStats
 ## Real seconds from the outcome to mission_ended. Public so a test can set it
 ## to 0.
@@ -113,6 +125,10 @@ var _ended: bool = false
 var _since_outcome: float = 0.0
 ## False until the first step has run, after which stats.begin() is called.
 var _stats_begun: bool = false
+## A skirmish's flags in the world and its score line and scoreboard; null
+## outside a skirmish.
+var _flags_view: FlagsView
+var _skirmish_hud: SkirmishHud
 
 @onready var _terrain_view: TerrainView = $TerrainView
 @onready var _units_view: UnitsView = $Units
@@ -157,13 +173,13 @@ func _ready() -> void:
 	_terrain_view.build(terrain)
 	_camera.setup(terrain)
 	_place_camera()
-	_overhead_map.setup(terrain, _camera)
+	_overhead_map.setup(terrain, _camera, world)
 	_gibs.setup(terrain)
 	if launch == null:
 		_spawn_test_squads()
 		_plant_herbs(load(MAP_PATH) as MapInfo)
 		_start_mission()
-	else:
+	elif not launch.is_skirmish():
 		# MissionSetup queued the roster and the herb plants and started the mission.
 		stats = MissionStats.new()
 	_units_view.setup(world, _selection.selection, _gibs)
@@ -175,17 +191,26 @@ func _ready() -> void:
 	_precipitation.setup(world, _camera)
 	if launch != null:
 		# After the views it grades exist: the terrain's material and the ash layer.
-		AtmosphereView.new(_world_environment, _sun, _terrain_view, _precipitation).apply(
-			launch.mission.atmosphere
+		var look: Atmosphere = (
+			launch.skirmish.map.atmosphere if launch.is_skirmish() else launch.mission.atmosphere
 		)
+		AtmosphereView.new(_world_environment, _sun, _terrain_view, _precipitation).apply(look)
 	_ai_debug.setup(world)
 	_mission_hud.show_world(world)
 	_objectives.show_world(world)
+	if launch != null and launch.is_skirmish():
+		_build_skirmish_views()
 	_selection.setup(
 		world, _units_view, _camera.get_camera(), TerrainPicker.new(terrain), _projectiles_view, _plants_view
 	)
 	_selection.side_changed.connect(_units_view.set_viewer)
+	if launch != null and launch.is_skirmish():
+		# The player may be Dark: they select, and see, from their own side.
+		_selection.side = launch.player_faction()
+		_units_view.set_viewer(launch.player_faction())
 	_control_bar.setup(_selection, world)
+	if launch != null and launch.is_skirmish():
+		_control_bar.set_skirmish(launch.player_faction())
 	_info_panel.setup(_selection, world, _control_bar)
 	_tooltip.setup(_selection, world, _camera.get_camera(), _projectiles_view, _plants_view)
 	_apply_edge_scroll()
@@ -232,6 +257,9 @@ func _physics_process(_delta: float) -> void:
 	_ai_debug.after_step()
 	_mission_hud.show_world(world)
 	_objectives.show_world(world)
+	if _skirmish_hud != null:
+		_flags_view.after_step()
+		_skirmish_hud.show_world(world)
 	_terrain_view.update_fire(world.fire)
 	_terrain_view.set_weather(world.weather)
 	# Only a launched mission freezes; the sandbox plays on whatever it decides.
@@ -283,6 +311,8 @@ func _process(delta: float) -> void:
 		return
 	var w: Weather = world.weather
 	var hints: String = "(F5 AI overlay)" if _campaign() else "(F5 AI overlay, F6 weather)"
+	if _skirmish_hud != null:
+		hints = "(F5 AI overlay, F7 scoreboard)"
 	_stats_label.text = "tick %d   %d fps   %d draw calls   sim %.2f ms/tick   %d units   %d projectiles   %d paths queued\nrain %d%%   snow %d%%   wet %d%%   snow cover %d%%   %d cells burning   %s" % [
 		world.tick,
 		Performance.get_monitor(Performance.TIME_FPS),
@@ -300,6 +330,8 @@ func _process(delta: float) -> void:
 # The world to play: the launch's mission, set up by MissionSetup, or the
 # sandbox's bare world on Riverside. Null, after push_error, if it can't be made.
 func _create_world() -> World:
+	if launch != null and launch.is_skirmish():
+		return SkirmishSetup.create_world(launch.skirmish, _load_catalog())
 	if launch != null:
 		return MissionSetup.create_world(
 			launch.mission, launch.tier, launch.world_seed, launch.deploy, _load_catalog()
@@ -326,6 +358,9 @@ func _place_camera() -> void:
 	if launch == null:
 		_camera.set_pose(CAMERA_START, 0.0, CAMERA_START_DISTANCE)
 		return
+	if launch.is_skirmish():
+		_place_skirmish_camera()
+		return
 	var mission: MissionDef = launch.mission
 	if mission.camera_start.size() != 2:
 		return
@@ -333,6 +368,37 @@ func _place_camera() -> void:
 	_camera.set_pose(
 		Vector2(mission.camera_start[0], mission.camera_start[1]) / mm, 0.0, mission.camera_distance / mm
 	)
+
+
+# A skirmish starts over the player's army, a little ahead of it, looking the
+# way it faces: the camera sits on the +Z side of its focus at yaw 0, so it
+# looks along (-sin yaw, -cos yaw).
+func _place_skirmish_camera() -> void:
+	var setup: SkirmishSetup = launch.skirmish
+	var mm: float = float(World.UNITS_PER_METER)
+	var at: Vector2i = setup.map.spawn(setup.player_spawn)
+	var facing: Vector2 = Vector2(setup.map.facing(setup.player_spawn)).normalized()
+	if facing == Vector2.ZERO:
+		facing = Vector2(0.0, -1.0)
+	var focus: Vector2 = Vector2(at) / mm + facing * SKIRMISH_CAMERA_LEAD
+	_camera.set_pose(focus, atan2(-facing.x, -facing.y), setup.map.camera_distance / mm)
+
+
+# A skirmish's own views: its flags in the world, and under the HUD its score
+# line and scoreboard. Built after the units view and the others exist, so the
+# flags draw over the ground, and shown the world as it is at tick 0.
+func _build_skirmish_views() -> void:
+	_flags_view = FlagsView.new()
+	_flags_view.name = "Flags"
+	add_child(_flags_view)
+	_flags_view.setup(world)
+	_skirmish_hud = SkirmishHud.new()
+	_skirmish_hud.name = "SkirmishHud"
+	$Hud.add_child(_skirmish_hud)
+	# Beside the mission's own line, so the open overhead map (later in the tree)
+	# dims the score line as it does that one.
+	$Hud.move_child(_skirmish_hud, _mission_hud.get_index() + 1)
+	_skirmish_hud.setup(world, launch.player_faction())
 
 
 # True in a campaign mission: no debug cheats, and the window's focus matters.
@@ -345,7 +411,8 @@ func _campaign() -> bool:
 # was just shown the outcome).
 func _freeze() -> void:
 	_frozen = true
-	stats.finish(world)
+	if stats != null:
+		stats.finish(world)
 	# No pausing now: the end is on its way, and a menu with Restart and Quit on
 	# it, opened by Esc or the bar's Menu button, would race mission_ended.
 	_pause_menu.close()
@@ -365,7 +432,10 @@ func _count_down_to_the_end(delta: float) -> bool:
 	if _since_outcome < end_delay:
 		return false
 	_ended = true
-	mission_ended.emit(world.mission.outcome, stats)
+	if launch.is_skirmish():
+		skirmish_ended.emit(world.mission.outcome)
+	else:
+		mission_ended.emit(world.mission.outcome, stats)
 	return true
 
 

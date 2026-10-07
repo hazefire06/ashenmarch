@@ -1718,3 +1718,185 @@ Hashes from before Phase 8 aren't comparable with later ones. The replay a locks
 - **Menus.** The Briefing, Results and CampaignComplete repeat layout code that `MenuKit` could hold before Phase 9 adds screens; the Briefing's reserve list sits under the roster, so with 16 or more slots a benched veteran is below the fold; the pause menu's two confirmations are styled differently; a failed settings write doesn't apply for the session (the App re-reads the file); a damaged `settings.cfg` logs a parse error on every read; `main.gd` is about 440 lines mixing the sandbox, the campaign flow, pause and debug keys.
 - **The playtest and its tests.** `report.gd` hardcodes the three mission ids; the fire arrow is released still nocked after `FIRE_PATIENCE` without re-checking the aim's safety, and a grenade bombardment isn't stopped when the aim becomes unsafe; the cluster and follower loops are duplicated; determinism is tested only on the tiny mission; the walk-back has no hysteresis. In tests, `assert()` in `tests/support/` helpers hangs under `-d` instead of failing a named test, `tests/view/test_gibs.gd` flaked once in a full run (a gib tunnelled through the heightfield under Godot physics, probably also the assert-count wobble of about two between runs), and one timer test has a 0.1 s real-time margin.
 - **Atmospheres were tuned by eye** on one machine; `Atmosphere`'s header says "linear" while the shader's colour uniforms are `source_color` sRGB, which is the project's convention (the file is authored by eye).
+
+## Skirmish vs AI (Phase 9)
+The second way to play: pick a map, a mode, a side and an army bought from a point budget, and fight an AI commander until the clock runs out or one side is wiped out.
+- **Three modes.** Body Count (enemy deaths), King of the Hill (time holding the hill alone), Capture the Flags (flags owned at the limit). Elimination ends any mode at once.
+- **Either side.** The player picks Light or Dark; the AI plays the other. The sim never assumed the player was Light; the view now doesn't either.
+- **Armies are bought.** Every unit type has a cost (data); both sides get the same budget. The AI's army comes from one of four templates per side.
+- **The AI has a general.** A `SkirmishCommander` per AI side sits over Phase 7's groups: it picks the mode's objective, stages out of the enemy's reach, commits when it is locally stronger, and keeps its ranged and support behind its melee. A new ADVANCE behavior and a MEDIC tactic are what it needed below it.
+- **Spawns and flags live beside each map** (`maps/<id>/skirmish.tres`), placed by a pathing probe so neither start is favored, and pinned by tests.
+- **A skirmish is data.** `SkirmishSetup` (map, rules, both armies, the start, the seed) plus the player's commands is the whole game: the replay and lockstep property the mission format has.
+
+**Files**
+
+| File | Role |
+|---|---|
+| `sim/skirmish/army.gd`, `army_template.gd`, `skirmish_catalog.gd` | `Army` (a side's counts, its cost and deploy order), `ArmyTemplate` (an AI army recipe, `fill(budget)`), `SkirmishCatalog` (`data/skirmish/skirmish.tres`: maps, templates, budgets, time limits) |
+| `sim/skirmish/skirmish_map.gd`, `maps/<id>/skirmish.tres` | `SkirmishMap`: the starts, the flags, the hill, the flag radius, and a View group |
+| `sim/skirmish/skirmish_rules.gd`, `skirmish_runtime.gd` | `SkirmishRules` (mode, clock, flags, the player's side), `SkirmishRuntime` (the score, the flags, the outcome) |
+| `sim/skirmish/skirmish_setup.gd` | `SkirmishSetup` and `create_world`, the one skirmish world builder |
+| `sim/ai/skirmish_commander.gd` | `SkirmishCommander` |
+| `sim/ai/ai_behaviors.gd`, `ai_director.gd`, `ai_group.gd`, `ai_group_spec.gd`, `ai_tactics.gd`, `ai_orders.gd`, `ai_event.gd` | ADVANCE, `AiDirector.advance` and `commanders`, `ranged_behind`, MEDIC, the COMMANDER and HEAL events |
+| `sim/missions/mission_runtime.gd`, `mission_event.gd` | `Outcome.DRAW`, `conclude()`, `MissionEvent.Kind.DRAWN` |
+| `data/units/*.tres` | `cost` on every buyable type; the Warden is MEDIC |
+| `data/skirmish/templates/*.tres` | The eight AI army templates |
+| `view/mission_launch.gd`, `view/main.gd` | `MissionLaunch.for_skirmish`; MainView builds, frames and ends a skirmish |
+| `view/skirmish/side_colors.gd`, `flags_view.gd`, `skirmish_hud.gd` | `SideColors`, `FlagsView` (the flags in the world), `SkirmishHud` (the score line and the F7 scoreboard) |
+| `view/hud/mission_hud.gd`, `overhead_map.gd`, `control_bar.gd`, `view/ai/ai_debug_view.gd`, `view/input_bindings.gd` | The Draw banner, flags on the overhead map, the skirmish status line, the commander on F5, F7 |
+| `view/app/skirmish_menu.gd`, `skirmish_results.gd`, `app.gd`, `main_menu.gd`, `view/settings/settings.gd` | The setup and army-builder screen, the results screen, the App's skirmish walk, the remembered setup |
+| `scripts/skirmish_playtest.gd`, `scripts/playtest/skirmish_runner.gd`, `skirmish_result.gd`, `skirmish_report.gd` | `make skirmish-playtest` |
+
+### Tick order
+One step is inserted; the rest of Phase 7's list stands:
+1. commands
+2. `MissionRuntime.update` (the triggers; a skirmish has none, but its groups spawn here on tick 0)
+   - **2b. `SkirmishRuntime.update`**, only in a skirmish
+3. `AiDirector.update`: **the commanders first**, then the groups
+4. and on as before.
+
+- **Why 2b:** after the mission, so the AI's starting groups exist on tick 0 when the skirmish records the armies; before the AI, so the commanders read this tick's score. Like the triggers it reads the state the previous tick left: deaths in tick N are counted in tick N + 1.
+- **After the outcome** the runtime freezes (nothing it holds changes again), the triggers already stop, the AI and the rest of the sim keep running, and the view freezes on that tick as for a mission.
+
+### Data
+- **`UnitType.cost`** (a "Skirmish" export group): the points one unit costs. 0 can't be bought: the villager. Negative is a validation error. The balance pass set the values (see Playtest and balance).
+- **`Army`** is a faction and counts by type id. `validate(catalog, budget)` wants at least one unit, at most `MAX_UNITS` (60, for performance), every type known, on the army's side and buyable, and the cost within budget. **`type_list` sorts by role, then catalog index**, never by dictionary order, because the order a block is laid out in decides entity ids: melee first, so the box puts it in front.
+- **`ArmyTemplate`**: `type_ids` and `shares_permille` in parallel (shares sum to 1000). `fill(budget)` is deterministic: each entry gets what its share buys, rounded down; over the 60-unit cap the counts are scaled to it in proportion (largest remainders take the left-over slots, ties to the earlier entry) and a type scaled to none takes one back from the most numerous, so a cheap horde never crowds a type out; then the rest goes a unit at a time to the affordable entry furthest below its share in points, ties to the earlier entry.
+- **`SkirmishCatalog`** (`data/skirmish/skirmish.tres`, hand-written): the maps (Riverside, The Ford, Old Mill), the eight templates, budgets 600 / 1000 / 1500 (default 1000) and time limits 5 / 10 / 15 / 20 minutes (default 10). An explicit list, for the reason `UnitCatalog` gives (exported builds rename `.tres` files).
+- **`SkirmishMap`** (`maps/<id>/skirmish.tres`, beside the heightmap; `MapInfo` and the PNGs are untouched): two starts with a facing each, an odd number of flags (3 or 5; odd so all flags owned can't be level), which flag is the hill, `flag_radius` (8 m; 6 m on The Ford so its ford flag reaches no deep water), and a View group (`camera_distance`, `atmosphere`, the mission's own look reused).
+
+| Map | Start A | Start B | Hill | Other flags |
+|---|---|---|---|---|
+| Riverside | (295, 85) north bank, facing south | (310, 430) west of the village, facing north | (300, 262), the dry landing south of the ford | (150, 190), (450, 190) north of the creek; (450, 325), (150, 335) south |
+| The Ford | (192, 330) south bank, facing north | (192, 54) north bank, west of the palisade, facing south | (192, 192), in the ford itself (depth 2 at most) | (192, 218) and (192, 154), the ford's south and north landings (moved by the balance pass from the far banks) |
+| Old Mill | (68, 40) north-west | (232, 292) south-east, west of the millstream | (166, 157), the mill yard (`YARD_CENTER`) | (119, 104) and (214, 210), the feet of the two ramps |
+
+- **Placed by a probe, pinned by tests.** A throwaway script printed each map's components, depths and path lengths, and the positions were moved until each start is as far from the hill as the other, and, sorted, as far from its own flags as the other is from its own, for living and undead units alike, within 15%. `test_skirmish_maps.gd` re-measures that with `Pathing.find_path` (and insists each path ends on the flag, since `find_path` falls back to the nearest reachable point), and checks every start and flag is passable and in one component for both mobilities, no flag zone reaches depth 3, and a 60-unit box fits at each start.
+
+### Rules and runtime (sim)
+- **`SkirmishRules`** is a RefCounted, not a resource: built from the map at setup (`for_map(map, mode, minutes, side)`), read-only once the skirmish starts, and hashed. `CAPTURE_TICKS` is 150 (5 s).
+- **`World.start_skirmish(rules)`** refuses, with a `push_error`, what `start_mission` refuses, a world with no mission (the AI's army is the mission's starting groups), a second skirmish, and rules that don't validate.
+- **Each update** (`SkirmishRuntime`):
+  1. the first time, records every living unit by faction (`roster_ids`): the player's deploy and the AI's groups;
+  2. counts each side's units dead, gone or no longer on its side (`deaths`) and alive;
+  3. a side with a roster and nobody left loses at once (ELIMINATION); both at once is a draw;
+  4. at `start_tick + time_limit_ticks` the score decides (TIME);
+  5. otherwise scores the tick.
+- **Scoring.** Presence at a flag is a living unit within `flag_radius`, center to center, that isn't submerged (a Husk lurking in deep water holds nothing).
+  - **Body Count:** a side's score is the other side's deaths, whatever the cause. A Light Sapper's grenade killing a Shieldman scores for Dark.
+  - **King of the Hill:** `hold_ticks` grows for the side alone on the hill; contested or empty, nobody's does.
+  - **Capture the Flags:** standing alone at a flag `capture_ticks` captures it; the progress resets whenever who stands there alone changes; a flag stays owned when its side leaves. The score is flags owned; a tie is broken by flag-ticks owned (`owned_ticks`), then it is a draw.
+- **Deciding.** `winner` is a faction or `DRAW` (2): the sim's own record, side-neutral, which a lockstep game would use. `MissionRuntime.conclude(world, outcome)` then sets the mission's outcome from the player's side (`rules.player_faction`): WON, LOST or the appended DRAW, with an appended `MissionEvent.Kind.DRAWN` (WON and LOST name trigger -1 from `conclude`). The scores and a per-unit alive snapshot (`final_alive`) freeze at the decision, because the rest of the deciding tick can still kill: the results screen reads the snapshot and never disagrees with the banner.
+- **`SkirmishSetup.create_world(setup, catalog)`** mirrors `MissionSetup.create_world`: the terrain, the world, the player's army as a tick-0 `DeployCommand` (zero soldier ids, kills and hp, the player's faction, at the player's start, in a box), a `SpawnHerbPlantCommand` per map plant, `start_mission` with a `MissionScript` built in code (the AI's groups, no triggers, tier 2), `start_skirmish`, and a commander per AI side. Entity ids run deploy, herbs, groups, as in the campaign. With `player_is_ai` (the playtest's AI-against-AI runs) both armies are AI groups with a commander each.
+- **An AI army is two groups,** both `spawn_at_start`, ADVANCE, `ranged_behind`, no retreat threshold: `main` (everything but the raiders, melee first) at the start, and `raiders` (melee types that prefer ranged or support targets: Rippers) beside it, offset sideways by half of each block's width plus 4 m. One main group rather than a melee group and a ranged group, because the bodyguard rule, `front`/`behind` and the 6 m march offset all work within a group: split them and nobody guards the archers.
+
+### The AI below the commander
+- **ADVANCE** (appended to `AiGroupSpec.Behavior`; the group's `engage_radius`, `hold_radius` and `march_attack` are appended to `AiGroup` and hashed). Each think:
+  0. a free MEDIC member with someone to heal goes (below);
+  1. attack-marching, visible enemies within `engage_radius` of the front members' centroid are engaged (`AiOrders.engage`, so tactics and the bodyguard rule apply);
+  2. walking (phase 0), one leg to the anchor; arrived or failed, it holds (phase 1);
+  3. holding, if no member is within the hold radius of the anchor, the free members walk back, and free members done with a chase beyond `engage_radius` walk back too (a forced march for one already recorded as sent there, since a march skips those).
+  - It never force-moves a member that isn't free, never switches on its own and never retreats: the commander decides. A spec that starts in ADVANCE needs `guard_radius`, its first engage radius.
+- **`AiDirector.advance(world, group, x, z, engage, hold, attack)`** moves the anchor. A group already advancing keeps its march unless the new point is more than max(4 m, a quarter of the members' distance) from the old one, or `attack` changed; the radii change either way. That slack is what keeps a commander nudging the anchor every second from burning the A* budget (a test pins at most 6 ORDER events in 900 ticks of nudging).
+- **`AiGroupSpec.ranged_behind`** (appended, default false): in such a group `AiTactics.is_back` is true for any ranged or support member and any MEDIC, not only STANDOFF ones, so attack marches stop them 6 m short, legs judge arrival by the rest (`front(units, group)`), and the melee goes first for enemies near them (`threats`). Longbows and Sappers stay ASSAULT: an attack-moving archer stops at range to shoot by itself, and STANDOFF would have Sappers churn in and out of their 7 m dead zone. Phase 7's groups leave the flag off, and every Phase 7 test passes unchanged.
+- **MEDIC** (appended to `UnitType.AiTactic`; the Warden's tactic). A member with herbs: the most wounded living friend within 20 m below 60% health that no other MEDIC of the group is already going to (`Interactions.order(..., HEAL)`, the HealCommand path), else a visible undead enemy within 8 m (a herb kills it), else in a fight it stands 6 m behind the front's centroid on its own side. Out of herbs it fights as ASSAULT. ADVANCE runs the errand every think, so the wounded are tended between fights too. `UnitType.validate` wants HEAL for MEDIC and now range-checks `ai_tactic`.
+
+### The commander (`SkirmishCommander`)
+- **Owned and hashed by `AiDirector`** (`commanders`; `hash_fields` appends their count, then each one's fields). Each thinks every 30 ticks, staggered by its id, before the groups, so its orders are planned the same tick. No random numbers; ties go to the nearer, then the lower index. Each think reports a COMMANDER event (its main group, objective, posture, flag).
+- **Strength** is Σ cost × hp / max_hp in permille-points, the budget's own currency. Its own units count submerged or not; enemies only if seen. **Threat** is the larger of the enemy strength within 40 m of the objective and within 40 m of its main group.
+- **Objective:** the hill (King of the Hill); the flag not its own that minimizes distance × (own + 2 × guard) / own, kept until it is owned or another costs under 70% of it, and with every flag its own the one nearest the enemy (Capture the Flags); the map's centre between the starts, then the enemy's densest knot (`ClusterFinder`, 20 m) once its whole strength is 1.1 times the enemy's, or it is behind or desperate (Body Count).
+- **Postures** (held at least 10 s, except to commit on an unguarded objective, out of desperation, or to stage for a new flag):
+  - **STAGE:** advance to a point short of the objective on its own side, at max(40 m, the longest enemy reach + 8 m), past its 25 m engage radius, so a staged army doesn't go for the enemy standing on the objective and Longbows at 50 m can't reach it. Bleeding there with nobody to fight: commit if at least 0.8 times the threat, else 20 m further back (up to 60 m).
+  - **COMMIT:** onto the objective (hold radius the flag's less 2 m), engage radius 25 m; the raiders FLANK. Entered when gathered (70% of its strength near the staging point) and its local strength is at least the required ratio of the threat: 1.25 to take a held objective, 0.9 in Body Count's open field, easing as the clock runs toward 0.7 when behind on score (1.0 when level), or at once when the objective is unguarded or it is desperate (behind or level with under a quarter of the clock left, and at least the last minute).
+  - **Fall back** from COMMIT below 0.8 of the threat: a plain-move advance to the staging point, so fighters finish their fights rather than being pulled out (a GUARD re-anchor's leash would have pulled them).
+  - **DEFEND:** holding the objective and ahead: the raiders stay with the main group.
+  - An emptied main group hands over to the raiders.
+
+### Hash
+`state_hash()` gains:
+- **the skirmish** (`SkirmishRuntime.hash_fields`, only in a skirmish, after the mission): the rules, then the start, the winner and reason and tick, deaths, alive, hold and owned ticks, the rosters and the snapshot (each after its size), and each flag's owner, capture side and progress;
+- **on `AiGroup`:** `engage_radius`, `hold_radius`, `march_attack`, at the end;
+- **on `AiDirector`:** the commander count and each commander's fields. The director's hash is three words, not two, in a world with no groups.
+
+Hashes from before Phase 9 aren't comparable. No test pins an absolute hash.
+
+### RNG: none
+The commander, ADVANCE, MEDIC and the skirmish rules draw no random numbers; `make check-sim` now bans `rng` under `sim/skirmish` as well as `sim/ai` and `sim/missions`. The App draws the AI's template (when the player leaves it to chance) and then the world's seed from its own generator before the world exists, so the world only ever sees a concrete army and seed.
+
+### The skirmish screen (view)
+- **`MissionLaunch.for_skirmish(setup)`**: `mission` and `deploy` null, tier 2, the setup's seed, `campaign_mode` on (no debug keys, a lost focus pauses; the Phase 8 comment that a skirmish would leave it off is corrected). `player_faction()` is the skirmish's choice, Light in the campaign.
+- **`MainView`** builds the world with `SkirmishSetup.create_world`, starts the camera 15 m ahead of the player's army looking the way it faces (the camera sits on the +Z side of its focus at yaw 0, so the yaw is `atan2(-fx, -fz)`), applies the map's atmosphere, and sets `SelectionController.side` and `UnitsView.set_viewer` to the player's faction (a side already sees its own submerged units, and `_selectable` already wants `faction == side`, so that is all a Dark player needed). There are no `MissionStats` in a skirmish (`_freeze` checks), and the end is `skirmish_ended(outcome)`, not `mission_ended`.
+- **`FlagsView`** (in the world): per flag the mode uses (none in Body Count, the hill in King of the Hill, all in Capture the Flags) a pole, a camera-facing banner and a ground ring at the capture radius, in the holder's `SideColors` (grey, blue, crimson). A banner climbs the pole as a capture progresses and sits at the top once owned; one being taken from its owner shifts toward the capturer's color; the contested hill flashes between the two sides, in real time, view-only.
+- **`SkirmishHud`** (under the HUD, in the slot MissionHud's empty message line would use): always on, "King of the Hill · 7:32 · Hill: Light (you) 1:12 · Dark 0:48" (and the like for the other modes); on **F7** (`InputBindings.TOGGLE_SCOREBOARD`) a scoreboard with, per side, the player's first, alive of deployed, lost, enemy killed and the mode's score, and in Capture the Flags who owns each flag.
+- **Elsewhere:** the overhead map draws the same flags (`setup(terrain, camera, world)`); the control bar's status line reads "You (Light) 14 · Enemy (Dark) 11 alive" and counts both armies in full (a Dark player's enemies are AI-led Light units); MissionHud shows an amber Draw; the F5 overlay draws an ADVANCE group's anchor and engage and hold circles, and each commander's line to its objective, its staging circle and its posture. Every one reads the world and never writes it (tests check the hash).
+
+### The front end
+- **Main menu → `SkirmishMenu` → the skirmish → `SkirmishResults`**, then Rematch, Change army or Main menu. Nothing is saved but the last setup chosen.
+- **`SkirmishMenu`**, one screen: radio rows for map, mode, time, budget, side, start (A or B) and the enemy's army (Random or one of that side's templates), and the army builder: per buyable type of the player's side, the role, hp, cost, − count +, and the points; the points left (red when over), the count against 60, a Fill button per template and Clear. Start is on only for an army that validates. Choosing the other side swaps in that side's Balanced army; a new budget keeps the counts. It emits the player's half of a `SkirmishSetup` and the enemy choice.
+- **The App resolves the rest:** the enemy's template (a random choice drawn from `App.rng`), its army filled at the budget, and the world's seed (63 bits, as for a campaign), in that order, so one `App.rng` seed always makes the same skirmish. Rematch keeps both armies and draws a new seed on a copy of the setup; the pause menu's Restart asks, then replays the same seed. The skirmish's signals are wired by launch kind; `mission_ended` stays the campaign's.
+- **`SkirmishResults`**: Victory, Defeat or Draw, why (time ran out, or a side was wiped out), the time played, the mode's final score per side, and per side each type's deployed and lost from the runtime's frozen snapshot, with the AI template's name.
+- **Remembered setup:** `GameSettings` gains a `[skirmish]` section (typed int and String keys) holding the last choice and army ("shieldman:10,longbow:4" with its side). A remembered value that no longer fits is ignored on its own and the rest kept.
+
+### Playtest and balance (`make skirmish-playtest`)
+- **The harness** (`scripts/skirmish_playtest.gd`, `scripts/playtest/skirmish_runner.gd`, `skirmish_result.gd`, `skirmish_report.gd`) builds every world through `SkirmishSetup.create_world`, so a run's settings and seed reproduce in the game. Settings are environment variables (MATRIX, MAPS, MODES, SEEDS, SEED_BASE, BUDGET, MINUTES, PILOTS, PAIRINGS, DARK_TEMPLATES, LIGHT_TEMPLATES, STARTS, RAW, REPORT, OUT, TRACE); an unknown value stops it with exit 1 rather than running a subset. Runs split across processes and `REPORT` merges their RAW files.
+- **Matrix A**, commander against commander (`player_is_ai`): every Light template against Dark Balanced and Light Balanced against every Dark template, every map and mode, from both starts. It is the one measure of the sides under equal control. It measures the AI's two-group layout on both sides, not a human's single deploy block.
+- **Matrix B**: Phase 8's `PlaytestPilot` plays Light against the Dark commander. The pilot gained a mission-less path: `set_route(points, hold_at_end)`, the competent pilot then plays the generic march (never The Ford's escort or Old Mill's ramps), and at the end of its route it holds (King of the Hill: the hill; Capture the Flags: every flag nearest first, then the hill) or hunts (Body Count, from the centre). The campaign playtest gives identical result lines before and after. `PlaytestRunner` reports a DRAW as a draw.
+- **What the pass found and changed** (`docs/phase9-playtest.md` has every table): at the first-guess costs Light won 97% of A and the pilots 94 to 100%, because a Light unit is worth about three Dark ones (a Shieldman's shield takes Husks six for one). Light costs roughly doubled, which keeps Dark's hordes under the cap at 1500 points; per type Rippers came down and Stormcallers and Drifters up; the Raiders template keeps more Husks. The Ford's Capture the Flags (Light 11%) was the map: its flags moved to the ford's landings. Final, 612 runs: A 53% Light, every map and mode 36 to 64%, the worst pairing 86% (Shield Wall against Balanced); B 60% for the competent pilot and 62% for the naive one.
+- **The two pilots play alike in a skirmish** (within a few points at every cost tried), so Matrix B's naive target (20 to 50%) can't be met by costs: the costs were tuned to A, and B is reported as it is.
+
+| Unit | Cost | Unit | Cost |
+|---|---|---|---|
+| Shieldman | 68 | Husk | 20 |
+| Reaver | 68 | Ripper | 22 |
+| Longbow | 95 | Blightbag | 40 |
+| Sapper | 100 | Drifter | 44 |
+| Warden | 98 | Stormcaller | 88 |
+
+### Decisions
+- **Tim chose** (plan approval, 2026-10-06):
+  - **The player picks a side, Light or Dark.** So the commander drives either faction (and MEDIC exists so an AI Light army uses its Wardens), and the view takes the player's side from the launch.
+  - **Costs tuned by a playtest pass,** the Phase 8 method.
+  - **Body Count scores every enemy death, whatever the cause.** Friendly fire scores for the other side; fire and gas deaths, which often have no credited killer, count.
+- **Defaults in the approved plan:** the same budget both sides and no skirmish difficulty (worlds at tier 2); elimination ends any mode; draws at the limit (Capture the Flags breaks a tie by flag-ticks); 5 s alone captures a flag, which stays owned until taken; budgets 600 / 1000 / 1500, limits 5 to 20 minutes, a 60-unit cap; the AI's army from templates, "Random" resolved by the App; no fire arrows, satchels or Blightbag T for the AI; Longbows and Sappers stay ASSAULT; `sim/skirmish/` joins the rng ban.
+- **From the plan's review** (an adversarial pass over the draft before any code): one main group plus raiders, not separate melee and ranged groups (the per-group tactics need them together); a new ADVANCE behavior rather than re-anchoring GUARD (whose leash and provoked rule would have yanked fighters and flipped groups to HUNT); the commander's thresholds with hysteresis, a 10 s minimum per posture and an urgency ramp, because two equal commanders otherwise both wait; staging past the engage radius and Longbow range; the scores and an alive snapshot frozen at the decision; `type_list` in a sorted order.
+- **Rulings during the build,** each with its reason and its cost if wrong:
+  - **Staging moved out to 40 m and the engage radius in to 25 m** after a test: at 30 and 30 a staged army went for the enemy standing on the hill. Cost: a staged army reacts later to an enemy coming at it from the objective's side.
+  - **The skirmish world's tier is 2** and nothing in skirmish reads it but the AI's own groups, which spawn the same at every tier.
+  - **The fairness test compares path lengths,** for living and undead units, within 15%. It doesn't see water slowdown or a crossing's funnel, which the playtest shows matter on the river maps (Light wins 38% from Riverside's start A and 69% from B, commander against commander). Each map averages inside the targets and the player picks the start, so the starts stay. Cost: a player who always takes start A on Riverside as Light has a harder game.
+  - **The Ford's Capture the Flags flags moved to the landings** rather than repricing anything: only that map and mode was off, and by a mechanism (the dead wade anywhere) no price fixes.
+  - **Light costs went up rather than Dark's down,** to keep Dark's hordes under the 60-unit cap at 1500 points. Cost: a Light army is small (12 units at 1000 points against 30 to 45).
+  - **The "before" record is one seed per cell** (198 runs); the full 612-run matrices were run for the after record only.
+  - **The subagents' commits keep their own attribution** (Claude Sonnet 5.5): the match view, the front end and the harness were written by parallel agents in their own worktrees and reviewed before they were applied.
+
+### Behavior changes to earlier phases
+- **`MissionRuntime.Outcome` gained DRAW and `MissionEvent.Kind` gained DRAWN** (appended). Only `conclude()` sets them; no campaign mission can draw. MissionHud shows an amber Draw; `PlaytestRunner` reports a draw instead of a timeout.
+- **`AiTactics.front`, `behind` and `threats` go through `is_back`,** which is the old STANDOFF test unless a group's spec sets `ranged_behind`. Every Phase 7 and 8 AI test passes unchanged.
+- **The Warden's `ai_tactic` is MEDIC.** `ai_tactic` is read only by the AI, so a player's Wardens and the campaign are unchanged; the pinned shipped-tactics test changed on the Warden line only (approved in the plan).
+- **Every buyable unit type has a `cost`;** the villager has none.
+- **The director's hash has a commander count,** and AiGroup's three new fields, so every world's hash differs from Phase 8's; no test pins one.
+- **`World.step()` has a step 2b** (the skirmish), and `World` has `skirmish` and `start_skirmish`.
+- **The main menu's Skirmish opens the skirmish screen;** the Phase 8 stub ("Skirmish arrives in Phase 9") is gone, and its tests were replaced (approved). `test_app.gd`'s App gets a skirmish catalog over the tiny test map.
+- **`MissionLaunch.campaign_mode` is on for a skirmish too** (its comment said a skirmish would leave it off).
+- **CLAUDE.md** gained `sim/skirmish/` in the folder layout, the skirmish spawns and flags under `maps/`, F7 under Controls, and the skirmish rules.
+- **`make check-sim`** bans `rng` under `sim/skirmish` too.
+
+### Measured (M4 Max)
+
+| Scenario | Result |
+|---|---|
+| Playtest, final, 612 runs (`docs/phase9-playtest.md`) | A: Light 53%, Dark 46%, draws 1%, 93% decided by elimination, median 2.4 min; B: competent 60%, naive 62% |
+| Playtest, before (first guesses), 198 runs | A: Light 97%; B: competent 100%, naive 94% |
+| A skirmish headless | 1.7 to 2.4 ms a tick alone with 45 to 50 units (25 to 40 a side), 4 to 6 ms with 14 processes sharing 14 cores; a 10-minute run that goes to time about 30 s alone |
+| The full matrices | 38 minutes for 612 runs on 14 processes, the machine otherwise busy |
+| Windowed (`make capture-skirmish`, GL Compatibility on Metal, 1152x648) | The setup screen, the score line, the F7 scoreboard, the flags on the map and the overhead map, a battle and the Victory banner all drawn as designed, as Light and as Dark. Frame rates weren't measured: the capture steps the sim as fast as it can, and a window macOS hasn't brought forward draws irregularly |
+| Determinism | Two worlds from one setup hash alike every 500 ticks over 1500, for three map-mode pairs and a Dark player, with identical AI event logs; commander logs pinned the same way |
+| Test suite | 1974 tests in 106 scripts, all passing, with `check-sim` ok; about 170 s |
+
+### Not yet
+- **Skirmish difficulty or a handicap.** Both sides get the same budget, and the commander has one temper. The pilots win about 60% against it; a player should do better. A budget handicap, or the commander's thresholds per tier, would be the levers.
+- **The AI using fire arrows, satchels or Blightbag T,** and a Dark pilot for Matrix B (a Dark player's challenge is estimated from Matrix A only).
+- **The starts on the river maps.** Light does better from Riverside's start B and The Ford's start B (see Decisions). A fairness check that weighs water and chokes, or hills placed at the crossings, would even them.
+- **Shield Wall is the strongest Light army** (86% against Dark Balanced, commander against commander, at the 85% line). If it plays dominant, Shieldman and Longbow are the prices to move.
+- **Skirmishes are short:** most end by elimination in 2 to 4 game minutes, one decisive fight, because both commanders go for an unguarded objective at once and armies don't come back. The mode decides where the fight is more than how long it lasts.
+- **Weather in skirmish, more than two sides, remembering a separate army per side, friendly-fire counts on the results screen,** and a lockstep pause command (still the view not stepping).
+- **`make capture-skirmish` needs the window in front:** macOS doesn't draw a window it hasn't brought forward, and a shot then waits up to 2 s for a frame and saves what there is.

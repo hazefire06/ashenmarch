@@ -61,10 +61,11 @@ var think_now: bool = false
 var spawn_x: int
 ## See spawn_x.
 var spawn_z: int
-## The post a GUARD group holds or the spot an AMBUSH group waits at. Starts at
-## the spawn point; a retreat makes it the retreat point, and a PATROL alerted
-## into GUARD the members' centroid where it was alerted. A trigger's
-## SET_BEHAVIOR leaves it as it is.
+## The post a GUARD group holds, the spot an AMBUSH group waits at, or where an
+## ADVANCE group is going. Starts at the spawn point; a retreat makes it the
+## retreat point, a PATROL alerted into GUARD the members' centroid where it
+## was alerted, and AiDirector.advance wherever a commander sends it. A
+## trigger's SET_BEHAVIOR leaves it as it is.
 var anchor_x: int
 ## See anchor_x.
 var anchor_z: int
@@ -105,6 +106,18 @@ var last_hp: int = 0
 ## True once the group has retreated; it only retreats once.
 var retreated: bool = false
 
+## ADVANCE: how far from the members' centroid a visible enemy may stand for
+## the group to fight it, on the way and once there. Starts as the spec's
+## guard_radius; AiDirector.advance sets it.
+var engage_radius: int = 0
+## ADVANCE: once arrived, with no member this close to the anchor (center to
+## center), the free members walk back to it, so a capture zone always has
+## someone in it. 0 means AiBehaviors.DEFAULT_HOLD_RADIUS.
+var hold_radius: int = 0
+## ADVANCE: true to attack-move (fight what comes on the way), false for a
+## plain move that doesn't stop to fight (falling back).
+var march_attack: bool = true
+
 
 func _init(
 	group_id: int, index: int, group_spec: AiGroupSpec, side: UnitType.Faction, at_x: int, at_z: int
@@ -118,6 +131,7 @@ func _init(
 	spawn_z = at_z
 	anchor_x = at_x
 	anchor_z = at_z
+	engage_radius = group_spec.guard_radius
 
 
 ## Position of unit_id in `members`, or -1 if it isn't a member.
@@ -200,6 +214,7 @@ func hash_fields() -> PackedInt64Array:
 		fields.append(attack)
 	fields.append(route.size())
 	fields.append_array(route)
+	fields.append_array(PackedInt64Array([engage_radius, hold_radius, int(march_attack)]))
 	return fields
 
 

@@ -21,4 +21,5 @@ shield_block_permille = 350
 acquire_radius = 8000
 veterancy_accuracy_permille = 120
 veterancy_attack_rate_permille = 250
+cost = 68
 placeholder_color = Color(0.2, 0.45, 0.95, 1)

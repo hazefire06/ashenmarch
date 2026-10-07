@@ -774,3 +774,148 @@ func test_a_result_survives_the_trip_through_json() -> void:
 	assert_eq(back.state_hash, "abcd")
 	assert_null(PlaytestResult.from_dict({"mission": "x"}), "an incomplete line isn't a run")
 	assert_null(PlaytestResult.from_dict("nonsense"))
+
+
+# ---- a pilot with no mission (a skirmish) ----
+
+## A pilot with no mission, told to march `points` (metres) and hold or hunt at the end.
+func _free_pilot(
+	kind: PlaytestPilot.Kind, points: Array[Vector2i], hold: bool
+) -> PlaytestPilot:
+	var pilot: PlaytestPilot = PlaytestPilot.new(kind)
+	pilot.record = true
+	var milli: Array[Vector2i] = []
+	for point: Vector2i in points:
+		milli.append(point * M)
+	pilot.set_route(milli, hold)
+	return pilot
+
+
+func _last_march_x(pilot: PlaytestPilot) -> float:
+	var march: AttackMoveCommand = pilot.recorded[pilot.recorded.size() - 1] as AttackMoveCommand
+	return float(march.x) / M
+
+
+func test_a_pilot_with_no_mission_marches_its_route_in_order() -> void:
+	var w: World = _bare()
+	var soldier: Unit = _spawn(w, &"shieldman", LIGHT, 10, 20)
+	var pilot: PlaytestPilot = _free_pilot(
+		PlaytestPilot.Kind.COMPETENT, [Vector2i(50, 20), Vector2i(90, 60)], true
+	)
+	pilot.think(w)
+	assert_almost_eq(_last_march_x(pilot), 50.0, 1.0, "first to the first point")
+	assert_eq(pilot.route_index, 0)
+	soldier.x = 45 * M
+	soldier.z = 20 * M
+	w.step()
+	pilot.think(w)
+	assert_eq(pilot.route_index, 1, "within ARRIVED_M of it, on to the next")
+	assert_false(pilot.route_done)
+	assert_almost_eq(_last_march_x(pilot), 90.0, 1.0)
+
+
+func test_a_pilot_with_no_mission_never_plays_the_ford_or_old_mill() -> void:
+	# No Sapper walks off to lay charges (Old Mill's plan), and with no Light unit
+	# the AI controls there is no villager to look after: the march is all there is.
+	var w: World = _bare()
+	var sapper: Unit = _spawn(w, &"sapper", LIGHT, 20, 20)
+	_spawn(w, &"shieldman", LIGHT, 22, 20)
+	var pilot: PlaytestPilot = _free_pilot(PlaytestPilot.Kind.COMPETENT, [Vector2i(60, 60)], true)
+	pilot.think(w)
+	assert_eq(pilot.charges_done_tick, -1, "no charges are laid")
+	for command: SimCommand in pilot.recorded:
+		assert_ne(command.get_script(), UseSpecialCommand, "nothing to use a special on")
+	assert_true(_commands_of(pilot, MoveUnitsCommand, sapper.id).is_empty(), "no walking to a charge spot")
+	assert_eq(_commands_of(pilot, AttackMoveCommand, sapper.id).size(), 1, "the Sapper follows the march")
+
+
+func test_a_competent_pilot_holds_the_last_point_and_ignores_a_far_enemy() -> void:
+	var w: World = _bare()
+	var soldier: Unit = _spawn(w, &"shieldman", LIGHT, 58, 60)
+	var husk: Unit = _spawn(w, &"husk", DARK, 110, 60)
+	var pilot: PlaytestPilot = _free_pilot(PlaytestPilot.Kind.COMPETENT, [Vector2i(60, 60)], true)
+	pilot.think(w)
+	assert_true(pilot.route_done, "it is on the last point")
+	assert_almost_eq(_last_march_x(pilot), 60.0, 1.0, "the order is for the point, not for the Husk 50 m off")
+	var sent: int = pilot.recorded.size()
+	w.step()
+	pilot.think(w)
+	assert_eq(pilot.recorded.size(), sent, "nothing new: it holds")
+	# The Husk comes within CLEAR_M: it is fought, and the point is gone back to after.
+	husk.x = soldier.x + 20 * M
+	w.step()
+	pilot.think(w)
+	assert_almost_eq(_last_march_x(pilot), husk.x / float(M), 1.0, "a Husk 20 m off is gone for")
+	husk.kill()
+	w.step()
+	pilot.think(w)
+	assert_almost_eq(_last_march_x(pilot), 60.0, 1.0, "and with it dead, back to the point")
+
+
+func test_a_competent_pilot_hunts_the_nearest_enemy_when_it_is_not_told_to_hold() -> void:
+	var w: World = _bare()
+	_spawn(w, &"shieldman", LIGHT, 58, 60)
+	_spawn(w, &"husk", DARK, 110, 60)
+	_spawn(w, &"husk", DARK, 100, 100)
+	var pilot: PlaytestPilot = _free_pilot(PlaytestPilot.Kind.COMPETENT, [Vector2i(60, 60)], false)
+	pilot.think(w)
+	assert_true(pilot.route_done)
+	assert_almost_eq(_last_march_x(pilot), 110.0, 1.0, "the nearer Husk, 50 m off, is hunted")
+
+
+func test_a_naive_pilot_holds_or_hunts_at_the_end_of_its_route_as_told() -> void:
+	for hold: bool in [true, false]:
+		var w: World = _bare()
+		var soldier: Unit = _spawn(w, &"shieldman", LIGHT, 58, 60)
+		var husk: Unit = _spawn(w, &"husk", DARK, 100, 60)
+		var pilot: PlaytestPilot = _free_pilot(PlaytestPilot.Kind.NAIVE, [Vector2i(60, 60)], hold)
+		pilot.think(w)
+		assert_true(pilot.route_done, "hold %s" % hold)
+		assert_almost_eq(_last_march_x(pilot), 60.0 if hold else 100.0, 1.0, "hold %s" % hold)
+		# A Husk within CLEAR_M of the army is fought either way.
+		husk.x = soldier.x + 15 * M
+		w.step()
+		pilot.think(w)
+		assert_almost_eq(_last_march_x(pilot), husk.x / float(M), 1.0, "hold %s: a close Husk is fought" % hold)
+
+
+func test_a_pilot_with_no_route_holds_where_its_army_stands() -> void:
+	var w: World = _bare()
+	_spawn(w, &"shieldman", LIGHT, 30, 30)
+	_spawn(w, &"husk", DARK, 100, 30)
+	for kind: PlaytestPilot.Kind in [PlaytestPilot.Kind.COMPETENT, PlaytestPilot.Kind.NAIVE]:
+		var pilot: PlaytestPilot = PlaytestPilot.new(kind)
+		pilot.record = true
+		pilot.think(w)
+		assert_true(pilot.route_done, PlaytestPilot.kind_name(kind))
+		assert_almost_eq(_last_march_x(pilot), 30.0, 1.0, "%s stays at its own centroid" % PlaytestPilot.kind_name(kind))
+
+
+func test_the_pilots_with_a_mission_ignore_hold_and_keep_their_endings() -> void:
+	# The tiny mission's pilot hunts at the end of its route, as before set_route existed.
+	var w: World = _bare()
+	_spawn(w, &"shieldman", LIGHT, 58, 58)
+	_spawn(w, &"husk", DARK, 100, 60)
+	var pilot: PlaytestPilot = PlaytestPilot.new(PlaytestPilot.Kind.NAIVE, _tiny_mission())
+	pilot.record = true
+	pilot.think(w)
+	assert_almost_eq(_last_march_x(pilot), 100.0, 1.0)
+
+
+func test_a_held_army_ends_on_its_point_and_a_hunting_one_goes_for_the_far_enemy() -> void:
+	# Played out: an idle Husk 50 m beyond the point the army is sent to.
+	for hold: bool in [true, false]:
+		var w: World = _bare()
+		var soldier: Unit = _spawn(w, &"shieldman", LIGHT, 20, 60)
+		var husk: Unit = _spawn(w, &"husk", DARK, 110, 60)
+		var pilot: PlaytestPilot = _free_pilot(PlaytestPilot.Kind.COMPETENT, [Vector2i(60, 60)], hold)
+		var seconds: int = 45 if hold else 75
+		for tick: int in seconds * World.TICK_RATE:
+			if tick % PlaytestPilot.THINK_TICKS == 0:
+				pilot.think(w)
+			w.step()
+		if hold:
+			assert_lt(Vector2(soldier.x - 60 * M, soldier.z - 60 * M).length(), 10.0 * M, "he stands on the point")
+			assert_eq(husk.hp, husk.type.max_hp, "and the Husk 50 m off was never touched")
+		else:
+			assert_true(not husk.is_alive() or husk.hp < husk.type.max_hp, "he went and fought the Husk")

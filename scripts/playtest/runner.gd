@@ -156,13 +156,7 @@ func _fill(
 	result.campaign_seed = state.campaign_seed
 	result.world_seed = world_seed
 	result.chain = chain
-	match world.mission.outcome:
-		MissionRuntime.Outcome.WON:
-			result.outcome = PlaytestResult.WON
-		MissionRuntime.Outcome.LOST:
-			result.outcome = PlaytestResult.LOST
-		_:
-			result.outcome = PlaytestResult.TIMEOUT
+	result.outcome = outcome_label(world.mission.outcome)
 	result.end_tick = world.tick
 	result.roster = plan.size()
 	result.losses = stats.lost.size()
@@ -209,6 +203,20 @@ func _fill_notes(result: PlaytestResult, world: World, alive: Array[Unit]) -> vo
 	])
 	for i: int in mini(MAX_DESCRIBED, alive.size()):
 		result.notes.append("left: " + describe(world, alive[i]))
+
+
+## The label a mission's outcome goes by in a result: WON, LOST or DRAW (neither
+## side won: a skirmish level at its limit), and TIMEOUT for a run that was never
+## decided.
+static func outcome_label(outcome: MissionRuntime.Outcome) -> String:
+	match outcome:
+		MissionRuntime.Outcome.WON:
+			return PlaytestResult.WON
+		MissionRuntime.Outcome.LOST:
+			return PlaytestResult.LOST
+		MissionRuntime.Outcome.DRAW:
+			return PlaytestResult.DRAW
+	return PlaytestResult.TIMEOUT
 
 
 ## The status line a trace prints: the time, the squad's centre and the pilot's

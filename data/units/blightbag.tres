@@ -24,4 +24,5 @@ special_ability = 4
 special_charges = 1
 special_projectile = &"blight_burst"
 ai_tactic = 2
+cost = 40
 placeholder_color = Color(0.62, 0.66, 0.22, 1)

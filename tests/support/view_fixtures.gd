@@ -89,3 +89,52 @@ static func launch(
 	var state: CampaignState = CampaignState.new_campaign(1, 2)
 	var plan: DeployPlan = state.plan_deploy(def, PackedInt32Array(), PackedStringArray(["Ada"]))
 	return MissionLaunch.new(def, 2, 1, plan.command(0, def), campaign)
+
+
+## A skirmish map over the tiny map: start A west at (10, 30) facing east,
+## start B east at (50, 30) facing west, and three flags 4 m in radius: 0 the
+## hill in the middle (30, 30), 1 north (30, 10), 2 south (30, 50). No look.
+static func skirmish_map() -> SkirmishMap:
+	var m: SkirmishMap = SkirmishMap.new()
+	m.id = &"test_flat"
+	m.display_name = "Test Flat"
+	m.map = map()
+	m.spawns = PackedInt32Array([10 * M, 30 * M, 50 * M, 30 * M])
+	m.spawn_facing = PackedInt32Array([1, 0, -1, 0])
+	m.flags = PackedInt32Array([30 * M, 30 * M, 30 * M, 10 * M, 30 * M, 50 * M])
+	m.hill = 0
+	m.flag_radius = 4 * M
+	m.camera_distance = 40 * M
+	return m
+
+
+## A small skirmish on that map: the player on `side` with two Shieldmen (or
+## two Husks, as Dark) at start A, the AI with two of the other side's at
+## start B, budget 1000, a `minutes`-long clock, seed 1. Shipped catalog.
+static func skirmish_setup(
+	mode: SkirmishRules.Mode = SkirmishRules.Mode.KING_OF_THE_HILL,
+	side: UnitType.Faction = UnitType.Faction.LIGHT, minutes: int = 10
+) -> SkirmishSetup:
+	var setup: SkirmishSetup = SkirmishSetup.new()
+	setup.map = skirmish_map()
+	setup.rules = SkirmishRules.for_map(setup.map, mode, minutes, side)
+	setup.budget = 1000
+	var other: UnitType.Faction = (
+		UnitType.Faction.DARK if side == UnitType.Faction.LIGHT else UnitType.Faction.LIGHT
+	)
+	var player: Army = Army.new(side)
+	player.set_count(&"shieldman" if side == UnitType.Faction.LIGHT else &"husk", 2)
+	var ai: Army = Army.new(other)
+	ai.set_count(&"husk" if other == UnitType.Faction.DARK else &"shieldman", 2)
+	setup.armies = [player, ai]
+	setup.ai_template_id = &"dark_balanced" if other == UnitType.Faction.DARK else &"light_balanced"
+	setup.world_seed = 1
+	return setup
+
+
+## The launch of that skirmish.
+static func skirmish_launch(
+	mode: SkirmishRules.Mode = SkirmishRules.Mode.KING_OF_THE_HILL,
+	side: UnitType.Faction = UnitType.Faction.LIGHT, minutes: int = 10
+) -> MissionLaunch:
+	return MissionLaunch.for_skirmish(skirmish_setup(mode, side, minutes))

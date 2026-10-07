@@ -37,4 +37,5 @@ scavenged_projectile = &"body_part"
 veterancy_accuracy_permille = 80
 veterancy_attack_rate_permille = 150
 veterancy_speed_permille = 100
+cost = 22
 placeholder_color = Color(0.75, 0.15, 0.2, 1)

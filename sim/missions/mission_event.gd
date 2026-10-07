@@ -10,9 +10,11 @@ enum Kind {
 	TRIGGER_FIRED,
 	## A trigger set the objective to `text`.
 	OBJECTIVE,
-	## The mission was won; trigger_index is the trigger whose WIN decided it.
+	## The mission was won; trigger_index is the trigger whose WIN decided it
+	## (-1 when MissionRuntime.conclude did).
 	WON,
-	## The mission was lost; trigger_index is the trigger whose LOSE decided it.
+	## The mission was lost; trigger_index is the trigger whose LOSE decided it
+	## (-1 when MissionRuntime.conclude did).
 	LOST,
 	## An objective changed state; trigger_index is the trigger whose action did
 	## it, `objective` the objective's place in MissionScript.objectives, and
@@ -20,6 +22,10 @@ enum Kind {
 	## nothing (showing what is already shown, anything on a done or failed
 	## objective) reports nothing.
 	OBJECTIVE_STATE,
+	## The mission ended level (MissionRuntime.Outcome.DRAW). Only
+	## MissionRuntime.conclude reports it, with trigger_index -1, as it does WON
+	## and LOST when it decides them.
+	DRAWN,
 }
 
 ## What happened.

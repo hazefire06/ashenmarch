@@ -40,6 +40,10 @@ var _status: Label
 var _light_alive: int = 0
 var _dark_alive: int = 0
 var _counted_tick: int = -1
+## True in a skirmish, where the status line names the player's side and the
+## enemy's instead of Light and Dark, and every living unit counts.
+var _skirmish: bool = false
+var _player_faction: UnitType.Faction = UnitType.Faction.LIGHT
 
 
 func setup(controller: SelectionController, world: World) -> void:
@@ -150,6 +154,17 @@ func is_switch_side_visible() -> bool:
 	return _side_button.visible
 
 
+## Puts the bar in skirmish mode for a player on `player_faction`: the status
+## line reads "You (Light) 14 · Enemy (Dark) 11 alive", the player's side first,
+## with no side being controlled to name (the player's is fixed). MainView calls
+## it for a skirmish launch; a campaign mission and the sandbox keep the line
+## they had.
+func set_skirmish(player_faction: UnitType.Faction) -> void:
+	_skirmish = true
+	_player_faction = player_faction
+	_counted_tick = -1
+
+
 ## The status line as drawn: the selection, how many are alive on each side, and
 ## which side is controlled.
 func status_text() -> String:
@@ -178,6 +193,9 @@ func _process(_delta: float) -> void:
 		var count: int = selection.group(slot).size()
 		_group_buttons[slot].text = GROUP_LABELS[slot] if count == 0 else "%s·%d" % [GROUP_LABELS[slot], count]
 	_recount_alive()
+	if _skirmish:
+		_status.text = "%s   |   %s" % [_selection_summary(selection), _skirmish_counts()]
+		return
 	_status.text = "%s   |   Light %d · Dark %d alive   |   Controlling: %s" % [
 		_selection_summary(selection),
 		_light_alive,
@@ -218,6 +236,7 @@ func _arm_button(text: String, order: SelectionController.ArmedOrder, tip: Strin
 
 # Counts each side's living units, once per tick rather than every frame. The
 # Light count is the player's: units the AI drives (an escort) aren't theirs.
+# In a skirmish both armies are fully counted: either side may be the AI's.
 func _recount_alive() -> void:
 	if _world.tick == _counted_tick:
 		return
@@ -228,10 +247,20 @@ func _recount_alive() -> void:
 		if not unit.is_alive():
 			continue
 		if unit.faction == UnitType.Faction.LIGHT:
-			if not _world.ai.controls(unit.id):
+			if _skirmish or not _world.ai.controls(unit.id):
 				_light_alive += 1
 		else:
 			_dark_alive += 1
+
+
+# "You (Light) 14 · Enemy (Dark) 11 alive": the player's side first.
+func _skirmish_counts() -> String:
+	var enemy: int = 1 - _player_faction
+	var own_alive: int = _light_alive if _player_faction == UnitType.Faction.LIGHT else _dark_alive
+	var enemy_alive: int = _dark_alive if _player_faction == UnitType.Faction.LIGHT else _light_alive
+	return "You (%s) %d · Enemy (%s) %d alive" % [
+		SideColors.side_name(_player_faction), own_alive, SideColors.side_name(enemy), enemy_alive,
+	]
 
 
 # "12 selected: 12 Shieldman", or "Nothing selected".

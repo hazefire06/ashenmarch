@@ -21,4 +21,5 @@ acquire_radius = 10000
 veterancy_accuracy_permille = 100
 veterancy_attack_rate_permille = 250
 veterancy_speed_permille = 150
+cost = 68
 placeholder_color = Color(0.95, 0.5, 0.15, 1)

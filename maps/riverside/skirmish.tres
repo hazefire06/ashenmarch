@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="SkirmishMap" format=3]
+
+[ext_resource type="Script" path="res://sim/skirmish/skirmish_map.gd" id="1_skm01"]
+[ext_resource type="Resource" path="res://maps/riverside/riverside.tres" id="2_map01"]
+[ext_resource type="Resource" path="res://data/atmospheres/riverside.tres" id="3_atm01"]
+
+; Riverside as a skirmish map (SkirmishMap). Positions are milli-units (1000 =
+; 1 m); z grows southward. The creek arches north through the middle of the
+; map; living units cross at the ford (x 300) or the shallows near either end.
+; Hand-written; the editor drops these comments if it re-saves the file.
+;
+; Start A is on the north bank at (295, 85) m facing south (0, 1); start B is
+; south of the creek at (310, 430) m, west of the village, facing north
+; (0, -1). Five flags: 0 the hill, on the dry landing south of the ford at
+; (300, 262); 1 and 2 on the north bank, west (150, 190) and east (450, 190);
+; 3 and 4 south of the creek, east (450, 325) by the village and west
+; (150, 335). Chosen with a probe of the pathing so each start is as far from
+; the hill as the other and from "its" two flags as the other is from its own,
+; for living and undead units alike, within 15% (test_skirmish_maps.gd).
+
+[resource]
+script = ExtResource("1_skm01")
+id = &"riverside"
+display_name = "Riverside"
+map = ExtResource("2_map01")
+spawns = PackedInt32Array(295000, 85000, 310000, 430000)
+spawn_facing = PackedInt32Array(0, 1, 0, -1)
+flags = PackedInt32Array(300000, 262000, 150000, 190000, 450000, 190000, 450000, 325000, 150000, 335000)
+hill = 0
+atmosphere = ExtResource("3_atm01")

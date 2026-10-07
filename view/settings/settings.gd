@@ -15,6 +15,12 @@ extends RefCounted
 ## Fullscreen is the window's, applied by the App (apply_window_mode); edge
 ## scroll is the mission camera's, applied by the App when a mission starts and
 ## when Settings closes over one.
+##
+## The [skirmish] section remembers the last skirmish setup (map, mode, time,
+## budget, side, start, the AI's army and the player's own army), so the
+## skirmish screen opens where the player left it. Not a setting the player
+## edits, so it has no screen of its own; it is read as one choice
+## (skirmish_choice) and written as one (set_skirmish_choice).
 
 ## Where the real game keeps it: the per-user data directory.
 const DEFAULT_PATH: String = "user://settings.cfg"
@@ -23,10 +29,20 @@ const DISPLAY: String = "display"
 const CONTROLS: String = "controls"
 const FULLSCREEN: String = "fullscreen"
 const EDGE_SCROLL: String = "edge_scroll"
+const SKIRMISH: String = "skirmish"
 ## What each reads as when the file doesn't say: windowed, and no edge scroll.
 ## Both are opt-in (CLAUDE.md: edge scroll is optional).
 const FULLSCREEN_DEFAULT: bool = false
 const EDGE_SCROLL_DEFAULT: bool = false
+## The skirmish choice's keys, by type. Integers: the mode and the side as
+## their enum values, the time limit in minutes, the budget in points, the
+## start (0 is A, 1 is B), and the side the remembered army is on.
+const SKIRMISH_INT_KEYS: PackedStringArray = [
+	"mode", "minutes", "budget", "side", "start", "army_side",
+]
+## Strings: the map's id, the AI's army (a template id or "random"), and the
+## player's army as "shieldman:10,longbow:4".
+const SKIRMISH_STRING_KEYS: PackedStringArray = ["map", "ai_choice", "army"]
 
 
 ## Whether the game runs fullscreen.
@@ -47,6 +63,65 @@ static func set_fullscreen(enabled: bool, path: String = DEFAULT_PATH) -> Error:
 ## Saves the edge scroll choice. Returns the error from the write, or OK.
 static func set_edge_scroll(enabled: bool, path: String = DEFAULT_PATH) -> Error:
 	return _set_value(path, CONTROLS, EDGE_SCROLL, enabled)
+
+
+## One whole number from the [skirmish] section, or `fallback` if it is missing
+## or isn't a whole number.
+static func skirmish_int(key: String, fallback: int, path: String = DEFAULT_PATH) -> int:
+	var value: Variant = _read(path).get_value(SKIRMISH, key, fallback)
+	return value if value is int else fallback
+
+
+## One string from the [skirmish] section, or `fallback` if it is missing or
+## isn't a string.
+static func skirmish_string(key: String, fallback: String, path: String = DEFAULT_PATH) -> String:
+	var value: Variant = _read(path).get_value(SKIRMISH, key, fallback)
+	return value if value is String else fallback
+
+
+## Saves one whole number in the [skirmish] section. Returns the error from the
+## write, or OK.
+static func set_skirmish_int(key: String, value: int, path: String = DEFAULT_PATH) -> Error:
+	return _set_values(path, SKIRMISH, {key: value})
+
+
+## Saves one string in the [skirmish] section. Returns the error from the
+## write, or OK.
+static func set_skirmish_string(key: String, value: String, path: String = DEFAULT_PATH) -> Error:
+	return _set_values(path, SKIRMISH, {key: value})
+
+
+## The remembered skirmish choice: a dictionary with only the keys the file
+## holds (as the right type), so a caller falls back key by key and an empty
+## one means nothing is remembered. The keys are SKIRMISH_INT_KEYS and
+## SKIRMISH_STRING_KEYS; whether the values still make sense (a map that was
+## removed, an army that no longer fits) is for the skirmish screen to judge.
+static func skirmish_choice(path: String = DEFAULT_PATH) -> Dictionary:
+	var config: ConfigFile = _read(path)
+	var choice: Dictionary = {}
+	for key: String in SKIRMISH_INT_KEYS + SKIRMISH_STRING_KEYS:
+		# get_value without a default complains about a missing key.
+		if not config.has_section_key(SKIRMISH, key):
+			continue
+		var value: Variant = config.get_value(SKIRMISH, key)
+		if (value is int and SKIRMISH_INT_KEYS.has(key)) or (value is String and SKIRMISH_STRING_KEYS.has(key)):
+			choice[key] = value
+	return choice
+
+
+## Saves a skirmish choice in one write: every key it holds that is one of the
+## skirmish keys, as the right type (anything else is left out, so a stray
+## entry can't put a wrongly typed value in the file). Keys it lacks are left
+## as they are. Returns the error from the write, or OK.
+static func set_skirmish_choice(choice: Dictionary, path: String = DEFAULT_PATH) -> Error:
+	var values: Dictionary = {}
+	for key: String in SKIRMISH_INT_KEYS:
+		if choice.get(key) is int:
+			values[key] = choice[key]
+	for key: String in SKIRMISH_STRING_KEYS:
+		if choice.get(key) is String:
+			values[key] = choice[key]
+	return _set_values(path, SKIRMISH, values)
 
 
 ## Puts the window in or out of fullscreen. Does nothing without a window: the
@@ -73,11 +148,18 @@ static func _get_bool(path: String, section: String, key: String, fallback: bool
 
 
 static func _set_value(path: String, section: String, key: String, value: Variant) -> Error:
+	return _set_values(path, section, {key: value})
+
+
+# Loads the file, sets every key in `values` and saves once: a write that
+# fails halfway can't leave a choice half remembered.
+static func _set_values(path: String, section: String, values: Dictionary) -> Error:
 	var folder: String = path.get_base_dir()
 	if not DirAccess.dir_exists_absolute(folder):
 		var made: Error = DirAccess.make_dir_recursive_absolute(folder)
 		if made != OK and made != ERR_ALREADY_EXISTS:
 			return made
 	var config: ConfigFile = _read(path)
-	config.set_value(section, key, value)
+	for key: String in values:
+		config.set_value(section, key, values[key])
 	return config.save(path)
