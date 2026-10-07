@@ -773,10 +773,13 @@ func test_f10_leaves_corpses_as_corpses() -> void:
 	var view: UnitsView = _units_of(main)
 	for _i: int in 2:
 		_push(_key(KEY_F10))
+		var found: int = 0
 		for sprite: UnitSprite in _drawn(main):
 			if sprite.unit_id == victim.id:
+				found += 1
 				assert_true(sprite.is_dead(), "still down, art %s" % view.art_enabled())
 				assert_eq(sprite.has_art(), view.art_enabled())
+		assert_eq(found, 1, "the victim's sprite is there to be checked, art %s" % view.art_enabled())
 	assert_eq(main.world.tick, tick, "and the sim never heard of it")
 
 
@@ -787,10 +790,17 @@ func test_f10_works_paused_and_in_a_campaign() -> void:
 	_step(main)
 	_push(_key(KEY_P))
 	assert_true(main.paused)
+	var soldier_id: int = _soldier(main).id
+	var soldier_has_art: bool = false
+	for sprite: UnitSprite in _drawn(main):
+		if sprite.unit_id == soldier_id:
+			soldier_has_art = sprite.has_art()
+	assert_true(soldier_has_art, "the Shieldman starts with its art")
 	var before: String = main.world.state_hash()
 	_push(_key(KEY_F10))
 	assert_false(_units_of(main).art_enabled())
 	assert_eq(main.world.state_hash(), before, "view-only: nothing was enqueued")
+	assert_gt(_drawn(main).size(), 0, "there are sprites to check")
 	for sprite: UnitSprite in _drawn(main):
 		assert_false(sprite.has_art())
 	_push(_key(KEY_F10))
@@ -839,6 +849,10 @@ func test_load_art_leaves_out_art_that_fails_validation_and_keeps_the_rest() -> 
 	var path: String = ART_DIR + "/catalog.tres"
 	assert_eq(ResourceSaver.save(catalog, path), OK)
 	var usable: UnitArtCatalog = MainView.load_art(path)
+	# One warning per reason, naming the unit and what is wrong with its art. The
+	# text goes first: the count consumes the warnings it counts.
+	assert_push_warning("MainView: unit art left out: reaver: idle has no frames for direction 5")
+	assert_push_warning_count(1)
 	assert_not_null(usable.find(&"shieldman"))
 	assert_null(usable.find(&"reaver"), "the broken one is a placeholder, and the game starts")
 	assert_eq(usable.arts.size(), 1)

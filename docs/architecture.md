@@ -1911,7 +1911,7 @@ Designed in `docs/specs/2026-10-01-art-audio-design.md`; built by `docs/plans/20
 - **Props** (sword, targe) are separate Meshy models in `art-src/props/<id>/`, textured but not rigged. The renderer fixes each rigidly to a bone of the unit's rig (`[[attach]]` in the spec: bone, offset, rotation) at render time and sizes it by its longest principal axis. `make art-attach` renders a tuning sheet for the offsets. A prop is never part of the unit's own model.
 - `scripts/art/render_sprites.py` (headless Blender, `make art-render UNIT=<id>`) renders each animation from 8 directions with an orthographic camera at 50°, lights riding on the camera, root motion cancelled. A clip that already plays in place (Meshy's rig walk) has its walk stride measured from the feet instead of the root. Output in `assets/units/<id>/`:
   - one sheet per animation, one band of rows per direction, 160 px cells with a 4 px gutter, the feet 40 px up from the cell's bottom edge, at 52 px per metre;
-  - sheets wrap at 4096 px wide (WebGL's texture limit): the sidecar's `columns` and `rows_per_direction` say how, so frame `i` of direction `d` is at column `i % columns`, row `d * rows_per_direction + i // columns`;
+  - sheets wrap at 4096 px wide (Web may cap textures at 4096 px): the sidecar's `columns` and `rows_per_direction` say how, so frame `i` of direction `d` is at column `i % columns`, row `d * rows_per_direction + i // columns`;
   - `<id>.json`, the sidecar (frame counts, fps, impact frames, stride, wrap, cell, feet, gib colour), and `.png.import` files (mipmaps, VRAM compressed).
   - `art-src/units/<id>/review/` gets the contact sheet and per-animation GIFs for Tim's approval. A clip auditioned there but not in the game's animation set (`attack_alt`) is rendered and not built.
 - `scripts/art/build_unit_art.gd` (headless Godot, `make art-build UNIT=<id>`) turns them into `data/art/<id>.tres` (`UnitArt`) and lists it in `data/art/catalog.tres` (`UnitArtCatalog`). Both are generated; never hand-edit them.
@@ -1932,3 +1932,4 @@ Designed in `docs/specs/2026-10-01-art-audio-design.md`; built by `docs/plans/20
 ### Not yet
 - Barks, audio and the other nine units (A2, A3). The Sapper's satchel drop has no `place` trigger yet (A3).
 - Direction hysteresis and two-elevation renders only if the in-engine check needs them; MultiMesh only if profiling does.
+- **Not checked:** Windows and Web (Phase 10 does the cross-platform pass). The in-engine check ran on macOS (GL Compatibility on Metal) only; the sheet wrap and the VRAM-compressed, mipmapped sheets are the things to look at.
