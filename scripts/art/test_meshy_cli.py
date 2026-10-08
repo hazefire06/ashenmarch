@@ -405,6 +405,14 @@ class FlowTest(unittest.TestCase):
         self.manifest.upsert({"kind": "preview", "label": "cand-1", "status": "CREATING", "created_at": 1})
         self.assertIn("a previous run stopped while creating 'preview' 'cand-1'", meshy.plan_text(self.spec, self.style, self.manifest))
 
+    def test_a_recipe_that_lists_no_candidates_buys_nothing(self) -> None:
+        # A recipe with no [candidates] table loads (the renderer needs none), but there is nothing to buy from it.
+        empty = dataclasses.replace(self.spec, lite=0, full=0)
+        client = FakeClient()
+        with self.assertRaisesRegex(meshy.BuildError, r"shieldman lists no candidates; add a \[candidates\] table"):
+            meshy.run_candidates(empty, self.style, self.manifest, client, self.unit_dir, 100, say=self.quiet.append)
+        self.assertEqual(client.created, [])
+
     def test_a_spec_with_more_than_ten_actions_buys_nothing(self) -> None:
         # Meshy takes 10 per animation request; without the check the build paid for refine and rig, then failed at the animation.
         self.candidates(FakeClient())
@@ -690,6 +698,17 @@ class MainTest(unittest.TestCase):
                 self.assertTrue(lines[1].startswith("candidates: cand-1 meshy-6-lite (5), cand-2 meshy-6-lite (5)"))
                 self.assertEqual(lines[2], "build (after you pick): refine 10 credits")
                 self.assertTrue(lines[3].startswith(f"spent on {prop} so far: "))
+
+    def test_prop_candidates_stops_at_a_recipe_with_no_candidates_table(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            prop_dir = self.stage(root)
+            (prop_dir / "spec.toml").write_text(
+                (prop_dir / "spec.toml").read_text(encoding="utf-8").split("[candidates]")[0], encoding="utf-8")
+            fake = FakeClient()
+            code, out, err = self.run_paid(root, fake, ["prop-candidates", "broadsword", "--max-credits", "10"])
+            self.assertEqual((code, out, fake.created), (1, "", []))
+            self.assertIn("broadsword lists no candidates", err)
 
     def test_a_prop_that_has_no_recipe_is_reported(self) -> None:
         code, _, err = self.run_main(["prop-plan", "no_such_prop"])

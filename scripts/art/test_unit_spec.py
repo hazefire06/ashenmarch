@@ -11,6 +11,9 @@ from clips import pick_clip
 from unit_spec import AttachEntry, PropSpec, SpecError, load_prop_spec, load_spec, load_style
 
 ART_SRC = Path(__file__).resolve().parent.parent.parent / "art-src"
+# TOML values that are not a whole number of 0 or more (a count), or not a whole number from 100 to 300000 (a polycount).
+BAD_COUNTS = ("-1", "1.5", "2.0", "1e3", "true", "false", '"2"', "[1]", "{ a = 1 }", "10000", "1" + "0" * 30)
+BAD_POLYCOUNTS = ("0", "99", "300001", "-100", "1.5", "30000.0", "1e5", "true", '"30000"', "[30000]", "1" + "0" * 30)
 
 
 class ShieldmanSpecTest(unittest.TestCase):
@@ -81,6 +84,60 @@ class SpecErrorsTest(unittest.TestCase):
                 path.write_text(f'id = "unit_x"\nfaction = "light"\nheight_m = {value}\nprompt = "p"\n[animations.idle]\nfile = "a.glb"\n')
                 with self.assertRaisesRegex(SpecError, "height_m must be"):
                     load_spec(path)
+
+    def test_an_animation_name_that_could_leave_the_folder_is_refused(self) -> None:
+        # Names become output paths in render_sprites (sheets, .import files, review gifs), so no path pieces.
+        for name in ("../../x", "../x", "a/b", "/abs", "Idle", "9x", "_x", "a" * 33, "x y", "", "x\n", "\x1b[31mred"):
+            with self.subTest(animation=name):
+                path = self.spec(f'[animations.{json.dumps(name)}]\nfile = "a.glb"\n')  # json's escapes are valid TOML
+                with self.assertRaisesRegex(SpecError, "animation name") as caught:
+                    load_spec(path)
+                self.assertNotIn("\x1b", str(caught.exception))
+                self.assertNotIn("\n", str(caught.exception))
+
+    def test_ordinary_animation_names_still_load(self) -> None:
+        for name in ("idle", "attack_alt", "die", "a" * 32, "cast2"):
+            with self.subTest(animation=name):
+                self.assertEqual(load_spec(self.spec(f'[animations.{name}]\nfile = "a.glb"\n')).animations[0].name, name)
+
+    def test_the_candidate_counts_are_whole_numbers_of_zero_or_more(self) -> None:
+        for key in ("lite", "full"):
+            for value in BAD_COUNTS:
+                with self.subTest(key=key, value=value):
+                    other = "full" if key == "lite" else "lite"
+                    path = self.spec(f'[candidates]\n{key} = {value}\n{other} = 1\n[animations.idle]\nfile = "a.glb"\n')
+                    with self.assertRaisesRegex(SpecError, f"candidates.{key} must be a whole number") as caught:
+                        load_spec(path)
+                    self.assertIn(str(path), str(caught.exception))
+
+    def test_a_candidates_table_needs_at_least_one_candidate(self) -> None:
+        for table in ("[candidates]\n", "[candidates]\nlite = 0\nfull = 0\n", "[candidates]\nlite = 0\npolycount = 20000\n"):
+            with self.subTest(table=table):
+                with self.assertRaisesRegex(SpecError, "at least one candidate"):
+                    load_spec(self.spec(table + '[animations.idle]\nfile = "a.glb"\n'))
+        for table in ("[candidates]\nlite = 1\n", "[candidates]\nfull = 1\n", "[candidates]\nlite = 0\nfull = 3\n"):
+            with self.subTest(table=table):
+                load_spec(self.spec(table + '[animations.idle]\nfile = "a.glb"\n'))
+
+    def test_the_polycount_is_a_whole_number_from_100_to_300000(self) -> None:
+        for value in BAD_POLYCOUNTS:
+            with self.subTest(polycount=value):
+                path = self.spec(f'[candidates]\nlite = 1\npolycount = {value}\n[animations.idle]\nfile = "a.glb"\n')
+                with self.assertRaisesRegex(SpecError, "candidates.polycount must be a whole number") as caught:
+                    load_spec(path)
+                self.assertIn(str(path), str(caught.exception))
+        for value in (100, 6000, 30000, 300000):
+            with self.subTest(polycount=value):
+                self.assertEqual(load_spec(self.spec(f'[candidates]\nlite = 1\npolycount = {value}\n[animations.idle]\nfile = "a.glb"\n')).polycount, value)
+
+    def test_candidates_must_be_a_table(self) -> None:
+        with self.assertRaisesRegex(SpecError, "candidates must be a"):
+            load_spec(self.spec('candidates = 3\n[animations.idle]\nfile = "a.glb"\n'))
+
+    def test_an_animation_is_a_rig_clip_or_a_library_action_not_both(self) -> None:
+        with self.assertRaisesRegex(SpecError, "animation walk: set rig or action, not both"):
+            load_spec(self.spec('[animations.walk]\nrig = "walk"\naction = 4\nclip = "Walk"\n'))
+        load_spec(self.spec('[animations.walk]\nrig = "walk"\n[animations.attack]\naction = 4\nclip = "Slash"\n'))
 
     def test_a_long_prompt_is_refused(self) -> None:
         spec = load_spec(self.spec('[animations.idle]\nfile = "a.glb"\n'))
@@ -212,6 +269,37 @@ class PropSpecTest(unittest.TestCase):
             with self.subTest(length_m=value):
                 with self.assertRaisesRegex(SpecError, "length_m must be"):
                     load_prop_spec(self.prop(self.GOOD.replace("0.95", value)))
+
+    def test_the_candidate_counts_are_whole_numbers_of_zero_or_more(self) -> None:
+        for key in ("lite", "full"):
+            for value in BAD_COUNTS:
+                with self.subTest(key=key, value=value):
+                    other = "full" if key == "lite" else "lite"
+                    path = self.prop(self.GOOD.split("[candidates]")[0] + f"[candidates]\n{key} = {value}\n{other} = 1\n")
+                    with self.assertRaisesRegex(SpecError, f"candidates.{key} must be a whole number") as caught:
+                        load_prop_spec(path)
+                    self.assertIn(str(path), str(caught.exception))
+
+    def test_a_candidates_table_needs_at_least_one_candidate(self) -> None:
+        head = self.GOOD.split("[candidates]")[0]
+        for table in ("[candidates]\n", "[candidates]\nlite = 0\nfull = 0\n"):
+            with self.subTest(table=table):
+                with self.assertRaisesRegex(SpecError, "at least one candidate"):
+                    load_prop_spec(self.prop(head + table))
+        self.assertEqual(load_prop_spec(self.prop(head + "[candidates]\nfull = 1\n")).full, 1)
+
+    def test_the_polycount_is_a_whole_number_from_100_to_300000(self) -> None:
+        for value in BAD_POLYCOUNTS:
+            with self.subTest(polycount=value):
+                with self.assertRaisesRegex(SpecError, "candidates.polycount must be a whole number"):
+                    load_prop_spec(self.prop(self.GOOD + f"polycount = {value}\n"))
+        for value in (100, 300000):
+            with self.subTest(polycount=value):
+                self.assertEqual(load_prop_spec(self.prop(self.GOOD + f"polycount = {value}\n")).polycount, value)
+
+    def test_candidates_must_be_a_table(self) -> None:
+        with self.assertRaisesRegex(SpecError, "candidates must be a"):
+            load_prop_spec(self.prop('id = "prop_x"\nfaction = "light"\nlength_m = 1\nprompt = "p"\ncandidates = [1]\n'))
 
     def test_the_faction_is_light_or_dark(self) -> None:
         with self.assertRaisesRegex(SpecError, "faction must be light or dark"):

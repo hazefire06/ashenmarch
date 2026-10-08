@@ -59,6 +59,40 @@ class LoadSecretTest(unittest.TestCase):
             load_secret("MESHY_API_KEY", self.path)
         self.assertNotIn("super-secret-value", str(caught.exception))
 
+    def test_a_file_that_cannot_be_read_raises_secrets_error_only(self) -> None:
+        if os.geteuid() == 0:
+            self.skipTest("root reads mode 000 files")
+        self.write("MESHY_API_KEY=super-secret-value\n", mode=0o000)  # mode 000 passes the mode check: nothing extra is open
+        with self.assertRaises(SecretsError) as caught:
+            load_secret("MESHY_API_KEY", self.path)
+        self.assertEqual(str(caught.exception), f"{self.path} can't be read; check its owner and mode (chmod 600 {self.path})")
+        self.assertNotIn("super-secret-value", str(caught.exception))
+        self.assertIsNone(caught.exception.__cause__)
+        self.assertTrue(caught.exception.__suppress_context__)
+
+    def test_a_folder_that_cannot_be_entered_raises_secrets_error_only(self) -> None:
+        if os.geteuid() == 0:
+            self.skipTest("root enters mode 000 folders")
+        self.write("MESHY_API_KEY=not-a-real-key\n")
+        os.chmod(self.folder, 0o000)
+        try:
+            with self.assertRaises(SecretsError) as caught:
+                load_secret("MESHY_API_KEY", self.path)
+        finally:
+            os.chmod(self.folder, 0o700)
+        self.assertNotIn("not-a-real-key", str(caught.exception))
+
+    def test_a_file_that_is_not_utf8_raises_secrets_error_without_its_bytes(self) -> None:
+        self.path.write_bytes(b"MESHY_API_KEY=super-secret-value\xff\xfe\x80\n")
+        os.chmod(self.path, 0o600)
+        with self.assertRaises(SecretsError) as caught:
+            load_secret("MESHY_API_KEY", self.path)
+        self.assertEqual(str(caught.exception), f"{self.path} isn't UTF-8 text; save it again as plain UTF-8")
+        for leaked in ("super-secret-value", "0xff", "codec", "\\xff"):
+            self.assertNotIn(leaked, str(caught.exception))
+        self.assertIsNone(caught.exception.__cause__)
+        self.assertTrue(caught.exception.__suppress_context__)
+
 
 if __name__ == "__main__":
     unittest.main()

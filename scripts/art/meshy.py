@@ -235,6 +235,8 @@ def _fetch(manifest: Manifest, client: Any, api_kind: str, record: dict[str, Any
 def run_candidates(spec: Recipe, style: Style, manifest: Manifest, client: Any, work_dir: Path,
                    max_credits: int, say: Say = print) -> list[Path]:
     _refuse_if_interrupted(manifest)
+    if not candidate_jobs(spec):  # a recipe with no [candidates] table loads for the renderer, but there is nothing to buy
+        raise BuildError(f"{spec.id} lists no candidates; add a [candidates] table with lite or full to its spec.toml")
     cost = candidates_cost(spec, manifest)
     if cost > max_credits:
         raise BudgetError(f"candidates need {cost} credits; --max-credits is {max_credits}")

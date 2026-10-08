@@ -13,6 +13,13 @@ prop to that bone of the unit's rig. Both recipe kinds expose `pose_mode`,
 which is what the Meshy preview is asked for: a unit's A-pose, or nothing for
 a prop (an A-pose is meaningless for a sword). Standard library only, because
 Blender's Python imports this file too.
+
+A recipe is checked as it loads, because its values buy things or name files:
+candidate counts and the polycount are whole numbers in range, animation names
+are plain names, and an animation takes its clip from the rig or a library
+action, never both. A recipe with no [candidates] table loads (the renderer
+needs no candidates) but buys nothing; one that has the table lists at least
+one candidate.
 """
 from __future__ import annotations
 
@@ -25,6 +32,8 @@ from typing import Any
 
 PREVIEW_MODELS: dict[str, str] = {"lite": "meshy-6-lite", "full": "meshy-7.1"}
 MAX_PROMPT = 800
+MAX_CANDIDATES = 9999  # candidates are labelled cand-1 to cand-9999, the widest a model/PICK marker may hold
+POLYCOUNT_RANGE = (100, 300000)  # what Meshy's target_polycount accepts
 LOOPING = frozenset({"idle", "walk"})
 RIG_CLIPS = frozenset({"walk", "run"})
 # Unit and prop names become folder names under art-src, so they must not hold path pieces.
@@ -132,15 +141,15 @@ def load_style(path: Path) -> Style:
 def load_spec(path: Path) -> UnitSpec:
     data = tomllib.loads(path.read_text(encoding="utf-8"))
     try:
-        candidates = data.get("candidates", {})
+        lite, full, polycount = _candidates(path, data, default_polycount=30000)
         spec = UnitSpec(
             id=str(data["id"]),
             faction=str(data["faction"]),
             height_m=_length(path, "height_m", data["height_m"]),
             prompt=str(data["prompt"]),
-            lite=int(candidates.get("lite", 0)),
-            full=int(candidates.get("full", 0)),
-            polycount=int(candidates.get("polycount", 30000)),
+            lite=lite,
+            full=full,
+            polycount=polycount,
             die_falls_forward=bool(data.get("die_falls_forward", False)),
             bursts_on_death=bool(data.get("bursts_on_death", False)),
             animations=tuple(_anim(name, entry) for name, entry in data["animations"].items()),
@@ -158,15 +167,15 @@ def load_spec(path: Path) -> UnitSpec:
 def load_prop_spec(path: Path) -> PropSpec:
     data = tomllib.loads(path.read_text(encoding="utf-8"))
     try:
-        candidates = data.get("candidates", {})
+        lite, full, polycount = _candidates(path, data, default_polycount=6000)
         spec = PropSpec(
             id=str(data["id"]),
             faction=str(data["faction"]),
             length_m=_length(path, "length_m", data["length_m"]),
             prompt=str(data["prompt"]),
-            lite=int(candidates.get("lite", 0)),
-            full=int(candidates.get("full", 0)),
-            polycount=int(candidates.get("polycount", 6000)),
+            lite=lite,
+            full=full,
+            polycount=polycount,
         )
     except KeyError as missing:
         raise SpecError(f"{path}: missing {missing}") from None
@@ -175,6 +184,27 @@ def load_prop_spec(path: Path) -> PropSpec:
     if spec.faction not in FACTIONS:
         raise SpecError(f"{path}: faction must be light or dark")
     return spec
+
+
+def _candidates(path: Path, data: dict[str, Any], default_polycount: int) -> tuple[int, int, int]:
+    """lite, full and polycount from the optional [candidates] table. They decide what is bought and at what size, so they
+    are checked here. No table means nothing to buy, which the renderer's recipes rely on; a table must list a candidate."""
+    table = data.get("candidates", {})
+    if not isinstance(table, dict):
+        raise SpecError(f"{path}: candidates must be a [candidates] table")
+    lite = _whole(path, "candidates.lite", table.get("lite", 0), 0, MAX_CANDIDATES)
+    full = _whole(path, "candidates.full", table.get("full", 0), 0, MAX_CANDIDATES)
+    polycount = _whole(path, "candidates.polycount", table.get("polycount", default_polycount), *POLYCOUNT_RANGE)
+    if "candidates" in data and not 1 <= lite + full <= MAX_CANDIDATES:
+        raise SpecError(f"{path}: [candidates] needs at least one candidate (lite plus full, at most {MAX_CANDIDATES})")
+    return lite, full, polycount
+
+
+def _whole(path: Path, key: str, value: Any, low: int, high: int) -> int:
+    """A whole number from low to high. TOML `true` would pass as 1, and `2.0` or "2" would be quietly truncated or converted."""
+    if isinstance(value, bool) or not isinstance(value, int) or not low <= value <= high:
+        raise SpecError(f"{path}: {key} must be a whole number from {low} to {high}, not {str(value)[:40]!r}")
+    return value
 
 
 def _length(path: Path, key: str, value: Any) -> float:
@@ -229,9 +259,14 @@ def _is_number(value: Any) -> bool:
 
 
 def _anim(name: str, entry: dict[str, Any]) -> AnimEntry:
+    # The name becomes output paths in render_sprites (a sheet, its .import and a review gif), so no path pieces.
+    if NAME.fullmatch(name) is None:
+        raise SpecError(f"animation name {name[:40]!r} must be lowercase letters, digits and _ (it names output files), starting with a letter")
     rig = entry.get("rig")
     action = entry.get("action")
     file = entry.get("file")
+    if rig is not None and action is not None:  # action_id would be bought for a clip no file uses
+        raise SpecError(f"animation {name}: set rig or action, not both")
     if rig is not None:
         if rig not in RIG_CLIPS:
             raise SpecError(f"animation {name}: rig must be walk or run, not {rig!r}")
