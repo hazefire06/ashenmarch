@@ -28,6 +28,8 @@ func _samples() -> Array[SimCommand]:
 		SetVelocityCommand.new(17, 23, -4, 5, -6),
 		DespawnEntityCommand.new(18, 23),
 		GuardCommand.new(19, ids),
+		ScatterCommand.new(20, ids),
+		RetreatCommand.new(21, ids, Formations.Kind.STAGGERED_LINE),
 	]
 
 
@@ -94,6 +96,7 @@ func test_damaged_records_decode_to_null() -> void:
 		"float field": [1, 0, PackedInt32Array(), 1.5, 0, 0],
 		"untyped id list": [1, 0, [1, 2], 0, 0, 0],
 		"bad formation": [1, 0, PackedInt32Array(), 0, 0, 99],
+		"bad retreat formation": [CommandCodec.Kind.RETREAT, 0, PackedInt32Array(), -1],
 		"bad status": [CommandCodec.Kind.APPLY_STATUS, 0, PackedInt32Array(), 99, 10],
 		"bad faction": [CommandCodec.Kind.SPAWN_UNIT, 0, PackedStringArray(["husk"]), 7, 0, 0, 0, 0],
 		"two type names": [CommandCodec.Kind.SPAWN_UNIT, 0, PackedStringArray(["a", "b"]), 0, 0, 0, 0, 0],

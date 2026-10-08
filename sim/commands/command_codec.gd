@@ -42,12 +42,14 @@ enum Kind {
 	SET_VELOCITY = 14,
 	DESPAWN_ENTITY = 15,
 	GUARD = 16,
+	SCATTER = 17,
+	RETREAT = 18,
 }
 
 ## The kinds a player's orders produce: all lockstep may accept from a peer.
 const PLAYER_KINDS: Array[Kind] = [
 	Kind.MOVE, Kind.ATTACK_MOVE, Kind.STOP, Kind.GROUND_ATTACK, Kind.USE_SPECIAL, Kind.HEAL,
-	Kind.INTERACT, Kind.GUARD,
+	Kind.INTERACT, Kind.GUARD, Kind.SCATTER, Kind.RETREAT,
 ]
 
 ## Every number in a record, the tick included, is under this in magnitude:
@@ -80,6 +82,8 @@ const LAYOUTS: Dictionary[int, String] = {
 	Kind.SET_VELOCITY: "IIII",
 	Kind.DESPAWN_ENTITY: "I",
 	Kind.GUARD: "U",
+	Kind.SCATTER: "U",
+	Kind.RETREAT: "UI",
 }
 
 
@@ -146,6 +150,12 @@ static func encode(command: SimCommand) -> Array:
 	if command is GuardCommand:
 		var c: GuardCommand = command
 		return [Kind.GUARD, c.tick, c.unit_ids.duplicate()]
+	if command is ScatterCommand:
+		var c: ScatterCommand = command
+		return [Kind.SCATTER, c.tick, c.unit_ids.duplicate()]
+	if command is RetreatCommand:
+		var c: RetreatCommand = command
+		return [Kind.RETREAT, c.tick, c.unit_ids.duplicate(), c.formation]
 	push_error("CommandCodec.encode: no record kind for %s" % command.get_script().resource_path)
 	return []
 
@@ -217,6 +227,12 @@ static func decode(record: Array) -> SimCommand:
 			return DespawnEntityCommand.new(tick, f[0])
 		Kind.GUARD:
 			return GuardCommand.new(tick, f[0])
+		Kind.SCATTER:
+			return ScatterCommand.new(tick, f[0])
+		Kind.RETREAT:
+			if not _is_formation(f[1]):
+				return null
+			return RetreatCommand.new(tick, f[0], f[1])
 	return null
 
 
