@@ -6,6 +6,7 @@ import io
 import shutil
 import tempfile
 import unittest
+import urllib.error
 from pathlib import Path
 from typing import Any
 from unittest import mock
@@ -312,6 +313,32 @@ class FlowTest(unittest.TestCase):
             meshy.run_build(self.spec, self.manifest, FakeClient(), self.unit_dir, 3, 100, say=self.quiet.append)
         self.assertEqual(target.read_text(), "keep me")
 
+    def test_a_malformed_pick_is_refused_and_never_printed(self) -> None:
+        # Up to 64 bytes of a committed file would otherwise reach the terminal, escape sequences included.
+        self.candidates(FakeClient())
+        (self.unit_dir / "model").mkdir()
+        for text in ("\x1b[31mevil", "", "cand-", "cand-12345", "cand-1\nrm -rf", "CAND-1", "cand-1 extra", "cand-\uff11", "cand-\u0661", "\x00\x01"):
+            with self.subTest(pick=text):
+                (self.unit_dir / "model" / "PICK").write_text(text, encoding="utf-8")
+                client = FakeClient()
+                with self.assertRaises(meshy.BuildError) as caught:
+                    meshy.run_build(self.spec, self.manifest, client, self.unit_dir, 3, 100, say=self.quiet.append)
+                self.assertEqual(str(caught.exception), "model/PICK is malformed; delete it and rerun")
+                self.assertEqual(client.created, [])
+
+    def test_a_pick_that_is_a_clean_label_is_still_read(self) -> None:
+        self.candidates(FakeClient())
+        meshy.run_build(self.spec, self.manifest, FakeClient(), self.unit_dir, 3, 100, say=self.quiet.append)
+        marker = self.unit_dir / "model" / "PICK"
+        for text in ("cand-3", "  cand-3  \r\n"):
+            with self.subTest(pick=text):
+                marker.write_text(text)
+                again = FakeClient()
+                meshy.run_build(self.spec, self.manifest, again, self.unit_dir, 3, 0, say=self.quiet.append)  # the same pick: fine
+                self.assertEqual(again.created, [])
+        with self.assertRaisesRegex(meshy.BuildError, r"model/ holds cand-3's files; building cand-1 would mix two models"):
+            meshy.run_build(self.spec, self.manifest, FakeClient(), self.unit_dir, 1, 0, say=self.quiet.append)
+
     def elsewhere(self) -> Path:
         outside = self.unit_dir.parent / "elsewhere"
         outside.mkdir()
@@ -496,6 +523,16 @@ class PropFlowTest(unittest.TestCase):
         self.build(again, pick=1, max_credits=0)
         self.assertEqual(again.created, [])
         self.assertEqual((self.prop_dir / "model" / "PICK").read_text(), "cand-1\n")
+
+    def test_a_malformed_prop_pick_is_refused_and_never_printed(self) -> None:
+        self.candidates(FakeClient())
+        (self.prop_dir / "model").mkdir()
+        (self.prop_dir / "model" / "PICK").write_text("\x1b]0;owned\x07", encoding="utf-8")
+        client = FakeClient()
+        with self.assertRaises(meshy.BuildError) as caught:
+            self.build(client, pick=1)
+        self.assertEqual(str(caught.exception), "model/PICK is malformed; delete it and rerun")
+        self.assertEqual(client.created, [])
 
     def test_prop_plan_text_lists_what_it_would_buy_in_order(self) -> None:
         lines = meshy.prop_plan_text(self.spec, self.style, self.manifest).splitlines()
@@ -757,24 +794,23 @@ class MainTest(unittest.TestCase):
                 self.assertIsNone(meshy._unsafe_work_dir(work_dir))
 
     def test_a_local_file_error_in_a_paid_command_is_reported_and_returns_1(self) -> None:
-        # A planted manifest.json.part symlink: save() refuses it with an OSError. That is local file trouble, not a traceback.
+        # A folder where manifest.json.part should be: save() can't open it, which is an OSError. That is local file
+        # trouble, not a traceback. (A symlink there is refused before this point; see the symlink tests below.)
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp) / "art-src"
             root.mkdir()
             work_dir = self.stage(root)
-            target = Path(tmp) / "precious.txt"
-            target.write_text("keep me")
-            (work_dir / "manifest.json.part").symlink_to(target)
+            (work_dir / "manifest.json.part").mkdir()
             for argv in (["prop-candidates", "broadsword", "--max-credits", "10"],
                          ["prop-build", "broadsword", "--pick", "1", "--max-credits", "10"]):
                 with self.subTest(argv=argv[0]):
                     fake = FakeClient()
                     if argv[0] == "prop-build":  # needs a finished candidate; put one in a manifest saved the safe way
-                        (work_dir / "manifest.json.part").unlink()
+                        (work_dir / "manifest.json.part").rmdir()
                         manifest = Manifest(work_dir / "manifest.json")
                         manifest.upsert({"kind": "preview", "label": "cand-1", "task_id": "preview-1", "status": "SUCCEEDED", "credits": 5})
                         manifest.save()
-                        (work_dir / "manifest.json.part").symlink_to(target)
+                        (work_dir / "manifest.json.part").mkdir()
                     code, out, err = self.run_paid(root, fake, argv)
                     self.assertEqual(code, 1)
                     self.assertNotIn("credits spent", out)  # the "creating..." line is printed before the record is saved
@@ -784,7 +820,6 @@ class MainTest(unittest.TestCase):
                     self.assertNotIn("://", err)
                     self.assertNotIn("not-a-real-key", err)
                     self.assertEqual(fake.created, [])
-                    self.assertEqual(target.read_text(), "keep me")
 
     def test_a_local_file_error_shows_only_the_oss_words_and_the_path(self) -> None:
         # Whatever else an OSError was built with (say, text from somewhere else) is not printed.
@@ -797,6 +832,132 @@ class MainTest(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertEqual(err, "meshy.py: OSError\n")
 
+    def test_a_local_error_never_prints_a_url(self) -> None:
+        # An HTTPError built with a signed link keeps it in .filename; the link must not reach the terminal.
+        signed = "https://assets.meshy.ai/x?Signature=abc"
+        for error in (urllib.error.HTTPError(signed, 403, "Forbidden", {}, io.BytesIO()), urllib.error.URLError("down", filename=signed)):
+            with self.subTest(error=type(error).__name__):
+                shown = meshy._local_error(error)
+                self.assertEqual(shown, type(error).__name__)
+                self.assertNotIn("https://", shown)
+                self.assertNotIn("Signature", shown)
+        with mock.patch.object(meshy, "load_secret", return_value="not-a-real-key"), mock.patch.object(meshy, "http_transport"), \
+                mock.patch.object(meshy, "MeshyClient"), \
+                mock.patch.object(meshy, "run_candidates", side_effect=urllib.error.HTTPError(signed, 403, "Forbidden", {}, io.BytesIO())):
+            code, _, err = self.run_main(["prop-candidates", "broadsword", "--max-credits", "10"])
+        self.assertEqual((code, err), (1, "meshy.py: HTTPError\n"))
+
+    def plant_symlink(self, work_dir: Path, rel: str, tmp: str) -> Path:
+        """Replace work_dir/rel with a symlink to a file of 'ours' outside art-src, and return that file."""
+        target = Path(tmp) / "precious.txt"
+        target.write_text('MESHY_API_KEY = "kept"\n')  # TOML-looking on purpose: the point is that it is never read
+        link = work_dir / rel
+        link.parent.mkdir(parents=True, exist_ok=True)
+        link.unlink(missing_ok=True)
+        link.symlink_to(target)
+        return target
+
+    SYMLINKED = ("spec.toml", "manifest.json", "manifest.json.part", "model/textured.glb", "model/PICK",
+                 "candidates/cand-1.glb", "candidates/cand-1.glb.part", "review/notes/deep.png", "loose.txt")
+
+    def test_any_symlink_under_the_work_dir_is_refused_before_anything_is_read_or_bought(self) -> None:
+        # The repo is public: a PR could plant a link anywhere under a unit or prop folder, e.g. spec.toml -> secrets.env.
+        commands = (["prop-plan", "broadsword"], ["prop-candidates", "broadsword", "--max-credits", "10"],
+                    ["prop-build", "broadsword", "--pick", "1", "--max-credits", "10"])
+        for rel in self.SYMLINKED:
+            for argv in commands:
+                with self.subTest(link=rel, command=argv[0]), tempfile.TemporaryDirectory() as tmp:
+                    root = Path(tmp) / "art-src"
+                    root.mkdir()
+                    work_dir = self.stage(root)
+                    target = self.plant_symlink(work_dir, rel, tmp)
+                    fake = FakeClient()
+                    with mock.patch.object(meshy, "load_prop_spec", side_effect=AssertionError("read the spec")), \
+                            mock.patch.object(meshy.Manifest, "load", side_effect=AssertionError("read the manifest")), \
+                            mock.patch.object(meshy, "load_secret", side_effect=AssertionError("read the key")), \
+                            mock.patch.object(meshy, "MeshyClient", side_effect=AssertionError("built a client")), \
+                            mock.patch.object(meshy, "ART_SRC", root):
+                        code, out, err = self.run_main(argv)
+                    self.assertEqual((code, out, fake.created), (2, "", []))
+                    self.assertEqual(err, f"meshy.py: {work_dir / rel} is a symlink; replace it with a real file or folder\n")
+                    self.assertEqual(target.read_text(), 'MESHY_API_KEY = "kept"\n')
+
+    def test_a_symlinked_spec_toml_in_a_unit_folder_is_refused_too(self) -> None:
+        for argv in (["plan", "shieldman"], ["candidates", "shieldman", "--max-credits", "100"], ["build", "shieldman", "--pick", "1", "--max-credits", "100"]):
+            with self.subTest(command=argv[0]), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp) / "art-src"
+                root.mkdir()
+                unit_dir = self.stage_unit(root)
+                self.plant_symlink(unit_dir, "spec.toml", tmp)
+                fake = FakeClient()
+                code, out, err = self.run_paid(root, fake, argv)
+                self.assertEqual((code, out, fake.created), (2, "", []))
+                self.assertIn(f"{unit_dir / 'spec.toml'} is a symlink", err)
+
+    def test_a_dangling_symlink_is_refused_too(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "art-src"
+            root.mkdir()
+            work_dir = self.stage(root)
+            (work_dir / "model").mkdir()
+            (work_dir / "model" / "textured.glb").symlink_to(Path(tmp) / "does_not_exist")
+            code, _, err = self.run_paid(root, FakeClient(), ["prop-plan", "broadsword"])
+            self.assertEqual(code, 2)
+            self.assertIn("textured.glb is a symlink", err)
+
+    def test_a_symlinked_folder_deeper_down_is_refused_and_not_entered(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "art-src"
+            root.mkdir()
+            work_dir = self.stage(root)
+            outside = Path(tmp) / "elsewhere"
+            outside.mkdir()
+            (work_dir / "review").mkdir()
+            (work_dir / "review" / "notes").symlink_to(outside, target_is_directory=True)
+            code, _, err = self.run_paid(root, FakeClient(), ["prop-plan", "broadsword"])
+            self.assertEqual((code, err), (2, f"meshy.py: {work_dir / 'review' / 'notes'} is a symlink; replace it with a real file or folder\n"))
+
+    def test_a_symlinked_style_toml_is_refused_too(self) -> None:
+        # It is read from art-src, beside the units and props folders, so the work-dir walk doesn't see it.
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "art-src"
+            root.mkdir()
+            self.stage(root)
+            (root / "style.toml").unlink()
+            (root / "style.toml").symlink_to(ART_SRC / "style.toml")
+            fake = FakeClient()
+            code, out, err = self.run_paid(root, fake, ["prop-candidates", "broadsword", "--max-credits", "10"])
+            self.assertEqual((code, out, fake.created), (2, "", []))
+            self.assertEqual(err, f"meshy.py: {root / 'style.toml'} is a symlink; replace it with a real file\n")
+
+    def test_a_symlinked_name_cannot_put_escape_sequences_or_a_second_line_on_screen(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "art-src"
+            root.mkdir()
+            work_dir = self.stage(root)
+            self.plant_symlink(work_dir, "x\x1b[31m\nevil", tmp)
+            code, _, err = self.run_paid(root, FakeClient(), ["prop-plan", "broadsword"])
+            self.assertEqual(code, 2)
+            self.assertNotIn("\x1b", err)
+            self.assertEqual(err.count("\n"), 1)
+            self.assertIn("is a symlink", err)
+
+    def test_a_tree_of_real_files_and_folders_is_not_refused(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "art-src"
+            root.mkdir()
+            work_dir = self.stage(root)
+            for rel in ("candidates/cand-1.glb", "model/textured.glb", "model/PICK", "review/notes/deep.png", "manifest.json.part"):
+                (work_dir / rel).parent.mkdir(parents=True, exist_ok=True)
+                (work_dir / rel).write_bytes(b"x")
+            with mock.patch.object(meshy, "ART_SRC", root):
+                self.assertIsNone(meshy._unsafe_work_dir(work_dir))
+
+    def test_the_committed_work_dirs_have_no_symlinks(self) -> None:
+        for kind, name in (("units", "shieldman"), ("props", "broadsword"), ("props", "targe")):
+            with self.subTest(recipe=name):
+                self.assertIsNone(meshy._unsafe_work_dir(meshy.ART_SRC / kind / name))
+
     def test_a_work_dir_that_resolves_outside_art_src_is_refused(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp) / "art-src"
@@ -805,14 +966,30 @@ class MainTest(unittest.TestCase):
                 self.assertIn("outside art-src", meshy._unsafe_work_dir(Path(tmp) / "elsewhere" / "broadsword"))
                 self.assertIsNone(meshy._unsafe_work_dir(root / "props" / "broadsword"))  # doesn't exist yet: fine
 
-    def test_an_art_src_that_is_itself_reached_through_a_symlink_still_works(self) -> None:
-        # Only components below art-src are checked; the checkout may live under a symlinked path.
+    def test_an_art_src_that_is_itself_a_symlink_is_refused(self) -> None:
+        # The repo is public: a PR could turn art-src into a symlink, and a spec.toml at its target would then be read as ours.
         with tempfile.TemporaryDirectory() as tmp:
             real_root = Path(tmp) / "real"
             link_root = Path(tmp) / "link"
             self.stage_in(real_root, real_root / "props" / "broadsword")
             link_root.symlink_to(real_root, target_is_directory=True)
-            code, out, _ = self.run_paid(link_root, FakeClient(), ["prop-plan", "broadsword"])
+            for argv in (["prop-plan", "broadsword"], ["prop-candidates", "broadsword", "--max-credits", "10"],
+                         ["prop-build", "broadsword", "--pick", "1", "--max-credits", "10"]):
+                with self.subTest(argv=argv[0]):
+                    fake = FakeClient()
+                    code, out, err = self.run_paid(link_root, fake, argv)
+                    self.assertEqual((code, out, fake.created), (2, "", []))
+                    self.assertEqual(err, f"meshy.py: {link_root} is a symlink; replace it with a real folder\n")
+            self.assertEqual(sorted(p.name for p in (real_root / "props" / "broadsword").iterdir()), ["spec.toml"])
+
+    def test_an_art_src_reached_through_a_symlinked_parent_still_works(self) -> None:
+        # Only art-src itself is checked: the checkout may live under a symlinked path (macOS's /var is one).
+        with tempfile.TemporaryDirectory() as tmp:
+            real_parent = Path(tmp) / "real"
+            link_parent = Path(tmp) / "link"
+            self.stage_in(real_parent / "art-src", real_parent / "art-src" / "props" / "broadsword")
+            link_parent.symlink_to(real_parent, target_is_directory=True)
+            code, out, _ = self.run_paid(link_parent / "art-src", FakeClient(), ["prop-plan", "broadsword"])
             self.assertEqual(code, 0)
             self.assertIn("broadsword: prompt", out)
 

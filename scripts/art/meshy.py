@@ -29,15 +29,19 @@ unresolved, that task may exist and be charged, so the next run refuses to
 continue until you delete the CREATING entry from manifest.json.
 model/ and anims/ hold one candidate's files at fixed paths, so a build writes
 model/PICK naming the candidate and refuses to build a different one over it.
-Nothing is written through a symlink: a unit or prop folder that is one is
-refused, and so are symlinked .part files and symlinked download folders.
+Nothing is read or written through a symlink: art-src, a unit or prop
+folder, style.toml, or anything under the folder (spec.toml, manifest.json,
+.part files, downloads, folders) that is one is refused up front, before the
+recipe or the manifest is read.
 """
 from __future__ import annotations
 
 import argparse
 import os
+import re
 import sys
 import time
+import urllib.error
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -59,6 +63,7 @@ ART_SRC = HERE.parent.parent / "art-src"
 Say = Callable[[str], None]
 OUTPUT_FOLDERS = ("candidates", "model", "anims", "review")  # what builds and renders write under a unit or prop folder
 Recipe = UnitSpec | PropSpec  # both list candidates and are previewed; only a unit is rigged and animated
+PICK_LABEL = re.compile(r"cand-\d{1,4}", re.ASCII)  # all a PICK marker may hold; anything else is never printed
 
 
 class BudgetError(Exception):
@@ -249,6 +254,8 @@ def _check_pick(work_dir: Path, label: str) -> None:
         return  # no marker yet (a build from before markers existed): adopt the files that are there
     except OSError:
         raise BuildError(f"{marker} can't be read (is it a symlink?). Delete it, or move model/ and anims/ aside, and rerun.") from None
+    if PICK_LABEL.fullmatch(old) is None:  # a committed file's bytes must not reach the terminal, escape sequences included
+        raise BuildError("model/PICK is malformed; delete it and rerun")
     if old != label:
         raise BuildError(f"model/ holds {old}'s files; building {label} would mix two models. Move model/ and anims/ aside (or delete them) first.")
 
@@ -310,7 +317,10 @@ def run_build(spec: UnitSpec, manifest: Manifest, client: Any, unit_dir: Path, p
 
 
 def _local_error(error: OSError) -> str:
-    """The OS's own wording and the local path, and nothing else an OSError was built with, so no URL or key can ride along."""
+    """The OS's own wording and the local path, and nothing else an OSError was built with, so no URL or key can ride along.
+    A URLError (HTTPError too) keeps its URL in .filename, which may be signed, so only its type is shown."""
+    if isinstance(error, urllib.error.URLError):
+        return type(error).__name__
     what = error.strerror or type(error).__name__
     return f"{what}: {error.filename}" if error.filename else what
 
@@ -321,17 +331,41 @@ def _unsafe_work_dir(work_dir: Path) -> str | None:
         parts = work_dir.relative_to(ART_SRC).parts
     except ValueError:
         return f"{work_dir} is outside art-src"
+    if ART_SRC.is_symlink():  # a merged PR could turn art-src into a link and plant a spec.toml at its target
+        return f"{ART_SRC} is a symlink; replace it with a real folder"
     here = ART_SRC
-    for part in parts:  # art-src itself may be reached through a symlink (a checkout elsewhere); what is below it may not
+    for part in parts:  # only art-src's own last component is checked: the checkout may live under a symlinked path
         here = here / part
         if here.is_symlink():
             return f"{here} is a symlink; replace it with a real folder"
     for folder in OUTPUT_FOLDERS:  # refused up front, so nothing is bought before a write would be; _fetch re-checks as a second line
         if (work_dir / folder).is_symlink():  # is_symlink() is also true for a dangling one
             return f"{work_dir / folder} is a symlink; replace it with a real folder"
+    link = _first_symlink(work_dir)  # reads go through links as well as writes: spec.toml -> secrets.env would be parsed
+    if link is not None:
+        return f"{_shown(link)} is a symlink; replace it with a real file or folder"
+    style = ART_SRC / "style.toml"
+    if style.is_symlink():
+        return f"{style} is a symlink; replace it with a real file"
     if not work_dir.resolve().is_relative_to(ART_SRC.resolve()):  # belt and braces: nothing above should let this happen
         return f"{work_dir} resolves outside art-src"
     return None
+
+
+def _first_symlink(work_dir: Path) -> Path | None:
+    """The first symlink under work_dir, file or folder, dangling or not. os.walk lists a link to a folder with the
+    folders but, with followlinks=False, never enters it."""
+    for root, folders, files in os.walk(work_dir, followlinks=False):
+        for entry in sorted(folders + files):
+            if os.path.islink(os.path.join(root, entry)):
+                return Path(root) / entry
+    return None
+
+
+def _shown(path: Path) -> str:
+    """A path for the terminal. The repo is public, so a file name may hold escape sequences or a newline: show it escaped."""
+    text = str(path)
+    return text if text.isprintable() else ascii(text)
 
 
 def main(argv: list[str] | None = None) -> int:
