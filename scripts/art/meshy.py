@@ -23,7 +23,12 @@ days. The key is read from ~/.config/ashenmarch/secrets.env and nothing
 else. An interrupted or timed-out wait leaves the task PENDING, and the
 next run waits for the same task. A task Meshy cancels or expires stays
 PENDING too, and is never bought again until you have checked it on
-meshy.ai and deleted its entry from manifest.json. A record is written as
+meshy.ai and deleted its entry from manifest.json. The same goes for a
+task that can never be reached again (Meshy has dropped it, or its id no
+longer resolves): every run would wait on it for ever, so check it on
+meshy.ai, then delete its entry from manifest.json. plan and prop-plan
+print a `pending:` line for each PENDING record, with its kind, label and
+task id, so you can see which entry that is. A record is written as
 CREATING before each create call. If the run stops with the create
 unresolved, that task may exist and be charged, so the next run refuses to
 continue until you delete the CREATING entry from manifest.json.
@@ -51,7 +56,7 @@ sys.path.insert(0, str(HERE))
 
 from manifest import Manifest  # noqa: E402
 from meshy_client import (  # noqa: E402
-    CREDITS_PER_ACTION, PREVIEW_CREDITS, REFINE_CREDITS, RIG_CREDITS,
+    CREDITS_PER_ACTION, MAX_ACTIONS_PER_REQUEST, PREVIEW_CREDITS, REFINE_CREDITS, RIG_CREDITS,
     MeshyClient, MeshyError, TaskFailed, http_downloader, http_transport,
 )
 from secrets_file import SecretsError, load_secret  # noqa: E402
@@ -91,10 +96,20 @@ def _bought(record: dict[str, Any] | None) -> bool:
 
 def _interrupted(manifest: Manifest) -> list[str]:
     """One message per task whose create was interrupted (status CREATING)."""
+    # !r: the manifest is committed, so a kind or label could hold terminal escapes or a newline.
     return [
-        f"a previous run stopped while creating {t.get('kind')} {t.get('label')}; it may have been created and charged. "
+        f"a previous run stopped while creating {t.get('kind')!r} {t.get('label')!r}; it may have been created and charged. "
         "Check your API tasks on meshy.ai. If it exists, note its id; either way, delete that entry from manifest.json before rerunning."
         for t in manifest.tasks if t.get("status") == "CREATING"
+    ]
+
+
+def _pending(manifest: Manifest) -> list[str]:
+    """One line per task that was created but never finished. A rerun waits for each; one that can never finish needs a human."""
+    return [
+        f"pending: {t.get('kind')!r} {t.get('label')!r} task {t.get('task_id')!r}; a rerun waits for it. "
+        "If it can never finish, check it on meshy.ai, then delete this entry from manifest.json."
+        for t in manifest.tasks if t.get("status") == "PENDING"
     ]
 
 
@@ -135,6 +150,7 @@ def plan_text(spec: UnitSpec, style: Style, manifest: Manifest) -> str:
         _candidates_line(spec, manifest),
         f"build (after you pick): refine {REFINE_CREDITS} + rig {RIG_CREDITS} + {actions} actions x {CREDITS_PER_ACTION} = {build} credits",
         f"spent on {spec.id} so far: {manifest.credits_spent()} credits",
+        *_pending(manifest),
         *(f"blocked: {message}" for message in _interrupted(manifest)),
     ])
 
@@ -151,6 +167,7 @@ def prop_plan_text(spec: PropSpec, style: Style, manifest: Manifest) -> str:
         _candidates_line(spec, manifest),
         f"build (after you pick): refine {REFINE_CREDITS} credits",
         f"spent on {spec.id} so far: {manifest.credits_spent()} credits",
+        *_pending(manifest),
         *(f"blocked: {message}" for message in _interrupted(manifest)),
     ])
 
@@ -193,6 +210,7 @@ def _start(manifest: Manifest, kind: str, label: str, create: Callable[[], str],
         if not error.may_have_created:  # a definite rejection (400, 401, 402...): nothing was bought
             _store(manifest, {**creating, "status": "FAILED", "credits": 0})
         raise
+    say(f"{label}: {kind} task {task_id} created")  # before the store: if that fails, the paid id is still on screen
     return _store(manifest, {**creating, "task_id": task_id, "status": "PENDING"})
 
 
@@ -293,6 +311,10 @@ def run_prop_build(spec: PropSpec, manifest: Manifest, client: Any, prop_dir: Pa
 def run_build(spec: UnitSpec, manifest: Manifest, client: Any, unit_dir: Path, pick: int,
               max_credits: int, say: Say = print) -> None:
     _refuse_if_interrupted(manifest)
+    actions = len(spec.action_ids())
+    if actions > MAX_ACTIONS_PER_REQUEST:  # before any purchase: refine and rig would be paid for, then the animation request refused
+        raise BuildError(f"{spec.id} lists {actions} animation actions; Meshy takes at most {MAX_ACTIONS_PER_REQUEST} per request. "
+                         "Remove some from spec.toml first.")
     label = f"cand-{pick}"
     _check_pick(unit_dir, label)
     candidate = _finished_preview(manifest, label, "candidates")

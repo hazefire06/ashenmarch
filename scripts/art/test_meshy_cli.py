@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import contextlib
+import dataclasses
 import io
 import shutil
 import tempfile
@@ -15,7 +16,7 @@ import meshy
 import meshy_client
 from manifest import Manifest
 from meshy_client import MeshyError, TaskFailed
-from unit_spec import load_prop_spec, load_spec, load_style
+from unit_spec import AnimEntry, load_prop_spec, load_spec, load_style
 
 ART_SRC = Path(__file__).resolve().parent.parent.parent / "art-src"
 
@@ -210,7 +211,7 @@ class FlowTest(unittest.TestCase):
             self.candidates(again, max_credits=0)  # the guard comes before the budget check
         self.assertEqual(
             str(caught.exception),
-            "a previous run stopped while creating preview cand-1; it may have been created and charged. "
+            "a previous run stopped while creating 'preview' 'cand-1'; it may have been created and charged. "
             "Check your API tasks on meshy.ai. If it exists, note its id; either way, delete that entry "
             "from manifest.json before rerunning.")
         self.assertEqual(again.created, [])
@@ -391,7 +392,7 @@ class FlowTest(unittest.TestCase):
         self.manifest = Manifest.load(self.manifest.path)
         self.assertEqual(self.manifest.find("refine", "cand-3")["status"], "CREATING")
         again = FakeClient()
-        with self.assertRaisesRegex(meshy.InterruptedCreate, "creating refine cand-3"):
+        with self.assertRaisesRegex(meshy.InterruptedCreate, "creating 'refine' 'cand-3'"):
             meshy.run_build(self.spec, self.manifest, again, self.unit_dir, 3, 0, say=self.quiet.append)
         self.assertEqual(again.created, [])
 
@@ -402,7 +403,88 @@ class FlowTest(unittest.TestCase):
     def test_plan_text_shows_a_creating_record(self) -> None:
         self.assertNotIn("stopped while creating", meshy.plan_text(self.spec, self.style, self.manifest))
         self.manifest.upsert({"kind": "preview", "label": "cand-1", "status": "CREATING", "created_at": 1})
-        self.assertIn("a previous run stopped while creating preview cand-1", meshy.plan_text(self.spec, self.style, self.manifest))
+        self.assertIn("a previous run stopped while creating 'preview' 'cand-1'", meshy.plan_text(self.spec, self.style, self.manifest))
+
+    def test_a_spec_with_more_than_ten_actions_buys_nothing(self) -> None:
+        # Meshy takes 10 per animation request; without the check the build paid for refine and rig, then failed at the animation.
+        self.candidates(FakeClient())
+        actions = tuple(AnimEntry(f"a{i}", "anims/actions.glb", f"Clip_{i}", i, None, False) for i in range(1, 12))
+        client = FakeClient()
+        with self.assertRaisesRegex(meshy.BuildError, r"11 animation actions; Meshy takes at most 10 per request"):
+            meshy.run_build(dataclasses.replace(self.spec, animations=actions), self.manifest, client, self.unit_dir, 3, 1000, say=self.quiet.append)
+        self.assertEqual(client.created, [])
+        self.assertIsNone(self.manifest.find("refine", "cand-3"))
+        self.assertFalse((self.unit_dir / "model").exists())
+
+    def test_exactly_ten_actions_is_fine(self) -> None:
+        self.candidates(FakeClient())
+        actions = tuple(AnimEntry(f"a{i}", "anims/actions.glb", f"Clip_{i}", i, None, False) for i in range(1, 11))
+        client = FakeClient()
+        meshy.run_build(dataclasses.replace(self.spec, animations=actions), self.manifest, client, self.unit_dir, 3, 1000, say=self.quiet.append)
+        self.assertEqual([what for what, _ in client.created], ["refine", "rig", "animate"])
+        self.assertEqual(client.created[2][1][1], tuple(range(1, 11)))
+
+    def test_the_task_id_is_on_screen_before_it_is_stored(self) -> None:
+        # If the store then fails, the paid id is still on screen to be noted down.
+        real_store = meshy._store
+
+        def failing_store(manifest: Manifest, record: dict[str, Any]) -> dict[str, Any]:
+            if record.get("status") == "PENDING":
+                raise OSError("disk full")
+            return real_store(manifest, record)
+
+        with mock.patch.object(meshy, "_store", failing_store), self.assertRaises(OSError):
+            self.candidates(FakeClient())
+        self.assertIn("cand-1: preview task preview-1 created", self.quiet)
+        self.assertEqual(self.quiet.index("cand-1: preview task preview-1 created"), len(self.quiet) - 1)  # said once, right after the create
+        self.assertEqual(Manifest.load(self.manifest.path).find("preview", "cand-1")["status"], "CREATING")  # and the rerun still refuses
+
+    def test_every_created_task_says_so(self) -> None:
+        self.candidates(FakeClient())
+        meshy.run_build(self.spec, self.manifest, FakeClient(), self.unit_dir, 3, 100, say=self.quiet.append)
+        for line in ("cand-1: preview task preview-1 created", "cand-4: preview task preview-4 created",
+                     "cand-3: refine task refine-1 created", "cand-3: rig task rig-2 created", "cand-3:89,97,189,219: animate task animate-3 created"):
+            self.assertIn(line, self.quiet)
+
+    def test_a_create_whose_reply_is_not_an_object_stays_creating(self) -> None:
+        # The real client over a transport that answers with a list: this used to be an AttributeError.
+        client = meshy_client.MeshyClient(lambda method, path, body: [], lambda url, dest: None)
+        with self.assertRaises(MeshyError) as caught:
+            meshy.run_candidates(self.spec, self.style, self.manifest, client, self.unit_dir, 100, say=self.quiet.append)
+        self.assertTrue(caught.exception.may_have_created)
+        self.assertEqual(Manifest.load(self.manifest.path).find("preview", "cand-1")["status"], "CREATING")
+        with self.assertRaises(meshy.InterruptedCreate):
+            self.candidates(FakeClient())
+
+    def test_the_creating_message_shows_a_hostile_kind_and_label_escaped(self) -> None:
+        # The manifest is committed, so a public PR can put anything in a label.
+        self.manifest.upsert({"kind": "\x1b[31mred", "label": "evil\nsecond line", "status": "CREATING", "created_at": 1})
+        for text in (meshy._interrupted(self.manifest)[0], meshy.plan_text(self.spec, self.style, self.manifest)):
+            self.assertNotIn("\x1b", text)
+            self.assertIn(repr("\x1b[31mred"), text)
+            self.assertIn(repr("evil\nsecond line"), text)
+        self.assertEqual(meshy.plan_text(self.spec, self.style, self.manifest).count("\n"), 4)  # five lines in all: the label added none
+
+    def test_plan_text_lists_a_pending_task_with_its_id(self) -> None:
+        self.assertNotIn("pending:", meshy.plan_text(self.spec, self.style, self.manifest))
+        with self.assertRaises(MeshyError):
+            self.candidates(FakeClient(lost_waits={"preview-1": "text-to-3d task preview-1 CANCELED: gone; check this task on meshy.ai before deciding whether to rebuy"}))
+        lines = meshy.plan_text(self.spec, self.style, Manifest.load(self.manifest.path)).splitlines()
+        pending = [line for line in lines if line.startswith("pending:")]
+        self.assertEqual(len(pending), 1)
+        self.assertTrue(pending[0].startswith("pending: 'preview' 'cand-1' task 'preview-1'"), pending[0])
+        self.assertIn("meshy.ai", pending[0])
+        self.assertIn("delete this entry from manifest.json", pending[0])
+
+    def test_pending_lines_come_before_blocked_ones_and_escape_what_a_manifest_holds(self) -> None:
+        self.manifest.upsert({"kind": "refine", "label": "cand-3", "task_id": "t-1\x1b[2J", "status": "PENDING", "created_at": 1})
+        self.manifest.upsert({"kind": "rig", "label": "cand-3", "status": "PENDING", "created_at": 1})  # a hand-edited record with no id
+        self.manifest.upsert({"kind": "preview", "label": "cand-1", "status": "CREATING", "created_at": 1})
+        text = meshy.plan_text(self.spec, self.style, self.manifest)
+        self.assertNotIn("\x1b", text)
+        kinds = [line.split(":")[0] for line in text.splitlines()]
+        self.assertEqual(kinds[-3:], ["pending", "pending", "blocked"])
+        self.assertIn("task None", text)
 
 
 class PropFlowTest(unittest.TestCase):
@@ -491,7 +573,7 @@ class PropFlowTest(unittest.TestCase):
         self.manifest.upsert({"kind": "preview", "label": "cand-1", "status": "CREATING", "created_at": 1})
         for run in (lambda c: self.candidates(c, max_credits=0), lambda c: self.build(c, max_credits=0)):
             client = FakeClient()
-            with self.assertRaisesRegex(meshy.InterruptedCreate, "creating preview cand-1"):
+            with self.assertRaisesRegex(meshy.InterruptedCreate, "creating 'preview' 'cand-1'"):
                 run(client)
             self.assertEqual(client.created, [])
 
@@ -501,7 +583,7 @@ class PropFlowTest(unittest.TestCase):
             self.build(FakeClient(create_error=KeyboardInterrupt()))
         self.manifest = Manifest.load(self.manifest.path)
         self.assertEqual(self.manifest.find("refine", "cand-1")["status"], "CREATING")
-        with self.assertRaisesRegex(meshy.InterruptedCreate, "creating refine cand-1"):
+        with self.assertRaisesRegex(meshy.InterruptedCreate, "creating 'refine' 'cand-1'"):
             self.build(FakeClient(), max_credits=0)
 
     def test_a_prop_build_writes_the_marker_and_refuses_another_pick(self) -> None:
@@ -552,7 +634,15 @@ class PropFlowTest(unittest.TestCase):
         self.assertNotIn("blocked:", text)
         self.manifest.upsert({"kind": "refine", "label": "cand-1", "status": "CREATING", "created_at": 1})
         lines = meshy.prop_plan_text(self.spec, self.style, self.manifest).splitlines()
-        self.assertTrue(lines[-1].startswith("blocked: a previous run stopped while creating refine cand-1"))
+        self.assertTrue(lines[-1].startswith("blocked: a previous run stopped while creating 'refine' 'cand-1'"))
+
+    def test_prop_plan_text_lists_a_pending_task_with_its_id(self) -> None:
+        self.assertNotIn("pending:", meshy.prop_plan_text(self.spec, self.style, self.manifest))
+        with self.assertRaises(MeshyError):
+            self.candidates(FakeClient(lost_waits={"preview-2": "text-to-3d task preview-2 still IN_PROGRESS after 1800 s; rerun to keep waiting"}))
+        lines = meshy.prop_plan_text(self.spec, self.style, Manifest.load(self.manifest.path)).splitlines()
+        self.assertEqual([line.split(";")[0] for line in lines if line.startswith("pending:")], ["pending: 'preview' 'cand-2' task 'preview-2'"])
+        self.assertEqual(lines[-1].split(":")[0], "pending")
 
     def test_the_manifest_never_holds_a_url(self) -> None:
         self.candidates(FakeClient())
@@ -664,7 +754,7 @@ class MainTest(unittest.TestCase):
                 with self.subTest(argv=argv[0]):
                     code, out, err = self.run_paid(root, fake, argv)
                     self.assertEqual(code, 1)
-                    self.assertIn("a previous run stopped while creating preview cand-1", err)
+                    self.assertIn("a previous run stopped while creating 'preview' 'cand-1'", err)
                     self.assertNotIn("credits spent", out)
                     self.assertEqual(fake.created, [])
 
