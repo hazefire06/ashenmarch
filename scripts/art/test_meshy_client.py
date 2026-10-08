@@ -1,6 +1,7 @@
 """Tests for meshy_client with fake transports; nothing touches the network."""
 from __future__ import annotations
 
+import http.client
 import io
 import ssl
 import tempfile
@@ -41,6 +42,59 @@ def client(transport: FakeTransport, sleeps: list[float] | None = None, now: lis
 
 def http_error(code: int, body: bytes = b"") -> urllib.error.HTTPError:
     return urllib.error.HTTPError("https://api.meshy.ai/x", code, "Error", {}, io.BytesIO(body))
+
+
+class FakeResponse(io.BytesIO):
+    """What opener.open returns for a download: a readable body, with a Content-Length header when one is given."""
+
+    def __init__(self, data: bytes, content_length: int | str | None = None) -> None:
+        super().__init__(data)
+        self.headers: dict[str, str] = {} if content_length is None else {"Content-Length": str(content_length)}
+
+
+class DroppedResponse(io.BytesIO):
+    """A body that yields its bytes and then fails the way http.client does when the server drops the connection."""
+
+    def __init__(self, data: bytes, error: BaseException) -> None:
+        super().__init__(data)
+        self.error = error
+
+    def read(self, size: int | None = -1) -> bytes:
+        chunk = super().read(size)
+        if chunk:
+            return chunk
+        raise self.error
+
+
+def opener_that(*, returns: Any = None, raises: BaseException | None = None) -> mock.MagicMock:
+    """A stand-in for the OpenerDirector that build_opener returns."""
+    opener = mock.MagicMock()
+    if raises is not None:
+        opener.open.side_effect = raises
+    else:
+        opener.open.return_value = returns
+    return opener
+
+
+def reply_with_body(body: bytes) -> mock.MagicMock:
+    response = mock.MagicMock()
+    response.read.return_value = body
+    response.__enter__ = mock.MagicMock(return_value=response)
+    response.__exit__ = mock.MagicMock(return_value=None)
+    return response
+
+
+def reply_that_drops(error: BaseException) -> mock.MagicMock:
+    response = reply_with_body(b"")
+    response.read.side_effect = error
+    return response
+
+
+HTTP_EXCEPTIONS = (
+    http.client.IncompleteRead(b"partial", 100),
+    http.client.BadStatusLine("garbage"),
+    http.client.LineTooLong("status line"),
+)
 
 
 class CreateTest(unittest.TestCase):
@@ -236,7 +290,8 @@ class HttpTest(unittest.TestCase):
             self.assertNotIn("pay twice", str(caught.exception))
 
     def test_a_rejected_post_did_not_create_a_task(self) -> None:
-        for code in (400, 401, 402, 429):
+        # Only a true 4xx other than 408 and 429 says Meshy refused the request outright (see StatusTest).
+        for code in (400, 401, 402, 403, 404, 422):
             with self.subTest(code=code):
                 with mock.patch.object(meshy_client.urllib.request.OpenerDirector, "open", side_effect=http_error(code)):
                     with self.assertRaises(MeshyError) as caught:
@@ -473,6 +528,177 @@ class WaitRetryTest(unittest.TestCase):
             client(t, sleeps).wait("text-to-3d", "task-1")
         self.assertEqual(sleeps, [])
         self.assertIn("HTTP 401", str(caught.exception))
+
+
+class DroppedReplyTest(unittest.TestCase):
+    """http.client's own exceptions (IncompleteRead, BadStatusLine, LineTooLong) are a lost reply like any other."""
+
+    def call(self, opener: mock.MagicMock, method: str) -> MeshyError:
+        with mock.patch.object(meshy_client.urllib.request, "build_opener", return_value=opener):
+            path = "/openapi/v2/text-to-3d" + ("" if method == "POST" else "/t1")
+            with self.assertRaises(MeshyError) as caught:
+                http_transport("not-a-real-key")(method, path, {} if method == "POST" else None)
+        return caught.exception
+
+    def test_a_post_whose_reply_dropped_may_have_created_a_task(self) -> None:
+        for error in HTTP_EXCEPTIONS:
+            for stage, opener in (("opening", opener_that(raises=error)), ("reading", opener_that(returns=reply_that_drops(error)))):
+                with self.subTest(error=type(error).__name__, stage=stage):
+                    caught = self.call(opener, "POST")
+                    self.assertTrue(caught.may_have_created)
+                    self.assertFalse(caught.retryable)
+                    self.assertIn("pay twice", str(caught))
+                    self.assertIsNone(caught.__cause__)
+                    self.assertTrue(caught.__suppress_context__)
+
+    def test_a_get_whose_reply_dropped_is_retryable(self) -> None:
+        for error in HTTP_EXCEPTIONS:
+            for stage, opener in (("opening", opener_that(raises=error)), ("reading", opener_that(returns=reply_that_drops(error)))):
+                with self.subTest(error=type(error).__name__, stage=stage):
+                    caught = self.call(opener, "GET")
+                    self.assertTrue(caught.retryable)
+                    self.assertFalse(caught.may_have_created)
+                    self.assertNotIn("pay twice", str(caught))
+
+    def test_the_error_text_never_carries_what_the_exception_held(self) -> None:
+        caught = self.call(opener_that(raises=http.client.BadStatusLine("Bearer not-a-real-key")), "GET")
+        self.assertNotIn("not-a-real-key", str(caught))
+
+    def test_wait_carries_on_past_one_dropped_reply(self) -> None:
+        # A single IncompleteRead used to end a long wait with a traceback.
+        opener = mock.MagicMock()
+        opener.open.side_effect = [
+            reply_that_drops(http.client.IncompleteRead(b"{", 50)),
+            reply_with_body(b'{"status": "SUCCEEDED", "consumed_credits": 5}'),
+        ]
+        slept: list[float] = []
+        with mock.patch.object(meshy_client.urllib.request, "build_opener", return_value=opener):
+            waiting = MeshyClient(http_transport("k"), lambda url, dest: None, sleep=slept.append, clock=lambda: 0.0, poll_seconds=5.0)
+            task = waiting.wait("text-to-3d", "task-1")
+        self.assertEqual(task["consumed_credits"], 5)
+        self.assertEqual(slept, [5.0])
+
+
+class DownloadDropTest(unittest.TestCase):
+    URL = "https://assets.meshy.ai/t/model.glb?Expires=1&Signature=SECRETSIG"
+
+    def download(self, tmp: str, opener: mock.MagicMock) -> MeshyError:
+        with mock.patch.object(meshy_client.urllib.request, "build_opener", return_value=opener):
+            with self.assertRaises(MeshyError) as caught:
+                http_downloader(self.URL, Path(tmp) / "m.glb")
+        return caught.exception
+
+    def assert_nothing_left(self, tmp: str, caught: MeshyError) -> None:
+        self.assertFalse((Path(tmp) / "m.glb").exists())
+        self.assertFalse((Path(tmp) / "m.glb.part").exists())
+        self.assertIn("m.glb", str(caught))
+        for leaked in ("SECRETSIG", "assets.meshy.ai", "https://"):
+            self.assertNotIn(leaked, str(caught))
+
+    def test_a_connection_dropped_before_the_body_names_the_file_only(self) -> None:
+        for error in HTTP_EXCEPTIONS:
+            with self.subTest(error=type(error).__name__), tempfile.TemporaryDirectory() as tmp:
+                (Path(tmp) / "m.glb.part").write_bytes(b"half")  # a stale part from an earlier try
+                caught = self.download(tmp, opener_that(raises=error))
+                self.assert_nothing_left(tmp, caught)
+
+    def test_a_connection_dropped_mid_body_deletes_the_part(self) -> None:
+        for error in HTTP_EXCEPTIONS:
+            with self.subTest(error=type(error).__name__), tempfile.TemporaryDirectory() as tmp:
+                caught = self.download(tmp, opener_that(returns=DroppedResponse(b"some of the model", error)))
+                self.assert_nothing_left(tmp, caught)
+                self.assertIn("rerun", str(caught))
+
+    def test_a_body_shorter_than_its_content_length_is_cut_short(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            caught = self.download(tmp, opener_that(returns=FakeResponse(b"x" * 10, content_length=25)))
+            self.assert_nothing_left(tmp, caught)
+            self.assertIn("download of m.glb was cut short", str(caught))
+
+    def test_a_body_that_matches_its_content_length_is_kept(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp, \
+                mock.patch.object(meshy_client.urllib.request, "build_opener", return_value=opener_that(returns=FakeResponse(b"x" * 10, content_length=10))):
+            http_downloader(self.URL, Path(tmp) / "m.glb")
+            self.assertEqual((Path(tmp) / "m.glb").read_bytes(), b"x" * 10)
+            self.assertFalse((Path(tmp) / "m.glb.part").exists())
+
+    def test_a_missing_or_unreadable_content_length_is_not_a_reason_to_refuse(self) -> None:
+        for header in (None, "", "abc", "-5", "1e3"):
+            with self.subTest(content_length=header), tempfile.TemporaryDirectory() as tmp, \
+                    mock.patch.object(meshy_client.urllib.request, "build_opener", return_value=opener_that(returns=FakeResponse(b"x" * 10, header))):
+                http_downloader(self.URL, Path(tmp) / "m.glb")
+                self.assertEqual((Path(tmp) / "m.glb").read_bytes(), b"x" * 10)
+
+
+class StatusAndShapeTest(unittest.TestCase):
+    """Task 9's deferred items: which HTTP statuses prove a POST created nothing, and replies that aren't JSON objects."""
+
+    def post(self, code: int) -> MeshyError:
+        with mock.patch.object(meshy_client.urllib.request.OpenerDirector, "open", side_effect=http_error(code)):
+            with self.assertRaises(MeshyError) as caught:
+                http_transport("not-a-real-key")("POST", "/openapi/v2/text-to-3d", {})
+        return caught.exception
+
+    def test_a_3xx_408_or_429_reply_to_a_post_may_have_created_a_task(self) -> None:
+        # No redirect is followed and 408 and 429 come from in front of the app, so none of them proves the task wasn't made.
+        for code in (301, 302, 303, 307, 308, 408, 429, 500, 502, 503, 504):
+            with self.subTest(code=code):
+                caught = self.post(code)
+                self.assertTrue(caught.may_have_created)
+                self.assertIn("pay twice", str(caught))
+                self.assertFalse(caught.retryable)
+
+    def test_only_a_true_4xx_other_than_408_and_429_is_a_definite_rejection(self) -> None:
+        for code in (400, 401, 402, 403, 404, 405, 409, 413, 422, 451, 499):
+            with self.subTest(code=code):
+                caught = self.post(code)
+                self.assertFalse(caught.may_have_created)
+                self.assertNotIn("pay twice", str(caught))
+
+    def test_a_get_with_those_statuses_never_claims_a_task_was_created(self) -> None:
+        for code in (302, 408, 429, 503):
+            with self.subTest(code=code), mock.patch.object(meshy_client.urllib.request.OpenerDirector, "open", side_effect=http_error(code)):
+                with self.assertRaises(MeshyError) as caught:
+                    http_transport("k")("GET", "/openapi/v2/text-to-3d/t1", None)
+                self.assertFalse(caught.exception.may_have_created)
+                self.assertNotIn("pay twice", str(caught.exception))
+                self.assertEqual(caught.exception.retryable, code in (429, 503))
+
+    NOT_OBJECTS = (b"[]", b'"x"', b"3", b"null", b"true", b'[{"result": "task-1"}]')
+
+    def test_the_transport_refuses_a_reply_that_is_not_a_json_object(self) -> None:
+        for body in self.NOT_OBJECTS:
+            opener = opener_that(returns=reply_with_body(body))
+            with self.subTest(body=body), mock.patch.object(meshy_client.urllib.request, "build_opener", return_value=opener):
+                call = http_transport("k")
+                with self.assertRaises(MeshyError) as caught:
+                    call("POST", "/openapi/v2/text-to-3d", {})
+                self.assertTrue(caught.exception.may_have_created)
+                self.assertIn("pay twice", str(caught.exception))
+                with self.assertRaises(MeshyError) as caught:
+                    call("GET", "/openapi/v2/text-to-3d/t1", None)
+                self.assertTrue(caught.exception.retryable)
+                self.assertFalse(caught.exception.may_have_created)
+
+    def test_a_create_whose_reply_is_not_an_object_may_have_made_a_task(self) -> None:
+        # Whatever the transport is, the client doesn't trust its reply's shape: this raised AttributeError.
+        for reply in ([], "x", 3, None, ["result"]):
+            with self.subTest(reply=reply):
+                with self.assertRaises(MeshyError) as caught:
+                    client(FakeTransport([reply])).create_refine("p")
+                self.assertTrue(caught.exception.may_have_created)
+                self.assertIn("pay twice", str(caught.exception))
+
+    def test_a_wait_whose_reply_is_not_an_object_is_a_meshy_error(self) -> None:
+        for reply in ([], "x", 3, None):
+            with self.subTest(reply=reply):
+                with self.assertRaises(MeshyError) as caught:
+                    client(FakeTransport([reply] * 5)).wait("text-to-3d", "task-1")
+                self.assertFalse(caught.exception.may_have_created)
+
+    def test_a_wait_carries_on_past_one_reply_that_is_not_an_object(self) -> None:
+        task = client(FakeTransport([[], {"status": "SUCCEEDED"}])).wait("text-to-3d", "task-1")
+        self.assertEqual(task["status"], "SUCCEEDED")
 
 
 if __name__ == "__main__":

@@ -6,14 +6,17 @@ ones. Nothing here prints or stores the API key. Errors carry the HTTP
 status and Meshy's message, never the key or a signed URL. Only a GET that
 failed in passing is retried, and redirects can't carry the key. A POST with
 no usable reply may have created a charged task, so its error says so
-(may_have_created) and is never retried. The one exception is a failed
-certificate check: that is the TLS handshake, before any request goes out, so
-nothing was sent and the error says so.
+(may_have_created) and is never retried. That covers a dropped or garbled
+reply (http.client's own exceptions included) and every status except a true
+4xx other than 408 and 429. The one exception is a failed certificate check:
+that is the TLS handshake, before any request goes out, so nothing was sent
+and the error says so.
 
 Endpoints and credit costs: https://docs.meshy.ai/en/api (checked 2026-10-01).
 """
 from __future__ import annotations
 
+import http.client
 import json
 import os
 import re
@@ -129,7 +132,10 @@ class MeshyClient:
     def get(self, kind: str, task_id: str) -> dict[str, Any]:
         if not _valid_task_id(task_id):
             raise MeshyError(f"refusing malformed task id for {kind}")
-        return self._transport("GET", f"{TASK_PATHS[kind]}/{task_id}", None)
+        task = self._transport("GET", f"{TASK_PATHS[kind]}/{task_id}", None)
+        if not isinstance(task, dict):  # a garbled reply: retryable, like one that isn't JSON
+            raise MeshyError(f"{kind} task reply isn't a JSON object", retryable=True)
+        return task
 
     def wait(self, kind: str, task_id: str) -> dict[str, Any]:
         deadline = self._clock() + self._timeout
@@ -160,7 +166,10 @@ class MeshyClient:
         self._downloader(url, dest)
 
     def _create(self, kind: str, body: dict[str, Any]) -> str:
-        task_id = self._transport("POST", TASK_PATHS[kind], body).get("result")
+        reply = self._transport("POST", TASK_PATHS[kind], body)
+        if not isinstance(reply, dict):
+            raise MeshyError(f"{kind}: Meshy's reply isn't a JSON object" + POST_WARNING, may_have_created=True)
+        task_id = reply.get("result")
         if not _valid_task_id(task_id):
             raise MeshyError(f"{kind}: Meshy returned no task id" + POST_WARNING, may_have_created=True)
         return task_id
@@ -201,13 +210,15 @@ def http_transport(api_key: str, base_url: str = BASE_URL, timeout: float = 60.0
         try:
             response = opener.open(request, timeout=timeout)
         except urllib.error.HTTPError as error:
-            unsure = posting and error.code >= 500
+            # Only a true 4xx other than 408 and 429 says Meshy refused the request. A 3xx is never followed here, and
+            # 408 and 429 can come from in front of the app, so none of those proves nothing was created.
+            unsure = posting and not _definite_rejection(error.code)
             raise MeshyError(
                 f"Meshy {method} {path} failed: HTTP {error.code} {_server_message(error, api_key)}".rstrip() + (POST_WARNING if unsure else ""),
                 retryable=(method == "GET" and (error.code == 429 or error.code >= 500)),
                 may_have_created=unsure,
             ) from None
-        except (urllib.error.URLError, OSError, ValueError) as error:
+        except (urllib.error.URLError, OSError, ValueError, http.client.HTTPException) as error:
             # Only a failed certificate check is known to precede the request; any other SSL error may come after it.
             # This leans on urllib's do_open: it wraps only h.request() (connect, handshake, send) in URLError, so a
             # handshake failure is always pre-send. Errors from getresponse() arrive unwrapped, so they never match
@@ -219,16 +230,22 @@ def http_transport(api_key: str, base_url: str = BASE_URL, timeout: float = 60.0
         try:
             with response:
                 body_bytes = response.read()
-        except (OSError, ValueError):
+        except (OSError, ValueError, http.client.HTTPException):  # IncompleteRead: the server dropped the connection mid-reply
             raise MeshyError(_lost(method, path), retryable=(method == "GET"), may_have_created=posting) from None
 
         try:
-            return json.loads(body_bytes.decode("utf-8") or "{}")
+            reply = json.loads(body_bytes.decode("utf-8") or "{}")
         except ValueError:
             raise MeshyError(
                 f"Meshy {method} {path} returned a reply that isn't JSON" + (POST_WARNING if posting else ""),
                 retryable=(method == "GET"), may_have_created=posting,
             ) from None
+        if not isinstance(reply, dict):  # every Meshy reply is an object; a list or a bare string is as unusable as non-JSON
+            raise MeshyError(
+                f"Meshy {method} {path} returned JSON that isn't an object" + (POST_WARNING if posting else ""),
+                retryable=(method == "GET"), may_have_created=posting,
+            )
+        return reply
 
     return call
 
@@ -246,7 +263,7 @@ def http_downloader(url: str, dest: Path) -> None:
         part.unlink(missing_ok=True)
         hint = " (Meshy links expire after about 3 days; rerun the paid step)" if error.code in (403, 404) else ""
         raise MeshyError(f"download of {dest.name} failed: HTTP {error.code}{hint}") from None
-    except (urllib.error.URLError, OSError, ValueError):
+    except (urllib.error.URLError, OSError, ValueError, http.client.HTTPException):
         part.unlink(missing_ok=True)
         raise MeshyError(f"download of {dest.name} failed: no reply (timed out or the connection failed); rerun to retry") from None
 
@@ -257,6 +274,7 @@ def http_downloader(url: str, dest: Path) -> None:
         response.close()
         raise MeshyError(f"download of {dest.name} refused: {part.name} can't be created, or is a symlink; remove it and rerun") from None
 
+    expected = _content_length(response)
     size = 0
     try:
         with response, out:
@@ -265,14 +283,30 @@ def http_downloader(url: str, dest: Path) -> None:
                 if size > MAX_DOWNLOAD_BYTES:
                     break
                 out.write(chunk)
-    except (OSError, ValueError):
+    except (OSError, ValueError, http.client.HTTPException):
         part.unlink(missing_ok=True)
         raise MeshyError(f"download of {dest.name} failed: no reply (timed out or the connection failed); rerun to retry") from None
 
     if size > MAX_DOWNLOAD_BYTES:
         part.unlink(missing_ok=True)
         raise MeshyError(f"download of {dest.name} exceeded {MAX_DOWNLOAD_BYTES // (1024 * 1024)} MB; refusing")
+    # read(n) returns b"" at a premature end without raising, so a body the server cut short only shows against its length.
+    if expected is not None and size < expected:
+        part.unlink(missing_ok=True)
+        raise MeshyError(f"download of {dest.name} was cut short ({size} of {expected} bytes); rerun to retry")
     part.replace(dest)
+
+
+def _definite_rejection(status: int) -> bool:
+    """A true 4xx other than 408 and 429: Meshy refused the request, so nothing was created."""
+    return 400 <= status < 500 and status not in (408, 429)
+
+
+def _content_length(response: Any) -> int | None:
+    """The body length the server promised, or None when there is no usable Content-Length header."""
+    headers = getattr(response, "headers", None)
+    raw = headers.get("Content-Length") if headers is not None else None
+    return int(raw) if isinstance(raw, str) and raw.isascii() and raw.isdigit() else None
 
 
 def _lost(method: str, path: str) -> str:
