@@ -18,6 +18,16 @@ ALLOWED_FIELDS: frozenset[str] = frozenset({
 })
 
 
+class ManifestError(Exception):
+    """manifest.json can't be read as a manifest. The message names the file and never holds any of its content."""
+
+
+def credits_of(value: Any) -> int:
+    """A credit count from a manifest or a Meshy reply: a plain non-negative integer, else 0. A garbled value must not
+    crash a total or strand a finished task as PENDING."""
+    return value if isinstance(value, int) and not isinstance(value, bool) and value >= 0 else 0
+
+
 def clean(record: dict[str, Any]) -> dict[str, Any]:
     return {k: v for k, v in record.items() if k in ALLOWED_FIELDS and not _unsafe(v)}
 
@@ -39,8 +49,16 @@ class Manifest:
     def load(cls, path: Path) -> "Manifest":
         if not path.exists():
             return cls(path)
-        data = json.loads(path.read_text(encoding="utf-8"))
-        return cls(path, [clean(t) for t in data.get("tasks", [])])
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))  # JSONDecodeError and UnicodeDecodeError are both ValueErrors
+        except (ValueError, RecursionError):
+            data = None
+        tasks = data.get("tasks", []) if isinstance(data, dict) else None
+        if not isinstance(tasks, list) or not all(isinstance(t, dict) for t in tasks):
+            # Not echoed (it is a committed file, so it could hold anything), and not "delete it": that would forget what was bought.
+            raise ManifestError(f"{path} can't be read as a manifest (JSON: an object with a list of task records). "
+                                "Restore it from git; deleting it would make the next run buy everything again.")
+        return cls(path, [clean(t) for t in tasks])
 
     def find(self, kind: str, label: str) -> dict[str, Any] | None:
         return next((t for t in self.tasks if t.get("kind") == kind and t.get("label") == label), None)
@@ -55,7 +73,7 @@ class Manifest:
         return kept
 
     def credits_spent(self) -> int:
-        return sum(int(t.get("credits", 0)) for t in self.tasks)
+        return sum(credits_of(t.get("credits", 0)) for t in self.tasks)
 
     def save(self) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)

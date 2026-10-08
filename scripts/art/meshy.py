@@ -36,8 +36,9 @@ model/ and anims/ hold one candidate's files at fixed paths, so a build writes
 model/PICK naming the candidate and refuses to build a different one over it.
 Nothing is read or written through a symlink: art-src, a unit or prop
 folder, style.toml, or anything under the folder (spec.toml, manifest.json,
-.part files, downloads, folders) that is one is refused up front, before the
-recipe or the manifest is read.
+.part files, downloads, folders) that is a symlink is refused up front,
+before the recipe or the manifest is read. So is a folder under it that
+can't be listed, because a link inside it could not be seen.
 """
 from __future__ import annotations
 
@@ -54,7 +55,7 @@ from typing import Any
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 
-from manifest import Manifest  # noqa: E402
+from manifest import Manifest, ManifestError, credits_of  # noqa: E402
 from meshy_client import (  # noqa: E402
     CREDITS_PER_ACTION, MAX_ACTIONS_PER_REQUEST, PREVIEW_CREDITS, REFINE_CREDITS, RIG_CREDITS,
     MeshyClient, MeshyError, TaskFailed, http_downloader, http_transport,
@@ -123,6 +124,14 @@ def candidates_cost(spec: Recipe, manifest: Manifest) -> int:
     return sum(PREVIEW_CREDITS[model] for label, model in candidate_jobs(spec) if not _bought(manifest.find("preview", label)))
 
 
+def _too_many_actions(spec: UnitSpec) -> str | None:
+    """Why this recipe can't be built (Meshy's per-request limit), or None. Refine and rig would be paid for before the animation refused."""
+    actions = len(spec.action_ids())
+    if actions > MAX_ACTIONS_PER_REQUEST:
+        return f"{spec.id} lists {actions} animation actions; Meshy takes at most {MAX_ACTIONS_PER_REQUEST} per request. Remove some from spec.toml first."
+    return None
+
+
 def _animate_label(spec: UnitSpec, pick: int) -> str:
     return f"cand-{pick}:" + ",".join(str(i) for i in spec.action_ids())
 
@@ -151,7 +160,7 @@ def plan_text(spec: UnitSpec, style: Style, manifest: Manifest) -> str:
         f"build (after you pick): refine {REFINE_CREDITS} + rig {RIG_CREDITS} + {actions} actions x {CREDITS_PER_ACTION} = {build} credits",
         f"spent on {spec.id} so far: {manifest.credits_spent()} credits",
         *_pending(manifest),
-        *(f"blocked: {message}" for message in _interrupted(manifest)),
+        *(f"blocked: {message}" for message in [_too_many_actions(spec), *_interrupted(manifest)] if message),
     ])
 
 
@@ -188,7 +197,7 @@ def _finish(manifest: Manifest, client: Any, api_kind: str, record: dict[str, An
     except TaskFailed:
         _store(manifest, {**record, "status": "FAILED", "credits": 0})
         raise
-    done = {**record, "status": "SUCCEEDED", "credits": int(task.get("consumed_credits", 0))}
+    done = {**record, "status": "SUCCEEDED", "credits": credits_of(task.get("consumed_credits", 0))}
     finished_at = task.get("finished_at")
     if isinstance(finished_at, int) and not isinstance(finished_at, bool):  # the manifest is public: keep only a plain integer timestamp
         done["finished_at"] = finished_at
@@ -210,7 +219,10 @@ def _start(manifest: Manifest, kind: str, label: str, create: Callable[[], str],
         if not error.may_have_created:  # a definite rejection (400, 401, 402...): nothing was bought
             _store(manifest, {**creating, "status": "FAILED", "credits": 0})
         raise
-    say(f"{label}: {kind} task {task_id} created")  # before the store: if that fails, the paid id is still on screen
+    try:
+        say(f"{label}: {kind} task {task_id} created")  # before the store: if that fails, the paid id is still on screen
+    except OSError:  # a closed pipe (BrokenPipeError) must not cost us the id before it is stored
+        pass
     return _store(manifest, {**creating, "task_id": task_id, "status": "PENDING"})
 
 
@@ -313,10 +325,9 @@ def run_prop_build(spec: PropSpec, manifest: Manifest, client: Any, prop_dir: Pa
 def run_build(spec: UnitSpec, manifest: Manifest, client: Any, unit_dir: Path, pick: int,
               max_credits: int, say: Say = print) -> None:
     _refuse_if_interrupted(manifest)
-    actions = len(spec.action_ids())
-    if actions > MAX_ACTIONS_PER_REQUEST:  # before any purchase: refine and rig would be paid for, then the animation request refused
-        raise BuildError(f"{spec.id} lists {actions} animation actions; Meshy takes at most {MAX_ACTIONS_PER_REQUEST} per request. "
-                         "Remove some from spec.toml first.")
+    too_many = _too_many_actions(spec)
+    if too_many:  # before any purchase
+        raise BuildError(too_many)
     label = f"cand-{pick}"
     _check_pick(unit_dir, label)
     candidate = _finished_preview(manifest, label, "candidates")
@@ -350,23 +361,27 @@ def _local_error(error: OSError) -> str:
 
 
 def _unsafe_work_dir(work_dir: Path) -> str | None:
-    """Why this unit or prop folder can't be used, or None. Symlinks under art-src could send our writes elsewhere
-    and make us read a file that isn't ours."""
+    """Why this unit or prop folder (or art-src, or style.toml) can't be used, or None. Symlinks under art-src could send our
+    writes elsewhere and make us read a file that isn't ours, and a folder we can't list could hide one."""
     try:
         parts = work_dir.relative_to(ART_SRC).parts
     except ValueError:
         return f"{work_dir} is outside art-src"
+    # Only art-src's own last component is checked, not the path to it: the checkout may live under a symlinked path.
     if ART_SRC.is_symlink():  # a merged PR could turn art-src into a link and plant a spec.toml at its target
         return f"{ART_SRC} is a symlink; replace it with a real folder"
     here = ART_SRC
-    for part in parts:  # only art-src's own last component is checked: the checkout may live under a symlinked path
+    for part in parts:  # every part below art-src
         here = here / part
         if here.is_symlink():
             return f"{here} is a symlink; replace it with a real folder"
     for folder in OUTPUT_FOLDERS:  # refused up front, so nothing is bought before a write would be; _fetch re-checks as a second line
         if (work_dir / folder).is_symlink():  # is_symlink() is also true for a dangling one
             return f"{work_dir / folder} is a symlink; replace it with a real folder"
-    link = _first_symlink(work_dir)  # reads go through links as well as writes: spec.toml -> secrets.env would be parsed
+    try:
+        link = _first_symlink(work_dir)  # reads go through links as well as writes: spec.toml -> secrets.env would be parsed
+    except OSError as error:
+        return f"{_shown(Path(error.filename or work_dir))} can't be checked; fix its permissions"
     if link is not None:
         return f"{_shown(link)} is a symlink; replace it with a real file or folder"
     style = ART_SRC / "style.toml"
@@ -380,11 +395,18 @@ def _unsafe_work_dir(work_dir: Path) -> str | None:
 def _first_symlink(work_dir: Path) -> Path | None:
     """The first symlink under work_dir, file or folder, dangling or not. os.walk lists a link to a folder with the
     folders but, with followlinks=False, never enters it."""
-    for root, folders, files in os.walk(work_dir, followlinks=False):
+    for root, folders, files in os.walk(work_dir, followlinks=False, onerror=_unlistable):
         for entry in sorted(folders + files):
             if os.path.islink(os.path.join(root, entry)):
                 return Path(root) / entry
     return None
+
+
+def _unlistable(error: OSError) -> None:
+    """os.walk skips a folder it can't list unless told otherwise, and a link inside it would go unseen. A folder that is
+    missing (a unit not made yet) or not a folder holds nothing to see."""
+    if not isinstance(error, (FileNotFoundError, NotADirectoryError)):
+        raise error
 
 
 def _shown(path: Path) -> str:
@@ -427,10 +449,10 @@ def main(argv: list[str] | None = None) -> int:
     try:
         spec = (load_prop_spec if is_prop else load_spec)(work_dir / "spec.toml")
         style = load_style(ART_SRC / "style.toml")
-    except (SpecError, OSError) as error:
+        manifest = Manifest.load(work_dir / "manifest.json")
+    except (SpecError, ManifestError, OSError) as error:
         print(f"meshy.py: {error}", file=sys.stderr)
         return 2
-    manifest = Manifest.load(work_dir / "manifest.json")
     if args.command == "plan":  # the free commands return before anything looks for the key
         print(plan_text(spec, style, manifest))
         return 0

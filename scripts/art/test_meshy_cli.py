@@ -4,6 +4,7 @@ from __future__ import annotations
 import contextlib
 import dataclasses
 import io
+import os
 import shutil
 import tempfile
 import unittest
@@ -14,6 +15,7 @@ from unittest import mock
 
 import meshy
 import meshy_client
+import unit_spec
 from manifest import Manifest
 from meshy_client import MeshyError, TaskFailed
 from unit_spec import AnimEntry, load_prop_spec, load_spec, load_style
@@ -25,7 +27,7 @@ class FakeClient:
     """Stands in for MeshyClient. Every finished task carries signed-looking URLs."""
 
     def __init__(self, fail_waits: int = 0, lost_waits: dict[str, str] | None = None,
-                 create_error: BaseException | None = None, finished_at: Any = 1) -> None:
+                 create_error: BaseException | None = None, finished_at: Any = 1, consumed: Any = 1) -> None:
         self.created: list[tuple[str, Any]] = []
         self.pose_modes: list[str | None] = []  # one per preview, as asked for
         self.prompts: list[str] = []
@@ -33,6 +35,7 @@ class FakeClient:
         self.lost_waits = lost_waits or {}
         self.create_error = create_error
         self.finished_at = finished_at
+        self.consumed = consumed
         self._n = 0
 
     def _new(self, what: str, arg: Any) -> str:
@@ -66,7 +69,7 @@ class FakeClient:
             raise TaskFailed(f"{kind} task {task_id} FAILED: test")
         url = f"https://assets.meshy.ai/{task_id}/out.glb?Expires=1&Signature=SIG"
         return {
-            "id": task_id, "status": "SUCCEEDED", "consumed_credits": 1, "finished_at": self.finished_at,
+            "id": task_id, "status": "SUCCEEDED", "consumed_credits": self.consumed, "finished_at": self.finished_at,
             "model_urls": {"glb": url},
             "result": {
                 "rigged_character_glb_url": url, "animation_glb_url": url,
@@ -463,6 +466,48 @@ class FlowTest(unittest.TestCase):
         self.assertEqual(Manifest.load(self.manifest.path).find("preview", "cand-1")["status"], "CREATING")
         with self.assertRaises(meshy.InterruptedCreate):
             self.candidates(FakeClient())
+
+    def test_a_broken_pipe_while_saying_the_id_does_not_lose_it(self) -> None:
+        # stdout closed under us (`| head`): say() raises, but the paid id must still reach the manifest.
+        def say(line: str) -> None:
+            if line.endswith(" created"):
+                raise BrokenPipeError(32, "Broken pipe")
+            self.quiet.append(line)
+
+        client = FakeClient()
+        meshy.run_candidates(self.spec, self.style, self.manifest, client, self.unit_dir, 100, say=say)
+        record = Manifest.load(self.manifest.path).find("preview", "cand-1")
+        self.assertEqual((record["status"], record["task_id"]), ("SUCCEEDED", "preview-1"))
+        self.assertEqual(len(client.created), 4)
+        # and at the point it matters, between the create and the store:
+        self.manifest = Manifest(self.unit_dir / "again.json")
+        lost = FakeClient(lost_waits={"preview-1": "still waiting; rerun"})
+        with self.assertRaises(MeshyError):
+            meshy.run_candidates(self.spec, self.style, self.manifest, lost, self.unit_dir, 100, say=say)
+        record = Manifest.load(self.manifest.path).find("preview", "cand-1")
+        self.assertEqual((record["status"], record["task_id"]), ("PENDING", "preview-1"))
+
+    def test_a_non_numeric_consumed_credits_is_recorded_as_zero_not_a_crash(self) -> None:
+        for value in ("5", "abc", None, [], True, 2.5, -4):
+            with self.subTest(consumed=value):
+                self.manifest = Manifest(self.unit_dir / "manifest.json")
+                self.candidates(FakeClient(consumed=value))
+                record = Manifest.load(self.manifest.path).find("preview", "cand-1")
+                self.assertEqual((record["status"], record["credits"]), ("SUCCEEDED", 0))
+        self.manifest = Manifest(self.unit_dir / "manifest.json")
+        self.candidates(FakeClient(consumed=5))
+        self.assertEqual(Manifest.load(self.manifest.path).find("preview", "cand-1")["credits"], 5)
+
+    def test_plan_text_blocks_a_recipe_with_more_than_ten_actions(self) -> None:
+        self.assertNotIn("blocked:", meshy.plan_text(self.spec, self.style, self.manifest))
+        actions = tuple(AnimEntry(f"a{i}", "anims/actions.glb", f"Clip_{i}", i, None, False) for i in range(1, 12))
+        lines = meshy.plan_text(dataclasses.replace(self.spec, animations=actions), self.style, self.manifest).splitlines()
+        self.assertEqual(lines[-1], "blocked: shieldman lists 11 animation actions; Meshy takes at most 10 per request. Remove some from spec.toml first.")
+
+    def test_the_candidate_limit_and_the_pick_label_agree(self) -> None:
+        # A recipe may list at most MAX_CANDIDATES, and model/PICK must be able to hold every label it can mint.
+        self.assertIsNotNone(meshy.PICK_LABEL.fullmatch(f"cand-{unit_spec.MAX_CANDIDATES}"))
+        self.assertIsNone(meshy.PICK_LABEL.fullmatch(f"cand-{unit_spec.MAX_CANDIDATES + 1}"))
 
     def test_a_429_reply_to_a_create_is_recorded_failed_and_bought_again(self) -> None:
         # Meshy's rate limiter turned the request away, so nothing was created: no CREATING record, no manual cleanup.
@@ -1012,14 +1057,13 @@ class MainTest(unittest.TestCase):
                     root.mkdir()
                     work_dir = self.stage(root)
                     target = self.plant_symlink(work_dir, rel, tmp)
-                    fake = FakeClient()
                     with mock.patch.object(meshy, "load_prop_spec", side_effect=AssertionError("read the spec")), \
                             mock.patch.object(meshy.Manifest, "load", side_effect=AssertionError("read the manifest")), \
                             mock.patch.object(meshy, "load_secret", side_effect=AssertionError("read the key")), \
                             mock.patch.object(meshy, "MeshyClient", side_effect=AssertionError("built a client")), \
                             mock.patch.object(meshy, "ART_SRC", root):
                         code, out, err = self.run_main(argv)
-                    self.assertEqual((code, out, fake.created), (2, "", []))
+                    self.assertEqual((code, out), (2, ""))
                     self.assertEqual(err, f"meshy.py: {work_dir / rel} is a symlink; replace it with a real file or folder\n")
                     self.assertEqual(target.read_text(), 'MESHY_API_KEY = "kept"\n')
 
@@ -1070,6 +1114,68 @@ class MainTest(unittest.TestCase):
             code, out, err = self.run_paid(root, fake, ["prop-candidates", "broadsword", "--max-credits", "10"])
             self.assertEqual((code, out, fake.created), (2, "", []))
             self.assertEqual(err, f"meshy.py: {root / 'style.toml'} is a symlink; replace it with a real file\n")
+
+    def test_a_folder_that_cannot_be_listed_is_refused_not_skipped(self) -> None:
+        # os.walk skips a folder it can't list; a link inside it would then go unseen.
+        if os.geteuid() == 0:
+            self.skipTest("root lists mode 000 folders")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "art-src"
+            root.mkdir()
+            work_dir = self.stage(root)
+            locked = work_dir / "review" / "locked"
+            locked.mkdir(parents=True)
+            os.chmod(locked, 0o000)
+            try:
+                with mock.patch.object(meshy, "load_prop_spec", side_effect=AssertionError("read the spec")):
+                    code, out, err = self.run_paid(root, FakeClient(), ["prop-plan", "broadsword"])
+            finally:
+                os.chmod(locked, 0o700)
+            self.assertEqual((code, out), (2, ""))
+            self.assertEqual(err, f"meshy.py: {locked} can't be checked; fix its permissions\n")
+
+    def test_a_work_dir_that_does_not_exist_yet_is_not_a_permissions_problem(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "art-src"
+            root.mkdir()
+            with mock.patch.object(meshy, "ART_SRC", root):
+                self.assertIsNone(meshy._unsafe_work_dir(root / "props" / "newprop"))
+
+    def test_a_corrupt_manifest_is_one_line_and_exit_2_through_main(self) -> None:
+        for data in (b'{"tasks": [ SECRETLOOKING', b"\xff\xfe\x00", b"[]", b'{"tasks": 3}', b"[" * 200000):
+            for argv in (["prop-plan", "broadsword"], ["prop-candidates", "broadsword", "--max-credits", "10"]):
+                with self.subTest(data=data[:12], command=argv[0]), tempfile.TemporaryDirectory() as tmp:
+                    root = Path(tmp) / "art-src"
+                    root.mkdir()
+                    work_dir = self.stage(root)
+                    (work_dir / "manifest.json").write_bytes(data)
+                    fake = FakeClient()
+                    code, out, err = self.run_paid(root, fake, argv)
+                    self.assertEqual((code, out, fake.created), (2, "", []))
+                    self.assertTrue(err.startswith(f"meshy.py: {work_dir / 'manifest.json'} "), err)
+                    self.assertEqual(err.count("\n"), 1)
+                    self.assertNotIn("Traceback", err)
+                    for leaked in ("SECRETLOOKING", "0xff", "codec"):
+                        self.assertNotIn(leaked, err)
+                    self.assertEqual((work_dir / "manifest.json").read_bytes(), data)  # left as it was
+
+    def test_a_broken_recipe_or_style_is_one_line_and_exit_2_through_main(self) -> None:
+        for target, data in (("spec", b"id = \n"), ("spec", b'id = "broadsword"\nprompt = "\xff\xfe"\n'), ("spec", b"id = \x1b\n"),
+                             ("style", b"suffix = \n"), ("style", b"\xff\xfe")):
+            for argv in (["prop-plan", "broadsword"], ["prop-candidates", "broadsword", "--max-credits", "10"]):
+                with self.subTest(file=target, data=data[:12], command=argv[0]), tempfile.TemporaryDirectory() as tmp:
+                    root = Path(tmp) / "art-src"
+                    root.mkdir()
+                    work_dir = self.stage(root)
+                    broken = work_dir / "spec.toml" if target == "spec" else root / "style.toml"
+                    broken.write_bytes(data)
+                    fake = FakeClient()
+                    code, out, err = self.run_paid(root, fake, argv)
+                    self.assertEqual((code, out, fake.created), (2, "", []))
+                    self.assertTrue(err.startswith(f"meshy.py: {broken}"), err)
+                    self.assertEqual(err.count("\n"), 1)
+                    self.assertNotIn("Traceback", err)
+                    self.assertNotIn("\x1b", err)
 
     def test_a_symlinked_name_cannot_put_escape_sequences_or_a_second_line_on_screen(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
