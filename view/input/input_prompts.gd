@@ -80,6 +80,4 @@ static func pad_hints(size: int = 22) -> String:
 
 ## True while a pad is the device in use.
 static func pad_in_use() -> bool:
-	var tree: SceneTree = Engine.get_main_loop() as SceneTree
-	var tracker: Node = tree.root.get_node_or_null("InputDevice") if tree != null else null
-	return tracker != null and tracker.is_pad()
+	return InputDeviceTracker.pad_in_use()

@@ -24,7 +24,8 @@ extends Node
 ## - D-pad left / right: the previous or next group slot, recalled if saved;
 ##   up held: save the selection there; down held: empty it.
 ## - View: tap for the overhead map (A there moves the camera, X sends the
-##   selection); hold to show every health bar.
+##   selection, attack-moving if that was armed from the order wheel; the
+##   cursor doesn't stick to units there); hold to show every health bar.
 ## - L3: put focus on the control bar (the D-pad moves it, A presses; B or L3
 ##   leaves); Menu: the pause menu (PauseMenu).
 ## Buttons are read from their events, not by polling, so a frame stepped by
@@ -123,8 +124,8 @@ func setup(
 	cursor.name = "PadCursor"
 	hud.add_child(cursor)
 	Pointer.pad_cursor = cursor
-	InputDevice.changed.connect(_on_device_changed)
-	_on_device_changed(InputDevice.current)
+	InputDeviceTracker.tracker().changed.connect(_on_device_changed)
+	_on_device_changed(InputDeviceTracker.tracker().current)
 
 
 func _exit_tree() -> void:
@@ -288,7 +289,9 @@ func _a_release() -> void:
 
 func _x_press() -> void:
 	if _map.visible:
-		_map.click_at(cursor.at, true)
+		var attack: bool = _controller.armed_order == SelectionController.ArmedOrder.ATTACK_MOVE
+		if _map.click_at(cursor.at, true, attack) and attack:
+			_controller.arm(SelectionController.ArmedOrder.NONE)
 		return
 	if _controller.armed_order != SelectionController.ArmedOrder.NONE:
 		_controller.place_armed(cursor.at)
@@ -416,7 +419,7 @@ func set_bar_focus(on: bool) -> void:
 		return
 	_bar_focus = on
 	_main.set_hud_focus(on)
-	cursor.visible = InputDevice.is_pad() and not on
+	cursor.visible = InputDeviceTracker.tracker().is_pad() and not on
 
 
 func _hold_buttons(delta: float) -> void:
@@ -460,19 +463,21 @@ func _move_cursor(stick: Vector2, delta: float) -> void:
 	var view: Vector2 = get_viewport().get_visible_rect().size
 	if not _placed:
 		place_cursor(view * 0.5)
+	# Over the overhead map the units are dots: nothing to stick to.
+	var sticky: bool = snap and not _map.visible
 	if stick == Vector2.ZERO:
-		if _was_moving and snap:
+		if _was_moving and sticky:
 			# Let go: stick to a unit close by.
 			var unit_point: Vector2 = _controller.nearest_unit_point(cursor.at, SNAP_RADIUS)
 			if unit_point != Vector2.INF:
 				cursor.at = _clamped(unit_point)
 		_was_moving = false
-		cursor.snapped = _controller.nearest_unit_point(cursor.at, 2.0) != Vector2.INF
+		cursor.snapped = sticky and _controller.nearest_unit_point(cursor.at, 2.0) != Vector2.INF
 		return
 	_was_moving = true
 	cursor.snapped = false
 	var speed: float = CURSOR_SPEED * cursor_speed_scale * view.y * stick.length_squared()
-	if snap and _controller.nearest_unit_point(cursor.at, SNAP_RADIUS) != Vector2.INF:
+	if sticky and _controller.nearest_unit_point(cursor.at, SNAP_RADIUS) != Vector2.INF:
 		speed *= NEAR_UNIT_SPEED
 	cursor.at = _clamped(cursor.at + stick.normalized() * speed * delta)
 
@@ -505,7 +510,7 @@ func _drive_camera(cursor_stick: Vector2) -> void:
 
 # The hint strip, above the control bar's right end, while the pad is in use.
 func _place_hints() -> void:
-	var shown: bool = InputDevice.is_pad() and _in_play()
+	var shown: bool = InputDeviceTracker.tracker().is_pad() and _in_play()
 	hints.visible = shown
 	if not shown:
 		return

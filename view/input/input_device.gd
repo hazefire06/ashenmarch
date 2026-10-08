@@ -1,3 +1,4 @@
+class_name InputDeviceTracker
 extends Node
 ## The InputDevice autoload: which kind of device the player used last, the
 ## keyboard and mouse (KBM) or a pad (PAD), so the prompts name the right
@@ -12,6 +13,11 @@ extends Node
 ## A browser shows a pad to the page only once a button has been pressed on it
 ## (the Gamepad API's rule), so on the web nothing is connected until then;
 ## pad_connected() says whether any is.
+##
+## Reached through tracker() (or the static helpers), never by the autoload's
+## name: a script run with `-s` (the capture and benchmark scripts, the pad
+## playthrough) is compiled before the autoloads are registered, so the name
+## isn't known to it. tracker() finds the autoload, or makes one.
 
 ## The device changed (InputBindings.Device).
 signal changed(device: int)
@@ -24,6 +30,30 @@ const STICK_SWITCH: float = 0.35
 const MOUSE_SWITCH: float = 3.0
 
 var current: InputBindings.Device = InputBindings.Device.KBM
+
+static var _instance: InputDeviceTracker
+
+
+## The tracker: the InputDevice autoload, or one made and put under the root
+## if there is none.
+static func tracker() -> InputDeviceTracker:
+	if _instance != null and is_instance_valid(_instance):
+		return _instance
+	var tree: SceneTree = Engine.get_main_loop() as SceneTree
+	var found: Node = tree.root.get_node_or_null("InputDevice") if tree != null else null
+	if found is InputDeviceTracker:
+		_instance = found
+		return _instance
+	_instance = InputDeviceTracker.new()
+	_instance.name = "InputDevice"
+	if tree != null:
+		tree.root.add_child.call_deferred(_instance)
+	return _instance
+
+
+## True while a pad is the device in use.
+static func pad_in_use() -> bool:
+	return tracker().is_pad()
 
 
 func _ready() -> void:

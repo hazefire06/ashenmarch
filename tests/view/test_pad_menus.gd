@@ -117,4 +117,4 @@ func test_the_pad_hint_is_for_the_web_only() -> void:
 	var menu: MainMenu = MainMenu.new()
 	add_child_autofree(menu)
 	# Headless here is not the web: a desktop sees a pad as it is plugged in.
-	assert_eq(menu.pad_hint_shown(), OS.has_feature("web") and not InputDevice.pad_connected())
+	assert_eq(menu.pad_hint_shown(), OS.has_feature("web") and not InputDeviceTracker.tracker().pad_connected())

@@ -65,7 +65,7 @@ func _init() -> void:
 
 func _ready() -> void:
 	super()
-	InputDevice.pads_changed.connect(_refresh_pad_hint)
+	InputDeviceTracker.tracker().pads_changed.connect(_refresh_pad_hint)
 	_refresh_pad_hint()
 
 
@@ -75,7 +75,7 @@ func pad_hint_shown() -> bool:
 
 
 func _refresh_pad_hint() -> void:
-	_pad_hint.visible = OS.has_feature("web") and not InputDevice.pad_connected()
+	_pad_hint.visible = OS.has_feature("web") and not InputDeviceTracker.tracker().pad_connected()
 
 
 func _focus_default() -> void:

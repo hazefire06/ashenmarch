@@ -288,7 +288,7 @@ func _ready() -> void:
 	$Hud.add_child(_pad)
 	_pad.setup(self, _selection, _camera, _overhead_map, _control_bar, $Hud)
 	set_pad_settings(_pad_cursor_speed, _pad_snap, rumble.strength)
-	InputDevice.changed.connect(func(_device: int) -> void: refresh_key_labels())
+	InputDeviceTracker.tracker().changed.connect(func(_device: int) -> void: refresh_key_labels())
 	_control_bar.speed_step_requested.connect(func(step: int) -> void: set_game_speed(_speed + step))
 	_control_bar.set_game_speed_visible(allows_game_speed())
 	_pause_menu.speed_step_requested.connect(func(step: int) -> void: set_game_speed(_speed + step))

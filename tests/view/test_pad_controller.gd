@@ -55,7 +55,7 @@ func before_each() -> void:
 	)
 	_main._units_view.after_step()
 	_frames(2)
-	InputDevice.use(InputBindings.Device.PAD)
+	InputDeviceTracker.tracker().use(InputBindings.Device.PAD)
 
 
 func after_each() -> void:
@@ -66,13 +66,13 @@ func after_each() -> void:
 
 
 func test_the_pad_shows_its_cursor_and_the_keyboard_hides_it() -> void:
-	assert_true(InputDevice.is_pad())
+	assert_true(InputDeviceTracker.tracker().is_pad())
 	assert_true(_pad.cursor.visible)
 	assert_true(Pointer.using_pad(), "the tooltip follows it")
 	var key: InputEventKey = InputEventKey.new()
 	key.physical_keycode = KEY_W
 	key.pressed = true
-	InputDevice.note(key)
+	InputDeviceTracker.tracker().note(key)
 	assert_false(_pad.cursor.visible)
 
 

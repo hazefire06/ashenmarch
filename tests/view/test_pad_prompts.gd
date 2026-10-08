@@ -36,10 +36,10 @@ func test_every_pad_binding_has_a_glyph() -> void:
 
 
 func test_prompts_follow_the_device_in_use() -> void:
-	InputDevice.use(InputBindings.Device.KBM)
+	InputDeviceTracker.tracker().use(InputBindings.Device.KBM)
 	assert_eq(InputPrompts.prompt(InputBindings.ABILITY), "T")
 	assert_eq(InputPrompts.label(InputBindings.ABILITY), "T")
-	InputDevice.use(InputBindings.Device.PAD)
+	InputDeviceTracker.tracker().use(InputBindings.Device.PAD)
 	assert_string_contains(InputPrompts.prompt(InputBindings.ABILITY), "[img=20]res://assets/ui/pad/y.svg[/img]")
 	assert_eq(InputPrompts.label(InputBindings.ABILITY), "Y")
 	assert_eq(InputPrompts.label(InputBindings.STOP), "Space", "no pad binding: the key's name")
@@ -51,16 +51,16 @@ func test_the_control_bar_switches_to_glyphs_with_the_pad() -> void:
 	main.launch = ViewFixtures.launch()
 	add_child_autofree(main)
 	var bar: ControlBar = main._control_bar
-	InputDevice.use(InputBindings.Device.KBM)
+	InputDeviceTracker.tracker().use(InputBindings.Device.KBM)
 	assert_eq(bar._formation_buttons[0].text, "1 Short line")
-	InputDevice.use(InputBindings.Device.PAD)
+	InputDeviceTracker.tracker().use(InputBindings.Device.PAD)
 	assert_eq(bar._formation_buttons[0].text, "Short line", "no key to name")
 	var shown: int = 0
 	for glyph: TextureRect in bar._caption_glyphs:
 		shown += 1 if glyph.visible else 0
 	assert_eq(shown, 4, "every row's caption shows its pad button")
 	assert_eq(bar._ability_button.text, "Ability (Y)")
-	InputDevice.use(InputBindings.Device.KBM)
+	InputDeviceTracker.tracker().use(InputBindings.Device.KBM)
 	assert_eq(bar._formation_buttons[0].text, "1 Short line")
 
 

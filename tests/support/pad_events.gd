@@ -55,10 +55,7 @@ static func release_all() -> void:
 	for button: int in JOY_BUTTON_SDL_MAX:
 		if Input.is_joy_button_pressed(DEVICE, button as JoyButton):
 			release(button as JoyButton)
-	var tree: SceneTree = Engine.get_main_loop() as SceneTree
-	var tracker: Node = tree.root.get_node_or_null("InputDevice")
-	if tracker != null:
-		tracker.use(InputBindings.Device.KBM)
+	InputDeviceTracker.tracker().use(InputBindings.Device.KBM)
 
 
 static func _send_button(button: JoyButton, pressed: bool) -> void:
