@@ -350,7 +350,8 @@ def _local_error(error: OSError) -> str:
 
 
 def _unsafe_work_dir(work_dir: Path) -> str | None:
-    """Why this unit or prop folder can't be used, or None. Symlinks under art-src could send our writes elsewhere."""
+    """Why this unit or prop folder can't be used, or None. Symlinks under art-src could send our writes elsewhere
+    and make us read a file that isn't ours."""
     try:
         parts = work_dir.relative_to(ART_SRC).parts
     except ValueError:

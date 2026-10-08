@@ -129,6 +129,8 @@ art-src/units/<id>/               downloaded GLB/FBX and candidate thumbnails (L
 | `candidates <id>` | yes | Text-to-3D previews: mesh only, A-pose, remeshed to about 20–30k triangles. Downloads each candidate's mesh; `make art-candidates` (free, Blender) renders them from the back, left, front and right, at the game camera's angle and true scale, into a candidate sheet. |
 | `build <id> --pick N` | yes | Texture (2K), rig (`height_meters` from the unit's height), animate (one request, up to 10 actions). Downloads everything at once, because Meshy links expire after about 3 days. |
 
+**Guards** (hardened 2026-10-08, before the A3 buys). Every command refuses a symlink anywhere under the unit's or prop's folder, or at `art-src` and `style.toml`, before it reads the recipe or manifest. `build` refuses a recipe with more than 10 animation actions before it buys anything. A recipe is validated as it loads: candidate counts, polycount range, animation names, and rig or action but not both. `plan` and `prop-plan` print a `pending:` line for each task that was created but never finished; one that can never finish needs a check on meshy.ai and a deleted manifest entry.
+
 **Credits, from Meshy's API pricing:**
 - Preview: 20 on `meshy-7.1`, 5 on `meshy-6-lite`.
 - Texture: 10. Rig: 5, including basic walk and run. Animation: 3 per action. Custom text-to-motion: 10.
