@@ -23,6 +23,11 @@ extends RefCounted
 ## apply_bindings). Each apply reads the file and sets the engine to match, so
 ## it is called at boot and again after any change.
 ##
+## Phase 11 adds the control preset ([controls] preset: Modern or Classic),
+## Classic's own rebinds ([keybinds_classic]; [keybinds] stays Modern's, so a
+## Phase 10 file loads as it was), its one group key ([controls]
+## classic_group_modifier), and the pad's rebinds ([padbinds]).
+##
 ## The [skirmish] section remembers the last skirmish setup (map, mode, time,
 ## budget, side, start, the AI's army and the player's own army), so the
 ## skirmish screen opens where the player left it. Not a setting the player
@@ -39,6 +44,10 @@ const EDGE_SCROLL: String = "edge_scroll"
 const SKIRMISH: String = "skirmish"
 const AUDIO: String = "audio"
 const KEYBINDS: String = "keybinds"
+const KEYBINDS_CLASSIC: String = "keybinds_classic"
+const PADBINDS: String = "padbinds"
+const PRESET: String = "preset"
+const CLASSIC_GROUP_MODIFIER: String = "classic_group_modifier"
 const WINDOW_SIZE: String = "window_size"
 const VSYNC: String = "vsync"
 const MAX_FPS: String = "max_fps"
@@ -204,33 +213,84 @@ static func set_volume(bus: String, percent: int, path: String = DEFAULT_PATH) -
 	return _set_value(path, AUDIO, bus.to_lower(), clampi(percent, 0, 100))
 
 
-## The rebound actions and their events. Lines that don't parse, or name an
-## action that isn't rebindable, are skipped.
-static func keybinds(path: String = DEFAULT_PATH) -> Dictionary[StringName, InputEvent]:
+## The control preset (InputBindings.Preset): Modern unless the file says.
+static func preset(path: String = DEFAULT_PATH) -> int:
+	return _get_int_in(path, CONTROLS, PRESET, InputBindings.Preset.MODERN, range(InputBindings.Preset.size()))
+
+
+static func set_preset(chosen: int, path: String = DEFAULT_PATH) -> Error:
+	return _set_value(path, CONTROLS, PRESET, chosen)
+
+
+## A preset's keyboard and mouse rebinds (the preset in the file if none is
+## given). Lines that don't parse, name an action that isn't rebindable on the
+## keyboard, or hold a pad event, are skipped.
+static func keybinds(path: String = DEFAULT_PATH, of_preset: int = -1) -> Dictionary[StringName, InputEvent]:
+	return _bindings(path, _keybinds_section(path, of_preset), InputBindings.Device.KBM)
+
+
+## Saves several actions' keyboard and mouse bindings in one write (a swap
+## changes two), for a preset (the one in the file if none is given).
+static func set_keybinds(
+	bindings: Dictionary[StringName, InputEvent], path: String = DEFAULT_PATH, of_preset: int = -1
+) -> Error:
+	return _set_bindings(bindings, path, _keybinds_section(path, of_preset))
+
+
+## The pad's rebinds, skipping lines as keybinds() does.
+static func padbinds(path: String = DEFAULT_PATH) -> Dictionary[StringName, InputEvent]:
+	return _bindings(path, PADBINDS, InputBindings.Device.PAD)
+
+
+## Saves several actions' pad bindings in one write.
+static func set_padbinds(bindings: Dictionary[StringName, InputEvent], path: String = DEFAULT_PATH) -> Error:
+	return _set_bindings(bindings, path, PADBINDS)
+
+
+## Classic's one group key (InputBindings.GroupModifier); its default if
+## missing or invalid.
+static func classic_group_modifier(path: String = DEFAULT_PATH) -> int:
+	return _get_int_in(
+		path, CONTROLS, CLASSIC_GROUP_MODIFIER, InputBindings.default_classic_modifier(),
+		range(InputBindings.GroupModifier.size())
+	)
+
+
+static func set_classic_group_modifier(modifier: int, path: String = DEFAULT_PATH) -> Error:
+	return _set_value(path, CONTROLS, CLASSIC_GROUP_MODIFIER, modifier)
+
+
+static func _keybinds_section(path: String, of_preset: int) -> String:
+	var chosen: int = of_preset if of_preset >= 0 else preset(path)
+	return KEYBINDS_CLASSIC if chosen == InputBindings.Preset.CLASSIC else KEYBINDS
+
+
+static func _bindings(path: String, section: String, device: InputBindings.Device) -> Dictionary[StringName, InputEvent]:
 	var config: ConfigFile = _read(path)
 	var bound: Dictionary[StringName, InputEvent] = {}
-	if not config.has_section(KEYBINDS):
+	if not config.has_section(section):
 		return bound
-	for key: String in config.get_section_keys(KEYBINDS):
-		var value: Variant = config.get_value(KEYBINDS, key)
+	for key: String in config.get_section_keys(section):
+		var value: Variant = config.get_value(section, key)
 		var event: InputEvent = InputBindings.text_to_event(value) if value is String else null
-		if event != null and InputBindings.is_rebindable(StringName(key)):
+		if event == null or InputBindings.device_of(event) != device:
+			continue
+		if InputBindings.is_rebindable(StringName(key), device):
 			bound[StringName(key)] = event
 	return bound
 
 
-## Saves several actions' bindings in one write (a swap changes two).
-static func set_keybinds(bindings: Dictionary[StringName, InputEvent], path: String = DEFAULT_PATH) -> Error:
+static func _set_bindings(bindings: Dictionary[StringName, InputEvent], path: String, section: String) -> Error:
 	var values: Dictionary = {}
 	for action: StringName in bindings:
 		values[String(action)] = InputBindings.event_to_text(bindings[action])
-	return _set_values(path, KEYBINDS, values)
+	return _set_values(path, section, values)
 
 
 ## The group save and recall modifiers (InputBindings.GroupModifier), as
 ## [save, recall]; the defaults if missing, invalid or equal.
 static func group_modifiers(path: String = DEFAULT_PATH) -> Array[int]:
-	var choices: Array = range(InputBindings.GroupModifier.size())
+	var choices: Array = InputBindings.MODERN_GROUP_MODIFIERS
 	var save: int = _get_int_in(path, CONTROLS, GROUP_SAVE_MODIFIER, InputBindings.DEFAULT_SAVE_MODIFIER, choices)
 	var recall: int = _get_int_in(path, CONTROLS, GROUP_RECALL_MODIFIER, InputBindings.DEFAULT_RECALL_MODIFIER, choices)
 	if save == recall:
@@ -242,22 +302,39 @@ static func set_group_modifiers(save: int, recall: int, path: String = DEFAULT_P
 	return _set_values(path, CONTROLS, {GROUP_SAVE_MODIFIER: save, GROUP_RECALL_MODIFIER: recall})
 
 
-## Forgets every rebinding and the group modifiers: the defaults again.
+## Forgets the preset in force's keyboard and mouse rebinds and its group
+## keys: its defaults again. The other preset's and the pad's are kept.
 static func clear_controls(path: String = DEFAULT_PATH) -> Error:
 	var config: ConfigFile = _read(path)
-	if config.has_section(KEYBINDS):
-		config.erase_section(KEYBINDS)
-	for key: String in [GROUP_SAVE_MODIFIER, GROUP_RECALL_MODIFIER]:
+	var section: String = _keybinds_section(path, -1)
+	if config.has_section(section):
+		config.erase_section(section)
+	var keys: Array[String] = [GROUP_SAVE_MODIFIER, GROUP_RECALL_MODIFIER]
+	if section == KEYBINDS_CLASSIC:
+		keys = [CLASSIC_GROUP_MODIFIER]
+	for key: String in keys:
 		if config.has_section_key(CONTROLS, key):
 			config.erase_section_key(CONTROLS, key)
 	return config.save(path)
 
 
-## Puts the InputMap on the saved controls: the defaults, then the rebound
-## actions and the group modifiers on top.
+## Forgets the pad's rebinds.
+static func clear_pad_controls(path: String = DEFAULT_PATH) -> Error:
+	var config: ConfigFile = _read(path)
+	if config.has_section(PADBINDS):
+		config.erase_section(PADBINDS)
+	return config.save(path)
+
+
+## Puts the InputMap on the saved controls: the preset's defaults, then its
+## rebinds, the pad's, and the group keys on top.
 static func apply_bindings(path: String = DEFAULT_PATH) -> void:
-	InputBindings.reset()
+	InputBindings.reset(preset(path))
 	InputBindings.apply(keybinds(path))
+	InputBindings.apply(padbinds(path))
+	if InputBindings.preset == InputBindings.Preset.CLASSIC:
+		InputBindings.set_classic_group_modifier(classic_group_modifier(path) as InputBindings.GroupModifier)
+		return
 	var modifiers: Array[int] = group_modifiers(path)
 	InputBindings.set_group_modifiers(
 		modifiers[0] as InputBindings.GroupModifier, modifiers[1] as InputBindings.GroupModifier

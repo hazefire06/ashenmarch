@@ -13,12 +13,12 @@ var _path: String = DIR + "/settings.cfg"
 func before_each() -> void:
 	_clean()
 	InputBindings.install()
-	InputBindings.reset()
+	InputBindings.reset(InputBindings.Preset.MODERN)
 
 
 func after_each() -> void:
 	_clean()
-	InputBindings.reset()
+	InputBindings.reset(InputBindings.Preset.MODERN)
 	GameSettings.apply_audio(DIR + "/none.cfg")
 	get_window().content_scale_factor = 1.0
 	get_window().scaling_3d_scale = 1.0
@@ -89,6 +89,52 @@ func test_controls_apply_and_clear() -> void:
 	GameSettings.apply_bindings(_path)
 	assert_eq(InputBindings.label_for(InputBindings.ABILITY), "T")
 	assert_true(GameSettings.edge_scroll(_path), "other settings survive a reset")
+
+
+func test_each_preset_keeps_its_own_rebinds() -> void:
+	GameSettings.set_keybinds({InputBindings.ABILITY: _key(KEY_G)} as Dictionary[StringName, InputEvent], _path)
+	GameSettings.set_preset(InputBindings.Preset.CLASSIC, _path)
+	GameSettings.apply_bindings(_path)
+	assert_eq(InputBindings.preset, InputBindings.Preset.CLASSIC)
+	assert_eq(InputBindings.label_for(InputBindings.ABILITY), "T", "Modern's rebind stays Modern's")
+	assert_eq(InputBindings.label_for(InputBindings.CAM_SWIVEL_LEFT), "A")
+	GameSettings.set_keybinds({InputBindings.STOP: _key(KEY_K)} as Dictionary[StringName, InputEvent], _path)
+	GameSettings.apply_bindings(_path)
+	assert_eq(InputBindings.label_for(InputBindings.STOP), "K")
+	GameSettings.set_preset(InputBindings.Preset.MODERN, _path)
+	GameSettings.apply_bindings(_path)
+	assert_eq(InputBindings.label_for(InputBindings.ABILITY), "G")
+	assert_eq(InputBindings.label_for(InputBindings.STOP), "Space", "and Classic's stays Classic's")
+
+
+func test_a_phase_10_file_loads_as_modern() -> void:
+	_write("[keybinds]\nunit_stop=\"key:K\"\n")
+	GameSettings.apply_bindings(_path)
+	assert_eq(InputBindings.preset, InputBindings.Preset.MODERN)
+	assert_eq(InputBindings.label_for(InputBindings.STOP), "K")
+
+
+func test_pad_rebinds_save_load_and_clear() -> void:
+	var b: InputEvent = InputBindings.text_to_event("joy_button:%d" % JOY_BUTTON_B)
+	var stray: InputEvent = InputBindings.text_to_event("joy_button:%d" % JOY_BUTTON_A)
+	assert_eq(GameSettings.set_padbinds({
+		InputBindings.PAD_ORDER: b, InputBindings.STOP: stray,
+	} as Dictionary[StringName, InputEvent], _path), OK)
+	assert_eq(GameSettings.padbinds(_path).keys(), [InputBindings.PAD_ORDER], "Stop has no pad slot")
+	GameSettings.apply_bindings(_path)
+	assert_eq(InputBindings.label_for(InputBindings.PAD_ORDER, InputBindings.Device.PAD), "B")
+	assert_eq(GameSettings.clear_pad_controls(_path), OK)
+	GameSettings.apply_bindings(_path)
+	assert_eq(InputBindings.label_for(InputBindings.PAD_ORDER, InputBindings.Device.PAD), "X")
+
+
+func test_classics_group_key_is_saved() -> void:
+	GameSettings.set_preset(InputBindings.Preset.CLASSIC, _path)
+	GameSettings.set_classic_group_modifier(InputBindings.GroupModifier.SHIFT, _path)
+	GameSettings.apply_bindings(_path)
+	assert_eq(InputBindings.event_to_text(InputBindings.event_of(InputBindings.GROUP_RECALLS[2])), "key:3+shift")
+	assert_eq(GameSettings.clear_controls(_path), OK)
+	assert_eq(GameSettings.classic_group_modifier(_path), InputBindings.default_classic_modifier())
 
 
 func test_display_and_audio_apply_to_the_engine() -> void:

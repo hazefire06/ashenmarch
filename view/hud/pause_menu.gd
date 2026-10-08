@@ -146,10 +146,17 @@ func set_replay_mode() -> void:
 	_quit_asks = false
 
 
-# Esc: open, close, or take back the quit question. The controller consumes it
-# first while an order is armed (see the class comment).
+# Esc (or the pad's Menu button): open, close, or take back the quit
+# question. The controller consumes Esc first while an order is armed (see
+# the class comment). The pad's B backs out of the menu but never opens it:
+# in a mission B cancels and deselects (PadController).
 func _unhandled_input(event: InputEvent) -> void:
-	if not enabled or not event.is_action_pressed(InputBindings.CANCEL):
+	if not enabled:
+		return
+	var back: bool = event.is_action_pressed(InputBindings.CANCEL)
+	if not back and not event.is_action_pressed(InputBindings.OPEN_MENU):
+		return
+	if back and not is_open() and InputBindings.device_of(event) == InputBindings.Device.PAD:
 		return
 	if is_confirming():
 		_show_confirm(false)

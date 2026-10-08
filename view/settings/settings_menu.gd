@@ -4,8 +4,9 @@ extends MenuScreen
 ## - Display: fullscreen, window size, vsync, frame cap, 3D render scale and
 ##   interface scale.
 ## - Audio: a volume per bus.
-## - Controls: edge scroll, every rebindable action, the group modifiers, and
-##   Reset all.
+## - Controls: the preset (Modern or Classic), edge scroll, every rebindable
+##   action, the group keys (Modern's two modifiers, or Classic's one), and
+##   Reset all. A preset keeps its own rebinds: switching shows the other's.
 ##
 ## Each change is saved to the settings file the moment it is made
 ## (GameSettings), then `changed` tells the App to apply it (a write that
@@ -26,6 +27,8 @@ signal closed
 
 const EDGE_SCROLL_HINT: String = "Pan the camera by pushing the mouse against the edge of the window."
 const PRESS_A_KEY: String = "Press a key... (Esc cancels)"
+const PRESET_NAMES: PackedStringArray = ["Modern", "Classic"]
+const PRESET_HINT: String = "Classic: left click gives orders, A/D turn, Z/X strafe, C zooms in and V out, and a group is saved by holding its key."
 const MODIFIER_KEYS: Array[Key] = [KEY_SHIFT, KEY_CTRL, KEY_ALT, KEY_META]
 
 var _path: String = GameSettings.DEFAULT_PATH
@@ -38,8 +41,10 @@ var _note: Label
 ## The binding buttons by action, and the action waiting for a key.
 var _binding_buttons: Dictionary[StringName, Button] = {}
 var _capturing: StringName = &""
+var _preset: OptionButton
 var _save_modifier: OptionButton
 var _recall_modifier: OptionButton
+var _classic_modifier: OptionButton
 
 
 func _init() -> void:
@@ -198,10 +203,24 @@ func _reset_controls() -> void:
 	if not _saved(GameSettings.clear_controls(_path)):
 		return
 	GameSettings.apply_bindings(_path)
-	_save_modifier.select(InputBindings.DEFAULT_SAVE_MODIFIER)
-	_recall_modifier.select(InputBindings.DEFAULT_RECALL_MODIFIER)
 	_say("Controls are back to their defaults.")
 	_refresh_bindings()
+
+
+func _on_preset_selected(index: int) -> void:
+	_cancel_capture()
+	if not _saved(GameSettings.set_preset(index, _path)):
+		_preset.select(GameSettings.preset(_path))
+		return
+	GameSettings.apply_bindings(_path)
+	_say("")
+	_refresh_bindings()
+
+
+func _on_classic_modifier_selected(index: int) -> void:
+	if _saved(GameSettings.set_classic_group_modifier(index, _path)):
+		InputBindings.set_classic_group_modifier(index as InputBindings.GroupModifier)
+		_say("")
 
 
 func _on_modifier_selected(_index: int) -> void:
@@ -221,6 +240,14 @@ func _on_modifier_selected(_index: int) -> void:
 func _refresh_bindings() -> void:
 	for action: StringName in _binding_buttons:
 		_binding_buttons[action].text = InputBindings.label_for(action)
+	var classic: bool = GameSettings.preset(_path) == InputBindings.Preset.CLASSIC
+	var saved: Array[int] = GameSettings.group_modifiers(_path)
+	_save_modifier.select(saved[0])
+	_recall_modifier.select(saved[1])
+	_classic_modifier.select(GameSettings.classic_group_modifier(_path))
+	_save_modifier.get_parent().visible = not classic
+	_recall_modifier.get_parent().visible = not classic
+	_classic_modifier.get_parent().visible = classic
 
 
 func _say(text: String) -> void:
@@ -287,6 +314,10 @@ func _controls_tab() -> Control:
 	tab.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	tab.add_theme_constant_override("separation", 6)
 	scroller.add_child(tab)
+	_preset = _add_choice(tab, "Preset", "Controls", PRESET_NAMES, GameSettings.preset(_path), _on_preset_selected)
+	var preset_hint: Label = MenuKit.paragraph(PRESET_HINT, 14, MenuKit.MUTED_COLOR)
+	preset_hint.custom_minimum_size.x = 340.0
+	tab.add_child(preset_hint)
 	_edge_scroll = _add_toggle(tab, "EdgeScrollCheck", "Edge scroll", GameSettings.edge_scroll(_path))
 	_edge_scroll.toggled.connect(func(on: bool) -> void:
 		_saved_or_undo(GameSettings.set_edge_scroll(on, _path), _edge_scroll, on)
@@ -308,14 +339,24 @@ func _controls_tab() -> Control:
 			tab.add_child(row)
 	tab.add_child(MenuKit.label("Groups", MenuKit.HEADING_SIZE, MenuKit.TEXT_COLOR))
 	var modifiers: PackedStringArray = PackedStringArray()
-	for modifier: int in InputBindings.GroupModifier.size():
-		modifiers.append("%s + number" % InputBindings.modifier_label(modifier as InputBindings.GroupModifier))
+	for modifier: InputBindings.GroupModifier in InputBindings.MODERN_GROUP_MODIFIERS:
+		modifiers.append("%s + number" % InputBindings.modifier_label(modifier))
 	var saved: Array[int] = GameSettings.group_modifiers(_path)
 	_save_modifier = _add_choice(tab, "SaveModifier", "Save a group", modifiers, saved[0], _on_modifier_selected)
 	_recall_modifier = _add_choice(tab, "RecallModifier", "Recall a group", modifiers, saved[1], _on_modifier_selected)
+	var classic_modifiers: PackedStringArray = PackedStringArray()
+	for modifier: int in InputBindings.GroupModifier.size():
+		classic_modifiers.append(
+			"%s + number (hold to save)" % InputBindings.modifier_label(modifier as InputBindings.GroupModifier)
+		)
+	_classic_modifier = _add_choice(
+		tab, "ClassicModifier", "Group key", classic_modifiers, GameSettings.classic_group_modifier(_path),
+		_on_classic_modifier_selected
+	)
 	var reset: Button = MenuKit.button("ResetControls", "Reset all controls")
 	reset.pressed.connect(_reset_controls)
 	tab.add_child(reset)
+	_refresh_bindings()
 	return scroller
 
 
