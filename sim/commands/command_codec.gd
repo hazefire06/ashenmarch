@@ -41,7 +41,14 @@ enum Kind {
 	SPAWN_ENTITY = 13,
 	SET_VELOCITY = 14,
 	DESPAWN_ENTITY = 15,
+	GUARD = 16,
 }
+
+## The kinds a player's orders produce: all lockstep may accept from a peer.
+const PLAYER_KINDS: Array[Kind] = [
+	Kind.MOVE, Kind.ATTACK_MOVE, Kind.STOP, Kind.GROUND_ATTACK, Kind.USE_SPECIAL, Kind.HEAL,
+	Kind.INTERACT, Kind.GUARD,
+]
 
 ## Every number in a record, the tick included, is under this in magnitude:
 ## about 1000 km in milli-units, far beyond any map, far inside what
@@ -72,6 +79,7 @@ const LAYOUTS: Dictionary[int, String] = {
 	Kind.SPAWN_ENTITY: "III",
 	Kind.SET_VELOCITY: "IIII",
 	Kind.DESPAWN_ENTITY: "I",
+	Kind.GUARD: "U",
 }
 
 
@@ -135,6 +143,9 @@ static func encode(command: SimCommand) -> Array:
 	if command is DespawnEntityCommand:
 		var c: DespawnEntityCommand = command
 		return [Kind.DESPAWN_ENTITY, c.tick, c.entity_id]
+	if command is GuardCommand:
+		var c: GuardCommand = command
+		return [Kind.GUARD, c.tick, c.unit_ids.duplicate()]
 	push_error("CommandCodec.encode: no record kind for %s" % command.get_script().resource_path)
 	return []
 
@@ -204,6 +215,8 @@ static func decode(record: Array) -> SimCommand:
 			return SetVelocityCommand.new(tick, f[0], f[1], f[2], f[3])
 		Kind.DESPAWN_ENTITY:
 			return DespawnEntityCommand.new(tick, f[0])
+		Kind.GUARD:
+			return GuardCommand.new(tick, f[0])
 	return null
 
 

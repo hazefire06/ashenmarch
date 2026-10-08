@@ -93,6 +93,15 @@ static func ground_attack(world: World, unit_ids: PackedInt32Array, x: int, z: i
 		world.movement.order_stop(unit)
 
 
+## G: each living unit among unit_ids guards the spot it stands on, facing
+## the way it faces now (Guard). Drops whatever it was doing.
+static func guard(world: World, unit_ids: PackedInt32Array) -> void:
+	for unit: Unit in living_units(world, unit_ids):
+		hold(unit)
+		unit.order = Unit.Order.GUARD
+		world.movement.order_stop(unit)
+
+
 ## T: each living unit among unit_ids uses its special if it has one left.
 ## A Sapper drops a charge at its feet; a Longbow nocks its fire arrow (the
 ## charge is spent when the arrow leaves); a Blightbag bursts. A Warden's heal
@@ -129,6 +138,9 @@ static func resume(world: World, unit: Unit) -> void:
 			world.movement.order_stop(unit)
 		Unit.Order.INTERACT:
 			Interactions.restart(world, unit)
+		Unit.Order.GUARD:
+			# Still on guard: Guard walks it home from wherever it stands.
+			world.movement.order_stop(unit)
 		_:
 			hold(unit)
 			world.movement.order_stop(unit)

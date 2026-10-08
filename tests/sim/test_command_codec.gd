@@ -27,6 +27,7 @@ func _samples() -> Array[SimCommand]:
 		SpawnEntityCommand.new(16, 1, 2, 3),
 		SetVelocityCommand.new(17, 23, -4, 5, -6),
 		DespawnEntityCommand.new(18, 23),
+		GuardCommand.new(19, ids),
 	]
 
 

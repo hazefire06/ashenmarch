@@ -38,6 +38,11 @@ enum Order {
 	## (heal it, pick it up, strike a herb plant), then go back to
 	## resume_order.
 	INTERACT,
+	## Hold the spot at order_x/z, facing order_facing there (Guard). Melee
+	## units fight what comes near it and walk back after; ranged ones fire
+	## at anything in range and step back from a melee enemy closing in.
+	## Appended so earlier values keep theirs.
+	GUARD,
 }
 
 ## Bitmask of states each state may change to, indexed by State. Every live
