@@ -1938,7 +1938,7 @@ The commander, ADVANCE, MEDIC and the skirmish rules draw no random numbers; `ma
   - Every number in a record is under 2^30 in magnitude: `INT64_MIN` as a facing used to hang `FixedMath.normalize`.
   - Lists hold at most 256 entries, a replay at most 4 hours of ticks.
   - Files are refused over 8 MB on disk, or over 32 MB decompressed. The stored length is checked before anything is allocated for it.
-  - `settings.cfg` is refused if it constructs a `Resource(` or `Object(`, which ConfigFile would load while parsing.
+  - `settings.cfg` is refused if it constructs a `Resource(` or `Object(`, which ConfigFile would load while parsing. (Phase 11: the bare words are refused, since the parser skips whitespace and `;` comments before the bracket and a security review ran a script through `Resource (`.)
 - **Files.** `ReplayStore` writes `user://replays/<unix>_<title>.amr` as zstd-compressed `store_var` with no objects, keeping the newest 30. App.show_screen saves the outgoing MainView's recording, so every way out of a game (results, quit, restart, Retry) saves it, as does closing the window.
 - **Viewer.** Main menu > Replays lists the games with Watch and Delete. Watching:
   - selection, tooltips and the camera work; orders are blocked;
@@ -2140,3 +2140,6 @@ Every control `docs/controls-myth2.md` listed as missing, a Classic preset besid
 - **Browsers:** whether Chrome on Windows keeps F1 for its help page, and whether a Mac browser lets a page have Cmd+digit, need a real keyboard (synthetic events reach the page whatever the browser does with real ones). Classic already uses Option in a browser on a Mac.
 - **Rumble on the web:** Godot's web joypad code may not drive the Gamepad API's vibration at all. The gate means it is simply off if so; untested with a pad.
 - **An attack-unit order:** a click on an enemy moves to the ground there, as before Phase 11, in both presets.
+- **A crafted replay can stall the viewer** (security review, Low): slot assignment is O(n³) in GDScript, and one group order over 256 living units costs seconds; nothing bounds how many such records a replay holds. Real missions have far fewer units, and MOVE had this in Phase 10. Options: a per-tick cap on group orders in `Replay.from_dict`, or a time budget in `ReplayPlayer`.
+- **Lockstep must check whose units a command orders,** not only its kind (`PLAYER_KINDS`): `UnitOrders.living_units` takes any side's ids.
+- **Reserved inputs:** Esc, the pad's Menu and Guide can't be bound (`InputBindings.is_reserved`), from Settings or a hand-edited file. Duplicate bindings from a hand-edited file are still applied as written.

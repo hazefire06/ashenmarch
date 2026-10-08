@@ -357,12 +357,25 @@ static func reset_pad() -> void:
 ## Rebinds each action in `overrides` to its event, in the event's own slot.
 ## An action that isn't rebindable in that slot is ignored, so a stale
 ## settings file can't rebind a debug key or put a pad button on a key-only
-## action.
+## action; nor is a reserved input taken (is_reserved).
 static func apply(overrides: Dictionary[StringName, InputEvent]) -> void:
 	for action: StringName in overrides:
 		var event: InputEvent = overrides[action]
-		if event != null and is_rebindable(action, device_of(event)):
+		if event != null and is_rebindable(action, device_of(event)) and not is_reserved(event):
 			_bind(action, event)
+
+
+## True for an input no action may be rebound to: Esc, which backs out of
+## everything; the pad's Menu, which always pauses; and its Guide button,
+## which the system keeps. Settings' capture cancels on the first two, and a
+## hand-edited file can't bind any of them.
+static func is_reserved(event: InputEvent) -> bool:
+	if event is InputEventKey:
+		return (event as InputEventKey).physical_keycode == KEY_ESCAPE
+	if event is InputEventJoypadButton:
+		var button: JoyButton = (event as InputEventJoypadButton).button_index
+		return button == JOY_BUTTON_START or button == JOY_BUTTON_GUIDE
+	return false
 
 
 ## Puts Modern's group saves and recalls on these modifiers plus the number
@@ -496,6 +509,8 @@ static func text_to_event(text: String) -> InputEvent:
 			event = _key(keycode)
 		"mouse":
 			if head.size() != 2 or not head[1].is_valid_int() or head[1].to_int() <= 0:
+				return null
+			if head[1].to_int() > MOUSE_BUTTON_XBUTTON2:
 				return null
 			event = _mouse(head[1].to_int() as MouseButton)
 		"joy_button":

@@ -219,6 +219,18 @@ func test_a_binding_in_the_wrong_slot_is_ignored() -> void:
 	assert_eq(InputBindings.label_for(InputBindings.PAD_SELECT, InputBindings.Device.PAD), "A")
 
 
+func test_reserved_inputs_are_never_bound() -> void:
+	InputBindings.apply({
+		InputBindings.PAD_SELECT: InputBindings.text_to_event("joy_button:%d" % JOY_BUTTON_START),
+		InputBindings.PAD_ORDER: InputBindings.text_to_event("joy_button:%d" % JOY_BUTTON_GUIDE),
+		InputBindings.STOP: _key(KEY_ESCAPE),
+	} as Dictionary[StringName, InputEvent])
+	assert_eq(InputBindings.label_for(InputBindings.PAD_SELECT, InputBindings.Device.PAD), "A")
+	assert_eq(InputBindings.label_for(InputBindings.PAD_ORDER, InputBindings.Device.PAD), "X")
+	assert_eq(InputBindings.label_for(InputBindings.STOP), "Space")
+	assert_null(InputBindings.text_to_event("mouse:99"), "no such mouse button")
+
+
 func test_saved_pad_text_binds_every_pad() -> void:
 	var event: InputEvent = InputBindings.text_to_event("joy_button:3")
 	assert_eq(event.device, -1)

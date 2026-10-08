@@ -441,13 +441,16 @@ static func apply_window_mode(enabled: bool) -> void:
 # The file's contents, or an empty ConfigFile if it is missing or won't parse.
 # A file that constructs a Resource or an Object counts as damaged: ConfigFile
 # would load the named resource (and run its script) while parsing, and no
-# setting is ever one.
+# setting is ever one. The bare words are refused, not the word and its
+# bracket: the parser skips spaces, tabs, newlines and ; comments between them
+# (a security review ran a script through "Resource (", Phase 11), and the
+# words cover SubResource and ExtResource too. No setting's text holds them.
 static func _read(path: String) -> ConfigFile:
 	var config: ConfigFile = ConfigFile.new()
 	if not FileAccess.file_exists(path):
 		return config
 	var text: String = FileAccess.get_file_as_string(path)
-	if text.contains("Resource(") or text.contains("Object(") or config.parse(text) != OK:
+	if text.contains("Resource") or text.contains("Object") or config.parse(text) != OK:
 		config.clear()
 	return config
 
