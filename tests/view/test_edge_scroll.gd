@@ -179,3 +179,54 @@ func _camera() -> MouseCamera:
 	camera.setup(terrain)
 	camera.set_pose(Vector2(100.0, 100.0), 0.0, 50.0)
 	return camera
+
+
+# --- the corner camera (Phase 11) -------------------------------------------------
+
+
+func test_corners_turn_at_the_top_and_orbit_at_the_bottom() -> void:
+	var size: Vector2 = Vector2(1000, 600)
+	assert_eq(RtsCamera.corner_turn(Vector2(10, 10), size), Vector2(-1, 0), "top left turns left")
+	assert_eq(RtsCamera.corner_turn(Vector2(990, 10), size), Vector2(1, 0), "top right turns right")
+	assert_eq(RtsCamera.corner_turn(Vector2(10, 590), size), Vector2(0, -1), "bottom left orbits left")
+	assert_eq(RtsCamera.corner_turn(Vector2(990, 590), size), Vector2(0, 1), "bottom right orbits right")
+	assert_eq(RtsCamera.corner_turn(Vector2(500, 5), size), Vector2.ZERO, "an edge isn't a corner")
+	assert_eq(RtsCamera.corner_turn(Vector2(-5, 5), size), Vector2.ZERO, "outside the window, nothing")
+
+
+func test_the_corner_camera_turns_instead_of_panning() -> void:
+	var camera: MouseCamera = _corner_camera(Vector2(2, 2))
+	var focus: Vector3 = camera.focus
+	var yaw: float = camera.yaw
+	camera._process(0.5)
+	assert_gt(camera.yaw, yaw, "it turned left")
+	assert_ne(camera.focus, focus, "turning in place swings the focus")
+	var off: MouseCamera = _corner_camera(Vector2(2, 2))
+	off.corner_camera = false
+	var off_yaw: float = off.yaw
+	off._process(0.5)
+	assert_eq(off.yaw, off_yaw, "off by default")
+
+
+func test_the_pad_pans_orbits_and_zooms_the_camera() -> void:
+	var camera: MouseCamera = _corner_camera(Vector2(300, 300))
+	camera.corner_camera = false
+	var focus: Vector3 = camera.focus
+	camera.pad_pan = Vector2(0.0, 1.0)
+	camera.pad_orbit = 1.0
+	camera.pad_zoom = 1.0
+	var yaw: float = camera.yaw
+	var distance: float = camera.distance
+	camera._process(0.5)
+	assert_ne(camera.focus, focus, "panned")
+	assert_gt(camera.yaw, yaw, "orbited right, as E does")
+	assert_lt(camera.distance, distance, "zoomed in")
+
+
+func _corner_camera(mouse: Vector2) -> MouseCamera:
+	var camera: MouseCamera = MouseCamera.new()
+	add_child_autofree(camera)
+	camera.setup(TestTerrains.flat(200, 200))
+	camera.corner_camera = true
+	camera.mouse = mouse
+	return camera

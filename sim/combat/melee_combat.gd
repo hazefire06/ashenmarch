@@ -24,6 +24,10 @@ extends RefCounted
 ## - Order.ATTACK_MOVE: fight enemies within the type's acquire_radius, chase
 ##   them up to ATTACK_MOVE_LEASH_PERMILLE of it, and resume the march after
 ##   each fight.
+## - Order.GUARD: Guard decides first (stepping a ranged unit back from a
+##   melee enemy, walking home after a fight). Otherwise as NONE, with the
+##   leash Guard.leash() around the guarded spot; while walking, only an
+##   enemy already in reach is taken on.
 ## - One target at a time. Once the target is in reach, or a swing is under
 ##   way, the unit keeps it until it dies or gets away, and doesn't turn to
 ##   face anyone else. Enemies on its flank or rear get free blows with the
@@ -148,15 +152,21 @@ func _decide(world: World, unit: Unit, grid: UnitGrid) -> bool:
 	var confused: bool = StatusEffects.confused(world, unit)
 	if unit.order == Unit.Order.INTERACT and not confused:
 		return false
+	if unit.order == Unit.Order.GUARD and not confused and Guard.decide(world, unit, grid, _largest_radius):
+		return false
 	if unit.order == Unit.Order.MOVE and not confused:
 		if unit.state != Unit.State.IDLE:
 			return false
-		# Arrived: hold here from now on.
+		# Arrived: on along the route if there is one (and nothing else this
+		# tick, so a plain leg never picks a fight), else hold here from now on.
+		if UnitRoute.advance(world, unit):
+			return false
 		UnitOrders.hold(unit)
 	if not unit.type.has_melee():
 		if not confused and unit.order == Unit.Order.ATTACK_MOVE and unit.state == Unit.State.IDLE:
 			# No melee to fight with, but the march still ends on arrival.
-			UnitOrders.hold(unit)
+			if not UnitRoute.advance(world, unit):
+				UnitOrders.hold(unit)
 		return false
 	var was_fighting: bool = unit.target_id != 0
 	if unit.windup_left > 0:
@@ -175,8 +185,10 @@ func _decide(world: World, unit: Unit, grid: UnitGrid) -> bool:
 		if was_fighting or unit.state == Unit.State.ATTACKING:
 			_resume(world, unit)
 		elif not confused and unit.order == Unit.Order.ATTACK_MOVE and unit.state == Unit.State.IDLE:
-			# Reached the end of the march with nothing left to fight.
-			UnitOrders.hold(unit)
+			# Reached the end of the march (or of a route's leg) with nothing
+			# left to fight.
+			if not UnitRoute.advance(world, unit):
+				UnitOrders.hold(unit)
 		return false
 	if Targeting.in_reach(unit, target):
 		_engage(unit, target)
@@ -230,6 +242,9 @@ func _acquire(world: World, unit: Unit, grid: UnitGrid, current: Unit, confused:
 func _acquire_radius(unit: Unit, confused: bool) -> int:
 	if (unit.order == Unit.Order.ATTACK_MOVE or confused) and not unit.fights_at_range():
 		return unit.type.acquire_radius
+	if unit.order == Unit.Order.GUARD and unit.state == Unit.State.MOVING and not confused:
+		# Stepping back or going home: only what is already in reach.
+		return unit.type.melee_reach
 	return unit.type.melee_reach + ADJACENT_SLACK
 
 
@@ -248,11 +263,15 @@ func _in_leash(world: World, unit: Unit, target: Unit, confused: bool) -> bool:
 	return _can_walk_to(world, unit, component, target)
 
 
-# Holding units (Order.NONE) only fight enemies near the spot they hold.
+# Holding units (Order.NONE) and guards only fight enemies near the spot
+# they hold.
 func _within_hold(unit: Unit, other: Unit) -> bool:
-	if unit.order != Unit.Order.NONE:
+	var leash: int = HOLD_LEASH
+	if unit.order == Unit.Order.GUARD:
+		leash = Guard.leash(unit)
+	elif unit.order != Unit.Order.NONE:
 		return true
-	return FixedMath.length(other.x - unit.order_x, other.z - unit.order_z) <= HOLD_LEASH
+	return FixedMath.length(other.x - unit.order_x, other.z - unit.order_z) <= leash
 
 
 func _can_walk_to(world: World, unit: Unit, component: int, other: Unit) -> bool:

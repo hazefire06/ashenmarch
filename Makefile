@@ -3,7 +3,7 @@ MAC_APP := build/mac/Ashenmarch.app
 WIN_EXE := build/windows/Ashenmarch.exe
 WEB_HTML := build/web/index.html
 
-.PHONY: import run demo demo-projectiles demo-abilities demo-ai test check-sim export-mac export-windows export-web export-all serve-web sfx bench profile-sim golden-replays verify-replays verify-replays-app verify-replays-x86 maps fixtures playtest skirmish-playtest capture capture-skirmish
+.PHONY: pad-playthrough import run demo demo-projectiles demo-abilities demo-ai test check-sim export-mac export-windows export-web export-all serve-web sfx bench profile-sim golden-replays verify-replays verify-replays-app verify-replays-x86 maps fixtures playtest skirmish-playtest capture capture-skirmish
 
 # Builds the .godot/ import and class_name cache. A fresh clone has none, and
 # GUT can't resolve class_name types without it.
@@ -121,11 +121,20 @@ profile-sim: import
 	$(GODOT) --headless --path . -s scripts/profile_sim.gd
 
 # Records the golden replays (data/replays/golden) that every build is
-# checked against: Riverside and Old Mill played by the playtest pilot, and an
-# AI-against-AI skirmish. Rerun deliberately when a change alters what the sim
-# does; verify-replays fails until then. See scripts/make_golden_replays.gd.
+# checked against: Riverside and Old Mill played by the playtest pilot, an
+# AI-against-AI skirmish, and Riverside given every Phase 11 order. Rerun
+# deliberately when a change alters what the sim does; verify-replays fails
+# until then. GOLDEN=name[,name] records only those. See
+# scripts/make_golden_replays.gd.
+# Riverside played to the end with a pad alone (tests/support/pad_pilot.gd):
+# the menus by focus, the mission by the cursor, wheels and overhead map, all
+# synthetic pad events. TIER=0..4 (default 2), SEED= the campaign seed. Exit
+# status 1 unless it wins and reaches the results.
+pad-playthrough: import
+	TIER=$(TIER) SEED=$(SEED) $(GODOT) --headless --path . -s scripts/pad_playthrough.gd
+
 golden-replays: import
-	$(GODOT) --headless --path . -s scripts/make_golden_replays.gd
+	GOLDEN=$(GOLDEN) $(GODOT) --headless --path . -s scripts/make_golden_replays.gd
 
 # The determinism check: plays every golden replay and compares each
 # checkpoint and the final hash with the recording. One line per replay; exit

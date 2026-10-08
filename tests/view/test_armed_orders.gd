@@ -354,6 +354,11 @@ func _click(
 	if command:
 		_add_command_modifier(event)
 	_controller._unhandled_input(event)
+	# Orders on the right button go when it comes up (a drag sets the facing).
+	if button_index == MOUSE_BUTTON_RIGHT:
+		var release: InputEventMouseButton = event.duplicate()
+		release.pressed = false
+		_controller._input(release)
 
 
 # Releases the left button where it was pressed. The controller reads

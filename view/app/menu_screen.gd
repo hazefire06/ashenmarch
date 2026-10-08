@@ -11,6 +11,14 @@ extends Control
 ## its own _init when it needs no data), and says in _focus_default() which
 ## control the keyboard starts on, because these are menus: Enter and the arrow
 ## keys have to work.
+##
+## A pad works every screen the same way (Phase 11): the D-pad or left stick
+## moves focus, A presses (ui_accept), B is Back (CANCEL's pad binding), and the
+## right stick scrolls the screen's scroll box (a briefing's text, a list), for
+## text with no button in it to move focus through.
+
+## Pixels a second the right stick scrolls at full tilt.
+const PAD_SCROLL_SPEED: float = 900.0
 
 ## The opaque backdrop of a whole screen, or the dim of an overlay (Settings and
 ## the confirm dialog show over something else).
@@ -31,6 +39,36 @@ func _init(opaque: bool = true) -> void:
 func _ready() -> void:
 	InputBindings.install()
 	_focus_default()
+
+
+func _process(delta: float) -> void:
+	if not is_visible_in_tree():
+		return
+	var push: float = Input.get_axis(InputBindings.PAD_PAN_FORWARD, InputBindings.PAD_PAN_BACK)
+	if push == 0.0:
+		return
+	var scroller: ScrollContainer = scroll_box()
+	if scroller != null:
+		scroller.scroll_vertical += roundi(push * PAD_SCROLL_SPEED * delta)
+
+
+## The scroll box the pad's right stick scrolls: the one holding focus, else
+## the first visible one on the screen; null if there is none.
+func scroll_box() -> ScrollContainer:
+	var focus: Control = get_viewport().gui_get_focus_owner() if is_inside_tree() else null
+	var node: Node = focus
+	while node != null and node != self:
+		if node is ScrollContainer:
+			return node as ScrollContainer
+		node = node.get_parent()
+	var stack: Array[Node] = [self]
+	while not stack.is_empty():
+		var next: Node = stack.pop_front()
+		if next is ScrollContainer and (next as ScrollContainer).is_visible_in_tree():
+			return next as ScrollContainer
+		var children: Array[Node] = next.get_children()
+		stack.append_array(children)
+	return null
 
 
 ## True for a screen that hides what is under it, false for an overlay.

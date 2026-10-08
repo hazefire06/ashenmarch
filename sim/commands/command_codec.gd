@@ -17,7 +17,13 @@ extends RefCounted
 ##
 ## Every kind decodes, including the setup and debug ones (spawns, statuses,
 ## velocities) a replay never holds from a player. When lockstep takes
-## commands from peers it must accept only the player-order kinds.
+## commands from peers it must accept only the player-order kinds
+## (PLAYER_KINDS).
+##
+## A layout may end in an optional tail after "|": a record holds either the
+## fields before it or all of them, never part of the tail. Decode fills a
+## missing tail with its defaults, so a record written before the tail existed
+## still loads as the command it was. Encode always writes the whole layout.
 
 enum Kind {
 	MOVE = 1,
@@ -35,7 +41,18 @@ enum Kind {
 	SPAWN_ENTITY = 13,
 	SET_VELOCITY = 14,
 	DESPAWN_ENTITY = 15,
+	GUARD = 16,
+	SCATTER = 17,
+	RETREAT = 18,
+	ROUTE_POINT = 19,
+	PATROL = 20,
 }
+
+## The kinds a player's orders produce: all lockstep may accept from a peer.
+const PLAYER_KINDS: Array[Kind] = [
+	Kind.MOVE, Kind.ATTACK_MOVE, Kind.STOP, Kind.GROUND_ATTACK, Kind.USE_SPECIAL, Kind.HEAL,
+	Kind.INTERACT, Kind.GUARD, Kind.SCATTER, Kind.RETREAT, Kind.ROUTE_POINT, Kind.PATROL,
+]
 
 ## Every number in a record, the tick included, is under this in magnitude:
 ## about 1000 km in milli-units, far beyond any map, far inside what
@@ -47,9 +64,12 @@ const MAX_LIST: int = 256
 ## A record's field types, after kind and tick, per kind. I is an int, U a
 ## PackedInt32Array of unit ids, S a PackedStringArray. Enum fields are I and
 ## are range-checked in decode.
+##
+## MOVE and ATTACK_MOVE gained a facing tail in Phase 11; without it the
+## facing is (0, 0), the automatic one (UnitOrders.move).
 const LAYOUTS: Dictionary[int, String] = {
-	Kind.MOVE: "UIII",
-	Kind.ATTACK_MOVE: "UIII",
+	Kind.MOVE: "UIII|II",
+	Kind.ATTACK_MOVE: "UIII|II",
 	Kind.STOP: "U",
 	Kind.GROUND_ATTACK: "UII",
 	Kind.USE_SPECIAL: "U",
@@ -63,6 +83,11 @@ const LAYOUTS: Dictionary[int, String] = {
 	Kind.SPAWN_ENTITY: "III",
 	Kind.SET_VELOCITY: "IIII",
 	Kind.DESPAWN_ENTITY: "I",
+	Kind.GUARD: "U",
+	Kind.SCATTER: "U",
+	Kind.RETREAT: "UI",
+	Kind.ROUTE_POINT: "UIIIIII",
+	Kind.PATROL: "UI",
 }
 
 
@@ -72,10 +97,12 @@ const LAYOUTS: Dictionary[int, String] = {
 static func encode(command: SimCommand) -> Array:
 	if command is MoveUnitsCommand:
 		var c: MoveUnitsCommand = command
-		return [Kind.MOVE, c.tick, c.unit_ids.duplicate(), c.x, c.z, c.formation]
+		return [Kind.MOVE, c.tick, c.unit_ids.duplicate(), c.x, c.z, c.formation, c.facing_x, c.facing_z]
 	if command is AttackMoveCommand:
 		var c: AttackMoveCommand = command
-		return [Kind.ATTACK_MOVE, c.tick, c.unit_ids.duplicate(), c.x, c.z, c.formation]
+		return [
+			Kind.ATTACK_MOVE, c.tick, c.unit_ids.duplicate(), c.x, c.z, c.formation, c.facing_x, c.facing_z,
+		]
 	if command is StopUnitsCommand:
 		var c: StopUnitsCommand = command
 		return [Kind.STOP, c.tick, c.unit_ids.duplicate()]
@@ -124,6 +151,24 @@ static func encode(command: SimCommand) -> Array:
 	if command is DespawnEntityCommand:
 		var c: DespawnEntityCommand = command
 		return [Kind.DESPAWN_ENTITY, c.tick, c.entity_id]
+	if command is GuardCommand:
+		var c: GuardCommand = command
+		return [Kind.GUARD, c.tick, c.unit_ids.duplicate()]
+	if command is ScatterCommand:
+		var c: ScatterCommand = command
+		return [Kind.SCATTER, c.tick, c.unit_ids.duplicate()]
+	if command is RetreatCommand:
+		var c: RetreatCommand = command
+		return [Kind.RETREAT, c.tick, c.unit_ids.duplicate(), c.formation]
+	if command is RoutePointCommand:
+		var c: RoutePointCommand = command
+		return [
+			Kind.ROUTE_POINT, c.tick, c.unit_ids.duplicate(), c.x, c.z, c.formation,
+			1 if c.attack else 0, c.facing_x, c.facing_z,
+		]
+	if command is PatrolCommand:
+		var c: PatrolCommand = command
+		return [Kind.PATROL, c.tick, c.unit_ids.duplicate(), int(c.mode)]
 	push_error("CommandCodec.encode: no record kind for %s" % command.get_script().resource_path)
 	return []
 
@@ -143,11 +188,11 @@ static func decode(record: Array) -> SimCommand:
 		Kind.MOVE:
 			if not _is_formation(f[3]):
 				return null
-			return MoveUnitsCommand.new(tick, f[0], f[1], f[2], f[3])
+			return MoveUnitsCommand.new(tick, f[0], f[1], f[2], f[3], _tail(f, 4), _tail(f, 5))
 		Kind.ATTACK_MOVE:
 			if not _is_formation(f[3]):
 				return null
-			return AttackMoveCommand.new(tick, f[0], f[1], f[2], f[3])
+			return AttackMoveCommand.new(tick, f[0], f[1], f[2], f[3], _tail(f, 4), _tail(f, 5))
 		Kind.STOP:
 			return StopUnitsCommand.new(tick, f[0])
 		Kind.GROUND_ATTACK:
@@ -193,17 +238,37 @@ static func decode(record: Array) -> SimCommand:
 			return SetVelocityCommand.new(tick, f[0], f[1], f[2], f[3])
 		Kind.DESPAWN_ENTITY:
 			return DespawnEntityCommand.new(tick, f[0])
+		Kind.GUARD:
+			return GuardCommand.new(tick, f[0])
+		Kind.SCATTER:
+			return ScatterCommand.new(tick, f[0])
+		Kind.RETREAT:
+			if not _is_formation(f[1]):
+				return null
+			return RetreatCommand.new(tick, f[0], f[1])
+		Kind.ROUTE_POINT:
+			if not _is_formation(f[3]) or not f[4] in [0, 1]:
+				return null
+			return RoutePointCommand.new(tick, f[0], f[1], f[2], f[3], f[4] == 1, f[5], f[6])
+		Kind.PATROL:
+			if f[1] != UnitRoute.Mode.LOOP and f[1] != UnitRoute.Mode.BACK_AND_FORTH:
+				return null
+			return PatrolCommand.new(tick, f[0], f[1] as UnitRoute.Mode)
 	return null
 
 
 ## Whether the fields after kind and tick match `layout` exactly, in number
-## and type.
+## and type: the fields before its optional tail, or all of them.
 static func _fits(record: Array, layout: String) -> bool:
-	if record.size() != 2 + layout.length():
+	var parts: PackedStringArray = layout.split("|")
+	var full: String = layout.replace("|", "")
+	if record.size() == 2 + parts[0].length():
+		full = parts[0]
+	elif record.size() != 2 + full.length():
 		return false
-	for i: int in layout.length():
+	for i: int in full.length():
 		var value: Variant = record[2 + i]
-		match layout[i]:
+		match full[i]:
 			"I":
 				# Both bounds explicitly: absi(INT64_MIN) is INT64_MIN.
 				if not value is int or value <= -MAX_MAGNITUDE or value >= MAX_MAGNITUDE:
@@ -215,6 +280,11 @@ static func _fits(record: Array, layout: String) -> bool:
 				if not value is PackedStringArray or (value as PackedStringArray).size() > MAX_LIST:
 					return false
 	return true
+
+
+# Field i of a decoded record's fields, or 0 where an old record has no tail.
+static func _tail(fields: Array, i: int) -> int:
+	return fields[i] if i < fields.size() else 0
 
 
 static func _is_formation(value: int) -> bool:

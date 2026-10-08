@@ -44,6 +44,14 @@ extends Node3D
 ## which Esc cancels first), P pauses without it, and a campaign mission also
 ## pauses when the window loses focus. While paused the camera, selection,
 ## tooltip, and info panel work but no command is enqueued.
+##
+## Game speed (F1 slower, F2 faster; Phase 11) is GAME_SPEEDS times the tick
+## rate, by running the physics frames that fast: still one tick a frame, so
+## every view's after_step sees every tick and the interpolation between ticks
+## stays right. Single player only: refused while watching a replay (it has
+## its own speeds) and in a lockstep game (MissionLaunch.lockstep). The sim
+## never hears of it; the rate goes back to what it was when this scene
+## leaves.
 
 ## How the mission ended, and its numbers (finished). Emitted once, a while
 ## after the outcome, so the banner is seen.
@@ -93,6 +101,9 @@ const SIM_TIME_SMOOTHING: float = 0.05
 ## Real seconds between the mission being decided and mission_ended: long
 ## enough to read the banner over the frozen field.
 const MISSION_END_DELAY: float = 2.5
+## Game speeds, in multiples of real time; F1 and F2 step through them.
+const GAME_SPEEDS: Array[float] = [0.5, 1.0, 2.0, 4.0]
+const NORMAL_SPEED: int = 1
 
 var world: World
 ## The campaign mission to play, or null for the sandbox. Set it before the
@@ -111,6 +122,12 @@ var end_delay: float = MISSION_END_DELAY
 var edge_scroll: bool = false:
 	set(value):
 		edge_scroll = value
+		_apply_edge_scroll()
+## Whether a screen corner turns or orbits the camera (RtsCamera.corner_camera);
+## the Settings toggle. Off while the pause menu is open, like edge scroll.
+var corner_camera: bool = false:
+	set(value):
+		corner_camera = value
 		_apply_edge_scroll()
 ## True while the sim isn't being stepped. Pausing changes nothing in the sim:
 ## the view just stops calling World.step(). Set it directly, or with P or the
@@ -133,6 +150,13 @@ var recording: Replay
 var last_step_ms: float = 0.0
 
 var _sim_ms: float = 0.0
+var _speed: int = NORMAL_SPEED
+var _pad: PadController
+var _pad_cursor_speed: float = 1.0
+var _pad_snap: bool = true
+## The pad's rumble (Settings > Controller sets its strength).
+var rumble: PadRumble = PadRumble.new()
+var _rate_before: int = World.TICK_RATE
 ## The DebugWeather preset F6 last picked.
 var _weather_preset: int = 0
 ## True once the mission is decided and the sim stopped for good, and once
@@ -180,7 +204,9 @@ var _ambience: Ambience
 
 
 func _ready() -> void:
-	# One physics frame is one sim tick, so the physics rate is the tick rate.
+	# One physics frame is one sim tick, so the physics rate is the tick rate
+	# (times the game speed). What it was is put back when this scene leaves.
+	_rate_before = Engine.physics_ticks_per_second
 	Engine.physics_ticks_per_second = World.TICK_RATE
 	InputBindings.install()
 
@@ -256,6 +282,21 @@ func _ready() -> void:
 	_pause_menu.set_app_buttons_visible(launch != null)
 	_control_bar.menu_requested.connect(_pause_menu.open)
 	_control_bar.center_requested.connect(center_on_selection)
+	_selection.center_requested.connect(center_on_selection)
+	_pad = PadController.new()
+	_pad.name = "Pad"
+	$Hud.add_child(_pad)
+	_pad.setup(self, _selection, _camera, _overhead_map, _control_bar, $Hud)
+	set_pad_settings(_pad_cursor_speed, _pad_snap, rumble.strength)
+	InputDeviceTracker.tracker().changed.connect(func(_device: int) -> void: refresh_key_labels())
+	_control_bar.speed_step_requested.connect(func(step: int) -> void: set_game_speed(_speed + step))
+	_control_bar.set_game_speed_visible(allows_game_speed())
+	_pause_menu.speed_step_requested.connect(func(step: int) -> void: set_game_speed(_speed + step))
+	_pause_menu.show_game_speed(ControlBar.speed_text(GAME_SPEEDS[_speed]), allows_game_speed())
+	if _skirmish_hud != null:
+		_pause_menu.set_scoreboard_visible(true)
+		_pause_menu.scoreboard_requested.connect(_skirmish_hud.toggle_scoreboard)
+	_overhead_map.set_orders(_selection)
 	_selection.order_given.connect(_sfx.acknowledge)
 	_pause_menu.opened.connect(_on_pause_menu_opened)
 	_pause_menu.closed.connect(_on_pause_menu_closed)
@@ -340,6 +381,8 @@ func _advance() -> void:
 	_ai_debug.after_step()
 	_sfx.after_step()
 	_ambience.after_step()
+	if _replay_player == null:
+		rumble.after_step(world, _camera.focus, _selection.side)
 	_mission_hud.show_world(world)
 	_objectives.show_world(world)
 	if _skirmish_hud != null:
@@ -352,6 +395,31 @@ func _advance() -> void:
 		_freeze()
 	elif _replay_player != null and _replay_player.is_done():
 		_freeze()
+
+
+## The game speed's index in GAME_SPEEDS.
+func game_speed() -> int:
+	return _speed
+
+
+## Whether game speed may change: not while watching a replay, nor in a
+## lockstep game.
+func allows_game_speed() -> bool:
+	return _replay_player == null and (launch == null or not launch.lockstep)
+
+
+## Sets the game speed to GAME_SPEEDS[index] (clamped), if allowed.
+func set_game_speed(index: int) -> void:
+	if not allows_game_speed():
+		return
+	_speed = clampi(index, 0, GAME_SPEEDS.size() - 1)
+	Engine.physics_ticks_per_second = roundi(World.TICK_RATE * GAME_SPEEDS[_speed])
+	_control_bar.set_game_speed(GAME_SPEEDS[_speed])
+	_pause_menu.show_game_speed(ControlBar.speed_text(GAME_SPEEDS[_speed]))
+
+
+func _exit_tree() -> void:
+	Engine.physics_ticks_per_second = _rate_before
 
 
 ## Pauses or resumes without the menu (P). Does nothing while the pause menu is
@@ -386,6 +454,50 @@ func center_on_selection() -> void:
 		_camera.glide_to(sum / count / float(World.UNITS_PER_METER))
 
 
+## The pad's control-bar focus (PadController, L3): the bar's buttons, the
+## unit info panel's cells and the replay bar's take focus (on), or none do and
+## focus is let go (off).
+func set_hud_focus(on: bool) -> void:
+	_control_bar.set_focus_enabled(on)
+	_info_panel.set_focus_enabled(on)
+	if _replay_bar != null:
+		_replay_bar.set_focus_enabled(on)
+	if on:
+		return
+	# Only a HUD button's focus is let go; a menu's (the pause menu that
+	# ended the mode) stays.
+	var owner: Control = get_viewport().gui_get_focus_owner()
+	for panel: Control in hud_panels():
+		if owner != null and panel.is_ancestor_of(owner):
+			get_viewport().gui_release_focus()
+			return
+
+
+## The HUD panels with buttons: the control bar, the unit info panel, and
+## the replay bar when watching one.
+func hud_panels() -> Array[Control]:
+	var panels: Array[Control] = [_control_bar, _info_panel]
+	if _replay_bar != null:
+		panels.append(_replay_bar)
+	return panels
+
+
+## The pad's controller.
+func pad() -> PadController:
+	return _pad
+
+
+## The pad's settings: the cursor's speed (1 is PadController's own), whether
+## it sticks to units, and rumble strength (0 off .. 1).
+func set_pad_settings(cursor_speed: float, snap: bool, rumble_strength: float) -> void:
+	_pad_cursor_speed = cursor_speed
+	_pad_snap = snap
+	rumble.strength = rumble_strength
+	if _pad != null:
+		_pad.cursor_speed_scale = cursor_speed
+		_pad.snap = snap
+
+
 ## Puts the current key bindings into everything that names them: the control
 ## bar, the pause menu's label, the scoreboard's hint. The App calls it after
 ## the controls change.
@@ -404,6 +516,12 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 	elif event.is_action_pressed(InputBindings.PAUSE):
 		toggle_pause()
+		get_viewport().set_input_as_handled()
+	elif event.is_action_pressed(InputBindings.SPEED_DOWN, false, true):
+		set_game_speed(_speed - 1)
+		get_viewport().set_input_as_handled()
+	elif event.is_action_pressed(InputBindings.SPEED_UP, false, true):
+		set_game_speed(_speed + 1)
 		get_viewport().set_input_as_handled()
 	elif event.is_action_pressed(InputBindings.CYCLE_WEATHER) and not _campaign() and not paused:
 		_weather_preset = DebugWeather.next(_weather_preset)
@@ -648,7 +766,9 @@ func _on_pause_menu_closed() -> void:
 func _apply_edge_scroll() -> void:
 	if _camera == null:
 		return
-	_camera.edge_scroll = edge_scroll and not (_pause_menu != null and _pause_menu.is_open())
+	var menu_open: bool = _pause_menu != null and _pause_menu.is_open()
+	_camera.edge_scroll = edge_scroll and not menu_open
+	_camera.corner_camera = corner_camera and not menu_open
 
 
 func _on_resume_requested() -> void:
