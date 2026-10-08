@@ -32,6 +32,10 @@ var campaign_mode: bool = true
 var skirmish: SkirmishSetup
 ## The replay to watch, or null when playing.
 var replay: Replay
+## True for a game played in lockstep with others (multiplayer, after
+## skirmish): game speed (F1/F2) is then refused, since every peer must step
+## at the same pace. Always false for now; MainView checks it.
+var lockstep: bool = false
 
 
 func _init(

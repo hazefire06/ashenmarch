@@ -44,6 +44,14 @@ extends Node3D
 ## which Esc cancels first), P pauses without it, and a campaign mission also
 ## pauses when the window loses focus. While paused the camera, selection,
 ## tooltip, and info panel work but no command is enqueued.
+##
+## Game speed (F1 slower, F2 faster; Phase 11) is GAME_SPEEDS times the tick
+## rate, by running the physics frames that fast: still one tick a frame, so
+## every view's after_step sees every tick and the interpolation between ticks
+## stays right. Single player only: refused while watching a replay (it has
+## its own speeds) and in a lockstep game (MissionLaunch.lockstep). The sim
+## never hears of it; the rate goes back to what it was when this scene
+## leaves.
 
 ## How the mission ended, and its numbers (finished). Emitted once, a while
 ## after the outcome, so the banner is seen.
@@ -93,6 +101,9 @@ const SIM_TIME_SMOOTHING: float = 0.05
 ## Real seconds between the mission being decided and mission_ended: long
 ## enough to read the banner over the frozen field.
 const MISSION_END_DELAY: float = 2.5
+## Game speeds, in multiples of real time; F1 and F2 step through them.
+const GAME_SPEEDS: Array[float] = [0.5, 1.0, 2.0, 4.0]
+const NORMAL_SPEED: int = 1
 
 var world: World
 ## The campaign mission to play, or null for the sandbox. Set it before the
@@ -133,6 +144,8 @@ var recording: Replay
 var last_step_ms: float = 0.0
 
 var _sim_ms: float = 0.0
+var _speed: int = NORMAL_SPEED
+var _rate_before: int = World.TICK_RATE
 ## The DebugWeather preset F6 last picked.
 var _weather_preset: int = 0
 ## True once the mission is decided and the sim stopped for good, and once
@@ -180,7 +193,9 @@ var _ambience: Ambience
 
 
 func _ready() -> void:
-	# One physics frame is one sim tick, so the physics rate is the tick rate.
+	# One physics frame is one sim tick, so the physics rate is the tick rate
+	# (times the game speed). What it was is put back when this scene leaves.
+	_rate_before = Engine.physics_ticks_per_second
 	Engine.physics_ticks_per_second = World.TICK_RATE
 	InputBindings.install()
 
@@ -256,6 +271,10 @@ func _ready() -> void:
 	_pause_menu.set_app_buttons_visible(launch != null)
 	_control_bar.menu_requested.connect(_pause_menu.open)
 	_control_bar.center_requested.connect(center_on_selection)
+	_selection.center_requested.connect(center_on_selection)
+	_control_bar.speed_step_requested.connect(func(step: int) -> void: set_game_speed(_speed + step))
+	_control_bar.set_game_speed_visible(allows_game_speed())
+	_overhead_map.set_orders(_selection)
 	_selection.order_given.connect(_sfx.acknowledge)
 	_pause_menu.opened.connect(_on_pause_menu_opened)
 	_pause_menu.closed.connect(_on_pause_menu_closed)
@@ -354,6 +373,30 @@ func _advance() -> void:
 		_freeze()
 
 
+## The game speed's index in GAME_SPEEDS.
+func game_speed() -> int:
+	return _speed
+
+
+## Whether game speed may change: not while watching a replay, nor in a
+## lockstep game.
+func allows_game_speed() -> bool:
+	return _replay_player == null and (launch == null or not launch.lockstep)
+
+
+## Sets the game speed to GAME_SPEEDS[index] (clamped), if allowed.
+func set_game_speed(index: int) -> void:
+	if not allows_game_speed():
+		return
+	_speed = clampi(index, 0, GAME_SPEEDS.size() - 1)
+	Engine.physics_ticks_per_second = roundi(World.TICK_RATE * GAME_SPEEDS[_speed])
+	_control_bar.set_game_speed(GAME_SPEEDS[_speed])
+
+
+func _exit_tree() -> void:
+	Engine.physics_ticks_per_second = _rate_before
+
+
 ## Pauses or resumes without the menu (P). Does nothing while the pause menu is
 ## up, which owns the pause then, or once the mission is decided.
 func toggle_pause() -> void:
@@ -404,6 +447,12 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 	elif event.is_action_pressed(InputBindings.PAUSE):
 		toggle_pause()
+		get_viewport().set_input_as_handled()
+	elif event.is_action_pressed(InputBindings.SPEED_DOWN, false, true):
+		set_game_speed(_speed - 1)
+		get_viewport().set_input_as_handled()
+	elif event.is_action_pressed(InputBindings.SPEED_UP, false, true):
+		set_game_speed(_speed + 1)
 		get_viewport().set_input_as_handled()
 	elif event.is_action_pressed(InputBindings.CYCLE_WEATHER) and not _campaign() and not paused:
 		_weather_preset = DebugWeather.next(_weather_preset)

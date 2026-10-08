@@ -78,6 +78,11 @@ func recall_group(slot: int) -> bool:
 	return true
 
 
+## Empties group slot (Delete).
+func clear_group(slot: int) -> void:
+	_groups[slot] = PackedInt32Array()
+
+
 func group(slot: int) -> PackedInt32Array:
 	return _groups[slot].duplicate()
 

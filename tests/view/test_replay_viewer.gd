@@ -77,6 +77,14 @@ func test_a_played_skirmish_records_its_orders_and_how_it_ended() -> void:
 	assert_true(player.verified(), "and it plays back")
 
 
+func test_a_replay_keeps_its_own_speed_controls() -> void:
+	var main: MainView = _watch_golden()
+	assert_false(main.allows_game_speed(), "F1/F2 don't apply")
+	var rate: int = Engine.physics_ticks_per_second
+	main.set_game_speed(3)
+	assert_eq(Engine.physics_ticks_per_second, rate)
+
+
 func test_the_sandbox_and_maps_built_in_code_record_nothing() -> void:
 	assert_null(_main(ViewFixtures.skirmish_launch()).recording, "a code-built map")
 	assert_null(_main(null).recording, "the sandbox")

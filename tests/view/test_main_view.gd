@@ -76,6 +76,9 @@ func _right_click(main: MainView) -> void:
 	event.pressed = true
 	event.position = get_viewport().get_visible_rect().size * 0.5
 	_controller(main)._unhandled_input(event)
+	var release: InputEventMouseButton = event.duplicate()
+	release.pressed = false
+	_controller(main)._input(release)
 
 
 # --- the launch ---------------------------------------------------------------
@@ -694,3 +697,45 @@ func _button(under: Node, label: String) -> Button:
 			return button
 	fail_test("no button %s" % label)
 	return Button.new()
+
+
+# --- game speed (Phase 11) ------------------------------------------------------
+
+
+func test_f1_and_f2_set_the_game_speed_by_the_physics_rate() -> void:
+	var main: MainView = _view()
+	assert_eq(Engine.physics_ticks_per_second, World.TICK_RATE)
+	_push(_key(KEY_F2))
+	assert_eq(Engine.physics_ticks_per_second, 2 * World.TICK_RATE, "2x")
+	_push(_key(KEY_F2))
+	_push(_key(KEY_F2))
+	assert_eq(Engine.physics_ticks_per_second, 4 * World.TICK_RATE, "4x at most")
+	for i: int in 4:
+		_push(_key(KEY_F1))
+	assert_eq(Engine.physics_ticks_per_second, World.TICK_RATE / 2, "half speed at least")
+	assert_eq(main.game_speed(), 0)
+
+
+func test_game_speed_still_steps_one_tick_a_frame() -> void:
+	var main: MainView = _view()
+	main.set_game_speed(3)
+	var before: int = main.world.tick
+	_step(main, 10)
+	assert_eq(main.world.tick, before + 10)
+
+
+func test_game_speed_is_refused_in_lockstep() -> void:
+	var main: MainView = _view()
+	main.launch.lockstep = true
+	assert_false(main.allows_game_speed())
+	_push(_key(KEY_F2))
+	assert_eq(Engine.physics_ticks_per_second, World.TICK_RATE)
+
+
+func test_leaving_puts_the_physics_rate_back() -> void:
+	var before: int = Engine.physics_ticks_per_second
+	var main: MainView = _view()
+	main.set_game_speed(3)
+	remove_child(main)
+	assert_eq(Engine.physics_ticks_per_second, before)
+	main.free()
