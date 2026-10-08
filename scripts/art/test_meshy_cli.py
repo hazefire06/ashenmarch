@@ -17,6 +17,7 @@ import meshy
 import meshy_client
 import unit_spec
 from manifest import Manifest
+from test_manifest import NESTED_RECORD
 from meshy_client import MeshyError, TaskFailed
 from unit_spec import AnimEntry, load_prop_spec, load_spec, load_style
 
@@ -1134,6 +1135,62 @@ class MainTest(unittest.TestCase):
             self.assertEqual((code, out), (2, ""))
             self.assertEqual(err, f"meshy.py: {locked} can't be checked; fix its permissions\n")
 
+    def test_a_folder_that_can_be_listed_but_not_entered_is_refused_not_passed(self) -> None:
+        # r-- on a folder: its names list, but lstat on an entry fails, and os.path.islink calls that "not a link".
+        if os.geteuid() == 0:
+            self.skipTest("root enters mode 400 folders")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "art-src"
+            root.mkdir()
+            work_dir = self.stage(root)
+            readable_only = work_dir / "review" / "readable_only"
+            readable_only.mkdir(parents=True)
+            (readable_only / "hidden.png").write_bytes(b"x")
+            os.chmod(readable_only, 0o400)
+            try:
+                with mock.patch.object(meshy, "load_prop_spec", side_effect=AssertionError("read the spec")):
+                    code, out, err = self.run_paid(root, FakeClient(), ["prop-plan", "broadsword"])
+            finally:
+                os.chmod(readable_only, 0o700)
+            self.assertEqual((code, out), (2, ""))
+            self.assertTrue(err.startswith(f"meshy.py: {readable_only}"), err)
+            self.assertTrue(err.endswith(" can't be checked; fix its permissions\n"), err)
+
+    def test_a_file_that_vanishes_during_the_walk_is_not_an_error(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "art-src"
+            root.mkdir()
+            work_dir = self.stage(root)
+            (work_dir / "gone.txt").write_bytes(b"x")
+            real_lstat = os.lstat
+
+            def lstat(path: Any, *args: Any, **kwargs: Any) -> os.stat_result:
+                if str(path).endswith("gone.txt"):
+                    raise FileNotFoundError(2, "No such file or directory", str(path))
+                return real_lstat(path, *args, **kwargs)
+
+            with mock.patch.object(meshy, "ART_SRC", root), mock.patch.object(meshy.os, "lstat", lstat):
+                self.assertIsNone(meshy._unsafe_work_dir(work_dir))
+
+    def test_the_created_line_is_flushed_so_a_pipe_sees_the_id(self) -> None:
+        class Pipe(io.StringIO):
+            flushes = 0
+
+            def flush(self) -> None:
+                type(self).flushes += 1
+                super().flush()
+
+        pipe = Pipe()
+        with contextlib.redirect_stdout(pipe):
+            meshy._say("cand-1: preview task preview-1 created")
+        self.assertEqual(pipe.getvalue(), "cand-1: preview task preview-1 created\n")
+        self.assertGreaterEqual(Pipe.flushes, 1)
+
+    def test_the_flows_say_through_the_flushing_default(self) -> None:
+        import inspect
+        for flow in (meshy.run_candidates, meshy.run_build, meshy.run_prop_build):
+            self.assertIs(inspect.signature(flow).parameters["say"].default, meshy._say, flow.__name__)
+
     def test_a_work_dir_that_does_not_exist_yet_is_not_a_permissions_problem(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp) / "art-src"
@@ -1142,7 +1199,7 @@ class MainTest(unittest.TestCase):
                 self.assertIsNone(meshy._unsafe_work_dir(root / "props" / "newprop"))
 
     def test_a_corrupt_manifest_is_one_line_and_exit_2_through_main(self) -> None:
-        for data in (b'{"tasks": [ SECRETLOOKING', b"\xff\xfe\x00", b"[]", b'{"tasks": 3}', b"[" * 200000):
+        for data in (b'{"tasks": [ SECRETLOOKING', b"\xff\xfe\x00", b"[]", b'{"tasks": 3}', b"[" * 200000, NESTED_RECORD):
             for argv in (["prop-plan", "broadsword"], ["prop-candidates", "broadsword", "--max-credits", "10"]):
                 with self.subTest(data=data[:12], command=argv[0]), tempfile.TemporaryDirectory() as tmp:
                     root = Path(tmp) / "art-src"

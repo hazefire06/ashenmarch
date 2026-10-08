@@ -100,6 +100,9 @@ class ManifestTest(unittest.TestCase):
         self.assertEqual(m.credits_spent(), 7)
 
 
+NESTED_RECORD = b'{"tasks": [{"kind": "rig", "label": "x", "files": ' + b"[" * 600 + b"]" * 600 + b"}]}"  # loads, but clean() recurses
+
+
 class CorruptManifestTest(unittest.TestCase):
     def setUp(self) -> None:
         self._tmp = tempfile.TemporaryDirectory()
@@ -110,7 +113,7 @@ class CorruptManifestTest(unittest.TestCase):
 
     def test_a_manifest_that_is_not_usable_raises_manifest_error_without_its_content(self) -> None:
         for data in (b'{"tasks": [ SECRETLOOKING', b"\xff\xfe\x00", b"[]", b'"x"', b"null", b'{"tasks": 3}', b'{"tasks": [1]}',
-                     b'{"tasks": ["SECRETLOOKING"]}', b"[" * 200000):
+                     b'{"tasks": ["SECRETLOOKING"]}', b"[" * 200000, NESTED_RECORD):
             with self.subTest(data=data[:20]):
                 self.path.write_bytes(data)
                 with self.assertRaises(ManifestError) as caught:
@@ -118,8 +121,23 @@ class CorruptManifestTest(unittest.TestCase):
                 for leaked in ("SECRETLOOKING", "0xff", "codec", "Expecting"):
                     self.assertNotIn(leaked, str(caught.exception))
                 self.assertIn(str(self.path), str(caught.exception))
-                self.assertIn("git", str(caught.exception))  # deleting it would forget what was bought
                 self.assertIsNone(caught.exception.__cause__)
+
+    def test_the_message_never_tells_anyone_to_restore_or_delete_it(self) -> None:
+        # An older copy, or a deleted file, forgets tasks bought since: the next run would buy them again.
+        self.path.write_bytes(b"{")
+        with self.assertRaises(ManifestError) as caught:
+            Manifest.load(self.path)
+        text = str(caught.exception)
+        self.assertIn("Fix it by hand (for a merge conflict, keep both sides' records).", text)
+        self.assertIn("Don't delete it or check out an older copy: tasks bought since then would be bought again.", text)
+        for bad in ("Restore", "restore", "from git"):
+            self.assertNotIn(bad, text)
+
+    def test_a_record_nested_deeper_than_clean_can_handle_is_a_manifest_error(self) -> None:
+        self.path.write_bytes(NESTED_RECORD)
+        with self.assertRaises(ManifestError):
+            Manifest.load(self.path)
 
     def test_a_good_manifest_and_an_empty_object_still_load(self) -> None:
         self.path.write_text('{"tasks": [{"kind": "rig", "label": "x"}]}')

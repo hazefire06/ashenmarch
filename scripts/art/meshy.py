@@ -45,6 +45,7 @@ from __future__ import annotations
 import argparse
 import os
 import re
+import stat
 import sys
 import time
 import urllib.error
@@ -88,6 +89,11 @@ def candidate_jobs(spec: Recipe) -> list[tuple[str, str]]:
     jobs = [(f"cand-{i + 1}", PREVIEW_MODELS["lite"]) for i in range(spec.lite)]
     jobs += [(f"cand-{spec.lite + i + 1}", PREVIEW_MODELS["full"]) for i in range(spec.full)]
     return jobs
+
+
+def _say(line: str) -> None:
+    """Progress lines go out at once, so a task id reaches a pipe or a log before anything else can go wrong."""
+    print(line, flush=True)
 
 
 def _bought(record: dict[str, Any] | None) -> bool:
@@ -245,7 +251,7 @@ def _fetch(manifest: Manifest, client: Any, api_kind: str, record: dict[str, Any
 
 
 def run_candidates(spec: Recipe, style: Style, manifest: Manifest, client: Any, work_dir: Path,
-                   max_credits: int, say: Say = print) -> list[Path]:
+                   max_credits: int, say: Say = _say) -> list[Path]:
     _refuse_if_interrupted(manifest)
     if not candidate_jobs(spec):  # a recipe with no [candidates] table loads for the renderer, but there is nothing to buy
         raise BuildError(f"{spec.id} lists no candidates; add a [candidates] table with lite or full to its spec.toml")
@@ -311,7 +317,7 @@ def _texture(manifest: Manifest, client: Any, work_dir: Path, label: str, candid
 
 
 def run_prop_build(spec: PropSpec, manifest: Manifest, client: Any, prop_dir: Path, pick: int,
-                   max_credits: int, say: Say = print) -> None:
+                   max_credits: int, say: Say = _say) -> None:
     _refuse_if_interrupted(manifest)
     label = f"cand-{pick}"
     _check_pick(prop_dir, label)
@@ -323,7 +329,7 @@ def run_prop_build(spec: PropSpec, manifest: Manifest, client: Any, prop_dir: Pa
 
 
 def run_build(spec: UnitSpec, manifest: Manifest, client: Any, unit_dir: Path, pick: int,
-              max_credits: int, say: Say = print) -> None:
+              max_credits: int, say: Say = _say) -> None:
     _refuse_if_interrupted(manifest)
     too_many = _too_many_actions(spec)
     if too_many:  # before any purchase
@@ -397,8 +403,13 @@ def _first_symlink(work_dir: Path) -> Path | None:
     folders but, with followlinks=False, never enters it."""
     for root, folders, files in os.walk(work_dir, followlinks=False, onerror=_unlistable):
         for entry in sorted(folders + files):
-            if os.path.islink(os.path.join(root, entry)):
-                return Path(root) / entry
+            try:
+                # Not os.path.islink: that calls a failed lstat (a folder that lists but can't be entered) "not a link".
+                # The OSError reaches _unsafe_work_dir, which refuses the folder.
+                if stat.S_ISLNK(os.lstat(os.path.join(root, entry)).st_mode):
+                    return Path(root) / entry
+            except FileNotFoundError:  # gone since it was listed
+                continue
     return None
 
 
