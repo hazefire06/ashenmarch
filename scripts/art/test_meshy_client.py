@@ -522,6 +522,77 @@ class UntrustedTextTest(unittest.TestCase):
         self.assertEqual(meshy_client._safe("a\x1bb"), "'a\\x1bb'")
 
 
+class ErrorBodyLimitsTest(unittest.TestCase):
+    """The body of a 4xx/5xx is read for Meshy's message; whatever it holds must not turn the status into a traceback."""
+
+    DEEP = b"[" * 200000
+
+    def post(self, code: int, body: bytes) -> MeshyError:
+        with mock.patch.object(meshy_client.urllib.request.OpenerDirector, "open", side_effect=http_error(code, body)):
+            with self.assertRaises(MeshyError) as caught:
+                http_transport("not-a-real-key")("POST", "/openapi/v2/text-to-3d", {})
+        return caught.exception
+
+    def test_a_deeply_nested_402_body_is_still_a_definite_rejection(self) -> None:
+        caught = self.post(402, self.DEEP)
+        self.assertIn("HTTP 402", str(caught))
+        self.assertFalse(caught.may_have_created)  # so the record ends FAILED and the task is bought again
+
+    def test_a_deeply_nested_503_body_still_may_have_created_a_task(self) -> None:
+        caught = self.post(503, self.DEEP)
+        self.assertIn("HTTP 503", str(caught))
+        self.assertTrue(caught.may_have_created)
+        self.assertIn("pay twice", str(caught))
+
+    def test_a_nested_error_body_on_a_get_keeps_its_status_and_retryability(self) -> None:
+        with mock.patch.object(meshy_client.urllib.request.OpenerDirector, "open", side_effect=http_error(503, self.DEEP)):
+            with self.assertRaises(MeshyError) as caught:
+                http_transport("k")("GET", "/openapi/v2/text-to-3d/t1", None)
+        self.assertTrue(caught.exception.retryable)
+        self.assertIn("HTTP 503", str(caught.exception))
+
+
+class DownloadRefusalTest(unittest.TestCase):
+    def refuse(self, url: object) -> MeshyError:
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.assertRaises(MeshyError) as caught:
+                http_downloader(url, Path(tmp) / "m.glb")  # type: ignore[arg-type]
+            self.assertEqual(list(Path(tmp).iterdir()), [])  # no .part, no folder made
+        return caught.exception
+
+    def test_a_hostile_host_name_is_shown_escaped(self) -> None:
+        # The URL comes from Meshy's reply, so its host is not ours to print raw.
+        caught = self.refuse("https://evil\x1b.example\x07/model.glb?Signature=SECRETSIG")
+        text = str(caught)
+        self.assertIn("refusing download from https://", text)
+        self.assertNotIn("\x1b", text)
+        self.assertNotIn("\x07", text)
+        self.assertIn("evil", text)  # still readable, just escaped
+        self.assertNotIn("SECRETSIG", text)
+
+    def test_a_long_host_name_is_cut_short(self) -> None:
+        self.assertLess(len(str(self.refuse("https://" + "a" * 5000 + ".example/m.glb"))), 200)
+
+    def test_a_plain_refusal_keeps_its_wording(self) -> None:
+        self.assertEqual(str(self.refuse("https://evil.example/model.glb")), "refusing download from https://evil.example")
+        self.assertEqual(str(self.refuse("http://assets.meshy.ai/model.glb")), "refusing download from http://assets.meshy.ai")
+
+    def test_a_malformed_url_is_a_meshy_error_not_a_value_error(self) -> None:
+        for url in ("https://[bad/a", "https://[::1/a", "https://evil\x1b[31m.example/a", None, 5, b"https://assets.meshy.ai/x", ["https://assets.meshy.ai/x"]):
+            with self.subTest(url=url):
+                caught = self.refuse(url)
+                self.assertTrue(str(caught).startswith("refusing download"), str(caught))
+                self.assertNotIn("Traceback", str(caught))
+
+    def test_urlsplit_value_errors_say_malformed(self) -> None:
+        self.assertEqual(str(self.refuse("https://[bad/a")), "refusing download: malformed URL")
+        self.assertEqual(str(self.refuse(None)), "refusing download: malformed URL")
+
+    def test_a_malformed_redirect_target_is_refused_not_raised(self) -> None:
+        req = urllib.request.Request("https://assets.meshy.ai/m.glb")
+        self.assertIsNone(meshy_client._AllowlistedRedirects().redirect_request(req, None, 302, "Found", {}, "https://[bad/a"))
+
+
 class ReplyLimitsTest(unittest.TestCase):
     def test_a_reply_nested_too_deeply_for_json_is_a_lost_reply(self) -> None:
         opener = opener_that(returns=reply_with_body(b"[" * 200000))

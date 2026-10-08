@@ -194,9 +194,25 @@ def _valid_task_id(task_id: object) -> bool:
 
 
 def _allowed(url: str) -> bool:
-    """Check if a URL is allowed for downloads."""
-    parts = urllib.parse.urlsplit(url)
+    """Check if a URL is allowed for downloads. A URL that isn't a string, or won't parse, is not."""
+    if not isinstance(url, str):
+        return False
+    try:
+        parts = urllib.parse.urlsplit(url)
+    except ValueError:  # e.g. an unclosed [ in the host
+        return False
     return parts.scheme == "https" and parts.hostname in ALLOWED_DOWNLOAD_HOSTS
+
+
+def _refusal(url: object) -> str:
+    """Why a download URL was refused. The URL comes from Meshy's reply, so only its scheme and an escaped, short host are shown."""
+    try:
+        parts = urllib.parse.urlsplit(url) if isinstance(url, str) else None
+    except ValueError:
+        parts = None
+    if parts is None:
+        return "refusing download: malformed URL"
+    return f"refusing download from {_safe(parts.scheme, 20)}://{_safe(parts.hostname or '', 80)}"
 
 
 def _tls_context() -> ssl.SSLContext:
@@ -266,8 +282,7 @@ def http_transport(api_key: str, base_url: str = BASE_URL, timeout: float = 60.0
 
 def http_downloader(url: str, dest: Path) -> None:
     if not _allowed(url):
-        parts = urllib.parse.urlsplit(url)
-        raise MeshyError(f"refusing download from {parts.scheme}://{parts.hostname}")
+        raise MeshyError(_refusal(url))
     dest.parent.mkdir(parents=True, exist_ok=True)
     part = dest.with_name(dest.name + ".part")
     opener = urllib.request.build_opener(_AllowlistedRedirects(), urllib.request.HTTPSHandler(context=_tls_context()))
@@ -333,5 +348,5 @@ def _server_message(error: urllib.error.HTTPError, api_key: str) -> str:
     """Meshy's own message for an error, with the key scrubbed in case it is echoed back."""
     try:
         return _safe(str(json.loads(error.read().decode("utf-8")).get("message", "")).replace(api_key, "[redacted]")[:200])
-    except (ValueError, AttributeError, OSError, http.client.HTTPException):  # no JSON, or the body itself was cut off
+    except (ValueError, RecursionError, AttributeError, OSError, http.client.HTTPException):  # no JSON, too deep, or cut off
         return ""
