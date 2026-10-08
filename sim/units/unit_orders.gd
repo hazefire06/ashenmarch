@@ -51,7 +51,7 @@ static func move(
 		unit_positions.append(Vector2i(unit.x, unit.z))
 	var facing: Vector2i = FixedMath.normalize(facing_x, facing_z, FixedMath.DIR_ONE)
 	if facing == Vector2i.ZERO:
-		facing = _order_facing(group, FixedMath.div_round(sum_x, n), FixedMath.div_round(sum_z, n), x, z)
+		facing = order_facing(group, FixedMath.div_round(sum_x, n), FixedMath.div_round(sum_z, n), x, z)
 	var kind: Formations.Kind = Formations.Kind.SHORT_LINE
 	if formation >= 0 and formation < Formations.Kind.size():
 		kind = formation as Formations.Kind
@@ -69,6 +69,7 @@ static func move(
 		var mobility: Terrain.Mobility = unit.type.mobility
 		var component: int = world.pathing.component_at(unit.x, unit.z, mobility)
 		var goal: Vector2i = world.pathing.snap_to_component(slot.x, slot.z, mobility, component)
+		UnitRoute.clear(unit)
 		unit.clear_engagement()
 		unit.clear_shot()
 		unit.ground_walked = false
@@ -85,6 +86,7 @@ static func move(
 ## spot and fight enemies that come adjacent.
 static func stop(world: World, unit_ids: PackedInt32Array) -> void:
 	for unit: Unit in living_units(world, unit_ids):
+		UnitRoute.clear(unit)
 		hold(unit)
 		world.movement.order_stop(unit)
 
@@ -96,6 +98,7 @@ static func ground_attack(world: World, unit_ids: PackedInt32Array, x: int, z: i
 	for unit: Unit in living_units(world, unit_ids):
 		if not unit.type.has_ranged():
 			continue
+		UnitRoute.clear(unit)
 		hold(unit)
 		unit.order = Unit.Order.GROUND_ATTACK
 		unit.ground_x = x
@@ -126,6 +129,7 @@ static func scatter(world: World, unit_ids: PackedInt32Array) -> void:
 		var goal: Vector2i = world.pathing.snap_to_component(
 			x, z, mobility, world.pathing.component_at(unit.x, unit.z, mobility)
 		)
+		UnitRoute.clear(unit)
 		unit.clear_engagement()
 		unit.clear_shot()
 		unit.ground_walked = false
@@ -176,6 +180,7 @@ static func retreat(world: World, unit_ids: PackedInt32Array, formation: int) ->
 ## the way it faces now (Guard). Drops whatever it was doing.
 static func guard(world: World, unit_ids: PackedInt32Array) -> void:
 	for unit: Unit in living_units(world, unit_ids):
+		UnitRoute.clear(unit)
 		hold(unit)
 		unit.order = Unit.Order.GUARD
 		world.movement.order_stop(unit)
@@ -282,9 +287,10 @@ static func _nearest_enemy(world: World, side: UnitType.Faction, at: Vector2i, r
 	return best
 
 
-# Facing for the formation: from the centroid toward the target, or the
-# group's mean facing when the target is too close to give a direction.
-static func _order_facing(group: Array[Unit], cx: int, cz: int, x: int, z: int) -> Vector2i:
+## Facing for a formation laid at (x, z) by a group centered on (cx, cz):
+## toward the target, or the group's mean facing when the target is too close
+## to give a direction.
+static func order_facing(group: Array[Unit], cx: int, cz: int, x: int, z: int) -> Vector2i:
 	if FixedMath.length(x - cx, z - cz) >= KEEP_FACING_RADIUS:
 		return FixedMath.normalize(x - cx, z - cz, FixedMath.DIR_ONE)
 	var fx: int = 0

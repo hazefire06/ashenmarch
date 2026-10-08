@@ -157,12 +157,16 @@ func _decide(world: World, unit: Unit, grid: UnitGrid) -> bool:
 	if unit.order == Unit.Order.MOVE and not confused:
 		if unit.state != Unit.State.IDLE:
 			return false
-		# Arrived: hold here from now on.
+		# Arrived: on along the route if there is one (and nothing else this
+		# tick, so a plain leg never picks a fight), else hold here from now on.
+		if UnitRoute.advance(world, unit):
+			return false
 		UnitOrders.hold(unit)
 	if not unit.type.has_melee():
 		if not confused and unit.order == Unit.Order.ATTACK_MOVE and unit.state == Unit.State.IDLE:
 			# No melee to fight with, but the march still ends on arrival.
-			UnitOrders.hold(unit)
+			if not UnitRoute.advance(world, unit):
+				UnitOrders.hold(unit)
 		return false
 	var was_fighting: bool = unit.target_id != 0
 	if unit.windup_left > 0:
@@ -181,8 +185,10 @@ func _decide(world: World, unit: Unit, grid: UnitGrid) -> bool:
 		if was_fighting or unit.state == Unit.State.ATTACKING:
 			_resume(world, unit)
 		elif not confused and unit.order == Unit.Order.ATTACK_MOVE and unit.state == Unit.State.IDLE:
-			# Reached the end of the march with nothing left to fight.
-			UnitOrders.hold(unit)
+			# Reached the end of the march (or of a route's leg) with nothing
+			# left to fight.
+			if not UnitRoute.advance(world, unit):
+				UnitOrders.hold(unit)
 		return false
 	if Targeting.in_reach(unit, target):
 		_engage(unit, target)

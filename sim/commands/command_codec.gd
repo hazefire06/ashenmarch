@@ -44,12 +44,14 @@ enum Kind {
 	GUARD = 16,
 	SCATTER = 17,
 	RETREAT = 18,
+	ROUTE_POINT = 19,
+	PATROL = 20,
 }
 
 ## The kinds a player's orders produce: all lockstep may accept from a peer.
 const PLAYER_KINDS: Array[Kind] = [
 	Kind.MOVE, Kind.ATTACK_MOVE, Kind.STOP, Kind.GROUND_ATTACK, Kind.USE_SPECIAL, Kind.HEAL,
-	Kind.INTERACT, Kind.GUARD, Kind.SCATTER, Kind.RETREAT,
+	Kind.INTERACT, Kind.GUARD, Kind.SCATTER, Kind.RETREAT, Kind.ROUTE_POINT, Kind.PATROL,
 ]
 
 ## Every number in a record, the tick included, is under this in magnitude:
@@ -84,6 +86,8 @@ const LAYOUTS: Dictionary[int, String] = {
 	Kind.GUARD: "U",
 	Kind.SCATTER: "U",
 	Kind.RETREAT: "UI",
+	Kind.ROUTE_POINT: "UIIIIII",
+	Kind.PATROL: "UI",
 }
 
 
@@ -156,6 +160,15 @@ static func encode(command: SimCommand) -> Array:
 	if command is RetreatCommand:
 		var c: RetreatCommand = command
 		return [Kind.RETREAT, c.tick, c.unit_ids.duplicate(), c.formation]
+	if command is RoutePointCommand:
+		var c: RoutePointCommand = command
+		return [
+			Kind.ROUTE_POINT, c.tick, c.unit_ids.duplicate(), c.x, c.z, c.formation,
+			1 if c.attack else 0, c.facing_x, c.facing_z,
+		]
+	if command is PatrolCommand:
+		var c: PatrolCommand = command
+		return [Kind.PATROL, c.tick, c.unit_ids.duplicate(), int(c.mode)]
 	push_error("CommandCodec.encode: no record kind for %s" % command.get_script().resource_path)
 	return []
 
@@ -233,6 +246,14 @@ static func decode(record: Array) -> SimCommand:
 			if not _is_formation(f[1]):
 				return null
 			return RetreatCommand.new(tick, f[0], f[1])
+		Kind.ROUTE_POINT:
+			if not _is_formation(f[3]) or not f[4] in [0, 1]:
+				return null
+			return RoutePointCommand.new(tick, f[0], f[1], f[2], f[3], f[4] == 1, f[5], f[6])
+		Kind.PATROL:
+			if f[1] != UnitRoute.Mode.LOOP and f[1] != UnitRoute.Mode.BACK_AND_FORTH:
+				return null
+			return PatrolCommand.new(tick, f[0], f[1] as UnitRoute.Mode)
 	return null
 
 

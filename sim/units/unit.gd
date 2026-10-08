@@ -63,6 +63,9 @@ const _ALLOWED: Array[int] = [
 ## Milli-units per tick of knockback (1 m/s) at or above which the unit is
 ## reeling.
 const KNOCKED_SPEED: int = 1000 / 30
+## Leads the route's part of hash_fields(), which is there only while the unit
+## has a route: a world that never uses one hashes as it did before Phase 11.
+const ROUTE_HASH_TAG: int = 0x524F555445
 
 var type: UnitType
 ## Index of type in the world's UnitCatalog; hashed instead of the resource.
@@ -169,6 +172,15 @@ var surfaced: bool = false
 ## afterwards. 0 means not a campaign soldier (every AI unit, the villager, a
 ## unit spawned by SpawnUnitCommand). Never changes once set.
 var soldier_id: int = 0
+## Waypoints and patrol (UnitRoute): up to UnitRoute.MAX_POINTS points as x,
+## z, facing_x, facing_z each, this unit's own slots; empty for no route.
+var route: PackedInt32Array = PackedInt32Array()
+## The point being walked to, the route's UnitRoute.Mode, which way a
+## back-and-forth is going (+1 or -1), and whether its legs are attack-moves.
+var route_index: int = 0
+var route_mode: int = UnitRoute.Mode.OPEN
+var route_step: int = 1
+var route_attack: bool = false
 
 
 func _init(
@@ -211,6 +223,7 @@ func kill() -> void:
 	clear_shot()
 	clear_errand()
 	StatusEffects.clear(self)
+	UnitRoute.clear(self)
 	order = Order.NONE
 	vx = 0
 	vy = 0
@@ -297,4 +310,12 @@ func hash_fields() -> PackedInt64Array:
 	for until: int in status_until:
 		fields.append(until)
 	fields.append_array(path)
+	# path.size() is hashed above, so where the path ends is unambiguous and
+	# this optional part can't be mistaken for more of it.
+	if not route.is_empty():
+		fields.append_array(PackedInt64Array([
+			ROUTE_HASH_TAG, route_index, route_mode, route_step, 1 if route_attack else 0, route.size(),
+		]))
+		for value: int in route:
+			fields.append(value)
 	return fields

@@ -30,6 +30,8 @@ func _samples() -> Array[SimCommand]:
 		GuardCommand.new(19, ids),
 		ScatterCommand.new(20, ids),
 		RetreatCommand.new(21, ids, Formations.Kind.STAGGERED_LINE),
+		RoutePointCommand.new(22, ids, 4000, -9000, Formations.Kind.BOX, true, 0, 1000),
+		PatrolCommand.new(23, ids, UnitRoute.Mode.BACK_AND_FORTH),
 	]
 
 
@@ -97,6 +99,9 @@ func test_damaged_records_decode_to_null() -> void:
 		"untyped id list": [1, 0, [1, 2], 0, 0, 0],
 		"bad formation": [1, 0, PackedInt32Array(), 0, 0, 99],
 		"bad retreat formation": [CommandCodec.Kind.RETREAT, 0, PackedInt32Array(), -1],
+		"attack flag of 2": [CommandCodec.Kind.ROUTE_POINT, 0, PackedInt32Array(), 0, 0, 0, 2, 0, 0],
+		"open patrol": [CommandCodec.Kind.PATROL, 0, PackedInt32Array(), UnitRoute.Mode.OPEN],
+		"patrol mode 9": [CommandCodec.Kind.PATROL, 0, PackedInt32Array(), 9],
 		"bad status": [CommandCodec.Kind.APPLY_STATUS, 0, PackedInt32Array(), 99, 10],
 		"bad faction": [CommandCodec.Kind.SPAWN_UNIT, 0, PackedStringArray(["husk"]), 7, 0, 0, 0, 0],
 		"two type names": [CommandCodec.Kind.SPAWN_UNIT, 0, PackedStringArray(["a", "b"]), 0, 0, 0, 0, 0],
