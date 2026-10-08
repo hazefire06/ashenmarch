@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import http.client
 import io
+import json
 import ssl
 import tempfile
 import unittest
@@ -290,8 +291,8 @@ class HttpTest(unittest.TestCase):
             self.assertNotIn("pay twice", str(caught.exception))
 
     def test_a_rejected_post_did_not_create_a_task(self) -> None:
-        # Only a true 4xx other than 408 and 429 says Meshy refused the request outright (see StatusTest).
-        for code in (400, 401, 402, 403, 404, 422):
+        # Only a true 4xx other than 408 says Meshy refused the request outright (see StatusAndShapeTest). A 429 is its rate limiter.
+        for code in (400, 401, 402, 403, 404, 422, 429):
             with self.subTest(code=code):
                 with mock.patch.object(meshy_client.urllib.request.OpenerDirector, "open", side_effect=http_error(code)):
                     with self.assertRaises(MeshyError) as caught:
@@ -452,6 +453,113 @@ class HttpTest(unittest.TestCase):
         self.assertIsNone(result)
         result = meshy_client._AllowlistedRedirects().redirect_request(req, None, 302, "Found", {}, "https://assets.meshy.ai/other.glb")
         self.assertIsNotNone(result)
+
+
+class WaitMalformedTest(unittest.TestCase):
+    """A reply with a garbled status or task_error must not strand a refunded task as PENDING with an AttributeError."""
+
+    def test_a_failed_task_whose_error_is_not_an_object_is_still_task_failed(self) -> None:
+        for error, shown in (("boom", "boom"), (["a"], "no reason given"), ({"message": 5}, "no reason given"),
+                             ({"message": ""}, "no reason given"), (None, "no reason given"), (7, "no reason given"), ({}, "no reason given")):
+            with self.subTest(task_error=error):
+                with self.assertRaises(TaskFailed) as caught:
+                    client(FakeTransport([{"status": "FAILED", "task_error": error}])).wait("rigging", "r1")
+                self.assertIn(f"rigging task r1 FAILED: {shown}", str(caught.exception))
+
+    def test_a_canceled_task_whose_error_is_a_string_is_a_meshy_error(self) -> None:
+        with self.assertRaises(MeshyError) as caught:
+            client(FakeTransport([{"status": "CANCELED", "task_error": "stopped"}])).wait("rigging", "r1")
+        self.assertNotIsInstance(caught.exception, TaskFailed)
+        self.assertIn("rigging task r1 CANCELED: stopped", str(caught.exception))
+
+    def test_a_status_that_is_not_a_string_keeps_polling_until_the_timeout(self) -> None:
+        for status in ([], {}, ["SUCCEEDED"], 3, None):
+            with self.subTest(status=status):
+                with self.assertRaisesRegex(MeshyError, "still None after") as caught:
+                    client(FakeTransport([{"status": status}] * 20)).wait("animations", "a1")
+                self.assertNotIsInstance(caught.exception, TaskFailed)
+
+
+class UntrustedTextTest(unittest.TestCase):
+    """What Meshy sends back (or a hostile reply) must not put terminal escapes or a second line on screen."""
+
+    ESC = "\x1b[31mred\x1b[0m"
+
+    def test_a_task_error_message_is_never_printed_raw(self) -> None:
+        for status, exception in (("FAILED", TaskFailed), ("CANCELED", MeshyError)):
+            with self.subTest(status=status):
+                with self.assertRaises(exception) as caught:
+                    client(FakeTransport([{"status": status, "task_error": {"message": self.ESC + "\nsecond line"}}])).wait("rigging", "r1")
+                text = str(caught.exception)
+                self.assertNotIn("\x1b", text)
+                self.assertNotIn("\n", text)
+                self.assertIn("red", text)  # still readable, just escaped
+
+    def test_a_long_task_error_message_is_cut_short(self) -> None:
+        with self.assertRaises(TaskFailed) as caught:
+            client(FakeTransport([{"status": "FAILED", "task_error": {"message": "x" * 5000}}])).wait("rigging", "r1")
+        self.assertLess(len(str(caught.exception)), 400)
+
+    def test_a_status_is_never_printed_raw(self) -> None:
+        with self.assertRaises(MeshyError) as caught:
+            client(FakeTransport([{"status": self.ESC}] * 20)).wait("animations", "a1")
+        self.assertNotIn("\x1b", str(caught.exception))
+        self.assertIn("still", str(caught.exception))
+
+    def test_an_error_body_message_is_never_printed_raw(self) -> None:
+        body = json.dumps({"message": self.ESC + "\nsecond line"}).encode()
+        with mock.patch.object(meshy_client.urllib.request.OpenerDirector, "open", side_effect=http_error(402, body)):
+            with self.assertRaises(MeshyError) as caught:
+                http_transport("not-a-real-key")("POST", "/openapi/v2/text-to-3d", {})
+        text = str(caught.exception)
+        self.assertIn("HTTP 402", text)
+        self.assertNotIn("\x1b", text)
+        self.assertNotIn("\n", text)
+
+    def test_a_plain_message_is_shown_as_it_is(self) -> None:
+        self.assertEqual(meshy_client._safe("Insufficient credits"), "Insufficient credits")
+        self.assertEqual(meshy_client._safe("naïve café"), "naïve café")  # printable non-ASCII is fine
+        self.assertEqual(meshy_client._safe("a\x1bb"), "'a\\x1bb'")
+
+
+class ReplyLimitsTest(unittest.TestCase):
+    def test_a_reply_nested_too_deeply_for_json_is_a_lost_reply(self) -> None:
+        opener = opener_that(returns=reply_with_body(b"[" * 200000))
+        with mock.patch.object(meshy_client.urllib.request, "build_opener", return_value=opener):
+            call = http_transport("k")
+            with self.assertRaises(MeshyError) as caught:
+                call("POST", "/openapi/v2/text-to-3d", {})
+            self.assertTrue(caught.exception.may_have_created)
+            self.assertIn("pay twice", str(caught.exception))
+            self.assertIsNone(caught.exception.__cause__)
+            with self.assertRaises(MeshyError) as caught:
+                call("GET", "/openapi/v2/text-to-3d/t1", None)
+            self.assertTrue(caught.exception.retryable)
+            self.assertFalse(caught.exception.may_have_created)
+
+    def test_a_huge_content_length_is_ignored_not_a_value_error(self) -> None:
+        # int() of 5000 digits raises ValueError (Python's 4300-digit limit) once the .part is already open.
+        url = "https://assets.meshy.ai/t/model.glb?Expires=1&Signature=SECRETSIG"
+        for header in ("9" * 5000, "9" * 16, "1" * 4301):
+            with self.subTest(digits=len(header)), tempfile.TemporaryDirectory() as tmp:
+                opener = opener_that(returns=FakeResponse(b"x" * 10, header))
+                with mock.patch.object(meshy_client.urllib.request, "build_opener", return_value=opener):
+                    http_downloader(url, Path(tmp) / "m.glb")
+                self.assertEqual((Path(tmp) / "m.glb").read_bytes(), b"x" * 10)
+                self.assertEqual(sorted(p.name for p in Path(tmp).iterdir()), ["m.glb"])
+
+    def test_the_longest_content_length_that_is_still_checked(self) -> None:
+        for header, kept in (("1" * 15, False), ("10", True)):
+            with self.subTest(content_length=header), tempfile.TemporaryDirectory() as tmp:
+                opener = opener_that(returns=FakeResponse(b"x" * 10, header))
+                with mock.patch.object(meshy_client.urllib.request, "build_opener", return_value=opener):
+                    if kept:
+                        http_downloader("https://assets.meshy.ai/t/model.glb", Path(tmp) / "m.glb")
+                    else:
+                        with self.assertRaisesRegex(MeshyError, "cut short"):
+                            http_downloader("https://assets.meshy.ai/t/model.glb", Path(tmp) / "m.glb")
+                self.assertEqual((Path(tmp) / "m.glb").exists(), kept)
+                self.assertFalse((Path(tmp) / "m.glb.part").exists())
 
 
 class TlsTest(unittest.TestCase):
@@ -652,20 +760,22 @@ class StatusAndShapeTest(unittest.TestCase):
                 http_transport("not-a-real-key")("POST", "/openapi/v2/text-to-3d", {})
         return caught.exception
 
-    def test_a_3xx_408_or_429_reply_to_a_post_may_have_created_a_task(self) -> None:
-        # No redirect is followed and 408 and 429 come from in front of the app, so none of them proves the task wasn't made.
-        for code in (301, 302, 303, 307, 308, 408, 429, 500, 502, 503, 504):
+    def test_a_3xx_or_408_reply_to_a_post_may_have_created_a_task(self) -> None:
+        # No redirect is followed and a 408 can come from in front of the app, so neither proves the task wasn't made.
+        for code in (301, 302, 303, 307, 308, 408, 500, 502, 503, 504):
             with self.subTest(code=code):
                 caught = self.post(code)
                 self.assertTrue(caught.may_have_created)
                 self.assertIn("pay twice", str(caught))
                 self.assertFalse(caught.retryable)
 
-    def test_only_a_true_4xx_other_than_408_and_429_is_a_definite_rejection(self) -> None:
-        for code in (400, 401, 402, 403, 404, 405, 409, 413, 422, 451, 499):
+    def test_only_a_true_4xx_other_than_408_is_a_definite_rejection(self) -> None:
+        # 429 is Meshy's rate limiter turning the request away: nothing was created, and a POST is never retried by the client.
+        for code in (400, 401, 402, 403, 404, 405, 409, 413, 422, 429, 451, 499):
             with self.subTest(code=code):
                 caught = self.post(code)
                 self.assertFalse(caught.may_have_created)
+                self.assertFalse(caught.retryable)
                 self.assertNotIn("pay twice", str(caught))
 
     def test_a_get_with_those_statuses_never_claims_a_task_was_created(self) -> None:
@@ -675,7 +785,7 @@ class StatusAndShapeTest(unittest.TestCase):
                     http_transport("k")("GET", "/openapi/v2/text-to-3d/t1", None)
                 self.assertFalse(caught.exception.may_have_created)
                 self.assertNotIn("pay twice", str(caught.exception))
-                self.assertEqual(caught.exception.retryable, code in (429, 503))
+                self.assertEqual(caught.exception.retryable, code in (408, 429, 503))  # a 302 is not a blip
 
     NOT_OBJECTS = (b"[]", b'"x"', b"3", b"null", b"true", b'[{"result": "task-1"}]')
 

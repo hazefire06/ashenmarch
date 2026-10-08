@@ -464,6 +464,38 @@ class FlowTest(unittest.TestCase):
         with self.assertRaises(meshy.InterruptedCreate):
             self.candidates(FakeClient())
 
+    def test_a_429_reply_to_a_create_is_recorded_failed_and_bought_again(self) -> None:
+        # Meshy's rate limiter turned the request away, so nothing was created: no CREATING record, no manual cleanup.
+        refusal = urllib.error.HTTPError("https://api.meshy.ai/x", 429, "Too Many Requests", {}, io.BytesIO(b'{"message": "slow down"}'))
+        real = meshy_client.MeshyClient(meshy_client.http_transport("not-a-real-key"), lambda url, dest: None)
+        with mock.patch.object(meshy_client.urllib.request.OpenerDirector, "open", side_effect=refusal) as opened:
+            with self.assertRaisesRegex(MeshyError, "HTTP 429 slow down") as caught:
+                meshy.run_candidates(self.spec, self.style, self.manifest, real, self.unit_dir, 100, say=self.quiet.append)
+        self.assertEqual(opened.call_count, 1)  # never retried
+        self.assertFalse(caught.exception.may_have_created)
+        self.assertNotIn("pay twice", str(caught.exception))
+        record = Manifest.load(self.manifest.path).find("preview", "cand-1")
+        self.assertEqual((record["status"], record["credits"]), ("FAILED", 0))
+        self.assertNotIn("task_id", record)
+        self.manifest = Manifest.load(self.manifest.path)
+        self.assertEqual(meshy._interrupted(self.manifest), [])
+        self.assertEqual(meshy.candidates_cost(self.spec, self.manifest), 2 * 5 + 2 * 20)  # the full price again
+        retry = FakeClient()
+        self.candidates(retry)
+        self.assertEqual([a for _, a in retry.created], ["meshy-6-lite", "meshy-6-lite", "meshy-7.1", "meshy-7.1"])
+
+    def test_a_failed_reply_with_a_string_task_error_leaves_the_record_failed_and_rebuyable(self) -> None:
+        # The real client over a transport whose FAILED reply carries a string task_error: this used to be an AttributeError
+        # that left the (refunded) task PENDING for every rerun.
+        replies = iter([{"result": "preview-9"}, {"status": "FAILED", "task_error": "boom"}])
+        real = meshy_client.MeshyClient(lambda method, path, body: next(replies), lambda url, dest: None)
+        with self.assertRaises(TaskFailed):
+            meshy.run_candidates(self.spec, self.style, self.manifest, real, self.unit_dir, 100, say=self.quiet.append)
+        record = Manifest.load(self.manifest.path).find("preview", "cand-1")
+        self.assertEqual((record["status"], record["credits"]), ("FAILED", 0))
+        self.manifest = Manifest.load(self.manifest.path)
+        self.assertEqual(meshy.candidates_cost(self.spec, self.manifest), 2 * 5 + 2 * 20)
+
     def test_the_creating_message_shows_a_hostile_kind_and_label_escaped(self) -> None:
         # The manifest is committed, so a public PR can put anything in a label.
         self.manifest.upsert({"kind": "\x1b[31mred", "label": "evil\nsecond line", "status": "CREATING", "created_at": 1})

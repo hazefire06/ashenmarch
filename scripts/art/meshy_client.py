@@ -8,7 +8,7 @@ failed in passing is retried, and redirects can't carry the key. A POST with
 no usable reply may have created a charged task, so its error says so
 (may_have_created) and is never retried. That covers a dropped or garbled
 reply (http.client's own exceptions included) and every status except a true
-4xx other than 408 and 429. The one exception is a failed certificate check:
+4xx other than 408. The one exception is a failed certificate check:
 that is the TLS handshake, before any request goes out, so nothing was sent
 and the error says so.
 
@@ -59,7 +59,7 @@ Downloader = Callable[[str, Path], None]
 class MeshyError(Exception):
     """A Meshy call or task failed. The message never holds the key or a signed URL.
     retryable marks a failed GET that is safe to repeat (a timeout, a dropped
-    connection, HTTP 429 or 5xx). may_have_created is True when a POST may have
+    connection, HTTP 408, 429 or 5xx). may_have_created is True when a POST may have
     created and charged a task on Meshy even though we got no usable reply."""
 
     def __init__(self, message: str, retryable: bool = False, may_have_created: bool = False) -> None:
@@ -151,15 +151,16 @@ class MeshyClient:
                 continue
             failures = 0
             status = task.get("status")
+            status = status if isinstance(status, str) else None  # a garbled status keeps polling, like a missing one
             if status == "SUCCEEDED":
                 return task
             if status == "FAILED" or status in UNREFUNDED_END_STATUSES:
-                reason = (task.get("task_error") or {}).get("message") or "no reason given"
+                reason = _task_error(task)
                 if status == "FAILED":
                     raise TaskFailed(f"{kind} task {task_id} {status}: {reason}")
                 raise MeshyError(f"{kind} task {task_id} {status}: {reason}; check this task on meshy.ai before deciding whether to rebuy")
             if self._clock() >= deadline:
-                raise MeshyError(f"{kind} task {task_id} still {status} after {self._timeout:.0f} s; rerun to keep waiting")
+                raise MeshyError(f"{kind} task {task_id} still {_safe(status, 40)} after {self._timeout:.0f} s; rerun to keep waiting")
             self._sleep(self._poll)
 
     def download(self, url: str, dest: Path) -> None:
@@ -173,6 +174,19 @@ class MeshyClient:
         if not _valid_task_id(task_id):
             raise MeshyError(f"{kind}: Meshy returned no task id" + POST_WARNING, may_have_created=True)
         return task_id
+
+
+def _safe(text: object, limit: int = 200) -> str:
+    """Text that came from Meshy, cut to limit and escaped if it holds a control character, so it can't redraw the terminal."""
+    text = str(text)[:limit]
+    return text if text.isprintable() else ascii(text)
+
+
+def _task_error(task: dict[str, Any]) -> str:
+    """Meshy's reason for a failed task, whatever shape task_error arrives in."""
+    error = task.get("task_error")
+    message = error.get("message") if isinstance(error, dict) else error
+    return _safe(message) if isinstance(message, str) and message else "no reason given"
 
 
 def _valid_task_id(task_id: object) -> bool:
@@ -210,12 +224,12 @@ def http_transport(api_key: str, base_url: str = BASE_URL, timeout: float = 60.0
         try:
             response = opener.open(request, timeout=timeout)
         except urllib.error.HTTPError as error:
-            # Only a true 4xx other than 408 and 429 says Meshy refused the request. A 3xx is never followed here, and
-            # 408 and 429 can come from in front of the app, so none of those proves nothing was created.
+            # Only a true 4xx other than 408 says Meshy refused the request. A 3xx is never followed here and a 408 can
+            # come from in front of the app, so neither proves nothing was created.
             unsure = posting and not _definite_rejection(error.code)
             raise MeshyError(
                 f"Meshy {method} {path} failed: HTTP {error.code} {_server_message(error, api_key)}".rstrip() + (POST_WARNING if unsure else ""),
-                retryable=(method == "GET" and (error.code == 429 or error.code >= 500)),
+                retryable=(method == "GET" and (error.code in (408, 429) or error.code >= 500)),
                 may_have_created=unsure,
             ) from None
         except (urllib.error.URLError, OSError, ValueError, http.client.HTTPException) as error:
@@ -235,7 +249,7 @@ def http_transport(api_key: str, base_url: str = BASE_URL, timeout: float = 60.0
 
         try:
             reply = json.loads(body_bytes.decode("utf-8") or "{}")
-        except ValueError:
+        except (ValueError, RecursionError):  # RecursionError: JSON nested deeper than the parser allows
             raise MeshyError(
                 f"Meshy {method} {path} returned a reply that isn't JSON" + (POST_WARNING if posting else ""),
                 retryable=(method == "GET"), may_have_created=posting,
@@ -267,6 +281,7 @@ def http_downloader(url: str, dest: Path) -> None:
         part.unlink(missing_ok=True)
         raise MeshyError(f"download of {dest.name} failed: no reply (timed out or the connection failed); rerun to retry") from None
 
+    expected = _content_length(response)  # before the .part is opened, so nothing can be left behind by a bad header
     # O_NOFOLLOW: a symlink planted as the .part would otherwise redirect the write. It isn't ours, so it is left in place.
     try:
         out = os.fdopen(os.open(part, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW, 0o644), "wb")
@@ -274,7 +289,6 @@ def http_downloader(url: str, dest: Path) -> None:
         response.close()
         raise MeshyError(f"download of {dest.name} refused: {part.name} can't be created, or is a symlink; remove it and rerun") from None
 
-    expected = _content_length(response)
     size = 0
     try:
         with response, out:
@@ -298,15 +312,16 @@ def http_downloader(url: str, dest: Path) -> None:
 
 
 def _definite_rejection(status: int) -> bool:
-    """A true 4xx other than 408 and 429: Meshy refused the request, so nothing was created."""
-    return 400 <= status < 500 and status not in (408, 429)
+    """A 4xx other than 408: Meshy refused the request, so nothing was created. A 429 is its rate limiter turning the request away."""
+    return 400 <= status < 500 and status != 408
 
 
 def _content_length(response: Any) -> int | None:
-    """The body length the server promised, or None when there is no usable Content-Length header."""
+    """The body length the server promised, or None when there is no usable Content-Length header. Digits only, and short
+    enough that int() can't hit Python's digit limit (15 digits is beyond any file we would accept)."""
     headers = getattr(response, "headers", None)
     raw = headers.get("Content-Length") if headers is not None else None
-    return int(raw) if isinstance(raw, str) and raw.isascii() and raw.isdigit() else None
+    return int(raw) if isinstance(raw, str) and len(raw) <= 15 and raw.isascii() and raw.isdigit() else None
 
 
 def _lost(method: str, path: str) -> str:
@@ -317,6 +332,6 @@ def _lost(method: str, path: str) -> str:
 def _server_message(error: urllib.error.HTTPError, api_key: str) -> str:
     """Meshy's own message for an error, with the key scrubbed in case it is echoed back."""
     try:
-        return str(json.loads(error.read().decode("utf-8")).get("message", "")).replace(api_key, "[redacted]")[:200]
+        return _safe(str(json.loads(error.read().decode("utf-8")).get("message", "")).replace(api_key, "[redacted]")[:200])
     except (ValueError, AttributeError, OSError, http.client.HTTPException):  # no JSON, or the body itself was cut off
         return ""
