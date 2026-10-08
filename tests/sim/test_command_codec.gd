@@ -9,8 +9,8 @@ func _samples() -> Array[SimCommand]:
 	var ids: PackedInt32Array = PackedInt32Array([7, 3, 12])
 	var types: Array[StringName] = [&"shieldman", &"longbow"]
 	return [
-		MoveUnitsCommand.new(5, ids, 1200, -340, Formations.Kind.WEDGE),
-		AttackMoveCommand.new(6, ids, -5000, 77000, Formations.Kind.CIRCLE),
+		MoveUnitsCommand.new(5, ids, 1200, -340, Formations.Kind.WEDGE, 600, -800),
+		AttackMoveCommand.new(6, ids, -5000, 77000, Formations.Kind.CIRCLE, -1000, 0),
 		StopUnitsCommand.new(7, ids),
 		GroundAttackCommand.new(8, ids, 33000, 44000),
 		UseSpecialCommand.new(9, ids),
@@ -104,6 +104,29 @@ func test_damaged_records_decode_to_null() -> void:
 	}
 	for case: String in cases:
 		assert_null(CommandCodec.decode(cases[case]), case)
+
+
+func test_a_move_recorded_before_facing_existed_decodes_with_the_automatic_facing() -> void:
+	# Phase 10 replays hold MOVE and ATTACK_MOVE without the facing tail.
+	var ids: PackedInt32Array = PackedInt32Array([4, 9])
+	var move: MoveUnitsCommand = CommandCodec.decode(
+		[CommandCodec.Kind.MOVE, 30, ids, 1000, 2000, Formations.Kind.BOX]
+	) as MoveUnitsCommand
+	assert_not_null(move, "an old MOVE still decodes")
+	if move != null:
+		assert_eq([move.x, move.z, move.formation, move.facing_x, move.facing_z], [1000, 2000, Formations.Kind.BOX, 0, 0])
+	var attack: AttackMoveCommand = CommandCodec.decode(
+		[CommandCodec.Kind.ATTACK_MOVE, 31, ids, -1000, 500, Formations.Kind.WEDGE]
+	) as AttackMoveCommand
+	assert_not_null(attack, "an old ATTACK_MOVE still decodes")
+	if attack != null:
+		assert_eq([attack.facing_x, attack.facing_z], [0, 0])
+
+
+func test_part_of_an_optional_tail_decodes_to_null() -> void:
+	var ids: PackedInt32Array = PackedInt32Array([4])
+	assert_null(CommandCodec.decode([CommandCodec.Kind.MOVE, 0, ids, 0, 0, 0, 1000]), "half a facing")
+	assert_null(CommandCodec.decode([CommandCodec.Kind.MOVE, 0, ids, 0, 0, 0, 1.0, 0]), "a float facing")
 
 
 func test_a_command_the_codec_does_not_know_encodes_to_nothing() -> void:

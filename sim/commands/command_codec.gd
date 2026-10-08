@@ -17,7 +17,13 @@ extends RefCounted
 ##
 ## Every kind decodes, including the setup and debug ones (spawns, statuses,
 ## velocities) a replay never holds from a player. When lockstep takes
-## commands from peers it must accept only the player-order kinds.
+## commands from peers it must accept only the player-order kinds
+## (PLAYER_KINDS).
+##
+## A layout may end in an optional tail after "|": a record holds either the
+## fields before it or all of them, never part of the tail. Decode fills a
+## missing tail with its defaults, so a record written before the tail existed
+## still loads as the command it was. Encode always writes the whole layout.
 
 enum Kind {
 	MOVE = 1,
@@ -47,9 +53,12 @@ const MAX_LIST: int = 256
 ## A record's field types, after kind and tick, per kind. I is an int, U a
 ## PackedInt32Array of unit ids, S a PackedStringArray. Enum fields are I and
 ## are range-checked in decode.
+##
+## MOVE and ATTACK_MOVE gained a facing tail in Phase 11; without it the
+## facing is (0, 0), the automatic one (UnitOrders.move).
 const LAYOUTS: Dictionary[int, String] = {
-	Kind.MOVE: "UIII",
-	Kind.ATTACK_MOVE: "UIII",
+	Kind.MOVE: "UIII|II",
+	Kind.ATTACK_MOVE: "UIII|II",
 	Kind.STOP: "U",
 	Kind.GROUND_ATTACK: "UII",
 	Kind.USE_SPECIAL: "U",
@@ -72,10 +81,12 @@ const LAYOUTS: Dictionary[int, String] = {
 static func encode(command: SimCommand) -> Array:
 	if command is MoveUnitsCommand:
 		var c: MoveUnitsCommand = command
-		return [Kind.MOVE, c.tick, c.unit_ids.duplicate(), c.x, c.z, c.formation]
+		return [Kind.MOVE, c.tick, c.unit_ids.duplicate(), c.x, c.z, c.formation, c.facing_x, c.facing_z]
 	if command is AttackMoveCommand:
 		var c: AttackMoveCommand = command
-		return [Kind.ATTACK_MOVE, c.tick, c.unit_ids.duplicate(), c.x, c.z, c.formation]
+		return [
+			Kind.ATTACK_MOVE, c.tick, c.unit_ids.duplicate(), c.x, c.z, c.formation, c.facing_x, c.facing_z,
+		]
 	if command is StopUnitsCommand:
 		var c: StopUnitsCommand = command
 		return [Kind.STOP, c.tick, c.unit_ids.duplicate()]
@@ -143,11 +154,11 @@ static func decode(record: Array) -> SimCommand:
 		Kind.MOVE:
 			if not _is_formation(f[3]):
 				return null
-			return MoveUnitsCommand.new(tick, f[0], f[1], f[2], f[3])
+			return MoveUnitsCommand.new(tick, f[0], f[1], f[2], f[3], _tail(f, 4), _tail(f, 5))
 		Kind.ATTACK_MOVE:
 			if not _is_formation(f[3]):
 				return null
-			return AttackMoveCommand.new(tick, f[0], f[1], f[2], f[3])
+			return AttackMoveCommand.new(tick, f[0], f[1], f[2], f[3], _tail(f, 4), _tail(f, 5))
 		Kind.STOP:
 			return StopUnitsCommand.new(tick, f[0])
 		Kind.GROUND_ATTACK:
@@ -197,13 +208,17 @@ static func decode(record: Array) -> SimCommand:
 
 
 ## Whether the fields after kind and tick match `layout` exactly, in number
-## and type.
+## and type: the fields before its optional tail, or all of them.
 static func _fits(record: Array, layout: String) -> bool:
-	if record.size() != 2 + layout.length():
+	var parts: PackedStringArray = layout.split("|")
+	var full: String = layout.replace("|", "")
+	if record.size() == 2 + parts[0].length():
+		full = parts[0]
+	elif record.size() != 2 + full.length():
 		return false
-	for i: int in layout.length():
+	for i: int in full.length():
 		var value: Variant = record[2 + i]
-		match layout[i]:
+		match full[i]:
 			"I":
 				# Both bounds explicitly: absi(INT64_MIN) is INT64_MIN.
 				if not value is int or value <= -MAX_MAGNITUDE or value >= MAX_MAGNITUDE:
@@ -215,6 +230,11 @@ static func _fits(record: Array, layout: String) -> bool:
 				if not value is PackedStringArray or (value as PackedStringArray).size() > MAX_LIST:
 					return false
 	return true
+
+
+# Field i of a decoded record's fields, or 0 where an old record has no tail.
+static func _tail(fields: Array, i: int) -> int:
+	return fields[i] if i < fields.size() else 0
 
 
 static func _is_formation(value: int) -> bool:

@@ -16,8 +16,13 @@ const KEEP_FACING_RADIUS: int = 2000
 ## A plain move ignores enemies on the way; with attack set, units fight
 ## what they meet (MeleeCombat) and resume toward their slot after each
 ## fight. Either way the new order drops the current fight.
+##
+## The formation faces (facing_x, facing_z), normalized here. A zero facing
+## is the automatic one: from the group's centroid toward the target, or the
+## group's mean facing when the target is too close to give a direction.
 static func move(
-	world: World, unit_ids: PackedInt32Array, x: int, z: int, formation: int, attack: bool = false
+	world: World, unit_ids: PackedInt32Array, x: int, z: int, formation: int, attack: bool = false,
+	facing_x: int = 0, facing_z: int = 0
 ) -> void:
 	var group: Array[Unit] = living_units(world, unit_ids)
 	if group.is_empty() or world.terrain == null:
@@ -34,9 +39,9 @@ static func move(
 		max_radius = maxi(max_radius, unit.type.body_radius)
 		min_speed = mini(min_speed, Veterancy.move_speed(unit))
 		unit_positions.append(Vector2i(unit.x, unit.z))
-	var facing: Vector2i = _order_facing(
-		group, FixedMath.div_round(sum_x, n), FixedMath.div_round(sum_z, n), x, z
-	)
+	var facing: Vector2i = FixedMath.normalize(facing_x, facing_z, FixedMath.DIR_ONE)
+	if facing == Vector2i.ZERO:
+		facing = _order_facing(group, FixedMath.div_round(sum_x, n), FixedMath.div_round(sum_z, n), x, z)
 	var kind: Formations.Kind = Formations.Kind.SHORT_LINE
 	if formation >= 0 and formation < Formations.Kind.size():
 		kind = formation as Formations.Kind
