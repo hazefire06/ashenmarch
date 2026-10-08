@@ -462,8 +462,24 @@ func set_hud_focus(on: bool) -> void:
 	_info_panel.set_focus_enabled(on)
 	if _replay_bar != null:
 		_replay_bar.set_focus_enabled(on)
-	if not on:
-		get_viewport().gui_release_focus()
+	if on:
+		return
+	# Only a HUD button's focus is let go; a menu's (the pause menu that
+	# ended the mode) stays.
+	var owner: Control = get_viewport().gui_get_focus_owner()
+	for panel: Control in hud_panels():
+		if owner != null and panel.is_ancestor_of(owner):
+			get_viewport().gui_release_focus()
+			return
+
+
+## The HUD panels with buttons: the control bar, the unit info panel, and
+## the replay bar when watching one.
+func hud_panels() -> Array[Control]:
+	var panels: Array[Control] = [_control_bar, _info_panel]
+	if _replay_bar != null:
+		panels.append(_replay_bar)
+	return panels
 
 
 ## The pad's controller.

@@ -108,6 +108,7 @@ static func status() -> String:
 	for device: int in pads:
 		if supported(device):
 			return "%s can rumble." % Input.get_joy_name(device)
-	return "Rumble isn't available for this controller%s." % (
-		" on USB here; it works over Bluetooth" if OS.has_feature("macos") else ""
-	)
+	for device: int in pads:
+		if denied(Input.get_joy_info(device), OS.has_feature("macos")):
+			return "Rumble isn't available for this controller on USB here; it works over Bluetooth."
+	return "Rumble isn't available for this controller."

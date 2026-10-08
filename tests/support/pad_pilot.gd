@@ -6,8 +6,9 @@ extends RefCounted
 ## to act. Used by the pad-only playthrough (tests/view/test_pad_playthrough.gd
 ## and `make pad-playthrough`).
 ##
-## The menus: focus is walked to a button with the D-pad (the direction
-## toward it, one step at a time), then A.
+## The menus: focus is walked to a button with the D-pad (up or down while
+## it is in another row, else left or right; the other way when a press
+## goes nowhere), then A.
 ##
 ## A mission, a plain strategy: select everyone with the order wheel's
 ## Select all and keep them as group 1 (D-pad up held); then every
@@ -61,8 +62,9 @@ func press(button_name: String) -> bool:
 	return true
 
 
-## Moves focus to `target` with the D-pad. True once it is there.
-func focus_to(target: Control) -> bool:
+## Moves focus to `target` with the D-pad, a step at a time toward it. True
+## once it is there.
+static func focus_to(target: Control) -> bool:
 	var viewport: Viewport = target.get_viewport()
 	for step: int in MAX_FOCUS_STEPS:
 		var focus: Control = viewport.gui_get_focus_owner()
@@ -70,14 +72,22 @@ func focus_to(target: Control) -> bool:
 			return true
 		if focus == null:
 			return false
-		var d: Vector2 = target.get_global_rect().get_center() - focus.get_global_rect().get_center()
-		var button: JoyButton
-		if absf(d.y) >= absf(d.x):
-			button = JOY_BUTTON_DPAD_DOWN if d.y > 0.0 else JOY_BUTTON_DPAD_UP
-		else:
-			button = JOY_BUTTON_DPAD_RIGHT if d.x > 0.0 else JOY_BUTTON_DPAD_LEFT
-		PadEvents.tap(button)
+		for button: JoyButton in _moves_toward(focus.get_global_rect(), target.get_global_rect()):
+			PadEvents.tap(button)
+			if viewport.gui_get_focus_owner() != focus:
+				break
 	return viewport.gui_get_focus_owner() == target
+
+
+# The D-pad presses that head from `from` toward `to`, best first. Menus are
+# laid out in rows, so up or down while `to` is in another row, then left or
+# right; within a row, left or right alone first.
+static func _moves_toward(from: Rect2, to: Rect2) -> Array[JoyButton]:
+	var d: Vector2 = to.get_center() - from.get_center()
+	var vertical: JoyButton = JOY_BUTTON_DPAD_DOWN if d.y > 0.0 else JOY_BUTTON_DPAD_UP
+	var horizontal: JoyButton = JOY_BUTTON_DPAD_RIGHT if d.x > 0.0 else JOY_BUTTON_DPAD_LEFT
+	var other_row: bool = to.end.y <= from.position.y or to.position.y >= from.end.y
+	return [vertical, horizontal] if other_row else [horizontal, vertical]
 
 
 ## From the main menu, a new campaign at `tier`, through the briefing, into

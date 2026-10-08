@@ -274,11 +274,16 @@ func cycle_group(direction: int = 1) -> void:
 
 ## Forgets the group the selection came from. The selection stays.
 func clear_current_group() -> void:
-	if _current_group < 0:
-		return
-	var slot: int = _current_group
+	if _current_group >= 0:
+		clear_group(_current_group)
+
+
+## Empties a group slot (the bar's Clear, the pad's D-pad down held). If the
+## selection came from it, it no longer does.
+func clear_group(slot: int) -> void:
 	selection.clear_group(slot)
-	_set_current_group(-1)
+	if slot == _current_group:
+		_set_current_group(-1)
 	notice.emit("Group %d cleared" % _slot_number(slot))
 
 
@@ -293,24 +298,28 @@ func current_group() -> int:
 func stop_selected() -> void:
 	if not selection.is_empty() and not paused:
 		_world.enqueue(StopUnitsCommand.new(_world.tick, selection.ids()))
+		_forget_last_order()
 		order_given.emit()
 
 
 func guard_selected() -> void:
 	if not selection.is_empty() and not paused:
 		_world.enqueue(GuardCommand.new(_world.tick, selection.ids()))
+		_forget_last_order()
 		order_given.emit()
 
 
 func scatter_selected() -> void:
 	if not selection.is_empty() and not paused:
 		_world.enqueue(ScatterCommand.new(_world.tick, selection.ids()))
+		_forget_last_order()
 		order_given.emit()
 
 
 func retreat_selected() -> void:
 	if not selection.is_empty() and not paused:
 		_world.enqueue(RetreatCommand.new(_world.tick, selection.ids(), formation))
+		_forget_last_order()
 		order_given.emit()
 
 
@@ -332,6 +341,9 @@ func use_special_selected() -> void:
 ## otherwise the turn is kept for the next move and its slots shown.
 func rotate_formation(direction: int) -> void:
 	if _following_last_order():
+		if paused:
+			# Nothing can be given while paused; nor is the turn kept.
+			return
 		var facing: Vector2 = Vector2(_last_order["facing_x"], _last_order["facing_z"]) / float(FixedMath.DIR_ONE)
 		facing = facing.rotated(direction * TAU / ROTATE_STEPS)
 		_last_order["facing_x"] = roundi(facing.x * FixedMath.DIR_ONE)
@@ -566,6 +578,7 @@ func ground_attack_at(at: Vector2) -> void:
 	_world.enqueue(GroundAttackCommand.new(
 		_world.tick, selection.ids(), _to_milli(hit.x), _to_milli(hit.z)
 	))
+	_forget_last_order()
 	if not selection.is_empty():
 		order_given.emit()
 	_units.show_marker(hit, UnitsView.MarkerKind.GROUND_ATTACK)
@@ -925,6 +938,7 @@ func _order_route_point(point: Vector3, attack: bool, facing: Vector2) -> void:
 			mode = UnitRoute.Mode.BACK_AND_FORTH
 		if mode >= 0:
 			_world.enqueue(PatrolCommand.new(_world.tick, ids, mode as UnitRoute.Mode))
+			_forget_last_order()
 			order_given.emit()
 			notice.emit("Patrol: loop" if mode == UnitRoute.Mode.LOOP else "Patrol: back and forth")
 			if armed_order == ArmedOrder.WAYPOINT:
@@ -937,6 +951,7 @@ func _order_route_point(point: Vector3, attack: bool, facing: Vector2) -> void:
 		_world.tick, ids, _to_milli(point.x), _to_milli(point.z), formation, attack,
 		roundi(facing.x * FixedMath.DIR_ONE), roundi(facing.y * FixedMath.DIR_ONE)
 	))
+	_forget_last_order()
 	order_given.emit()
 	if not open or ids != _route_ids:
 		_route_clicks.clear()
@@ -960,7 +975,15 @@ func _turn_unit(unit_id: int, direction: Vector2) -> void:
 		_world.tick, PackedInt32Array([unit_id]), unit.x, unit.z, formation,
 		roundi(direction.x * FixedMath.DIR_ONE), roundi(direction.y * FixedMath.DIR_ONE)
 	))
+	_forget_last_order()
 	order_given.emit()
+
+
+# Any order but a move or attack-move replaces the last one: the arrow keys
+# must never give that move again over a retreat, a route or a guard.
+func _forget_last_order() -> void:
+	_last_order = {}
+	_reissue_wanted = false
 
 
 # True if the selection is exactly the last move's units and some are still
@@ -1039,6 +1062,7 @@ func _order_heal(at: Vector2) -> void:
 	if target == null or not target.is_alive():
 		return
 	_world.enqueue(HealCommand.new(_world.tick, selection.ids(), target_id))
+	_forget_last_order()
 	order_given.emit()
 	_units.show_marker(_units.sprite_position(target_id), UnitsView.MarkerKind.MOVE)
 	arm(ArmedOrder.NONE)
@@ -1063,6 +1087,7 @@ func _order_interact(at: Vector2) -> bool:
 	if target_id < 0 or not _someone_can(target_id):
 		return false
 	_world.enqueue(InteractCommand.new(_world.tick, selection.ids(), target_id))
+	_forget_last_order()
 	order_given.emit()
 	var target: SimEntity = _world.get_entity(target_id)
 	_units.show_marker(Vector3(target.x, target.y, target.z) / float(World.UNITS_PER_METER), UnitsView.MarkerKind.MOVE)

@@ -60,6 +60,14 @@ const ORDER_WHEEL: PackedStringArray = [
 
 enum Wheel { NONE, FORMATION, ORDER }
 
+## The actions read as buttons, whatever they are bound to (PadEdges).
+const BUTTON_ACTIONS: Array[StringName] = [
+	InputBindings.PAD_SELECT, InputBindings.PAD_ORDER, InputBindings.CANCEL,
+	InputBindings.PAD_FORMATION_WHEEL, InputBindings.PAD_ORDER_WHEEL,
+	InputBindings.PAD_GROUP_PREV, InputBindings.PAD_GROUP_NEXT, InputBindings.PAD_GROUP_SAVE,
+	InputBindings.PAD_GROUP_CLEAR, InputBindings.PAD_VIEW, InputBindings.PAD_BAR_FOCUS, InputBindings.PAD_CENTER,
+]
+
 var cursor: PadCursor
 var wheel: RadialMenu
 ## The strip naming the pad's buttons, shown while the pad is in use.
@@ -94,6 +102,7 @@ var _view_held: float = -1.0
 var _r3_held: float = -1.0
 var _r3_zoomed: bool = false
 var _bar_focus: bool = false
+var _edges: PadEdges = PadEdges.new(BUTTON_ACTIONS)
 
 
 ## Builds the cursor and the wheel under `hud` and starts listening.
@@ -157,7 +166,14 @@ func _process(delta: float) -> void:
 	_camera.pad_pan = Vector2.ZERO
 	_camera.pad_orbit = 0.0
 	_camera.pad_zoom = 0.0
-	if not _in_play() or _bar_focus:
+	if _bar_focus and (not _in_play() or get_viewport().gui_get_focus_owner() == null):
+		# The pause menu took over, or the focused button went (a rebuilt
+		# cell): the pad comes back to the game rather than going dead.
+		set_bar_focus(false)
+	if not _in_play():
+		_drop_holds()
+		return
+	if _bar_focus:
 		return
 	var stick: Vector2 = Input.get_vector(
 		InputBindings.PAD_CURSOR_LEFT, InputBindings.PAD_CURSOR_RIGHT,
@@ -178,8 +194,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if _controller == null or not _in_play():
 		return
+	_edges.feed(event)
 	if _bar_focus:
-		if event.is_action_pressed(InputBindings.CANCEL) or event.is_action_pressed(InputBindings.PAD_BAR_FOCUS):
+		if _edges.pressed(event, InputBindings.CANCEL) or _edges.pressed(event, InputBindings.PAD_BAR_FOCUS):
 			set_bar_focus(false)
 			get_viewport().set_input_as_handled()
 		return
@@ -191,59 +208,59 @@ func _unhandled_input(event: InputEvent) -> void:
 func _handle(event: InputEvent) -> bool:
 	if _wheel != Wheel.NONE:
 		return _handle_wheel(event)
-	if event.is_action_pressed(InputBindings.PAD_SELECT):
+	if _edges.pressed(event, InputBindings.PAD_SELECT):
 		_a_press()
 		return true
-	if event.is_action_released(InputBindings.PAD_SELECT):
+	if _edges.released(event, InputBindings.PAD_SELECT):
 		_a_release()
 		return true
-	if event.is_action_pressed(InputBindings.PAD_ORDER):
+	if _edges.pressed(event, InputBindings.PAD_ORDER):
 		_x_press()
 		return true
-	if event.is_action_released(InputBindings.PAD_ORDER):
+	if _edges.released(event, InputBindings.PAD_ORDER):
 		_x_release()
 		return true
-	if event.is_action_pressed(InputBindings.CANCEL):
+	if _edges.pressed(event, InputBindings.CANCEL):
 		_back()
 		return true
-	if event.is_action_pressed(InputBindings.PAD_FORMATION_WHEEL):
+	if _edges.pressed(event, InputBindings.PAD_FORMATION_WHEEL):
 		_open_wheel(Wheel.FORMATION)
 		return true
-	if event.is_action_pressed(InputBindings.PAD_ORDER_WHEEL):
+	if _edges.pressed(event, InputBindings.PAD_ORDER_WHEEL):
 		_open_wheel(Wheel.ORDER)
 		return true
-	if event.is_action_pressed(InputBindings.PAD_GROUP_PREV):
+	if _edges.pressed(event, InputBindings.PAD_GROUP_PREV):
 		_step_group(-1)
 		return true
-	if event.is_action_pressed(InputBindings.PAD_GROUP_NEXT):
+	if _edges.pressed(event, InputBindings.PAD_GROUP_NEXT):
 		_step_group(1)
 		return true
-	if event.is_action_pressed(InputBindings.PAD_GROUP_SAVE):
+	if _edges.pressed(event, InputBindings.PAD_GROUP_SAVE):
 		_up_held = 0.0
 		return true
-	if event.is_action_released(InputBindings.PAD_GROUP_SAVE):
+	if _edges.released(event, InputBindings.PAD_GROUP_SAVE):
 		_up_held = -1.0
 		return true
-	if event.is_action_pressed(InputBindings.PAD_GROUP_CLEAR):
+	if _edges.pressed(event, InputBindings.PAD_GROUP_CLEAR):
 		_down_held = 0.0
 		return true
-	if event.is_action_released(InputBindings.PAD_GROUP_CLEAR):
+	if _edges.released(event, InputBindings.PAD_GROUP_CLEAR):
 		_down_held = -1.0
 		return true
-	if event.is_action_pressed(InputBindings.PAD_VIEW):
+	if _edges.pressed(event, InputBindings.PAD_VIEW):
 		_view_held = 0.0
 		return true
-	if event.is_action_released(InputBindings.PAD_VIEW):
+	if _edges.released(event, InputBindings.PAD_VIEW):
 		_view_release()
 		return true
-	if event.is_action_pressed(InputBindings.PAD_BAR_FOCUS):
+	if _edges.pressed(event, InputBindings.PAD_BAR_FOCUS):
 		set_bar_focus(true)
 		return true
-	if event.is_action_pressed(InputBindings.PAD_CENTER):
+	if _edges.pressed(event, InputBindings.PAD_CENTER):
 		_r3_held = 0.0
 		_r3_zoomed = false
 		return true
-	if event.is_action_released(InputBindings.PAD_CENTER):
+	if _edges.released(event, InputBindings.PAD_CENTER):
 		if _r3_held >= 0.0 and _r3_held < TAP and not _r3_zoomed:
 			_main.center_on_selection()
 		_r3_held = -1.0
@@ -257,6 +274,13 @@ func _handle(event: InputEvent) -> bool:
 func _a_press() -> void:
 	if _map.visible:
 		_map.click_at(cursor.at, false)
+		return
+	var hud: Control = _hud_under(cursor.at)
+	if hud != null:
+		# On the HUD, A presses the button there, as a click would.
+		var button: Button = HudFocus.button_at(hud, cursor.at)
+		if button != null:
+			HudFocus.press(button)
 		return
 	_a_down = true
 	_a_at = cursor.at
@@ -292,6 +316,9 @@ func _x_press() -> void:
 		var attack: bool = _controller.armed_order == SelectionController.ArmedOrder.ATTACK_MOVE
 		if _map.click_at(cursor.at, true, attack) and attack:
 			_controller.arm(SelectionController.ArmedOrder.NONE)
+		return
+	if _hud_under(cursor.at) != null:
+		# Nothing on the ground behind the HUD is ordered.
 		return
 	if _controller.armed_order != SelectionController.ArmedOrder.NONE:
 		_controller.place_armed(cursor.at)
@@ -330,6 +357,7 @@ func _back() -> void:
 
 
 func _open_wheel(kind: Wheel) -> void:
+	_drop_holds()
 	_wheel = kind
 	_rotate_armed = true
 	if kind == Wheel.FORMATION:
@@ -342,10 +370,10 @@ func _open_wheel(kind: Wheel) -> void:
 func _handle_wheel(event: InputEvent) -> bool:
 	var formation: bool = _wheel == Wheel.FORMATION
 	var shoulder: StringName = InputBindings.PAD_FORMATION_WHEEL if formation else InputBindings.PAD_ORDER_WHEEL
-	if event.is_action_released(shoulder) or event.is_action_pressed(InputBindings.PAD_SELECT):
+	if _edges.released(event, shoulder) or _edges.pressed(event, InputBindings.PAD_SELECT):
 		_close_wheel(true)
 		return true
-	if event.is_action_pressed(InputBindings.CANCEL):
+	if _edges.pressed(event, InputBindings.CANCEL):
 		_close_wheel(false)
 		return true
 	# Everything else waits until the wheel is closed.
@@ -446,8 +474,7 @@ func _hold_buttons(delta: float) -> void:
 		_down_held += delta
 		if _down_held >= GROUP_HOLD:
 			_down_held = -1.0
-			_controller.selection.clear_group(_slot)
-			_controller.notice.emit("Group %d cleared" % ((_slot + 1) % UnitSelection.GROUP_COUNT))
+			_controller.clear_group(_slot)
 	if _view_held >= 0.0:
 		_view_held += delta
 		if _view_held >= TAP:
@@ -523,6 +550,34 @@ func _place_hints() -> void:
 	hints.position = Vector2(maxf(view.x - hints.size.x - 12.0, 0.0), bottom - hints.size.y - 6.0)
 
 
+# Drops every button held mid-way (a wheel or a menu took over, and its
+# release may never come here): a facing drag or box is abandoned, and no
+# group is saved or cleared late.
+func _drop_holds() -> void:
+	if _x_down:
+		_x_down = false
+		_controller.cancel_facing()
+	if _a_box:
+		_controller.end_box_preview()
+	_a_down = false
+	_a_box = false
+	_up_held = -1.0
+	_down_held = -1.0
+	if _view_held >= TAP:
+		_controller.show_health_held(false)
+	_view_held = -1.0
+	_r3_held = -1.0
+
+
+# The HUD panel under a screen point (the control bar, the unit panel, the
+# replay bar), or null.
+func _hud_under(at: Vector2) -> Control:
+	for panel: Control in _main.hud_panels():
+		if panel.is_visible_in_tree() and panel.get_global_rect().has_point(at):
+			return panel
+	return null
+
+
 func _clamped(at: Vector2) -> Vector2:
 	var view: Vector2 = get_viewport().get_visible_rect().size
 	return at.clamp(Vector2.ZERO, view - Vector2.ONE)
@@ -536,6 +591,10 @@ func _in_play() -> bool:
 
 func _on_device_changed(device: int) -> void:
 	var pad: bool = device == InputBindings.Device.PAD
+	if not pad and _bar_focus:
+		# The keyboard is back: Space and Enter must reach the game, not a
+		# focused button.
+		set_bar_focus(false)
 	if pad and not _placed and is_inside_tree():
 		place_cursor(get_viewport().get_mouse_position())
 	elif not pad and _placed and is_inside_tree() and not OS.has_feature("web") and DisplayServer.get_name() != "headless":

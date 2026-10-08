@@ -324,6 +324,70 @@ func test_a_on_a_focused_bar_button_presses_it() -> void:
 	assert_eq(_main._selection.formation, Formations.Kind.LONG_LINE, "the next one along")
 
 
+func test_the_keyboard_takes_the_focus_back_from_the_bar() -> void:
+	PadEvents.tap(JOY_BUTTON_LEFT_STICK)
+	PadEvents.tap(JOY_BUTTON_DPAD_RIGHT)
+	assert_true(_pad.has_bar_focus())
+	var space: InputEventKey = InputEventKey.new()
+	space.physical_keycode = KEY_SPACE
+	space.pressed = true
+	Input.parse_input_event(space)
+	Input.flush_buffered_events()
+	assert_false(_pad.has_bar_focus(), "a key ends the bar's focus")
+	assert_null(get_viewport().gui_get_focus_owner(), "so Space can't press a button")
+	assert_eq(_main._selection.formation, Formations.Kind.SHORT_LINE)
+
+
+func test_the_pause_menu_ends_the_bars_focus_and_the_pad_plays_on() -> void:
+	PadEvents.tap(JOY_BUTTON_LEFT_STICK)
+	PadEvents.tap(JOY_BUTTON_START)
+	_frames(1)
+	assert_false(_pad.has_bar_focus())
+	assert_true(_main.pause_menu().is_open(), "and the menu keeps its focus")
+	assert_not_null(get_viewport().gui_get_focus_owner())
+	PadEvents.tap(JOY_BUTTON_B)
+	_frames(1)
+	_pad.place_cursor(_main._selection.screen_point_of(_soldier.id))
+	PadEvents.tap(JOY_BUTTON_A)
+	assert_eq(_main._selection.selection.ids(), PackedInt32Array([_soldier.id]), "the pad isn't dead")
+
+
+func test_a_button_action_on_a_trigger_fires_once_a_pull() -> void:
+	InputBindings.apply({
+		InputBindings.PAD_GROUP_NEXT: InputBindings.text_to_event("joy_axis:%d:plus" % JOY_AXIS_TRIGGER_RIGHT),
+	} as Dictionary[StringName, InputEvent])
+	for value: float in [0.3, 0.5, 0.8, 1.0, 0.9]:
+		PadEvents.axis(JOY_AXIS_TRIGGER_RIGHT, value)
+	assert_eq(_pad.group_slot(), 1, "one pull, one step")
+	PadEvents.axis(JOY_AXIS_TRIGGER_RIGHT, 0.0)
+	PadEvents.axis(JOY_AXIS_TRIGGER_RIGHT, 1.0)
+	assert_eq(_pad.group_slot(), 2, "and again after letting go")
+
+
+func test_a_on_a_bar_button_presses_it_and_x_there_orders_nothing() -> void:
+	await get_tree().process_frame  # the bar lays its buttons out
+	_main._selection.selection.select(PackedInt32Array([_soldier.id]))
+	var wedge: Button = _main._control_bar._formation_buttons[Formations.Kind.WEDGE]
+	_pad.place_cursor(wedge.get_global_rect().get_center())
+	PadEvents.tap(JOY_BUTTON_A)
+	assert_eq(_main._selection.formation, Formations.Kind.WEDGE, "A pressed the button")
+	assert_eq(_main._selection.selection.size(), 1, "and selected nothing behind it")
+	PadEvents.tap(JOY_BUTTON_X)
+	_main._physics_process(1.0 / World.TICK_RATE)
+	assert_eq(_soldier.order, Unit.Order.NONE, "X on the bar orders no one")
+	assert_null(get_viewport().gui_get_focus_owner(), "and no button keeps focus")
+
+
+func test_a_wheel_drops_a_held_group_save() -> void:
+	_main._selection.selection.select(PackedInt32Array([_soldier.id]))
+	PadEvents.press(JOY_BUTTON_DPAD_UP)
+	PadEvents.press(JOY_BUTTON_LEFT_SHOULDER)
+	PadEvents.release(JOY_BUTTON_DPAD_UP)
+	PadEvents.release(JOY_BUTTON_LEFT_SHOULDER)
+	_frames(roundi(PadController.GROUP_HOLD / FRAME) + 2)
+	assert_true(_main._selection.selection.group(0).is_empty(), "no late save")
+
+
 func test_menu_pauses_and_b_resumes() -> void:
 	PadEvents.tap(JOY_BUTTON_START)
 	assert_true(_main.pause_menu().is_open())
@@ -348,3 +412,4 @@ func _frames(count: int) -> void:
 		_main._camera._process(FRAME)
 		_main._selection._process(FRAME)
 		_main._units_view._process(FRAME)
+		_main._info_panel._process(FRAME)

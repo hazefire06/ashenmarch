@@ -32,8 +32,10 @@ const GUARD_STEP: int = 6000
 ## beyond its minimum range, and never less than THREAT_FLOOR.
 const THREAT_MARGIN: int = 2000
 const THREAT_FLOOR: int = 5000
-## Milli-units from the spot that count as home.
-const HOME_RADIUS: int = 1000
+## Milli-units from the spot that count as home: past where a walk settles
+## when its spot is taken (UnitMovement.NEAR_GOAL_RADIUS), or a guard whose
+## spot another unit stands on would set out for it again and again.
+const HOME_RADIUS: int = UnitMovement.NEAR_GOAL_RADIUS + 500
 ## A ranged guard looks for targets before going home only every this many
 ## ticks (staggered by id), since the look reaches across its whole range.
 const RANGED_HOME_CHECK_TICKS: int = 6

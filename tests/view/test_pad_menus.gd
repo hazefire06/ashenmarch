@@ -118,3 +118,38 @@ func test_the_pad_hint_is_for_the_web_only() -> void:
 	add_child_autofree(menu)
 	# Headless here is not the web: a desktop sees a pad as it is plugged in.
 	assert_eq(menu.pad_hint_shown(), OS.has_feature("web") and not InputDeviceTracker.tracker().pad_connected())
+
+
+func test_the_skirmish_setup_is_played_with_the_d_pad() -> void:
+	var menu: SkirmishMenu = SkirmishMenu.new()
+	menu.setup(load("res://data/skirmish/skirmish.tres") as SkirmishCatalog, MenuFixtures.catalog())
+	add_child_autofree(menu)
+	await get_tree().process_frame
+	watch_signals(menu)
+	var units: Label = MenuFixtures.named(menu, "UnitCount") as Label
+	var before: String = units.text if units != null else ""
+	var minus: Button = MenuFixtures.named(menu, "Minus_shieldman") as Button
+	assert_true(PadPilot.focus_to(minus), "the D-pad reaches a stepper")
+	PadEvents.tap(JOY_BUTTON_A)
+	if units != null:
+		assert_ne(units.text, before, "A on it changed the army")
+	var plus: Button = MenuFixtures.named(menu, "Plus_shieldman") as Button
+	assert_true(PadPilot.focus_to(plus), "and the one beside it")
+	PadEvents.tap(JOY_BUTTON_A)
+	var start: Button = MenuFixtures.named(menu, "Start") as Button
+	assert_false(start.disabled, "the army is as it was, and valid")
+	assert_true(PadPilot.focus_to(start), "and the D-pad reaches Start")
+	PadEvents.tap(JOY_BUTTON_A)
+	assert_signal_emitted(menu, "start_pressed")
+
+
+func test_the_replays_list_is_played_with_the_d_pad() -> void:
+	var menu: ReplaysMenu = ReplaysMenu.new()
+	menu.setup(ReplayVerifier.golden_paths())
+	add_child_autofree(menu)
+	await get_tree().process_frame
+	watch_signals(menu)
+	var back: Button = MenuFixtures.named(menu, "BackButton") as Button
+	assert_true(PadPilot.focus_to(back), "the D-pad reaches Back past the list")
+	PadEvents.tap(JOY_BUTTON_A)
+	assert_signal_emitted(menu, "back_requested")

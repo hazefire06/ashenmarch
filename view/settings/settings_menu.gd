@@ -59,6 +59,8 @@ var _pad_buttons: Dictionary[StringName, Button] = {}
 var _capturing_pad: StringName = &""
 var _pad_wait: float = 0.0
 var _rumble_status: Label
+# The shoulder buttons may be rebound to triggers: a pull turns one tab.
+var _tab_edges: PadEdges = PadEdges.new([InputBindings.PAD_FORMATION_WHEEL, InputBindings.PAD_ORDER_WHEEL] as Array[StringName])
 var _preset: OptionButton
 var _save_modifier: OptionButton
 var _recall_modifier: OptionButton
@@ -152,9 +154,10 @@ func _focus_default() -> void:
 # first control.
 func _unhandled_input(event: InputEvent) -> void:
 	var step: int = 0
-	if event.is_action_pressed(InputBindings.PAD_FORMATION_WHEEL):
+	_tab_edges.feed(event)
+	if _tab_edges.pressed(event, InputBindings.PAD_FORMATION_WHEEL):
 		step = -1
-	elif event.is_action_pressed(InputBindings.PAD_ORDER_WHEEL):
+	elif _tab_edges.pressed(event, InputBindings.PAD_ORDER_WHEEL):
 		step = 1
 	if step == 0 or is_capturing():
 		super(event)
@@ -491,9 +494,11 @@ func _controls_tab() -> Control:
 	_recall_modifier = _add_choice(tab, "RecallModifier", "Recall a group", modifiers, saved[1], _on_modifier_selected)
 	var classic_modifiers: PackedStringArray = PackedStringArray()
 	for modifier: int in InputBindings.GroupModifier.size():
-		classic_modifiers.append(
-			"%s + number (hold to save)" % InputBindings.modifier_label(modifier as InputBindings.GroupModifier)
-		)
+		var key: String = InputBindings.modifier_label(modifier as InputBindings.GroupModifier)
+		if modifier == InputBindings.GroupModifier.COMMAND_OR_ALT:
+			# Otherwise it reads the same as Cmd/Ctrl on a Mac, or Alt elsewhere.
+			key = "Cmd on a Mac, Alt elsewhere"
+		classic_modifiers.append("%s + number (hold to save)" % key)
 	_classic_modifier = _add_choice(
 		tab, "ClassicModifier", "Group key", classic_modifiers, GameSettings.classic_group_modifier(_path),
 		_on_classic_modifier_selected

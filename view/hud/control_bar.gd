@@ -377,7 +377,7 @@ func _on_group_pressed(slot: int) -> void:
 		_controller.save_group(slot)
 		_set_toggle.button_pressed = false
 	elif _clear_toggle.button_pressed:
-		_controller.selection.clear_group(slot)
+		_controller.clear_group(slot)
 		_clear_toggle.button_pressed = false
 	else:
 		_controller.recall_group(slot)

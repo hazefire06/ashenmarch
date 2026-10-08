@@ -214,6 +214,55 @@ func test_an_arrow_turns_the_move_under_way() -> void:
 	assert_almost_eq(_a.order_x + _b.order_x, 70 * M, 2500, "the same place")
 
 
+func test_an_arrow_after_a_retreat_does_not_give_the_old_move_again() -> void:
+	_select(_a, _b)
+	_click(MOUSE_BUTTON_RIGHT, _at(35, 20))
+	_world.step()
+	_world.spawn_unit(_world.catalog.index_of(&"husk"), DARK, 30 * M, 20 * M, -1, 0)
+	_key(KEY_R)
+	_world.step()
+	var retreat_x: int = _a.order_x
+	_key(KEY_LEFT)
+	_world.step()
+	assert_eq(_a.order_x, retreat_x, "still retreating west, not marching back east")
+	assert_eq(_controller.pending_rotation(), 15, "the turn is kept for the next move instead")
+
+
+func test_an_arrow_keeps_a_route() -> void:
+	_select(_a)
+	_click(MOUSE_BUTTON_RIGHT, _at(35, 20))
+	_world.step()
+	_click(MOUSE_BUTTON_RIGHT, _at(25, 10), "s")
+	_world.step()
+	_click(MOUSE_BUTTON_RIGHT, _at(30, 25), "s")
+	_world.step()
+	_key(KEY_LEFT)
+	_world.step()
+	assert_eq(UnitRoute.point_count(_a), 2, "the route is untouched")
+
+
+func test_an_arrow_while_paused_changes_nothing() -> void:
+	_select(_a, _b)
+	_click(MOUSE_BUTTON_RIGHT, _at(35, 20))
+	_world.step()
+	_controller.paused = true
+	_key(KEY_LEFT)
+	_controller.paused = false
+	_key(KEY_LEFT)
+	_world.step()
+	var facing: Vector2 = Vector2(_a.order_facing_x, _a.order_facing_z) / 1000.0
+	assert_almost_eq(facing.angle_to(Vector2(1, 0)), TAU / 16, 0.01, "one step, not two")
+
+
+func test_clearing_the_recalled_group_from_the_bar_forgets_it() -> void:
+	_select(_a)
+	_controller.save_group(4)
+	_controller.recall_group(4)
+	assert_eq(_controller.current_group(), 4)
+	_controller.clear_group(4)
+	assert_eq(_controller.current_group(), -1)
+
+
 func test_enter_selects_all_on_screen_and_backtick_none() -> void:
 	await wait_process_frames(2)
 	_key(KEY_ENTER)

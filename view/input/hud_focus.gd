@@ -38,6 +38,43 @@ static func enable(root: Node, on: bool) -> Button:
 	return first
 
 
+## The visible button under a screen point inside `root`, or null.
+static func button_at(root: Node, at: Vector2) -> Button:
+	var stack: Array[Node] = [root]
+	while not stack.is_empty():
+		var node: Node = stack.pop_front()
+		if node is Button:
+			var button: Button = node
+			if button.is_visible_in_tree() and button.get_global_rect().has_point(at):
+				return button
+		var children: Array[Node] = node.get_children()
+		stack = children + stack
+	return null
+
+
+## Presses a button as a focused one is pressed (ui_accept, down and up), so a
+## toggle toggles and a plain button fires, as a click would. Focus goes back
+## to where it was.
+static func press(button: Button) -> void:
+	if button.disabled:
+		return
+	var viewport: Viewport = button.get_viewport()
+	var before: Control = viewport.gui_get_focus_owner()
+	var mode: Control.FocusMode = button.focus_mode
+	button.focus_mode = Control.FOCUS_ALL
+	button.grab_focus()
+	for down: bool in [true, false]:
+		var accept: InputEventAction = InputEventAction.new()
+		accept.action = &"ui_accept"
+		accept.pressed = down
+		viewport.push_input(accept)
+	button.focus_mode = mode
+	if before != null and is_instance_valid(before):
+		before.grab_focus()
+	elif viewport.gui_get_focus_owner() == button:
+		viewport.gui_release_focus()
+
+
 static func _link(rows: Array[Array]) -> void:
 	for r: int in rows.size():
 		var row: Array = rows[r]

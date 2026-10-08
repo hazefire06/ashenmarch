@@ -130,3 +130,26 @@ func _run(world: World, ticks: int) -> void:
 
 func _shots(world: World) -> int:
 	return world.projectiles.size()
+
+
+func test_a_guard_whose_spot_is_taken_settles_beside_it() -> void:
+	var world: World = _world()
+	var guard: Unit = world.spawn_unit(BRAWLER, LIGHT, 20 * M, 20 * M, 1000, 0)
+	world.enqueue(GuardCommand.new(0, PackedInt32Array([guard.id])))
+	world.step()
+	# Friends crowd the spot, so the nearest the guard can stand is between 1
+	# and 2 m off it, and it has been pushed 4 m away.
+	for dx: int in [-900, 0, 900]:
+		for dz: int in [-900, 0, 900]:
+			world.spawn_unit(BRAWLER, LIGHT, 20 * M + dx, 20 * M + dz, 1000, 0)
+	guard.z += 4 * M
+	_run(world, 10 * 30)
+	var walks: int = 0
+	var was_moving: bool = false
+	for t: int in 10 * 30:
+		world.step()
+		if guard.state == Unit.State.MOVING and not was_moving:
+			walks += 1
+		was_moving = guard.state == Unit.State.MOVING
+	assert_eq(walks, 0, "settled near the spot, it doesn't set out again")
+	assert_lt(FixedMath.length(guard.x - 20 * M, guard.z - 20 * M), Guard.HOME_RADIUS + 1)
