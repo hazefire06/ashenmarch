@@ -152,6 +152,10 @@ var last_step_ms: float = 0.0
 var _sim_ms: float = 0.0
 var _speed: int = NORMAL_SPEED
 var _pad: PadController
+var _pad_cursor_speed: float = 1.0
+var _pad_snap: bool = true
+## The pad's rumble (Settings > Controller sets its strength).
+var rumble: PadRumble = PadRumble.new()
 var _rate_before: int = World.TICK_RATE
 ## The DebugWeather preset F6 last picked.
 var _weather_preset: int = 0
@@ -283,6 +287,8 @@ func _ready() -> void:
 	_pad.name = "Pad"
 	$Hud.add_child(_pad)
 	_pad.setup(self, _selection, _camera, _overhead_map, _control_bar, $Hud)
+	set_pad_settings(_pad_cursor_speed, _pad_snap, rumble.strength)
+	InputDevice.changed.connect(func(_device: int) -> void: refresh_key_labels())
 	_control_bar.speed_step_requested.connect(func(step: int) -> void: set_game_speed(_speed + step))
 	_control_bar.set_game_speed_visible(allows_game_speed())
 	_pause_menu.speed_step_requested.connect(func(step: int) -> void: set_game_speed(_speed + step))
@@ -375,6 +381,8 @@ func _advance() -> void:
 	_ai_debug.after_step()
 	_sfx.after_step()
 	_ambience.after_step()
+	if _replay_player == null:
+		rumble.after_step(world, _camera.focus, _selection.side)
 	_mission_hud.show_world(world)
 	_objectives.show_world(world)
 	if _skirmish_hud != null:
@@ -461,6 +469,17 @@ func set_hud_focus(on: bool) -> void:
 ## The pad's controller.
 func pad() -> PadController:
 	return _pad
+
+
+## The pad's settings: the cursor's speed (1 is PadController's own), whether
+## it sticks to units, and rumble strength (0 off .. 1).
+func set_pad_settings(cursor_speed: float, snap: bool, rumble_strength: float) -> void:
+	_pad_cursor_speed = cursor_speed
+	_pad_snap = snap
+	rumble.strength = rumble_strength
+	if _pad != null:
+		_pad.cursor_speed_scale = cursor_speed
+		_pad.snap = snap
 
 
 ## Puts the current key bindings into everything that names them: the control

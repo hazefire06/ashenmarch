@@ -61,6 +61,12 @@ enum Wheel { NONE, FORMATION, ORDER }
 
 var cursor: PadCursor
 var wheel: RadialMenu
+## The strip naming the pad's buttons, shown while the pad is in use.
+var hints: RichTextLabel
+## The cursor's speed, in parts of CURSOR_SPEED (Settings > Controller).
+var cursor_speed_scale: float = 1.0
+## Whether the cursor slows over units and sticks to them.
+var snap: bool = true
 
 var _main: MainView
 var _controller: SelectionController
@@ -102,6 +108,17 @@ func setup(
 	wheel = RadialMenu.new()
 	wheel.name = "PadWheel"
 	hud.add_child(wheel)
+	hints = RichTextLabel.new()
+	hints.name = "PadHints"
+	hints.bbcode_enabled = true
+	hints.fit_content = true
+	hints.autowrap_mode = TextServer.AUTOWRAP_OFF
+	hints.scroll_active = false
+	hints.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hints.focus_mode = Control.FOCUS_NONE
+	hints.add_theme_constant_override("outline_size", 4)
+	hints.add_theme_color_override("font_outline_color", Color(0.05, 0.05, 0.05))
+	hud.add_child(hints)
 	cursor = PadCursor.new()
 	cursor.name = "PadCursor"
 	hud.add_child(cursor)
@@ -135,6 +152,7 @@ func _process(delta: float) -> void:
 	_clock += delta
 	if _controller == null:
 		return
+	_place_hints()
 	_camera.pad_pan = Vector2.ZERO
 	_camera.pad_orbit = 0.0
 	_camera.pad_zoom = 0.0
@@ -443,7 +461,7 @@ func _move_cursor(stick: Vector2, delta: float) -> void:
 	if not _placed:
 		place_cursor(view * 0.5)
 	if stick == Vector2.ZERO:
-		if _was_moving:
+		if _was_moving and snap:
 			# Let go: stick to a unit close by.
 			var unit_point: Vector2 = _controller.nearest_unit_point(cursor.at, SNAP_RADIUS)
 			if unit_point != Vector2.INF:
@@ -453,8 +471,8 @@ func _move_cursor(stick: Vector2, delta: float) -> void:
 		return
 	_was_moving = true
 	cursor.snapped = false
-	var speed: float = CURSOR_SPEED * view.y * stick.length_squared()
-	if _controller.nearest_unit_point(cursor.at, SNAP_RADIUS) != Vector2.INF:
+	var speed: float = CURSOR_SPEED * cursor_speed_scale * view.y * stick.length_squared()
+	if snap and _controller.nearest_unit_point(cursor.at, SNAP_RADIUS) != Vector2.INF:
 		speed *= NEAR_UNIT_SPEED
 	cursor.at = _clamped(cursor.at + stick.normalized() * speed * delta)
 
@@ -483,6 +501,21 @@ func _drive_camera(cursor_stick: Vector2) -> void:
 		camera_pan.y -= cursor_stick.y
 	_camera.pad_pan = camera_pan.limit_length(1.0)
 	_camera.pad_orbit = Input.get_axis(InputBindings.PAD_ORBIT_LEFT, InputBindings.PAD_ORBIT_RIGHT)
+
+
+# The hint strip, above the control bar's right end, while the pad is in use.
+func _place_hints() -> void:
+	var shown: bool = InputDevice.is_pad() and _in_play()
+	hints.visible = shown
+	if not shown:
+		return
+	var text: String = InputPrompts.pad_hints()
+	if hints.text != text:
+		hints.text = text
+		hints.reset_size()
+	var view: Vector2 = get_viewport().get_visible_rect().size
+	var bottom: float = _bar.position.y if _bar != null else view.y
+	hints.position = Vector2(maxf(view.x - hints.size.x - 12.0, 0.0), bottom - hints.size.y - 6.0)
 
 
 func _clamped(at: Vector2) -> Vector2:

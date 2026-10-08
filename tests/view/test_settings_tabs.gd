@@ -162,10 +162,12 @@ func test_the_bus_layout_has_the_four_buses() -> void:
 		assert_gt(AudioServer.get_bus_index(bus), -1, bus)
 
 
-func test_the_overlay_has_three_tabs_and_the_old_controls() -> void:
+func test_the_overlay_has_four_tabs_and_the_old_controls() -> void:
 	var menu: SettingsMenu = _menu()
 	var tabs: TabContainer = MenuFixtures.named(menu, "Tabs") as TabContainer
-	assert_eq(tabs.get_tab_count(), 3)
+	assert_eq(tabs.get_tab_count(), 4, "Display, Audio, Controls, and Phase 11's Controller")
+	assert_not_null(MenuFixtures.named(menu, "Pad_pad_select"))
+	assert_not_null(MenuFixtures.named(menu, "CornerCameraCheck"))
 	assert_not_null(MenuFixtures.named(menu, "FullscreenCheck"))
 	assert_not_null(MenuFixtures.named(menu, "EdgeScrollCheck"))
 	assert_eq((MenuFixtures.named(menu, "Bind_unit_stop") as Button).text, "Space")

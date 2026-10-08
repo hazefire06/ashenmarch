@@ -17,7 +17,10 @@ extends PanelContainer
 ##   Switch side (debug; the campaign hides it), and Menu (the pause menu,
 ##   which Esc opens too; it is how a mouse alone reaches it).
 ## The keys named on the buttons and in their tooltips are the current
-## bindings (refresh_key_labels).
+## bindings (refresh_key_labels). While a pad is in use each row's caption
+## shows the pad button that does the row's work instead (the formation and
+## order wheels, the D-pad's groups, View's map), and the buttons drop their
+## keys.
 ## All actions go through the SelectionController, so keys and buttons can't
 ## drift apart. While the game is paused the order buttons are disabled:
 ## nothing would be enqueued, and a greyed button says so.
@@ -72,6 +75,8 @@ var _speed: Label
 var _status: Label
 var _notice: Label
 var _notice_left: float = 0.0
+## Each row caption's glyph, with the pad action it shows.
+var _caption_glyphs: Dictionary[TextureRect, StringName] = {}
 ## Living units per side, recounted when the tick changes.
 var _light_alive: int = 0
 var _dark_alive: int = 0
@@ -104,7 +109,7 @@ func _build() -> void:
 	add_child(rows)
 
 	var formations: HBoxContainer = HBoxContainer.new()
-	formations.add_child(_caption("Formation"))
+	formations.add_child(_caption("Formation", InputBindings.PAD_FORMATION_WHEEL))
 	var group: ButtonGroup = ButtonGroup.new()
 	for kind: int in Formations.Kind.size():
 		var b: Button = _button(Formations.DISPLAY_NAMES[kind])
@@ -126,7 +131,7 @@ func _build() -> void:
 	rows.add_child(formations)
 
 	var groups: HBoxContainer = HBoxContainer.new()
-	groups.add_child(_caption("Groups"))
+	groups.add_child(_caption("Groups", InputBindings.PAD_GROUP_NEXT))
 	for slot: int in UnitSelection.GROUP_COUNT:
 		var b: Button = _button(GROUP_LABELS[slot])
 		b.custom_minimum_size.x = 34.0
@@ -159,7 +164,7 @@ func _build() -> void:
 	rows.add_child(groups)
 
 	var orders: HBoxContainer = HBoxContainer.new()
-	orders.add_child(_caption("Orders"))
+	orders.add_child(_caption("Orders", InputBindings.PAD_ORDER_WHEEL))
 	_stop_button = _button("Stop")
 	_stop_button.pressed.connect(_controller.stop_selected)
 	orders.add_child(_stop_button)
@@ -183,7 +188,7 @@ func _build() -> void:
 	rows.add_child(orders)
 
 	var view: HBoxContainer = HBoxContainer.new()
-	view.add_child(_caption("View"))
+	view.add_child(_caption("View", InputBindings.PAD_VIEW))
 	_select_all_button = _button("All")
 	_select_all_button.pressed.connect(_controller.select_all_visible)
 	view.add_child(_select_all_button)
@@ -229,16 +234,20 @@ func _build() -> void:
 ## Names the current bindings on the buttons and in their tooltips. Called
 ## once built, and again by MainView after the controls are changed.
 func refresh_key_labels() -> void:
+	var pad: bool = InputPrompts.pad_in_use()
+	for glyph: TextureRect in _caption_glyphs:
+		glyph.texture = InputPrompts.glyph_for(_caption_glyphs[glyph])
+		glyph.visible = pad and glyph.texture != null
 	for kind: int in _formation_buttons.size():
 		var key: String = InputBindings.label_for(InputBindings.FORMATIONS[kind])
-		_formation_buttons[kind].text = "%s %s" % [key, Formations.DISPLAY_NAMES[kind]]
+		_formation_buttons[kind].text = Formations.DISPLAY_NAMES[kind] if pad else "%s %s" % [key, Formations.DISPLAY_NAMES[kind]]
 		_formation_buttons[kind].tooltip_text = "Formation for the next move order (%s)" % key
 	for slot: int in _group_buttons.size():
 		_group_buttons[slot].tooltip_text = "Recall group %s (%s); save with Set or %s" % [
 			GROUP_LABELS[slot], InputBindings.label_for(InputBindings.GROUP_RECALLS[slot]),
 			InputBindings.label_for(InputBindings.GROUP_SAVES[slot]),
 		]
-	var ability_key: String = InputBindings.label_for(InputBindings.ABILITY)
+	var ability_key: String = InputPrompts.label(InputBindings.ABILITY)
 	_stop_button.tooltip_text = "Halt the selection (%s)" % InputBindings.label_for(InputBindings.STOP)
 	_move_toggle.tooltip_text = "Then left-click the ground to move there (or %s)" % InputBindings.label_for(InputBindings.COMMAND)
 	_attack_move_toggle.tooltip_text = "Then left-click the ground to attack-move there (or %s)" % InputBindings.label_for(InputBindings.ATTACK_MOVE)
@@ -479,8 +488,19 @@ static func _button(text: String) -> Button:
 	return b
 
 
-static func _caption(text: String) -> Label:
+# A row's caption: its name, and the glyph of the pad button for the row
+# (shown while a pad is in use).
+func _caption(text: String, pad_action: StringName) -> HBoxContainer:
+	var box: HBoxContainer = HBoxContainer.new()
+	box.custom_minimum_size.x = 76.0
+	var glyph: TextureRect = TextureRect.new()
+	glyph.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	glyph.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	glyph.custom_minimum_size = Vector2(22.0, 22.0)
+	glyph.visible = false
+	box.add_child(glyph)
+	_caption_glyphs[glyph] = pad_action
 	var label: Label = Label.new()
 	label.text = text
-	label.custom_minimum_size.x = 76.0
-	return label
+	box.add_child(label)
+	return box

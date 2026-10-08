@@ -439,8 +439,7 @@ func _launch_mission() -> void:
 	)
 	var main: MainView = MAIN_SCENE.instantiate() as MainView
 	main.launch = launch
-	main.edge_scroll = GameSettings.edge_scroll(settings_path)
-	main.corner_camera = GameSettings.corner_camera(settings_path)
+	_apply_view_settings(main)
 	main.mission_ended.connect(_on_mission_ended)
 	main.restart_requested.connect(_on_restart_requested)
 	main.settings_requested.connect(open_settings)
@@ -562,8 +561,7 @@ func _new_seed() -> int:
 func _launch_skirmish() -> void:
 	var main: MainView = MAIN_SCENE.instantiate() as MainView
 	main.launch = MissionLaunch.for_skirmish(_skirmish_setup)
-	main.edge_scroll = GameSettings.edge_scroll(settings_path)
-	main.corner_camera = GameSettings.corner_camera(settings_path)
+	_apply_view_settings(main)
 	main.skirmish_ended.connect(_on_skirmish_ended)
 	main.restart_requested.connect(_on_skirmish_restart_requested)
 	main.settings_requested.connect(open_settings)
@@ -625,8 +623,7 @@ func _reseeded(setup: SkirmishSetup) -> SkirmishSetup:
 func _launch_replay() -> void:
 	var main: MainView = MAIN_SCENE.instantiate() as MainView
 	main.launch = _watching
-	main.edge_scroll = GameSettings.edge_scroll(settings_path)
-	main.corner_camera = GameSettings.corner_camera(settings_path)
+	_apply_view_settings(main)
 	main.restart_requested.connect(_launch_replay)
 	main.settings_requested.connect(open_settings)
 	main.quit_requested.connect(_on_replay_left)
@@ -676,6 +673,17 @@ func _notification(what: int) -> void:
 # --- overlays -------------------------------------------------------------------
 
 
+# The mission view's share of the settings: edge scroll (off while `held`, an
+# overlay up), the corner camera, the pad's cursor and rumble.
+func _apply_view_settings(main: MainView, held: bool = false) -> void:
+	main.edge_scroll = not held and GameSettings.edge_scroll(settings_path)
+	main.corner_camera = GameSettings.corner_camera(settings_path)
+	main.set_pad_settings(
+		GameSettings.cursor_speed(settings_path) / 100.0, GameSettings.cursor_snap(settings_path),
+		GameSettings.rumble(settings_path) / 100.0
+	)
+
+
 func _open_overlay(overlay: MenuScreen) -> void:
 	_close_overlay()
 	_focus_before_overlay = get_viewport().gui_get_focus_owner()
@@ -704,8 +712,7 @@ func _hold_mission(held: bool) -> void:
 	if main == null:
 		return
 	main.pause_menu().enabled = not held and not main.is_frozen()
-	main.edge_scroll = not held and GameSettings.edge_scroll(settings_path)
-	main.corner_camera = GameSettings.corner_camera(settings_path)
+	_apply_view_settings(main, held)
 
 
 func _on_settings_changed() -> void:

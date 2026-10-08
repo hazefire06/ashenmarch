@@ -42,6 +42,15 @@ const CONTROLS: String = "controls"
 const FULLSCREEN: String = "fullscreen"
 const EDGE_SCROLL: String = "edge_scroll"
 const CORNER_CAMERA: String = "corner_camera"
+const CURSOR_SPEED: String = "pad_cursor_speed"
+const CURSOR_SNAP: String = "pad_cursor_snap"
+const RUMBLE: String = "pad_rumble"
+## The pad's cursor speed in percent of PadController's, and rumble strength
+## in percent (0 is off).
+const CURSOR_SPEED_MIN: int = 50
+const CURSOR_SPEED_MAX: int = 200
+const CURSOR_SPEED_DEFAULT: int = 100
+const RUMBLE_DEFAULT: int = 70
 const SKIRMISH: String = "skirmish"
 const AUDIO: String = "audio"
 const KEYBINDS: String = "keybinds"
@@ -114,6 +123,28 @@ static func corner_camera(path: String = DEFAULT_PATH) -> bool:
 
 static func set_corner_camera(enabled: bool, path: String = DEFAULT_PATH) -> Error:
 	return _set_value(path, CONTROLS, CORNER_CAMERA, enabled)
+
+
+## The pad's cursor speed in percent, CURSOR_SPEED_MIN..CURSOR_SPEED_MAX.
+static func cursor_speed(path: String = DEFAULT_PATH) -> int:
+	return _get_int_in(
+		path, CONTROLS, CURSOR_SPEED, CURSOR_SPEED_DEFAULT, range(CURSOR_SPEED_MIN, CURSOR_SPEED_MAX + 1)
+	)
+
+
+## Whether the pad's cursor sticks to units.
+static func cursor_snap(path: String = DEFAULT_PATH) -> bool:
+	return _get_bool(path, CONTROLS, CURSOR_SNAP, true)
+
+
+## Rumble strength in percent; 0 is off.
+static func rumble(path: String = DEFAULT_PATH) -> int:
+	return _get_int_in(path, CONTROLS, RUMBLE, RUMBLE_DEFAULT, range(101))
+
+
+## Saves one of the pad's settings (CURSOR_SPEED, CURSOR_SNAP, RUMBLE).
+static func set_pad_setting(key: String, value: Variant, path: String = DEFAULT_PATH) -> Error:
+	return _set_value(path, CONTROLS, key, value)
 
 
 ## Saves the fullscreen choice. Returns the error from the write, or OK.
