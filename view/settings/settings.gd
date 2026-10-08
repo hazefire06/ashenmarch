@@ -41,6 +41,7 @@ const DISPLAY: String = "display"
 const CONTROLS: String = "controls"
 const FULLSCREEN: String = "fullscreen"
 const EDGE_SCROLL: String = "edge_scroll"
+const CORNER_CAMERA: String = "corner_camera"
 const SKIRMISH: String = "skirmish"
 const AUDIO: String = "audio"
 const KEYBINDS: String = "keybinds"
@@ -103,6 +104,16 @@ static func fullscreen(path: String = DEFAULT_PATH) -> bool:
 ## Whether the mission camera pans when the mouse is at the window's edge.
 static func edge_scroll(path: String = DEFAULT_PATH) -> bool:
 	return _get_bool(path, CONTROLS, EDGE_SCROLL, EDGE_SCROLL_DEFAULT)
+
+
+## Whether pushing the mouse into a screen corner turns (top) or orbits
+## (bottom) the camera, as Myth II's preference did. Off unless chosen.
+static func corner_camera(path: String = DEFAULT_PATH) -> bool:
+	return _get_bool(path, CONTROLS, CORNER_CAMERA, false)
+
+
+static func set_corner_camera(enabled: bool, path: String = DEFAULT_PATH) -> Error:
+	return _set_value(path, CONTROLS, CORNER_CAMERA, enabled)
 
 
 ## Saves the fullscreen choice. Returns the error from the write, or OK.

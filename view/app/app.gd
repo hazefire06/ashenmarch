@@ -440,6 +440,7 @@ func _launch_mission() -> void:
 	var main: MainView = MAIN_SCENE.instantiate() as MainView
 	main.launch = launch
 	main.edge_scroll = GameSettings.edge_scroll(settings_path)
+	main.corner_camera = GameSettings.corner_camera(settings_path)
 	main.mission_ended.connect(_on_mission_ended)
 	main.restart_requested.connect(_on_restart_requested)
 	main.settings_requested.connect(open_settings)
@@ -562,6 +563,7 @@ func _launch_skirmish() -> void:
 	var main: MainView = MAIN_SCENE.instantiate() as MainView
 	main.launch = MissionLaunch.for_skirmish(_skirmish_setup)
 	main.edge_scroll = GameSettings.edge_scroll(settings_path)
+	main.corner_camera = GameSettings.corner_camera(settings_path)
 	main.skirmish_ended.connect(_on_skirmish_ended)
 	main.restart_requested.connect(_on_skirmish_restart_requested)
 	main.settings_requested.connect(open_settings)
@@ -624,6 +626,7 @@ func _launch_replay() -> void:
 	var main: MainView = MAIN_SCENE.instantiate() as MainView
 	main.launch = _watching
 	main.edge_scroll = GameSettings.edge_scroll(settings_path)
+	main.corner_camera = GameSettings.corner_camera(settings_path)
 	main.restart_requested.connect(_launch_replay)
 	main.settings_requested.connect(open_settings)
 	main.quit_requested.connect(_on_replay_left)
@@ -702,6 +705,7 @@ func _hold_mission(held: bool) -> void:
 		return
 	main.pause_menu().enabled = not held and not main.is_frozen()
 	main.edge_scroll = not held and GameSettings.edge_scroll(settings_path)
+	main.corner_camera = GameSettings.corner_camera(settings_path)
 
 
 func _on_settings_changed() -> void:

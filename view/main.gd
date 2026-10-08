@@ -123,6 +123,12 @@ var edge_scroll: bool = false:
 	set(value):
 		edge_scroll = value
 		_apply_edge_scroll()
+## Whether a screen corner turns or orbits the camera (RtsCamera.corner_camera);
+## the Settings toggle. Off while the pause menu is open, like edge scroll.
+var corner_camera: bool = false:
+	set(value):
+		corner_camera = value
+		_apply_edge_scroll()
 ## True while the sim isn't being stepped. Pausing changes nothing in the sim:
 ## the view just stops calling World.step(). Set it directly, or with P or the
 ## menu. Ignored once the mission is decided.
@@ -697,7 +703,9 @@ func _on_pause_menu_closed() -> void:
 func _apply_edge_scroll() -> void:
 	if _camera == null:
 		return
-	_camera.edge_scroll = edge_scroll and not (_pause_menu != null and _pause_menu.is_open())
+	var menu_open: bool = _pause_menu != null and _pause_menu.is_open()
+	_camera.edge_scroll = edge_scroll and not menu_open
+	_camera.corner_camera = corner_camera and not menu_open
 
 
 func _on_resume_requested() -> void:

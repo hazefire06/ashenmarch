@@ -27,6 +27,7 @@ signal closed
 
 const EDGE_SCROLL_HINT: String = "Pan the camera by pushing the mouse against the edge of the window."
 const PRESS_A_KEY: String = "Press a key... (Esc cancels)"
+const CORNER_CAMERA_HINT: String = "Push the mouse into a top corner to turn the camera, a bottom corner to orbit it."
 const PRESET_NAMES: PackedStringArray = ["Modern", "Classic"]
 const PRESET_HINT: String = "Classic: left click gives orders, A/D turn, Z/X strafe, C zooms in and V out, and a group is saved by holding its key."
 const MODIFIER_KEYS: Array[Key] = [KEY_SHIFT, KEY_CTRL, KEY_ALT, KEY_META]
@@ -325,6 +326,13 @@ func _controls_tab() -> Control:
 	var hint: Label = MenuKit.paragraph(EDGE_SCROLL_HINT, 14, MenuKit.MUTED_COLOR)
 	hint.custom_minimum_size.x = 340.0
 	tab.add_child(hint)
+	var corners: CheckBox = _add_toggle(tab, "CornerCameraCheck", "Corner camera", GameSettings.corner_camera(_path))
+	corners.toggled.connect(func(on: bool) -> void:
+		_saved_or_undo(GameSettings.set_corner_camera(on, _path), corners, on)
+	)
+	var corner_hint: Label = MenuKit.paragraph(CORNER_CAMERA_HINT, 14, MenuKit.MUTED_COLOR)
+	corner_hint.custom_minimum_size.x = 340.0
+	tab.add_child(corner_hint)
 	for section: String in InputBindings.REBINDABLE:
 		tab.add_child(MenuKit.label(section, MenuKit.HEADING_SIZE, MenuKit.TEXT_COLOR))
 		for action: StringName in InputBindings.REBINDABLE[section]:
