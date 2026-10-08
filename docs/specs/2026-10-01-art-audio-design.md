@@ -1,6 +1,6 @@
 # Art and audio track: design
 
-Status: draft for review, 2026-10-01. Decided with Tim in one brainstorming session, section by section.
+Status: approved. A0 and A1 implemented (2026-10-07); A2 and A3 planned. Drafted 2026-10-01 and decided with Tim in one brainstorming session, section by section.
 
 ## 1. Goal
 
@@ -48,6 +48,8 @@ Success looks like this:
 | `feature/PHASE-A2-audio` | Generation and processing scripts, sound bank, `AudioDirector`, ambience, barks, the Shieldman's voice, one music loop | Tim listens to a test build |
 | `feature/PHASE-A3-roster` | The other 9 units' art and voices. Assets only; may be several PRs. | A contact sheet per unit |
 
+On 2026-10-07 Tim folded A0 into the A1 PR: `feature/PHASE-A1-unit-sprites` carries both, and A0's own PR (#10) closes in its favour.
+
 **What the track may touch:**
 - `view/units/unit_sprite.gd` and `view/units/units_view.gd`
 - new files under `view/units/` and `view/audio/`
@@ -64,7 +66,7 @@ Success looks like this:
 
 ## 4. Repository hygiene and secrets
 
-- **LFS covers `assets/` and `art-src/` and `audio-src/` only.** `maps/*.png` stays plain git: the sim decodes those PNGs itself, and a clone without LFS would break the tests. GitHub Free includes 10 GiB of LFS storage and 10 GiB of bandwidth per month. Note that LFS downloads by forks of a public repo count against the owner's bandwidth.
+- **LFS covers `assets/` and `art-src/` and `audio-src/` only.** `maps/*.png` stays plain git: the sim decodes those PNGs itself, and a clone without LFS would break the tests. Since A1 the tests need LFS anyway: `data/art/shieldman.tres` loads the Shieldman's sheets from `assets/`, so without LFS `make test` fails in `test_main_view` and the art tests, and the game draws placeholders. Install git-lfs before cloning, or run `git lfs install && git lfs pull`. GitHub Free includes 10 GiB of LFS storage and 10 GiB of bandwidth per month. Note that LFS downloads by forks of a public repo count against the owner's bandwidth.
 - **`art-src/` and `audio-src/` each get a `.gdignore`.** Without one, Godot would try to import the FBX, GLB, .blend, and raw audio files in them.
 - **`assets/LICENSES.md`** lists every shipped asset: file, source (Meshy, ElevenLabs, Kenney CC0, self-made), date, and the prompt file or task id that made it.
 - **Keys** live in `~/.config/ashenmarch/secrets.env` (folder 700, file 600, outside every repo), as `MESHY_API_KEY` and `ELEVENLABS_API_KEY`.
@@ -163,7 +165,7 @@ This runs headless in Blender 5.2.2 LTS (`/Applications/Blender.app/Contents/Mac
 - **Frames:** 12 fps by default (configurable per clip), 160 px cells with a 4 px transparent gap (a 168 px stride) so mipmaps don't bleed between frames. At 128 px with the feet 20 px up, the first Shieldman render clipped dying and attacking frames at the bottom, and props raised overhead need room too.
 - **Output:**
   - one PNG sheet per animation into `assets/units/<id>/`, one band of rows per direction. Sheets wrap at 4096 px wide, since Web (WebGL) may cap textures there: 24 columns, so frame `i` of direction `d` sits at column `i % columns`, row `d * rows_per_direction + i // columns`;
-  - a JSON sidecar with frame counts, fps, impact frame, stride, `columns` and `rows_per_direction` per animation, figure height in px, and gib colour;
+  - a JSON sidecar with frame counts, fps, impact frame, stride, `columns` and `rows_per_direction` per animation, figure height in px (planned: not yet written or read; see the figure-height follow-up under Unit art, Not yet, in `architecture.md`), and gib colour;
   - the **contact sheet** for Tim's approval.
 
 ### 6.2a Props: weapons and gear on bones
@@ -240,7 +242,7 @@ The view reads the sim after every tick and never writes to it.
 
 | Sim | Animation |
 |---|---|
-| `MOVING` | `walk`, speed scale = interpolated ground speed ÷ `stride_m`, so wading and slopes slow the legs |
+| `MOVING` | `walk`, speed scale = interpolated ground speed × walk cycle seconds ÷ `stride_m`, so wading and slopes slow the legs |
 | `IDLE`, or cooldown between blows | `idle` |
 | `windup_left` 0 → N (melee, with the `SWING` event) | `attack`, time-stretched so the impact frame lands on the tick the blow lands |
 | `aim_left` 0 → N (ranged) | `shoot` / `throw` / `cast`; the release frame lands on the `LAUNCH` tick |
@@ -250,7 +252,7 @@ The view reads the sim after every tick and never writes to it.
 
 Timing is recomputed from sim numbers every time, so rebalancing wind-ups and veterancy attack-rate bonuses never desync it.
 
-- **Flashes and status tints** use the sprite's `modulate`, with the same colours as today.
+- **Flashes and status tints** use the sprite's `modulate`. Modulate only darkens, so an art body flashes `ART_HIT_TINT` (a red that cuts green and blue) for a hit instead of today's near-white, and dims to `ART_DEAD_TINT` when dead. Block, heal and status tints keep today's colours.
 - **Gibs** use `gib_color`.
 - **Corpses:** an art corpse stays a billboard, not a quad laid flat. Picking a corpse uses its footprint on the ground.
 

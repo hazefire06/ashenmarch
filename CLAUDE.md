@@ -87,7 +87,7 @@ scripts/        # dev tooling (sim purity check)
 - Paralysis (from touch or gas cloud), Confusion (attacks nearest anything), Burning, Conversion (living units only, permanent), Heal (kills undead outright).
 - Chain detonation: target unit explodes; any unit within radius explodes too, recursively, including friendlies.
 
-### Unit roster, v1 (original names, placeholder art)
+### Unit roster, v1 (original names; placeholder art until a unit's sprites land, as the Shieldman's have)
 Light side (player):
 1. Shieldman: base melee, sword and shield, cheap and sturdy.
 2. Reaver: shock melee, two-handed blade, fast, no shield, high damage.

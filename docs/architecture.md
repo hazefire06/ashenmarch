@@ -44,6 +44,7 @@ Decisions made in Phase 0 that later phases build on. CLAUDE.md has the rules; t
 - GUT needs the `.godot/` class_name cache, which isn't committed.
 - **On a fresh clone, `godot --headless -s addons/gut/gut_cmdln.gd` prints "Some GUT class_names have not been imported", runs zero tests, and exits 0.** This was verified on GUT 9.7.1 / Godot 4.7.2.
 - Use `make test`, which imports first, or run `godot --headless --import` once before calling `gut_cmdln.gd` directly. CI must do the same, or it will pass without testing anything.
+- **Git LFS is required.** The unit art in `assets/` is in LFS, and `data/art/shieldman.tres` loads its sheets. Install git-lfs before cloning, or run `git lfs install && git lfs pull` in an existing clone. Without it `make test` fails in `test_main_view` and the art tests, and the game draws placeholders.
 
 ## Terrain (Phase 1)
 `sim/terrain.gd` (`Terrain`) holds the ground: a heightfield plus a per-sample water depth and blocked flag. `World.terrain` owns it, and the view reads it from there.
@@ -1932,4 +1933,5 @@ Designed in `docs/specs/2026-10-01-art-audio-design.md`; built by `docs/plans/20
 ### Not yet
 - Barks, audio and the other nine units (A2, A3). The Sapper's satchel drop has no `place` trigger yet (A3).
 - Direction hysteresis and two-elevation renders only if the in-engine check needs them; MultiMesh only if profiling does.
+- **Figure height.** Picking and the overlays (name, notice, status tag, HP bar) of an art unit still use its type's `body_height`, about 1.5× the drawn figure at the 50° camera: in a dense formation a click on a rear-rank Shieldman can select the one in front, and the labels float above the head. The fix carries the figure's height in px (spec §6.2, planned) from the renderer through the sidecar and `UnitArt` to `UnitSprite.height`. Decide it at Tim's in-engine review, before A3 at the latest.
 - **Not checked:** Windows and Web (Phase 10 does the cross-platform pass). The in-engine check ran on macOS (GL Compatibility on Metal) only; the sheet wrap and the VRAM-compressed, mipmapped sheets are the things to look at.
