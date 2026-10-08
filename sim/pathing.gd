@@ -177,6 +177,42 @@ func find_path(from_x: int, from_z: int, to_x: int, to_z: int, mobility: Terrain
 	return _string_pull(from_x, from_z, once, SECOND_PASS_LOOKAHEAD, mobility)
 
 
+## A path from (from_x, from_z) to (to_x, to_z) that follows `route`, the
+## path find_path made for another unit setting out from (route_x, route_z)
+## nearby (its last point that unit's goal): straight to where that unit set
+## out, along its route, and straight on from its goal to this one, then
+## string-pulled so a corner the line can cut is cut. The route's own legs
+## are trusted (find_path made them, a ford crossing included); the two new
+## ones must be walkable straight without wading deeper than their ends.
+## Empty when one isn't, or the start is off walkable ground: the caller
+## solves a path of its own then. No A*: that is what sharing a route saves
+## (UnitMovement).
+func adapt_path(
+	from_x: int, from_z: int, to_x: int, to_z: int, route_x: int, route_z: int, route: PackedInt64Array,
+	mobility: Terrain.Mobility
+) -> PackedInt64Array:
+	var l: PathLayer = layer(mobility)
+	var start: Vector2i = terrain.nearest_sample(from_x, from_z)
+	var component: int = l.component_at(start.x, start.y)
+	if component == PathLayer.NO_COMPONENT or not terrain.contains(from_x, from_z) or route.size() < 2:
+		return PackedInt64Array()
+	var goal: Vector2i = snap_to_component(to_x, to_z, mobility, component)
+	if can_walk_straight(from_x, from_z, goal.x, goal.y, mobility):
+		return PackedInt64Array([goal.x, goal.y])
+	var end_x: int = route[route.size() - 2]
+	var end_z: int = route[route.size() - 1]
+	if (
+		not can_walk_straight(from_x, from_z, route_x, route_z, mobility)
+		or not can_walk_straight(end_x, end_z, goal.x, goal.y, mobility)
+	):
+		return PackedInt64Array()
+	var points: PackedInt64Array = PackedInt64Array([route_x, route_z])
+	points.append_array(route)
+	points.append(goal.x)
+	points.append(goal.y)
+	return _string_pull(from_x, from_z, points, SECOND_PASS_LOOKAHEAD, mobility)
+
+
 # Greedy string-pulling: from the current anchor, keep the farthest of the
 # next `lookahead` waypoints that is in straight-line reach, then continue
 # from it. A shortcut may not cross ground heavier than the heaviest point

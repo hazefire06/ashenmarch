@@ -64,6 +64,7 @@ func _app(def: CampaignDef = null, rng_seed: int = 12345) -> App:
 	var app: App = (load("res://view/app/app.tscn") as PackedScene).instantiate() as App
 	app.store = _store()
 	app.settings_path = _settings_path()
+	app.replays_dir = DIR
 	app.campaign = def
 	app.skirmish = _skirmish_catalog()
 	app.rng.seed = rng_seed
@@ -344,6 +345,7 @@ func test_a_save_that_fails_is_told_but_the_campaign_goes_on() -> void:
 	var app: App = (load("res://view/app/app.tscn") as PackedScene).instantiate() as App
 	app.store = CampaignStore.new(DIR + "/blocker/campaign.json")
 	app.settings_path = _settings_path()
+	app.replays_dir = DIR
 	add_child_autofree(app)
 	_begin_campaign(app)
 	assert_true(app.current_screen() is Briefing, "the player isn't stopped")
@@ -829,6 +831,7 @@ func _recording_app(calls: Array[bool]) -> App:
 	var app: App = (load("res://view/app/app.tscn") as PackedScene).instantiate() as App
 	app.store = _store()
 	app.settings_path = _settings_path()
+	app.replays_dir = DIR
 	app.apply_window_mode = func(enabled: bool) -> void: calls.append(enabled)
 	add_child_autofree(app)
 	return app
@@ -985,6 +988,7 @@ func test_the_app_loads_the_shipped_skirmish_catalog_unless_given_one() -> void:
 	var app: App = (load("res://view/app/app.tscn") as PackedScene).instantiate() as App
 	app.store = _store()
 	app.settings_path = _settings_path()
+	app.replays_dir = DIR
 	add_child_autofree(app)
 	assert_not_null(app.skirmish)
 	assert_eq(app.skirmish.maps.size(), 3)

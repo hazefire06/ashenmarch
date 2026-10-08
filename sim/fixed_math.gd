@@ -52,7 +52,7 @@ static func isqrt(n: int) -> int:
 		return 0
 	# The float root is only a starting guess. The loops correct it to the
 	# exact floor, so the result never depends on float rounding.
-	var r: int = int(sqrt(float(n)))
+	var r: int = int(sqrt(float(n)))  # purity-ok: a guess, corrected exactly below
 	while r * r > n:
 		r -= 1
 	while (r + 1) * (r + 1) <= n:

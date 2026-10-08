@@ -72,6 +72,8 @@ var skirmish: SkirmishCatalog
 var store: CampaignStore
 ## Where the settings are kept; likewise.
 var settings_path: String = GameSettings.DEFAULT_PATH
+## Where played games are recorded (ReplayStore); a test's own folder in tests.
+var replays_dir: String = ReplayStore.DEFAULT_DIR
 ## How long a notice stays up, in real seconds; public so a test can shorten it.
 var notice_seconds: float = NOTICE_SECONDS
 ## What puts the window in or out of fullscreen; GameSettings' by default. A
@@ -94,6 +96,8 @@ var _notice_serial: int = 0
 # touches the window when that choice itself changes (flipping Edge scroll must
 # not drop the player out of fullscreen).
 var _fullscreen_applied: bool = false
+# The window size choice last applied (GameSettings.window_size).
+var _window_size_applied: int = -1
 # Where the keyboard was when an overlay opened, so closing it puts it back.
 var _focus_before_overlay: Control
 # The roster the current mission was launched with, and who is benched in it:
@@ -111,10 +115,24 @@ var _result_world: World
 # says once it is filled.
 var _skirmish_setup: SkirmishSetup
 var _skirmish_ai_choice: StringName = SkirmishMenu.RANDOM_AI
+# The replay being watched, for Watch again.
+var _watching: MissionLaunch
 
 
 func _ready() -> void:
+	# A determinism check run (ReplayVerifier) replaces the game entirely.
+	var verify: Dictionary = ReplayVerifier.requested()
+	if not verify.is_empty():
+		_run_verifier(verify)
+		return
 	InputBindings.install()
+	GameSettings.apply_bindings(settings_path)
+	GameSettings.apply_audio(settings_path)
+	GameSettings.apply_display(get_window(), true, settings_path)
+	_window_size_applied = GameSettings.window_size(settings_path)
+	var clicks: UiSounds = UiSounds.new()
+	clicks.name = "UiSounds"
+	add_child(clicks)
 	if campaign == null:
 		campaign = load(CAMPAIGN_PATH) as CampaignDef
 	if catalog == null:
@@ -129,11 +147,30 @@ func _ready() -> void:
 	add_child(_overlay_layer)
 	_build_notice()
 	# Only fullscreen needs asking for: the window starts windowed, and a
-	# command-line --fullscreen shouldn't be undone by a default.
-	_fullscreen_applied = GameSettings.fullscreen(settings_path)
+	# command-line --fullscreen shouldn't be undone by a default. A browser
+	# grants fullscreen only from a click or key press, so on the web it is
+	# left to the Settings checkbox, whose click is one.
+	_fullscreen_applied = GameSettings.fullscreen(settings_path) and not OS.has_feature("web")
 	if _fullscreen_applied:
 		apply_window_mode.call(true)
 	show_main_menu()
+
+
+# Plays the requested replays instead of showing the menus, then quits with
+# status 0 if every one reproduced its hashes and 1 if not (on the web the
+# page stays, showing the result).
+func _run_verifier(request: Dictionary) -> void:
+	var verifier: ReplayVerifier = ReplayVerifier.new()
+	verifier.name = "ReplayVerifier"
+	verifier.catalog = load(CATALOG_PATH) as UnitCatalog
+	if OS.has_feature("web"):
+		verifier.ticks_per_frame = 60
+	verifier.finished.connect(func(all_ok: bool) -> void:
+		if not OS.has_feature("web"):
+			get_tree().quit(0 if all_ok else 1)
+	)
+	add_child(verifier)
+	verifier.start(request)
 
 
 ## The screen on show: a MenuScreen, or the MainView while a mission is played.
@@ -156,6 +193,10 @@ func current_plan() -> DeployPlan:
 ## first to see a key) can consume Esc before a mission's pause menu does.
 func show_screen(screen: Node) -> void:
 	_close_overlay()
+	# Leaving a mission or skirmish by any way (its results, Quit, Restart, a
+	# Retry) passes here, so this is where its replay is saved.
+	if _screen is MainView:
+		_save_replay_of(_screen as MainView)
 	if _screen != null:
 		remove_child(_screen)
 		_screen.queue_free()
@@ -170,6 +211,7 @@ func show_main_menu() -> void:
 	var menu: MainMenu = MainMenu.new()
 	menu.campaign_pressed.connect(show_campaign_menu)
 	menu.skirmish_pressed.connect(show_skirmish_menu)
+	menu.replays_pressed.connect(show_replays_menu)
 	menu.settings_pressed.connect(open_settings)
 	menu.quit_pressed.connect(quit_game)
 	show_screen(menu)
@@ -287,6 +329,30 @@ func show_skirmish_results(outcome: MissionRuntime.Outcome, world: World) -> voi
 	results.change_army_pressed.connect(_on_skirmish_change_army)
 	results.main_menu_pressed.connect(_on_results_main_menu)
 	show_screen(results)
+
+
+## The recorded games, newest first.
+func show_replays_menu() -> void:
+	var menu: ReplaysMenu = ReplaysMenu.new()
+	menu.setup(ReplayStore.list(replays_dir))
+	menu.watch_requested.connect(watch_replay)
+	menu.delete_requested.connect(_on_delete_replay)
+	menu.back_requested.connect(show_main_menu)
+	show_screen(menu)
+
+
+## Plays the replay at `path`. One that won't load, or was recorded from a
+## mission or map this build lacks, gets a notice and the list again.
+func watch_replay(path: String) -> void:
+	var problems: Array[String] = []
+	var replay: Replay = ReplayStore.load_file(path, problems)
+	var launch: MissionLaunch = MissionLaunch.for_replay(replay) if replay != null else null
+	if launch == null:
+		show_replays_menu()
+		show_notice("That replay can't be played%s." % (": " + problems[0] if not problems.is_empty() else ""))
+		return
+	_watching = launch
+	_launch_replay()
 
 
 ## Opens Settings over whatever is showing. Over a mission, the mission can't
@@ -551,6 +617,59 @@ func _reseeded(setup: SkirmishSetup) -> SkirmishSetup:
 	return again
 
 
+# --- replays -------------------------------------------------------------------
+
+
+func _launch_replay() -> void:
+	var main: MainView = MAIN_SCENE.instantiate() as MainView
+	main.launch = _watching
+	main.edge_scroll = GameSettings.edge_scroll(settings_path)
+	main.restart_requested.connect(_launch_replay)
+	main.settings_requested.connect(open_settings)
+	main.quit_requested.connect(_on_replay_left)
+	main.build_failed.connect(_on_replay_build_failed.bind(main))
+	show_screen(main)
+
+
+func _on_replay_left() -> void:
+	_watching = null
+	show_replays_menu()
+
+
+# The replay's world couldn't be built (ReplayPlayer has said why). Ignored if
+# the screen has already changed (the signal is deferred).
+func _on_replay_build_failed(failed: MainView) -> void:
+	if _screen != failed:
+		return
+	_watching = null
+	show_replays_menu()
+	show_notice("That replay can't be played. See the log.")
+
+
+func _on_delete_replay(path: String) -> void:
+	ask("Delete this replay?", "Delete", "Keep it", func() -> void:
+		ReplayStore.delete(path)
+		show_replays_menu()
+	)
+
+
+# Saves the game a MainView recorded, if it recorded one and anything was
+# played. A failed write is logged, not shown: losing a replay is not worth
+# interrupting the player for.
+func _save_replay_of(main: MainView) -> void:
+	var replay: Replay = main.finished_replay()
+	if replay == null:
+		return
+	if ReplayStore.save_new(replay, replays_dir) == "":
+		push_warning("App: couldn't save the replay in %s" % replays_dir)
+
+
+# Closing the window mid-game still keeps its replay.
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_CLOSE_REQUEST and _screen is MainView:
+		_save_replay_of(_screen as MainView)
+
+
 # --- overlays -------------------------------------------------------------------
 
 
@@ -586,6 +705,15 @@ func _hold_mission(held: bool) -> void:
 
 
 func _on_settings_changed() -> void:
+	GameSettings.apply_bindings(settings_path)
+	GameSettings.apply_audio(settings_path)
+	# The window is only resized when its size was the change, so a window the
+	# player dragged to a size isn't snapped back by an unrelated setting.
+	var size_choice: int = GameSettings.window_size(settings_path)
+	GameSettings.apply_display(get_window(), size_choice != _window_size_applied, settings_path)
+	_window_size_applied = size_choice
+	if _screen is MainView:
+		(_screen as MainView).refresh_key_labels()
 	var wanted: bool = GameSettings.fullscreen(settings_path)
 	if wanted == _fullscreen_applied:
 		return

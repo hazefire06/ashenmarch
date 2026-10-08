@@ -207,6 +207,34 @@ Plan mode first. Branch feature/PHASE-10-exports.
 
 ---
 
+## Phase 11: Classic controls and gamepad
+
+```
+Read CLAUDE.md. Phases 0-10 merged. docs/controls-myth2.md compares our controls with Myth II's; everything it lists as missing, except the center key (Phase 10), comes in here.
+
+1. New orders as sim commands, recorded in replays. CommandCodec kinds are append-only, so old replays still load; give the Move command's new facing field a default for old records.
+   - Formation facing: right-drag (Option-drag on Mac) sets the formation's facing. Formations already take a facing; today it is the centroid-to-target direction.
+   - Left / Right arrow rotate the pending formation, and a moving one (re-issue its move).
+   - Guard (G): hold the spot. Idle units already hold theirs and fight within 3 m; Guard adds ranged units firing at anything in range and repositioning when attacked.
+   - Scatter (B). Retreat (R): define it first.
+   - Waypoints and patrol: Shift-click the ground, up to 4 points; Shift-click the first point again for a loop, the last for back and forth. This is an order queue on Unit: state, hashing, and how attack-move resumes.
+2. View-only: select all visible (Enter), deselect (`), cycle groups (F), clear a group (Del), hold for health bars (F10), right-click the overhead map to send troops, and single-player game speed (F1/F2, 1/2x to 4x; never in lockstep). Mac laptops need fn for F-keys; all of it is rebindable.
+3. A "Classic" control preset beside "Modern" in Settings > Controls: left-click orders, A/D turn, Z/X strafe, C zoom in and V zoom out, one group modifier with hold-to-save. Ask me which is the default. Update CLAUDE.md's Controls either way.
+4. Xbox controller on macOS, Windows and Web (Godot 4.7: SDL3 on desktop, the Gamepad API on the web, where a pad isn't seen until a button is pressed).
+   - Left stick: a virtual cursor that snaps to units. Right stick and triggers: the camera.
+   - A select, X order, B cancel, Y special. LB/RB: formation and order radial menus. D-pad: groups. View: overhead map. Menu: pause.
+   - Every menu and the control bar reachable by focus (the bar's buttons are FOCUS_NONE today).
+   - On-screen prompts switch between key names and pad glyphs (original drawn glyphs).
+   - Pad bindings go in Settings > Controls; the saved format already covers pads.
+   - Rumble only where it works (not Xbox pads over USB on macOS).
+5. Windows, deferred from Phase 10: run `Ashenmarch.console.exe --headless -- --verify-replays` on the Parallels VM (ask before resuming it), and the pad tests there.
+6. Tests: the new orders are deterministic and survive the codec and a replay; input mapping from synthetic InputEventJoypad* events; a pad-only playthrough of Riverside.
+
+Plan mode first. Branch feature/PHASE-11-controls.
+```
+
+---
+
 ## After v1
 
 - Art pass: moved to the parallel art and audio track below.

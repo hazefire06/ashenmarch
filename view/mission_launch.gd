@@ -10,6 +10,10 @@ extends RefCounted
 ## A skirmish is a launch too (for_skirmish): `skirmish` holds the whole setup,
 ## `mission` and `deploy` are null, and SkirmishSetup.create_world builds the
 ## world instead.
+##
+## So is a replay being watched (for_replay): `replay` is set, ReplayPlayer
+## builds the world, and `mission` or `skirmish` is the one it was recorded
+## from, for the camera, the look and the skirmish views.
 
 ## The mission to play.
 var mission: MissionDef
@@ -26,6 +30,8 @@ var deploy: DeployCommand
 var campaign_mode: bool = true
 ## The skirmish to play, or null for a campaign mission.
 var skirmish: SkirmishSetup
+## The replay to watch, or null when playing.
+var replay: Replay
 
 
 func _init(
@@ -45,6 +51,34 @@ static func for_skirmish(setup: SkirmishSetup) -> MissionLaunch:
 	var launch: MissionLaunch = MissionLaunch.new(null, SkirmishSetup.TIER, setup.world_seed, null, true)
 	launch.skirmish = setup
 	return launch
+
+
+## A launch to watch `to_watch`, or null if what it was recorded from (its
+## mission, or its skirmish's map) isn't in this build.
+static func for_replay(to_watch: Replay) -> MissionLaunch:
+	var launch: MissionLaunch = MissionLaunch.new(null, 0, 0, null, true)
+	launch.replay = to_watch
+	if to_watch.kind == Replay.Kind.SKIRMISH:
+		launch.skirmish = SkirmishSetup.from_dict(to_watch.setup)
+		if launch.skirmish == null:
+			return null
+		launch.tier = SkirmishSetup.TIER
+		launch.world_seed = launch.skirmish.world_seed
+		return launch
+	var path: String = to_watch.setup["mission"]
+	if not Replay.is_safe_path(path, Replay.MISSION_DIR) or not ResourceLoader.exists(path):
+		return null
+	launch.mission = load(path) as MissionDef
+	if launch.mission == null:
+		return null
+	launch.tier = to_watch.setup["tier"]
+	launch.world_seed = to_watch.setup["seed"]
+	return launch
+
+
+## True when watching a replay rather than playing.
+func is_replay() -> bool:
+	return replay != null
 
 
 ## True for a skirmish.

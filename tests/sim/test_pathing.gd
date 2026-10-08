@@ -172,6 +172,29 @@ func test_astar_settings_are_pinned_for_determinism() -> void:
 	assert_eq(l.astar.get_point_weight_scale(Vector2i(0, 0)), 1.0)
 
 
+func test_no_shipped_map_can_reach_an_inexact_astar_score() -> void:
+	# AStarGrid2D sums scores in float32, exact for integers below 2^24. The
+	# worst path visits every cell once at the heaviest weight; the estimate
+	# adds at most the map's diagonal, which is smaller than that.
+	var heaviest: int = 0
+	for w: int in PathLayer.LIVING_WATER_WEIGHTS:
+		heaviest = maxi(heaviest, w)
+	for path: String in [
+		"res://maps/riverside/riverside.tres", "res://maps/the_ford/the_ford.tres",
+		"res://maps/old_mill/old_mill.tres",
+	]:
+		var info: MapInfo = load(path) as MapInfo
+		var file: FileAccess = FileAccess.open(info.heightmap_path, FileAccess.READ)
+		assert_not_null(file, path)
+		if file == null:
+			continue
+		# A PNG's width and height are big-endian at bytes 16 and 20.
+		file.big_endian = true
+		file.seek(16)
+		var cells: int = file.get_32() * file.get_32()
+		assert_lt(cells * heaviest * 2, 1 << 24, "%s: %d cells" % [path, cells])
+
+
 func test_riverside_living_path_crosses_at_the_ford() -> void:
 	var from: Vector2i = Vector2i(150 * M, 200 * M)
 	var to: Vector2i = Vector2i(150 * M, 360 * M)
@@ -239,3 +262,46 @@ func _sampled_line_of_sight(t: Terrain, ax: int, az: int, bx: int, bz: int) -> b
 		if not t.is_passable(ax + (bx - ax) * s / n, az + (bz - az) * s / n, LIVING):
 			return false
 	return true
+
+
+# A 60 x 40 map with a wall down column 30 for its first 35 rows.
+func _walled() -> Pathing:
+	var rows: Array[String] = []
+	for j: int in 40:
+		var row: String = ".".repeat(60)
+		if j < 35:
+			row = row.substr(0, 30) + "#" + row.substr(31)
+		rows.append(row)
+	return Pathing.new(TestTerrains.from_ascii(rows))
+
+
+func test_a_neighbour_can_follow_a_solved_route() -> void:
+	var p: Pathing = _walled()
+	var route: PackedInt64Array = p.find_path(5 * M, 5 * M, 50 * M, 10 * M, LIVING)
+	assert_gt(route.size(), 2, "around the wall's end")
+	var follow: PackedInt64Array = p.adapt_path(7 * M, 6 * M, 52 * M, 11 * M, 5 * M, 5 * M, route, LIVING)
+	assert_false(follow.is_empty())
+	assert_eq(follow[follow.size() - 2], 52 * M, "to its own goal")
+	assert_eq(follow[follow.size() - 1], 11 * M)
+	var ax: int = 7 * M
+	var az: int = 6 * M
+	for k: int in range(0, follow.size(), 2):
+		assert_true(p.has_line_of_sight(ax, az, follow[k], follow[k + 1], LIVING), "leg %d is walkable" % (k / 2))
+		ax = follow[k]
+		az = follow[k + 1]
+
+
+func test_a_route_is_not_followed_from_the_wrong_side() -> void:
+	var p: Pathing = _walled()
+	var route: PackedInt64Array = p.find_path(5 * M, 5 * M, 50 * M, 10 * M, LIVING)
+	# Across the wall from where the route set out: the leg back to it is blocked.
+	assert_true(p.adapt_path(35 * M, 5 * M, 50 * M, 30 * M, 5 * M, 5 * M, route, LIVING).size() <= 2,
+		"it walks straight to its goal instead of crossing back over the wall")
+	assert_eq(p.adapt_path(40 * M, 5 * M, 10 * M, 10 * M, 5 * M, 5 * M, route, LIVING),
+		PackedInt64Array(), "and a start that can't reach the route gets nothing")
+
+
+func test_a_goal_in_plain_sight_needs_no_route() -> void:
+	var p: Pathing = _walled()
+	var route: PackedInt64Array = p.find_path(5 * M, 5 * M, 50 * M, 10 * M, LIVING)
+	assert_eq(p.adapt_path(5 * M, 5 * M, 20 * M, 5 * M, 5 * M, 5 * M, route, LIVING), PackedInt64Array([20 * M, 5 * M]))

@@ -162,29 +162,56 @@ func test_stop_halts_and_dead_units_ignore_orders() -> void:
 	assert_eq(u.x, stopped_at, "dead units don't move")
 
 
-func test_path_solves_are_capped_per_tick() -> void:
-	# A wall between the group and the target forces A* for everyone.
-	var rows: Array[String] = []
-	for j: int in 40:
-		var row: String = ".".repeat(60)
-		if j < 35:
-			row = row.substr(0, 30) + "#" + row.substr(31)
-		rows.append(row)
-	var world: World = World.new(1, TestTerrains.from_ascii(rows), _catalog)
+func test_a_group_behind_a_wall_shares_one_route() -> void:
+	# A wall between the group and the target forces A*; the first solve's
+	# route serves the other nineteen in the same tick (Phase 10).
+	var world: World = World.new(1, TestTerrains.from_ascii(_wall_rows(60, 40, 30, 35)), _catalog)
 	var group: Array[Unit] = []
 	for i: int in 20:
 		group.append(world.spawn_unit(_shieldman, LIGHT, (5 + (i % 5) * 2) * M, (5 + (i / 5) * 2) * M, 0, -1))
 	world.enqueue(MoveUnitsCommand.new(world.tick, _ids(group), 50 * M, 10 * M, Formations.Kind.BOX))
 	world.step()
-	assert_eq(world.movement.queued_paths(), 20 - UnitMovement.MAX_PATH_SOLVES_PER_TICK)
-	world.step()
-	assert_eq(world.movement.queued_paths(), 20 - 2 * UnitMovement.MAX_PATH_SOLVES_PER_TICK)
-	_run(world, TICKS_PER_SECOND * 40)
+	assert_eq(world.movement.queued_paths(), 0, "everyone has a path after one tick")
+	for u: Unit in group:
+		assert_true(u.has_path(), "unit %d" % u.id)
+		assert_eq(u.waypoint_z(), 35 * M, "unit %d heads for the wall's end" % u.id)
+	# Everyone setting out at once reaches the box as a column, so the last
+	# few take a while to squeeze into their slots: 44 s here, against 39 s
+	# when the solves were spread over four ticks.
+	_run(world, TICKS_PER_SECOND * 50)
 	var not_arrived: Array[int] = []
 	for u: Unit in group:
 		if u.state != Unit.State.IDLE or u.x < 31 * M:
 			not_arrived.append(u.id)
 	assert_eq(not_arrived.size(), 0, "units that didn't get around the wall: %s" % [not_arrived])
+
+
+func test_path_solves_are_capped_per_tick() -> void:
+	# Eight units behind a wall bound for goals too far apart to share a route:
+	# each needs its own A*, at most MAX_PATH_SOLVES_PER_TICK a tick.
+	var world: World = World.new(1, TestTerrains.from_ascii(_wall_rows(120, 240, 60, 230)), _catalog)
+	var group: Array[Unit] = []
+	for i: int in 8:
+		group.append(world.spawn_unit(_shieldman, LIGHT, 20 * M, (10 + i * 25) * M, 0, -1))
+	for i: int in 8:
+		world.movement.order_move(world, group[i], 100 * M, (10 + i * 25) * M, 0, 0, 0)
+	assert_eq(world.movement.queued_paths(), 8)
+	world.step()
+	assert_eq(world.movement.queued_paths(), 8 - UnitMovement.MAX_PATH_SOLVES_PER_TICK)
+	world.step()
+	assert_eq(world.movement.queued_paths(), 0)
+
+
+# A size_x by size_z map with a wall down column `wall_x` for its first
+# `wall_rows` rows.
+func _wall_rows(size_x: int, size_z: int, wall_x: int, wall_rows: int) -> Array[String]:
+	var rows: Array[String] = []
+	for j: int in size_z:
+		var row: String = ".".repeat(size_x)
+		if j < wall_rows:
+			row = row.substr(0, wall_x) + "#" + row.substr(wall_x + 1)
+		rows.append(row)
+	return rows
 
 
 # Deep water (depth 3) in columns 15..19, shallow shoulders beside it.

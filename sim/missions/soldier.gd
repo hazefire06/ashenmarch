@@ -104,7 +104,7 @@ static func from_dict(d: Variant, error_out: PackedStringArray = PackedStringArr
 static func is_whole_number(value: Variant) -> bool:
 	if value is int:
 		return true
-	if value is float:
-		var f: float = value
-		return absf(f) < 9.0e15 and f == floorf(f)
+	if value is float:  # purity-ok: validating a parsed save, not simulating
+		var f: float = value  # purity-ok: as above
+		return absf(f) < 9.0e15 and f == floorf(f)  # purity-ok: as above
 	return false

@@ -43,6 +43,9 @@ extends Control
 signal formation_changed(kind: Formations.Kind)
 signal side_changed(side: UnitType.Faction)
 signal armed_order_changed(order: ArmedOrder)
+## An order was sent for the selection (move, attack-move, ground attack,
+## stop, special, heal, interact), for the acknowledgement sound.
+signal order_given
 
 ## An order from the control bar waiting for a left click on the ground.
 enum ArmedOrder {
@@ -151,6 +154,7 @@ func recall_group(slot: int) -> void:
 func stop_selected() -> void:
 	if not selection.is_empty() and not paused:
 		_world.enqueue(StopUnitsCommand.new(_world.tick, selection.ids()))
+		order_given.emit()
 
 
 ## Each selected unit uses its special: Sappers drop a charge, Longbows nock
@@ -161,6 +165,7 @@ func use_special_selected() -> void:
 	if selection.is_empty() or paused:
 		return
 	_world.enqueue(UseSpecialCommand.new(_world.tick, selection.ids()))
+	order_given.emit()
 	if _has_healer():
 		arm(ArmedOrder.HEAL)
 
@@ -373,6 +378,8 @@ func _order_move(at: Vector2, attack: bool) -> void:
 		_world.enqueue(AttackMoveCommand.new(_world.tick, selection.ids(), x, z, formation))
 	else:
 		_world.enqueue(MoveUnitsCommand.new(_world.tick, selection.ids(), x, z, formation))
+	if not selection.is_empty():
+		order_given.emit()
 	_units.show_marker(
 		hit, UnitsView.MarkerKind.ATTACK_MOVE if attack else UnitsView.MarkerKind.MOVE
 	)
@@ -391,6 +398,8 @@ func _order_ground_attack(at: Vector2) -> void:
 	_world.enqueue(GroundAttackCommand.new(
 		_world.tick, selection.ids(), _to_milli(hit.x), _to_milli(hit.z)
 	))
+	if not selection.is_empty():
+		order_given.emit()
 	_units.show_marker(hit, UnitsView.MarkerKind.GROUND_ATTACK)
 	if armed_order != ArmedOrder.NONE:
 		arm(ArmedOrder.NONE)
@@ -406,6 +415,7 @@ func _order_heal(at: Vector2) -> void:
 	if target == null or not target.is_alive():
 		return
 	_world.enqueue(HealCommand.new(_world.tick, selection.ids(), target_id))
+	order_given.emit()
 	_units.show_marker(_units.sprite_position(target_id), UnitsView.MarkerKind.MOVE)
 	arm(ArmedOrder.NONE)
 
@@ -429,6 +439,7 @@ func _order_interact(at: Vector2) -> bool:
 	if target_id < 0 or not _someone_can(target_id):
 		return false
 	_world.enqueue(InteractCommand.new(_world.tick, selection.ids(), target_id))
+	order_given.emit()
 	var target: SimEntity = _world.get_entity(target_id)
 	_units.show_marker(Vector3(target.x, target.y, target.z) / float(World.UNITS_PER_METER), UnitsView.MarkerKind.MOVE)
 	return true

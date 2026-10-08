@@ -228,7 +228,7 @@ const ALL_ROLES_MASK: int = (1 << Role.MELEE) | (1 << Role.RANGED) | (1 << Role.
 
 @export_group("View")
 ## Placeholder quad color until the art pass. View only; the sim ignores it.
-@export var placeholder_color: Color = Color.WHITE
+@export var placeholder_color: Color = Color.WHITE  # purity-ok: view only
 ## Null until the art pass. View only.
 @export var sprite: Texture2D
 

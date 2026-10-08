@@ -1,14 +1,16 @@
 class_name MainMenu
 extends MenuScreen
-## The first screen: the title and four buttons. Each is a signal for the App,
+## The first screen: the title and five buttons. Each is a signal for the App,
 ## which decides what opens next: the campaign menu, the skirmish setup, the
-## Settings overlay, or the end of the game.
+## recorded games, the Settings overlay, or the end of the game.
 ## Quit is left off the Web build, where a page can't close itself.
 
 ## Campaign was pressed.
 signal campaign_pressed
 ## Skirmish was pressed: the App shows the skirmish setup.
 signal skirmish_pressed
+## Replays was pressed: the App lists the recorded games.
+signal replays_pressed
 ## Settings was pressed: the App shows the overlay.
 signal settings_pressed
 ## Quit was pressed: the App closes the game.
@@ -39,6 +41,8 @@ func _init() -> void:
 	_campaign.pressed.connect(func() -> void: campaign_pressed.emit())
 	var skirmish: Button = _add_button(buttons, "SkirmishButton", "Skirmish")
 	skirmish.pressed.connect(func() -> void: skirmish_pressed.emit())
+	var replays: Button = _add_button(buttons, "ReplaysButton", "Replays")
+	replays.pressed.connect(func() -> void: replays_pressed.emit())
 	var settings: Button = _add_button(buttons, "SettingsButton", "Settings")
 	settings.pressed.connect(func() -> void: settings_pressed.emit())
 	var quit: Button = _add_button(buttons, "QuitButton", "Quit")

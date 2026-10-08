@@ -1,7 +1,9 @@
 GODOT ?= godot
 MAC_APP := build/mac/Ashenmarch.app
+WIN_EXE := build/windows/Ashenmarch.exe
+WEB_HTML := build/web/index.html
 
-.PHONY: import run demo demo-projectiles demo-abilities demo-ai test check-sim export-mac maps fixtures playtest skirmish-playtest capture capture-skirmish hooks check-leaks check-layout test-art art-candidates art-render art-attach art-prop-candidates art-build
+.PHONY: import run demo demo-projectiles demo-abilities demo-ai test check-sim export-mac export-windows export-web export-all serve-web sfx bench profile-sim golden-replays verify-replays verify-replays-app verify-replays-x86 maps fixtures playtest skirmish-playtest capture capture-skirmish hooks check-leaks check-layout test-art art-candidates art-render art-attach art-prop-candidates art-build
 
 # Builds the .godot/ import and class_name cache. A fresh clone has none, and
 # GUT can't resolve class_name types without it.
@@ -106,6 +108,42 @@ capture: import
 capture-skirmish: import
 	$(GODOT) --path . -s scripts/capture_skirmish.gd
 
+# The performance benchmark, windowed: 100 units fighting and 200 projectiles
+# in the air on Riverside, vsync off, one result line. See scripts/bench.gd:
+#   DURATION=60 WARMUP=5 WINDOW=1920x1080 FULLSCREEN=0 PROJECTILES=200 OUT=<file>
+# e.g. FULLSCREEN=1 make bench
+bench: import
+	$(GODOT) --path . -s scripts/bench.gd
+
+# Where a sim tick's time goes under the benchmark's load, headless: mean and
+# max per World.step() stage and the slowest ticks. TICKS=1800 PROJECTILES=200.
+profile-sim: import
+	$(GODOT) --headless --path . -s scripts/profile_sim.gd
+
+# Records the golden replays (data/replays/golden) that every build is
+# checked against: Riverside and Old Mill played by the playtest pilot, and an
+# AI-against-AI skirmish. Rerun deliberately when a change alters what the sim
+# does; verify-replays fails until then. See scripts/make_golden_replays.gd.
+golden-replays: import
+	$(GODOT) --headless --path . -s scripts/make_golden_replays.gd
+
+# The determinism check: plays every golden replay and compares each
+# checkpoint and the final hash with the recording. One line per replay; exit
+# status 1 on any divergence. TRACE=FROM-TO adds per-tick subsystem hashes
+# (ENTITIES=1 per-entity ones too) for diffing two platforms' output.
+VERIFY_ARGS = --verify-replays $(if $(TRACE),--trace=$(TRACE)) $(if $(ENTITIES),--trace-entities)
+verify-replays: import
+	$(GODOT) --headless --path . -- $(VERIFY_ARGS)
+
+# The same check in the exported macOS app, natively (arm64) and under Rosetta
+# (x86_64). Run make export-mac first. The web build checks itself at
+# http://127.0.0.1:8060/?verify=1 (make export-web serve-web).
+verify-replays-app:
+	$(MAC_APP)/Contents/MacOS/Ashenmarch --headless -- $(VERIFY_ARGS)
+
+verify-replays-x86:
+	arch -x86_64 $(MAC_APP)/Contents/MacOS/Ashenmarch --headless -- $(VERIFY_ARGS)
+
 test: import check-sim
 	$(GODOT) --headless -d --path . -s addons/gut/gut_cmdln.gd
 
@@ -119,13 +157,45 @@ check-sim:
 maps: import
 	for script in scripts/gen_*.gd; do $(GODOT) --headless --path . -s $$script || exit 1; done
 
+# Regenerates the placeholder sound effects (assets/audio/sfx), synthesized
+# from scratch and deterministic. The WAVs are committed; rerun only when
+# scripts/gen_sfx.py changes. rain_loop and fire_loop loop forward (their
+# .import files say so).
+sfx:
+	python3 scripts/gen_sfx.py
+
 # Regenerates the PNG test fixtures with an independent Python encoder.
 fixtures:
 	python3 tests/fixtures/png/make_png_fixtures.py
 
-export-mac: import
+# Exports. build/ holds a .gdignore so Godot never scans its own output.
+# macOS is universal and ad-hoc signed: it runs on this Mac and anything it is
+# copied to directly; a downloaded copy needs `xattr -dr com.apple.quarantine`.
+export-mac: import build/.gdignore
 	mkdir -p $(dir $(MAC_APP))
 	$(GODOT) --headless --path . --export-release "macOS" $(MAC_APP)
+
+# Windows x86_64, the .pck embedded in the .exe, plus Ashenmarch.console.exe
+# for command-line runs that print (--verify-replays).
+export-windows: import build/.gdignore
+	mkdir -p $(dir $(WIN_EXE))
+	$(GODOT) --headless --path . --export-release "Windows Desktop" $(WIN_EXE)
+
+# Web, single-threaded: needs no cross-origin isolation headers, so any static
+# host serves it. `make serve-web` runs it locally.
+export-web: import build/.gdignore
+	mkdir -p $(dir $(WEB_HTML))
+	$(GODOT) --headless --path . --export-release "Web" $(WEB_HTML)
+
+export-all: export-mac export-windows export-web
+
+build/.gdignore:
+	mkdir -p build
+	touch build/.gdignore
+
+# Serves build/web at http://127.0.0.1:8060/ with the COOP/COEP headers.
+serve-web:
+	python3 scripts/serve_web.py
 
 # Installs the leak-scan pre-commit hook into the repo's shared hooks folder.
 # It runs in every worktree, and does nothing in a checkout without

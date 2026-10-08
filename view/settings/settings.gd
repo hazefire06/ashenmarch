@@ -16,6 +16,13 @@ extends RefCounted
 ## scroll is the mission camera's, applied by the App when a mission starts and
 ## when Settings closes over one.
 ##
+## Phase 10 adds the rest of [display] (window size, vsync, frame cap, 3D
+## render scale, interface scale; apply_display), [audio] (a volume per bus;
+## apply_audio) and the controls ([keybinds], one line per rebound action as
+## InputBindings.event_to_text, and the group modifiers in [controls];
+## apply_bindings). Each apply reads the file and sets the engine to match, so
+## it is called at boot and again after any change.
+##
 ## The [skirmish] section remembers the last skirmish setup (map, mode, time,
 ## budget, side, start, the AI's army and the player's own army), so the
 ## skirmish screen opens where the player left it. Not a setting the player
@@ -30,6 +37,40 @@ const CONTROLS: String = "controls"
 const FULLSCREEN: String = "fullscreen"
 const EDGE_SCROLL: String = "edge_scroll"
 const SKIRMISH: String = "skirmish"
+const AUDIO: String = "audio"
+const KEYBINDS: String = "keybinds"
+const WINDOW_SIZE: String = "window_size"
+const VSYNC: String = "vsync"
+const MAX_FPS: String = "max_fps"
+const RENDER_SCALE: String = "render_scale"
+const UI_SCALE: String = "ui_scale"
+const GROUP_SAVE_MODIFIER: String = "group_save_modifier"
+const GROUP_RECALL_MODIFIER: String = "group_recall_modifier"
+## Windowed sizes offered, in points: multiplied by the screen's scale, so
+## 1280x720 is 2560x1440 pixels on a Retina display and the same size on
+## screen as on any other.
+const WINDOW_SIZES: Array[Vector2i] = [
+	Vector2i(1152, 648), Vector2i(1280, 720), Vector2i(1600, 900), Vector2i(1920, 1080),
+	Vector2i(2560, 1440),
+]
+const WINDOW_SIZE_DEFAULT: int = 1
+## Frame caps offered; 0 is none (vsync, if on, still holds it to the display).
+const MAX_FPS_CHOICES: PackedInt32Array = [0, 30, 60, 120]
+const MAX_FPS_DEFAULT: int = 0
+const VSYNC_DEFAULT: bool = true
+## 3D resolution in percent of the window's, bilinear-upscaled. The HUD is
+## always drawn at full resolution.
+const RENDER_SCALE_MIN: int = 50
+const RENDER_SCALE_DEFAULT: int = 100
+## Interface sizes offered, in percent; 0 is Auto, the screen's own scale
+## (200 on a Retina display, a browser's devicePixelRatio on the web).
+const UI_SCALE_CHOICES: PackedInt32Array = [0, 75, 100, 125, 150, 200, 250]
+const UI_SCALE_DEFAULT: int = 0
+## The audio buses (default_bus_layout.tres), with their default volumes in
+## percent.
+const VOLUMES_DEFAULT: Dictionary[String, int] = {
+	"Master": 80, "Effects": 100, "Ambient": 100, "Interface": 100,
+}
 ## What each reads as when the file doesn't say: windowed, and no edge scroll.
 ## Both are opt-in (CLAUDE.md: edge scroll is optional).
 const FULLSCREEN_DEFAULT: bool = false
@@ -124,6 +165,150 @@ static func set_skirmish_choice(choice: Dictionary, path: String = DEFAULT_PATH)
 	return _set_values(path, SKIRMISH, values)
 
 
+## The windowed size choice: an index into WINDOW_SIZES.
+static func window_size(path: String = DEFAULT_PATH) -> int:
+	return _get_int_in(path, DISPLAY, WINDOW_SIZE, WINDOW_SIZE_DEFAULT, range(WINDOW_SIZES.size()))
+
+
+static func vsync(path: String = DEFAULT_PATH) -> bool:
+	return _get_bool(path, DISPLAY, VSYNC, VSYNC_DEFAULT)
+
+
+## Frames per second at most; 0 for no cap.
+static func max_fps(path: String = DEFAULT_PATH) -> int:
+	return _get_int_in(path, DISPLAY, MAX_FPS, MAX_FPS_DEFAULT, Array(MAX_FPS_CHOICES))
+
+
+## 3D render scale in percent, RENDER_SCALE_MIN..100.
+static func render_scale(path: String = DEFAULT_PATH) -> int:
+	return _get_int_in(path, DISPLAY, RENDER_SCALE, RENDER_SCALE_DEFAULT, range(RENDER_SCALE_MIN, 101))
+
+
+## Interface scale in percent, or 0 for Auto.
+static func ui_scale(path: String = DEFAULT_PATH) -> int:
+	return _get_int_in(path, DISPLAY, UI_SCALE, UI_SCALE_DEFAULT, Array(UI_SCALE_CHOICES))
+
+
+## A display setting by key (WINDOW_SIZE, MAX_FPS, RENDER_SCALE, UI_SCALE, or
+## VSYNC as a bool). Returns the error from the write, or OK.
+static func set_display(key: String, value: Variant, path: String = DEFAULT_PATH) -> Error:
+	return _set_value(path, DISPLAY, key, value)
+
+
+## A bus's volume in percent, 0..100.
+static func volume(bus: String, path: String = DEFAULT_PATH) -> int:
+	return _get_int_in(path, AUDIO, bus.to_lower(), VOLUMES_DEFAULT.get(bus, 100), range(101))
+
+
+static func set_volume(bus: String, percent: int, path: String = DEFAULT_PATH) -> Error:
+	return _set_value(path, AUDIO, bus.to_lower(), clampi(percent, 0, 100))
+
+
+## The rebound actions and their events. Lines that don't parse, or name an
+## action that isn't rebindable, are skipped.
+static func keybinds(path: String = DEFAULT_PATH) -> Dictionary[StringName, InputEvent]:
+	var config: ConfigFile = _read(path)
+	var bound: Dictionary[StringName, InputEvent] = {}
+	if not config.has_section(KEYBINDS):
+		return bound
+	for key: String in config.get_section_keys(KEYBINDS):
+		var value: Variant = config.get_value(KEYBINDS, key)
+		var event: InputEvent = InputBindings.text_to_event(value) if value is String else null
+		if event != null and InputBindings.is_rebindable(StringName(key)):
+			bound[StringName(key)] = event
+	return bound
+
+
+## Saves several actions' bindings in one write (a swap changes two).
+static func set_keybinds(bindings: Dictionary[StringName, InputEvent], path: String = DEFAULT_PATH) -> Error:
+	var values: Dictionary = {}
+	for action: StringName in bindings:
+		values[String(action)] = InputBindings.event_to_text(bindings[action])
+	return _set_values(path, KEYBINDS, values)
+
+
+## The group save and recall modifiers (InputBindings.GroupModifier), as
+## [save, recall]; the defaults if missing, invalid or equal.
+static func group_modifiers(path: String = DEFAULT_PATH) -> Array[int]:
+	var choices: Array = range(InputBindings.GroupModifier.size())
+	var save: int = _get_int_in(path, CONTROLS, GROUP_SAVE_MODIFIER, InputBindings.DEFAULT_SAVE_MODIFIER, choices)
+	var recall: int = _get_int_in(path, CONTROLS, GROUP_RECALL_MODIFIER, InputBindings.DEFAULT_RECALL_MODIFIER, choices)
+	if save == recall:
+		return [InputBindings.DEFAULT_SAVE_MODIFIER, InputBindings.DEFAULT_RECALL_MODIFIER]
+	return [save, recall]
+
+
+static func set_group_modifiers(save: int, recall: int, path: String = DEFAULT_PATH) -> Error:
+	return _set_values(path, CONTROLS, {GROUP_SAVE_MODIFIER: save, GROUP_RECALL_MODIFIER: recall})
+
+
+## Forgets every rebinding and the group modifiers: the defaults again.
+static func clear_controls(path: String = DEFAULT_PATH) -> Error:
+	var config: ConfigFile = _read(path)
+	if config.has_section(KEYBINDS):
+		config.erase_section(KEYBINDS)
+	for key: String in [GROUP_SAVE_MODIFIER, GROUP_RECALL_MODIFIER]:
+		if config.has_section_key(CONTROLS, key):
+			config.erase_section_key(CONTROLS, key)
+	return config.save(path)
+
+
+## Puts the InputMap on the saved controls: the defaults, then the rebound
+## actions and the group modifiers on top.
+static func apply_bindings(path: String = DEFAULT_PATH) -> void:
+	InputBindings.reset()
+	InputBindings.apply(keybinds(path))
+	var modifiers: Array[int] = group_modifiers(path)
+	InputBindings.set_group_modifiers(
+		modifiers[0] as InputBindings.GroupModifier, modifiers[1] as InputBindings.GroupModifier
+	)
+
+
+## Sets each bus's volume from the file; 0 % mutes it. A bus the layout
+## doesn't have is skipped.
+static func apply_audio(path: String = DEFAULT_PATH) -> void:
+	for bus: String in VOLUMES_DEFAULT:
+		var index: int = AudioServer.get_bus_index(bus)
+		if index < 0:
+			continue
+		var percent: int = volume(bus, path)
+		AudioServer.set_bus_mute(index, percent == 0)
+		AudioServer.set_bus_volume_db(index, linear_to_db(maxf(percent, 1) / 100.0))
+
+
+## The interface scale a choice means on this screen: Auto is the screen's own
+## scale (1 to 3).
+static func resolved_ui_scale(percent: int) -> float:
+	if percent == 0:
+		return clampf(DisplayServer.screen_get_scale(), 1.0, 3.0)
+	return percent / 100.0
+
+
+## Sets `window` up as the file says: the interface and 3D render scales, the
+## frame cap and vsync, and, when `size_window` and windowed on a desktop, the
+## window size, centered on its screen. The window mode itself is
+## apply_window_mode's. Headless, only the scales are set (there's no window).
+static func apply_display(window: Window, size_window: bool, path: String = DEFAULT_PATH) -> void:
+	window.content_scale_factor = resolved_ui_scale(ui_scale(path))
+	window.scaling_3d_scale = render_scale(path) / 100.0
+	Engine.max_fps = max_fps(path)
+	if DisplayServer.get_name() == "headless":
+		return
+	DisplayServer.window_set_vsync_mode(
+		DisplayServer.VSYNC_ENABLED if vsync(path) else DisplayServer.VSYNC_DISABLED
+	)
+	if not size_window or OS.has_feature("web"):
+		return
+	if DisplayServer.window_get_mode() != DisplayServer.WINDOW_MODE_WINDOWED:
+		return
+	var screen: int = DisplayServer.window_get_current_screen()
+	var usable: Rect2i = DisplayServer.screen_get_usable_rect(screen)
+	var wanted: Vector2i = Vector2i(Vector2(WINDOW_SIZES[window_size(path)]) * DisplayServer.screen_get_scale(screen))
+	var size: Vector2i = wanted.min(usable.size)
+	DisplayServer.window_set_size(size)
+	DisplayServer.window_set_position(usable.position + (usable.size - size) / 2)
+
+
 ## Puts the window in or out of fullscreen. Does nothing without a window: the
 ## headless tests have a DisplayServer that would only complain.
 static func apply_window_mode(enabled: bool) -> void:
@@ -135,11 +320,23 @@ static func apply_window_mode(enabled: bool) -> void:
 
 
 # The file's contents, or an empty ConfigFile if it is missing or won't parse.
+# A file that constructs a Resource or an Object counts as damaged: ConfigFile
+# would load the named resource (and run its script) while parsing, and no
+# setting is ever one.
 static func _read(path: String) -> ConfigFile:
 	var config: ConfigFile = ConfigFile.new()
-	if config.load(path) != OK:
+	if not FileAccess.file_exists(path):
+		return config
+	var text: String = FileAccess.get_file_as_string(path)
+	if text.contains("Resource(") or text.contains("Object(") or config.parse(text) != OK:
 		config.clear()
 	return config
+
+
+# An int setting that must be one of `allowed`, else `fallback`.
+static func _get_int_in(path: String, section: String, key: String, fallback: int, allowed: Array) -> int:
+	var value: Variant = _read(path).get_value(section, key, fallback)
+	return value if value is int and allowed.has(value) else fallback
 
 
 static func _get_bool(path: String, section: String, key: String, fallback: bool) -> bool:

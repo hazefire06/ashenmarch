@@ -50,6 +50,9 @@ const MENU_LAYER: int = 10
 ## The label for a pause with no menu: it says how to end it, since there is no
 ## Resume button to find.
 const PAUSED_LABEL_TEXT: String = "Paused (P to resume)"
+## The label with the pause key's current binding in it; PAUSED_LABEL_TEXT is
+## what it reads on the default binding.
+const PAUSED_LABEL_FORMAT: String = "Paused (%s to resume)"
 const QUIT_QUESTION: String = "Quit to the main menu?\nThis mission's progress is lost."
 
 ## While false the menu can't be opened, by Esc or open() (MainView turns it
@@ -67,6 +70,8 @@ var _restart: Button
 var _settings: Button
 var _quit: Button
 var _keep_playing: Button
+# False in a replay (set_replay_mode): Quit leaves without the question.
+var _quit_asks: bool = true
 
 
 func _ready() -> void:
@@ -128,6 +133,19 @@ func set_app_buttons_visible(shown: bool) -> void:
 	_quit.visible = shown
 
 
+## Names the pause key's current binding in the Paused label.
+func refresh_key_labels() -> void:
+	_paused_label.text = PAUSED_LABEL_FORMAT % InputBindings.label_for(InputBindings.PAUSE)
+
+
+## For a replay being watched: Restart watches it again, and Quit goes back to
+## the replays without asking, since nothing is lost.
+func set_replay_mode() -> void:
+	_restart.text = "Watch again"
+	_quit.text = "Back to replays"
+	_quit_asks = false
+
+
 # Esc: open, close, or take back the quit question. The controller consumes it
 # first while an order is armed (see the class comment).
 func _unhandled_input(event: InputEvent) -> void:
@@ -147,6 +165,13 @@ func _resume_pressed() -> void:
 	resume_requested.emit()
 
 
+func _quit_pressed() -> void:
+	if _quit_asks:
+		_show_confirm(true)
+	else:
+		quit_requested.emit()
+
+
 func _show_confirm(asking: bool) -> void:
 	_confirm.visible = asking
 	_buttons.visible = not asking
@@ -161,7 +186,7 @@ func _build() -> void:
 	_layer.layer = MENU_LAYER
 	add_child(_layer)
 	_paused_label = Label.new()
-	_paused_label.text = PAUSED_LABEL_TEXT
+	_paused_label.text = PAUSED_LABEL_FORMAT % InputBindings.label_for(InputBindings.PAUSE)
 	_paused_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_paused_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_paused_label.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
@@ -208,7 +233,7 @@ func _build() -> void:
 	_settings = _menu_button("SettingsButton", "Settings")
 	_settings.pressed.connect(func() -> void: settings_requested.emit())
 	_quit = _menu_button("QuitButton", "Quit to main menu")
-	_quit.pressed.connect(func() -> void: _show_confirm(true))
+	_quit.pressed.connect(_quit_pressed)
 
 	_confirm = VBoxContainer.new()
 	_confirm.add_theme_constant_override("separation", 12)
