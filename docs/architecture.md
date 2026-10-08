@@ -2063,3 +2063,75 @@ The commander, ADVANCE, MEDIC and the skirmish rules draw no random numbers; `ma
 - **Route caching across ticks,** and the aim budget, for the remaining 30 to 50 ms ticks.
 - **Lockstep must allowlist command kinds.** `CommandCodec` decodes every kind, including the setup and debug ones (spawns, statuses, velocities, a mid-game deploy) that a replay never holds from a player. Taken from a peer, they would be cheats.
 - **The web build at 100 units** runs at 36 to 60 fps (the sim is about 3x native in wasm). Not a target this phase.
+
+## Classic controls and the pad (Phase 11)
+
+Every control `docs/controls-myth2.md` listed as missing, a Classic preset beside the old one (now Modern, the default), and an Xbox pad as a full alternative to the mouse and keyboard.
+
+### New orders (`sim/units/`, `sim/commands/`)
+- **Formation facing.** `MoveUnitsCommand` and `AttackMoveCommand` carry a facing (`UnitOrders.move` normalizes it); zero is the automatic one, from the group toward the target, exactly as before.
+- **Guard (`Guard`, `Unit.Order.GUARD`).** Myth II's Hold, from its manual: "a projectile unit set to Hold will fire at anything in range, but … will retreat to a safe distance and open fire" when attacked.
+  - Melee units hold like `Order.NONE` (3 m leash) and walk back to the spot afterwards; NONE still stops where the fight ended.
+  - A ranged unit steps 6 m back from a melee enemy closing within its threat radius (minimum range + 2 m, at least 5 m), straight back or swung 22.5° then 45° each way, within 10 m of its spot, then shoots again. Once a fight is joined it fights: fleeing a faster Ripper only gives free rear blows.
+  - `Guard.decide` runs at the start of `MeleeCombat._decide`, because melee runs before ranged and would stop an archer to fight whatever is adjacent. Walking out or home, a guard takes on only what is already in reach.
+- **Scatter.** Every unit plain-moves 8 m straight away from the group's centroid; one standing on it takes a golden-angle direction from its id. No RNG.
+- **Retreat** (defined with Tim). The group plain-moves 15 m away from the nearest enemy it can see (within 40 m, not one hidden in deep water), in its formation at its slowest pace, and ends facing that enemy. With none in sight it backs off against its mean facing. `RETREAT` carries the formation, since units don't keep one.
+- **Waypoints and patrols (`UnitRoute`).** "Waypoint" already meant an A* path point, so the queue is a *route*: up to 4 points per unit, each that unit's own formation slot at the click, so the group keeps its shape point to point.
+  - Shift+order adds a point: the formation is laid at the click facing from the group's previous points, and slots are assigned from those. A unit with no route starts one at once; an open route appends; a full one ignores the point (the HUD says so); a closed one is replaced.
+  - On the first point again the route closes into a loop, on the last into a back-and-forth (`PatrolCommand`). Patrols fight (Tim): their legs become attack-moves.
+  - A leg is an ordinary MOVE or ATTACK_MOVE to its point, so everything that already puts a unit back on its order (after a fight, an errand, a confusion) marches it on along the leg it was on. Only arrival differs: at the three places in `MeleeCombat._decide` where a march ends, `UnitRoute.advance` sends the unit down its next leg and the unit does nothing else that tick, so a plain leg never picks a fight.
+  - A leg ended more than 4 m short of its point (the unit gave up) ends the route, so a patrol can't re-run A* at an unreachable point forever.
+  - Every other order clears the route; an errand the unit takes on itself (a Ripper scavenging) and a special don't.
+
+### Codec, hash, goldens
+- **An optional tail.** A layout may end in `|` and more fields: a record holds the prefix alone or all of it, and decode fills a missing tail with defaults. MOVE and ATTACK_MOVE are `UIII|II`: a Phase 10 record decodes with the automatic facing it was played with. Encode always writes the whole layout.
+- **Kinds appended:** GUARD 16, SCATTER 17, RETREAT 18, ROUTE_POINT 19, PATROL 20. `CommandCodec.PLAYER_KINDS` names the kinds a player's orders produce: the allowlist lockstep will need (Phase 10's open item).
+- **The route is hashed only while a unit has one,** after `path` (whose size is hashed first, so the split is unambiguous). Guard, scatter, retreat and facing reuse `order`, `order_x/z` and `order_facing`. So a world that never uses the new orders hashes exactly as before, and **the three Phase 10 goldens verify unchanged**: Phase 11 changed nothing for an old game.
+- **A fourth golden, `riverside_orders_t2`:** Riverside at Normal for 200 s with the player's side given every new order on a fixed schedule (`scripts/playtest/orders_drill.gd`, which places its orders from the World's integers only). `make golden-replays GOLDEN=name` records only the named goldens.
+
+### Input (`view/units/selection_controller.gd`, `view/input_bindings.gd`, `view/input/`)
+- **Pointer intents.** `SelectionController` works through methods that take a screen point (`select_at`, `box_select`, `order_at`, `order_world`, the facing gesture `begin_facing`/`update_facing`/`end_facing`, `ground_attack_at`, `place_armed`). The mouse is one adapter; the pad's cursor and the overhead map are others.
+  - Orders on the order button now go when it comes up, so a drag can set the facing (shown as the slots it would take). A drag that ends off the map still orders, facing the usual way.
+- **Two slots per action.** Each action holds one keyboard-or-mouse event and one pad event; rebinding replaces only its own slot. Pad events are bound to every pad (device −1), so a pad that reconnects as another device still works. `install()` adds the pad's A and B to `ui_accept` and `ui_cancel`, which Godot's defaults lack.
+- **Presets** are a set of keyboard defaults plus a click scheme (`InputBindings.orders_on_left`, `hold_to_save_groups`), not a rebinding of Select or Move, so the conflict check never sees both on one button. Each keeps its own rebinds: `[keybinds]` stays Modern's (a Phase 10 file loads unchanged), `[keybinds_classic]` is Classic's, `[padbinds]` the pad's.
+  - Classic: a left click on your own unit selects it (pressed and dragged, turns it), on the ground or an enemy orders on release, and a left drag from the ground boxes. An armed Heal takes only clicks on units. One group key (Cmd on a Mac, Alt elsewhere, Option in a browser on a Mac, which keeps Cmd+digit for tabs): released before 0.8 s it recalls, held it saves. Mac browsers drop the release of a key let go while Cmd is down, so letting go of the modifier ends the hold too.
+- **Game speed** runs the physics frames faster (15, 30, 60, 120 a second), still one tick a frame, so every view's `after_step` sees every tick and interpolation stays right. Refused while watching a replay (it has its own speeds) and in a lockstep game (`MissionLaunch.lockstep`, always false for now). MainView puts back the rate it found when it leaves.
+- **Corner camera** (an option, as Myth II's was): the mouse in a top corner turns the camera, in a bottom corner orbits it.
+
+### The pad (`view/input/`)
+- **`InputDeviceTracker`** (the `InputDevice` autoload) notes the device each event came from, hides the system pointer while the pad is in use, and tells the prompts to switch. It is reached through `InputDeviceTracker.tracker()`, never by the autoload's name: a script run with `-s` is compiled before autoloads are registered.
+- **`PadController`** turns the pad into the same intents and orders the mouse gives, with its own drawn cursor (`PadCursor`; a browser won't let a page move the system pointer), which the tooltip follows (`Pointer`).
+  - Buttons are read from their events, not by polling, so a frame stepped by hand (a test) sees every press once; sticks and triggers are polled.
+  - The cursor's speed goes with the square of the stick; over a unit it slows, and let go near one it sticks to it (not over the overhead map, where units are dots). Pushed into the screen's edge, it pans.
+  - LB and RB hold the formation and order wheels (`RadialMenu`). An order wheel's Attack-move then X on the overhead map attack-moves there.
+  - L3 puts focus on the control bar, the unit info panel and the replay bar (`HudFocus`). Their rows are linked left/right and up/down explicitly: Godot's geometric search skipped buttons of mixed widths.
+- **Menus:** focus already started on each screen's default; the pad's A and B now drive it, the shoulder buttons turn Settings' tabs, the right stick scrolls a screen's scroll box, and the pause menu carries the game speed and the skirmish scoreboard.
+- **Prompts (`InputPrompts`):** the key's name, or the pad button's glyph while a pad is in use. The eighteen glyphs (`assets/ui/pad/`) are original SVGs: plain shapes and stroked letters. A strip above the control bar names what the pad's buttons do.
+- **Rumble (`PadRumble`):** a pulse for blasts near the camera's focus, a weak tick for each of your losses, scaled by Settings > Controller (0 is off). Sent only where `Input.has_joy_vibration` says yes, and never to an Xbox One or Series pad on USB under macOS, which Godot's docs say macOS can't drive (by vendor and USB product id, in case a driver claims otherwise). Over Bluetooth they rumble.
+- **Web:** a browser shows a pad to the page only after a button is pressed on it; the main menu says so on the web until one is.
+- **Pads are ignored while the window is unfocused** (`input_devices/joypads/ignore_joypad_on_unfocused_application`).
+
+### Tests
+- **Sim:** each order (`test_formation_facing`, `test_guard`, `test_scatter_retreat`, `test_unit_route`), the codec (old records, the tail, the new kinds), and every new order through record, bytes and playback (`test_replay`).
+- **Input from synthetic events:** `PadEvents` sends pad events as a real pad's are (`Input.parse_input_event`, then `flush_buffered_events`), so they update the action state and travel the viewport. `test_input_bindings`, `test_order_gestures`, `test_pad_controller`, `test_pad_menus`, `test_pad_prompts`.
+  - The headless window is 64 pixels square; pad tests make it 1280×720 to point at anything.
+- **A pad-only playthrough** (`test_pad_playthrough`, `make pad-playthrough TIER= SEED=`): `PadPilot` plays the real App from the main menu with pad events only, to Victory on Riverside at Normal (about four minutes of game time, a quarter of a minute here) and the results screen.
+
+### Decisions
+- **Modern stays the default preset** (Tim). A settings file with rebinds and no preset loads as Modern.
+- **Retreat falls back as a group, facing the threat** (Tim), not each unit running alone.
+- **Pad camera: the right stick pans, the triggers orbit, R3 held zooms** (Tim), so looking around never moves the cursor off the units.
+- **Patrols fight** (Tim); an open route follows the click (Shift+attack-move for attack legs).
+- **Hash new state only when present**, so the goldens stay a proof that old games are untouched, rather than regenerating them.
+- **The pad never opens the pause menu with B**; Menu does. B is Back everywhere.
+
+### Behavior changes to earlier phases
+- **Orders on the right button go on release,** not press (a drag sets the facing). Shift+right-click is now a route point, not a plain move.
+- **The overhead map's right click** sends the selection rather than being swallowed.
+- **The control bar has a fourth row** (View: All, None, Center, Health, the game speed, Switch side, Menu) and new order and group buttons.
+
+### Not yet
+- **Windows:** see the platform table (run on the Parallels VM, ARM64).
+- **Browsers:** whether Chrome on Windows keeps F1 for its help page, and whether a Mac browser lets a page have Cmd+digit, need a real keyboard (synthetic events reach the page whatever the browser does with real ones). Classic already uses Option in a browser on a Mac.
+- **Rumble on the web:** Godot's web joypad code may not drive the Gamepad API's vibration at all. The gate means it is simply off if so; untested with a pad.
+- **An attack-unit order:** a click on an enemy moves to the ground there, as before Phase 11, in both presets.
