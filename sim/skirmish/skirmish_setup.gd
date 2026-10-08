@@ -17,6 +17,8 @@ extends RefCounted
 const TIER: int = 2
 ## Milli-units between the AI's main block and its raiders, side by side.
 const RAIDER_GAP: int = 4000
+## from_dict refuses more flag coordinates than this (16 flags).
+const MAX_FLAG_INTS: int = 32
 
 var map: SkirmishMap
 var rules: SkirmishRules
@@ -130,6 +132,106 @@ static func create_world(setup: SkirmishSetup, catalog: UnitCatalog) -> World:
 			commander_id, plan[2] as UnitType.Faction, plan[0], plan[1], centre
 		))
 	return world
+
+
+## The setup as plain data for a replay (Replay.setup): the map by resource
+## path, the rules' fields, both armies as sorted type ids and counts, and the
+## rest as is. Only ints, bools, Strings and packed arrays, so var_to_bytes
+## stores it the same everywhere.
+func to_dict() -> Dictionary:
+	var army_data: Array = []
+	for army: Army in armies:
+		var ids: PackedStringArray = PackedStringArray()
+		for type_id: StringName in army.counts:
+			ids.append(String(type_id))
+		ids.sort()
+		var counts: PackedInt32Array = PackedInt32Array()
+		for type_name: String in ids:
+			counts.append(army.counts[StringName(type_name)])
+		army_data.append([int(army.faction), ids, counts])
+	return {
+		"map": map.resource_path,
+		"mode": int(rules.mode),
+		"time_limit_ticks": rules.time_limit_ticks,
+		"capture_ticks": rules.capture_ticks,
+		"player_faction": int(rules.player_faction),
+		"flags": rules.flags.duplicate(),
+		"hill": rules.hill,
+		"flag_radius": rules.flag_radius,
+		"budget": budget,
+		"armies": army_data,
+		"player_spawn": player_spawn,
+		"ai_template": String(ai_template_id),
+		"seed": world_seed,
+		"player_is_ai": player_is_ai,
+	}
+
+
+## The setup to_dict() describes, or null if `data` is malformed: a missing or
+## wrongly typed field, an enum out of range, or a map path that doesn't load
+## as a SkirmishMap. Whether the result is playable is validate()'s (and
+## create_world's) to say.
+static func from_dict(data: Dictionary) -> SkirmishSetup:
+	var ints: PackedStringArray = [
+		"mode", "time_limit_ticks", "capture_ticks", "player_faction", "hill", "flag_radius",
+		"budget", "player_spawn", "seed",
+	]
+	for key: String in ints:
+		if not data.get(key) is int:
+			return null
+	if (
+		not data.get("map") is String or not data.get("flags") is PackedInt32Array
+		or not data.get("armies") is Array or not data.get("ai_template") is String
+		or not data.get("player_is_ai") is bool
+	):
+		return null
+	if (
+		not SkirmishRules.Mode.values().has(data["mode"])
+		or not UnitType.Faction.values().has(data["player_faction"])
+	):
+		return null
+	var map_path: String = data["map"]
+	# A replay file is untrusted: only a shipped map is loaded (Replay.is_safe_path).
+	if not Replay.is_safe_path(map_path, Replay.MAP_DIR) or not ResourceLoader.exists(map_path):
+		return null
+	if (data["flags"] as PackedInt32Array).size() > MAX_FLAG_INTS or (data["armies"] as Array).size() != 2:
+		return null
+	var loaded_map: SkirmishMap = load(map_path) as SkirmishMap
+	if loaded_map == null:
+		return null
+	var setup: SkirmishSetup = SkirmishSetup.new()
+	setup.map = loaded_map
+	setup.rules = SkirmishRules.new()
+	setup.rules.mode = data["mode"] as SkirmishRules.Mode
+	setup.rules.time_limit_ticks = data["time_limit_ticks"]
+	setup.rules.capture_ticks = data["capture_ticks"]
+	setup.rules.player_faction = data["player_faction"] as UnitType.Faction
+	setup.rules.flags = (data["flags"] as PackedInt32Array).duplicate()
+	setup.rules.hill = data["hill"]
+	setup.rules.flag_radius = data["flag_radius"]
+	setup.budget = data["budget"]
+	setup.player_spawn = data["player_spawn"]
+	setup.ai_template_id = StringName(data["ai_template"] as String)
+	setup.world_seed = data["seed"]
+	setup.player_is_ai = data["player_is_ai"]
+	for entry: Variant in data["armies"] as Array:
+		if not entry is Array or (entry as Array).size() != 3:
+			return null
+		var fields: Array = entry
+		if (
+			not fields[0] is int or not UnitType.Faction.values().has(fields[0])
+			or not fields[1] is PackedStringArray or not fields[2] is PackedInt32Array
+		):
+			return null
+		var ids: PackedStringArray = fields[1]
+		var counts: PackedInt32Array = fields[2]
+		if ids.size() != counts.size():
+			return null
+		var army: Army = Army.new(fields[0] as UnitType.Faction)
+		for k: int in ids.size():
+			army.set_count(StringName(ids[k]), counts[k])
+		setup.armies.append(army)
+	return setup
 
 
 ## The player's army as the tick-0 DeployCommand: deploy order (melee first),

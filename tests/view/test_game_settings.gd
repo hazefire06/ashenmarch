@@ -219,3 +219,12 @@ func test_the_skirmish_choice_makes_the_directory() -> void:
 	assert_eq(GameSettings.skirmish_choice(nested), _full_choice())
 	DirAccess.remove_absolute(nested)
 	DirAccess.remove_absolute(DIR + "/deeper")
+
+
+func test_a_file_that_builds_a_resource_reads_as_the_defaults() -> void:
+	# ConfigFile would load the named resource while parsing (running its
+	# script); no setting is ever one, so such a file is treated as damaged.
+	_write("[display]\nfullscreen=true\nsneaky=Resource(\"res://nowhere/evil.gd\")\n")
+	assert_false(GameSettings.fullscreen(_path), "the whole file is ignored")
+	_write("[display]\nfullscreen=true\nsneaky=Object(Node,\"name\":\"x\")\n")
+	assert_false(GameSettings.fullscreen(_path))

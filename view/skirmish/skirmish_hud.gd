@@ -27,7 +27,8 @@ const YOU_MARK: String = " (you)"
 const BOARD_COLUMNS: PackedStringArray = ["", "Alive / Deployed", "Lost", "Kills", "Score"]
 ## The table's rows: the header, the player's side, the AI's.
 const BOARD_ROWS: int = 3
-const BOARD_HINT: String = "F7 closes this"
+## The scoreboard's hint, with its key's current binding.
+const BOARD_HINT_FORMAT: String = "%s closes this"
 const HINT_FONT_SIZE: int = 14
 
 var _world: World
@@ -40,6 +41,7 @@ var _summary: Label
 var _cells: Array[Label] = []
 var _flag_box: VBoxContainer
 var _flag_lines: Array[Label] = []
+var _hint: Label
 
 
 func _ready() -> void:
@@ -216,7 +218,14 @@ func _build_board() -> void:
 	_flag_box = VBoxContainer.new()
 	_flag_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	column.add_child(_flag_box)
-	column.add_child(MenuKit.label(BOARD_HINT, HINT_FONT_SIZE, MenuKit.MUTED_COLOR))
+	_hint = MenuKit.label("", HINT_FONT_SIZE, MenuKit.MUTED_COLOR)
+	column.add_child(_hint)
+	refresh_key_labels()
+
+
+## Names the scoreboard key's current binding in the board's hint.
+func refresh_key_labels() -> void:
+	_hint.text = BOARD_HINT_FORMAT % InputBindings.label_for(InputBindings.TOGGLE_SCOREBOARD)
 
 
 # Fills the table, the clock and the flag lines from the runtime as it is now.

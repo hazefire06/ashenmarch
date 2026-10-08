@@ -75,7 +75,7 @@ scripts/        # dev tooling (sim purity check)
 
 ### Controls
 - Camera: orbit (Q/E), zoom (mouse wheel, V/C), move (WASD), pan (Z/X). Edge scroll optional. Overhead map toggle (Tab).
-- Selection: click, drag box, shift-click add, double-click selects all of that type on screen. Groups saved with Cmd/Ctrl+1..0, recalled with Option/Alt+1..0 (plain 1..0 are formations). Stop: H. Pause: P (the sim stops stepping; Esc opens the pause menu, after cancelling an armed order).
+- Selection: click, drag box, shift-click add, double-click selects all of that type on screen. Groups saved with Cmd/Ctrl+1..0, recalled with Option/Alt+1..0 (plain 1..0 are formations). Stop: Space. Center camera on selection: H. All keys are rebindable (Settings > Controls). Pause: P (the sim stops stepping; Esc opens the pause menu, after cancelling an armed order).
 - Formations, chosen after selection and applied on the next move order, keys 1-0: short line, long line, loose line, staggered line, box, rabble, shallow encirclement, deep encirclement, wedge, circle.
 - Special ability: T. Attack-move (Cmd/Ctrl+right-click) and ground-target attack (Cmd/Ctrl+left-click; Cmd on macOS, where Ctrl+click is a right click) supported.
 - Skirmish scoreboard: F7.

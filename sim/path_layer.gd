@@ -153,7 +153,7 @@ func _build_astar() -> AStarGrid2D:
 			if solid:
 				grid.fill_solid_region(run, true)
 			elif weight != 1:
-				grid.fill_weight_scale_region(run, float(weight))
+				grid.fill_weight_scale_region(run, float(weight))  # purity-ok: integer weights sum exactly (see the class comment)
 	return grid
 
 

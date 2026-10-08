@@ -33,6 +33,9 @@ const HEIGHT_SMOOTH_RATE: float = 8.0
 const MIN_CLEARANCE: float = 2.0
 ## Edge scroll: how close to a window edge (pixels) the mouse must be to pan.
 const EDGE_SCROLL_MARGIN: float = 12.0
+## How fast glide_to closes on its point, per second, and how close is there.
+const GLIDE_RATE: float = 8.0
+const GLIDE_DONE: float = 0.05
 
 ## Point the camera looks at. y is the smoothed terrain height beneath it.
 var focus: Vector3 = Vector3.ZERO
@@ -54,6 +57,9 @@ var _target_distance: float = DEFAULT_DISTANCE
 ## False while the mouse is outside the window, so a cursor that left through
 ## the edge zone doesn't leave the camera panning there.
 var _mouse_in_window: bool = true
+# glide_to's destination, while gliding.
+var _gliding: bool = false
+var _glide_to: Vector2 = Vector2.ZERO
 
 
 func _ready() -> void:
@@ -89,6 +95,20 @@ func focus_on(point: Vector2) -> void:
 	var clamped: Vector2 = _clamp_to_map(point)
 	focus.x = clamped.x
 	focus.z = clamped.y
+
+
+## Moves the focus smoothly to point (x, z in meters, clamped) over the next
+## frames: the center-on-selection key. Moving the camera by hand stops it.
+func glide_to(point: Vector2) -> void:
+	if _terrain == null:
+		return
+	_glide_to = _clamp_to_map(point)
+	_gliding = true
+
+
+## True while glide_to is still on its way.
+func is_gliding() -> bool:
+	return _gliding
 
 
 ## Sets focus (x, z in meters, clamped), yaw and distance at once, snaps the
@@ -144,6 +164,7 @@ func _process(delta: float) -> void:
 	var swivel: float = Input.get_axis(InputBindings.CAM_SWIVEL_RIGHT, InputBindings.CAM_SWIVEL_LEFT)
 	_swivel(swivel * SWIVEL_SPEED * delta)
 	_move(delta)
+	_glide(delta)
 	var blend: float = 1.0 - exp(-HEIGHT_SMOOTH_RATE * delta)
 	focus.y = lerpf(focus.y, _ground_height(focus.x, focus.z), blend)
 	_apply_transform()
@@ -202,6 +223,7 @@ func _move(delta: float) -> void:
 	input = input.limit_length(1.0)
 	if input == Vector2.ZERO:
 		return
+	_gliding = false
 	var forward: Vector2 = -_offset_xz(1.0)
 	var right: Vector2 = Vector2(-forward.y, forward.x)
 	var step: Vector2 = (right * input.x + forward * input.y) * (distance * MOVE_SPEED_PER_METER * delta)
@@ -210,6 +232,18 @@ func _move(delta: float) -> void:
 	var clamped: Vector2 = _clamp_to_map(Vector2(focus.x, focus.z))
 	focus.x = clamped.x
 	focus.z = clamped.y
+
+
+func _glide(delta: float) -> void:
+	if not _gliding:
+		return
+	var at: Vector2 = Vector2(focus.x, focus.z)
+	var next: Vector2 = at.lerp(_glide_to, 1.0 - exp(-GLIDE_RATE * delta))
+	if next.distance_to(_glide_to) < GLIDE_DONE:
+		next = _glide_to
+		_gliding = false
+	focus.x = next.x
+	focus.z = next.y
 
 
 # Where the mouse is, and whether a button is under it. Methods of their own so
