@@ -5,7 +5,7 @@ extends Node3D
 ## unit, projectile, explosion, fire, and weather views read the World; only
 ## commands change it. The gas cloud and herb plant views read it too, and so
 ## do the mission HUD, the objective panel, and the F5 AI overlay. Units whose
-## type has art are drawn with it (load_art), and F10 switches every unit to its
+## type has art are drawn with it (load_art), and F12 switches every unit to its
 ## placeholder and back.
 ## Everything that draws the ground is built from the World's own terrain,
 ## not the one loaded from the map: explosions scar the World's copy.
@@ -317,9 +317,9 @@ func _process(delta: float) -> void:
 		# The App may free this scene in response; there is nothing left to draw.
 		return
 	var w: Weather = world.weather
-	var hints: String = "(F5 AI overlay, F10 art)" if _campaign() else "(F5 AI overlay, F6 weather, F10 art)"
+	var hints: String = "(F5 AI overlay, F12 art)" if _campaign() else "(F5 AI overlay, F6 weather, F12 art)"
 	if _skirmish_hud != null:
-		hints = "(F5 AI overlay, F7 scoreboard, F10 art)"
+		hints = "(F5 AI overlay, F7 scoreboard, F12 art)"
 	_stats_label.text = "tick %d   %d fps   %d draw calls   sim %.2f ms/tick   %d units   %d projectiles   %d paths queued\nrain %d%%   snow %d%%   wet %d%%   snow cover %d%%   %d cells burning   %s" % [
 		world.tick,
 		Performance.get_monitor(Performance.TIME_FPS),

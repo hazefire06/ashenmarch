@@ -1,7 +1,7 @@
 extends GutTest
 ## Units whose type has art are drawn with it: the direction the unit faces
 ## on screen, the animation the sim calls for, a death that falls away from
-## the blow and stays fallen, and F10's switch back to placeholders. Types
+## the blow and stays fallen, and F12's switch back to placeholders. Types
 ## without art keep the placeholder quad. While the view is frozen (paused, or
 ## the mission decided) an art body holds its frame.
 

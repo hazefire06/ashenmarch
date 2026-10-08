@@ -19,7 +19,7 @@ extends Node3D
 ## Types with art (setup's UnitArtCatalog) are drawn with it: each tick the
 ## sprite's UnitAnimator gets the unit's state, and each frame the sprite
 ## shows the direction it faces relative to the camera. set_art_enabled
-## (F10) rebuilds every sprite as a placeholder or back, keeping the dead
+## (F12) rebuilds every sprite as a placeholder or back, keeping the dead
 ## dead and the gibbed gone.
 
 ## What an order marker says, which sets its color.
@@ -144,7 +144,7 @@ func set_viewer(side: UnitType.Faction) -> void:
 
 
 ## Draws units with their art (true) or as placeholders (false), rebuilding
-## every sprite. A debug aid (F10): compare the art against the placeholder,
+## every sprite. A debug aid (F12): compare the art against the placeholder,
 ## or rule it out. The dead stay dead and the gibbed stay gone.
 func set_art_enabled(enabled: bool) -> void:
 	if enabled == _art_enabled:

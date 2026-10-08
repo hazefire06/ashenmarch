@@ -739,25 +739,25 @@ func test_a_campaign_soldier_is_drawn_from_the_art_too() -> void:
 	assert_true(sprite.has_art())
 
 
-func test_f10_switches_every_unit_to_its_placeholder_and_back() -> void:
+func test_f12_switches_every_unit_to_its_placeholder_and_back() -> void:
 	if _skip_unless_art_is_built():
 		return
 	var main: MainView = _sandbox()
 	_step(main)
 	var view: UnitsView = _units_of(main)
 	assert_true(view.art_enabled(), "art is the default")
-	_push(_key(KEY_F10))
+	_push(_key(KEY_F12))
 	assert_false(view.art_enabled())
 	assert_gt(_drawn(main).size(), 0)
 	for sprite: UnitSprite in _drawn(main):
 		assert_false(sprite.has_art())
-	_push(_key(KEY_F10))
+	_push(_key(KEY_F12))
 	assert_true(view.art_enabled())
 	for sprite: UnitSprite in _drawn(main):
 		assert_eq(sprite.has_art(), main.world.get_unit(sprite.unit_id).type.id == &"shieldman")
 
 
-func test_f10_leaves_corpses_as_corpses() -> void:
+func test_f12_leaves_corpses_as_corpses() -> void:
 	if _skip_unless_art_is_built():
 		return
 	var main: MainView = _sandbox()
@@ -772,7 +772,7 @@ func test_f10_leaves_corpses_as_corpses() -> void:
 	var tick: int = main.world.tick
 	var view: UnitsView = _units_of(main)
 	for _i: int in 2:
-		_push(_key(KEY_F10))
+		_push(_key(KEY_F12))
 		var found: int = 0
 		for sprite: UnitSprite in _drawn(main):
 			if sprite.unit_id == victim.id:
@@ -783,7 +783,7 @@ func test_f10_leaves_corpses_as_corpses() -> void:
 	assert_eq(main.world.tick, tick, "and the sim never heard of it")
 
 
-func test_f10_works_paused_and_in_a_campaign() -> void:
+func test_f12_works_paused_and_in_a_campaign() -> void:
 	if _skip_unless_art_is_built():
 		return
 	var main: MainView = _view()
@@ -797,33 +797,33 @@ func test_f10_works_paused_and_in_a_campaign() -> void:
 			soldier_has_art = sprite.has_art()
 	assert_true(soldier_has_art, "the Shieldman starts with its art")
 	var before: String = main.world.state_hash()
-	_push(_key(KEY_F10))
+	_push(_key(KEY_F12))
 	assert_false(_units_of(main).art_enabled())
 	assert_eq(main.world.state_hash(), before, "view-only: nothing was enqueued")
 	assert_gt(_drawn(main).size(), 0, "there are sprites to check")
 	for sprite: UnitSprite in _drawn(main):
 		assert_false(sprite.has_art())
-	_push(_key(KEY_F10))
+	_push(_key(KEY_F12))
 	assert_true(_units_of(main).art_enabled())
 
 
-func test_f10_works_once_the_mission_is_decided() -> void:
+func test_f12_works_once_the_mission_is_decided() -> void:
 	var main: MainView = _view(1)
 	_step(main, 2)
 	assert_true(main.is_frozen())
-	_push(_key(KEY_F10))
+	_push(_key(KEY_F12))
 	assert_false(_units_of(main).art_enabled())
 
 
-func test_the_stats_line_names_f10_in_a_campaign_and_in_the_sandbox() -> void:
+func test_the_stats_line_names_f12_in_a_campaign_and_in_the_sandbox() -> void:
 	var campaign: MainView = _view()
 	campaign._process(0.016)
 	var label: Label = campaign.get_node("Hud/StatsLabel") as Label
-	assert_true(label.text.contains("(F5 AI overlay, F10 art)"), label.text)
+	assert_true(label.text.contains("(F5 AI overlay, F12 art)"), label.text)
 	var sandbox: MainView = _sandbox()
 	sandbox._process(0.016)
 	label = sandbox.get_node("Hud/StatsLabel") as Label
-	assert_true(label.text.contains("(F5 AI overlay, F6 weather, F10 art)"), label.text)
+	assert_true(label.text.contains("(F5 AI overlay, F6 weather, F12 art)"), label.text)
 
 
 func test_load_art_gives_the_committed_shieldman_art() -> void:
