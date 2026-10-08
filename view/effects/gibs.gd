@@ -215,8 +215,8 @@ func _keep_above_ground(chunk: RigidBody3D) -> void:
 	chunk.linear_velocity.y = maxf(chunk.linear_velocity.y, 0.0)
 
 
-# The ground collider's height in meters at (x, z) in this node's space, which
-# is the ground's. Godot's HeightMapShape3D splits each cell into two
+# The ground collider's height in meters at (x, z) in this node's space (sample
+# (0, 0) at the origin, like the terrain's; not the offset ground body's space). Godot's HeightMapShape3D splits each cell into two
 # triangles along the diagonal from sample (i + 1, j) to (i, j + 1), so this
 # does too: on a steep cell, bilinear heights can be well off the collider.
 func _ground_height(x: float, z: float) -> float:
