@@ -1956,16 +1956,18 @@ The commander, ADVANCE, MEDIC and the skirmish rules draw no random numbers; `ma
   - A trace dumps per-tick subsystem and entity hashes, to diff two platforms down to the first tick and entity that differ.
   - Make targets: `verify-replays` (editor), `verify-replays-app` (release app, arm64), `verify-replays-x86` (the app under Rosetta).
 
-| Platform | old_mill_t4 (15058 ticks) | riverside_t2 (7323) | skirmish_ctf (5144) |
-|---|---|---|---|
-| Editor, macOS arm64 | 50/50, final `0c2e4a2f…` | 24/24, `1ef0b170…` | 17/17, `a2ae64d0…` |
-| Release app, macOS arm64 | identical | identical | identical |
-| Release app, macOS x86_64 (Rosetta) | identical | identical | identical |
-| Web, Chrome wasm32 | identical | identical | identical |
+| Platform | old_mill_t4 (15058 ticks) | riverside_t2 (7323) | skirmish_ctf (5144) | riverside_orders_t2 (6000, Phase 11) |
+|---|---|---|---|---|
+| Editor, macOS arm64 | 50/50, final `0c2e4a2f…` | 24/24, `1ef0b170…` | 17/17, `a2ae64d0…` | 20/20, `18b72d0d…` |
+| Release app, macOS arm64 | identical | identical | identical | identical |
+| Release app, macOS x86_64 (Rosetta) | identical | identical | identical | identical |
+| Web, Chrome wasm32 | identical | identical | identical | identical |
+| Windows 11 x86_64 (the shipped export, under Prism emulation on ARM; Phase 11) | identical | identical | identical | identical |
+| Windows 11 arm64 (a one-off native export; Phase 11) | identical | identical | identical | identical |
 
 - **No divergence was found,** so nothing in `sim/` needed fixing. The Phase 0–9 rules held: integer and fixed-point math everywhere, a committed sine table, and integer-weighted A*.
 - **Not run:**
-  - Windows, deferred to Phase 11 (Tim's call).
+  - Windows on x86 hardware: the Phase 11 run was a Parallels VM on Apple silicon, so the x86_64 export ran under emulation. A native x86 Windows PC would be the stronger check.
   - Firefox and Safari. WebAssembly's integer and IEEE float semantics are engine-independent, and the build uses fixed-width SIMD only.
 - **The purity check now bans** float types, casts, literals, constants (`INF`, `NAN`, `PI`, `TAU`), float rounding and interpolation, float-only math functions, float-based Godot types and float RNG calls in `sim/`.
   - Six safe lines say why with `# purity-ok: <reason>`: isqrt's corrected guess, AStarGrid2D's integer weights, the save's number validation and the view-only placeholder colors.
@@ -2130,8 +2132,11 @@ Every control `docs/controls-myth2.md` listed as missing, a Classic preset besid
 - **The overhead map's right click** sends the selection rather than being swallowed.
 - **The control bar has a fourth row** (View: All, None, Center, Health, the game speed, Switch side, Menu) and new order and group buttons.
 
+### Windows (Parallels VM "Windows 11", ARM64)
+- **Determinism:** `Ashenmarch.console.exe --headless -- --verify-replays` matches every checkpoint and final hash of the four goldens, both for the shipped x86_64 export (under Windows' x86 emulation) and for a one-off native arm64 export (see the platform table).
+- **The pad suites** (input bindings, gestures, pad controller, menus, prompts, the codec, and the pad-only playthrough) pass under the Windows arm64 editor (4.7.2, GUT headless); the playthrough wins Riverside at the same tick as on the Mac.
+
 ### Not yet
-- **Windows:** see the platform table (run on the Parallels VM, ARM64).
 - **Browsers:** whether Chrome on Windows keeps F1 for its help page, and whether a Mac browser lets a page have Cmd+digit, need a real keyboard (synthetic events reach the page whatever the browser does with real ones). Classic already uses Option in a browser on a Mac.
 - **Rumble on the web:** Godot's web joypad code may not drive the Gamepad API's vibration at all. The gate means it is simply off if so; untested with a pad.
 - **An attack-unit order:** a click on an enemy moves to the ground there, as before Phase 11, in both presets.
