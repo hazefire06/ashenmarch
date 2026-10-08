@@ -88,7 +88,7 @@ func test_listing_a_missing_folder_is_empty() -> void:
 
 func test_the_golden_replays_ship_and_load() -> void:
 	var paths: PackedStringArray = ReplayVerifier.golden_paths()
-	assert_eq(paths.size(), 3)
+	assert_eq(paths.size(), 4)
 	for path: String in paths:
 		var problems: Array[String] = []
 		var replay: Replay = ReplayStore.load_file(path, problems)

@@ -121,11 +121,13 @@ profile-sim: import
 	$(GODOT) --headless --path . -s scripts/profile_sim.gd
 
 # Records the golden replays (data/replays/golden) that every build is
-# checked against: Riverside and Old Mill played by the playtest pilot, and an
-# AI-against-AI skirmish. Rerun deliberately when a change alters what the sim
-# does; verify-replays fails until then. See scripts/make_golden_replays.gd.
+# checked against: Riverside and Old Mill played by the playtest pilot, an
+# AI-against-AI skirmish, and Riverside given every Phase 11 order. Rerun
+# deliberately when a change alters what the sim does; verify-replays fails
+# until then. GOLDEN=name[,name] records only those. See
+# scripts/make_golden_replays.gd.
 golden-replays: import
-	$(GODOT) --headless --path . -s scripts/make_golden_replays.gd
+	GOLDEN=$(GOLDEN) $(GODOT) --headless --path . -s scripts/make_golden_replays.gd
 
 # The determinism check: plays every golden replay and compares each
 # checkpoint and the final hash with the recording. One line per replay; exit
