@@ -1,7 +1,9 @@
 class_name PauseMenu
 extends Control
-## The pause menu, built in code like the rest of the HUD: Resume, Restart
-## mission, Settings, and Quit to main menu (which asks first). It is only the
+## The pause menu, built in code like the rest of the HUD: Resume, the game
+## speed (single player), the scoreboard (a skirmish), Restart mission,
+## Settings, and Quit to main menu (which asks first). The speed and the
+## scoreboard are here too, not only on F1/F2 and F7, so a pad reaches them. It is only the
 ## menu: it says what the player chose through signals, and whatever runs the
 ## game (MainView for the pause itself, the App for restarting, settings, and
 ## leaving) acts on them.
@@ -36,6 +38,10 @@ signal settings_requested
 signal quit_requested
 signal opened
 signal closed
+## Slower (-1) or faster (+1), from the menu's speed row.
+signal speed_step_requested(step: int)
+## The scoreboard button, in a skirmish.
+signal scoreboard_requested
 
 const DIM_COLOR: Color = Color(0.0, 0.0, 0.0, 0.55)
 const PANEL_COLOR: Color = Color(0.09, 0.09, 0.1, 0.96)
@@ -70,6 +76,9 @@ var _restart: Button
 var _settings: Button
 var _quit: Button
 var _keep_playing: Button
+var _speed_row: HBoxContainer
+var _speed_label: Label
+var _scoreboard: Button
 # False in a replay (set_replay_mode): Quit leaves without the question.
 var _quit_asks: bool = true
 
@@ -131,6 +140,18 @@ func set_app_buttons_visible(shown: bool) -> void:
 	_restart.visible = shown
 	_settings.visible = shown
 	_quit.visible = shown
+
+
+## Shows the game speed row with `text` ("2x") on it, or hides it (shown false:
+## a replay, a lockstep game).
+func show_game_speed(text: String, shown: bool = true) -> void:
+	_speed_label.text = "Speed %s" % text
+	_speed_row.visible = shown
+
+
+## Shows the Scoreboard button (a skirmish) or hides it.
+func set_scoreboard_visible(shown: bool) -> void:
+	_scoreboard.visible = shown
 
 
 ## Names the pause key's current binding in the Paused label.
@@ -235,6 +256,26 @@ func _build() -> void:
 	column.add_child(_buttons)
 	_resume = _menu_button("ResumeButton", "Resume")
 	_resume.pressed.connect(_resume_pressed)
+	_speed_row = HBoxContainer.new()
+	_speed_row.name = "SpeedRow"
+	_speed_row.add_theme_constant_override("separation", 8)
+	_buttons.add_child(_speed_row)
+	var slower: Button = _menu_button("SlowerButton", "Slower", _speed_row)
+	slower.custom_minimum_size.x = 0.0
+	slower.pressed.connect(func() -> void: speed_step_requested.emit(-1))
+	_speed_label = Label.new()
+	_speed_label.name = "SpeedLabel"
+	_speed_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_speed_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_speed_label.text = "Speed 1x"
+	_speed_row.add_child(_speed_label)
+	var faster: Button = _menu_button("FasterButton", "Faster", _speed_row)
+	faster.custom_minimum_size.x = 0.0
+	faster.pressed.connect(func() -> void: speed_step_requested.emit(1))
+	_speed_row.visible = false
+	_scoreboard = _menu_button("ScoreboardButton", "Scoreboard")
+	_scoreboard.pressed.connect(func() -> void: scoreboard_requested.emit())
+	_scoreboard.visible = false
 	_restart = _menu_button("RestartButton", "Restart mission")
 	_restart.pressed.connect(func() -> void: restart_requested.emit())
 	_settings = _menu_button("SettingsButton", "Settings")

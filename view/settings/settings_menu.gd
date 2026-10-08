@@ -117,6 +117,35 @@ func _focus_default() -> void:
 	_focus(_fullscreen)
 
 
+# The pad's shoulder buttons turn the tabs, and focus goes to the new tab's
+# first control.
+func _unhandled_input(event: InputEvent) -> void:
+	var step: int = 0
+	if event.is_action_pressed(InputBindings.PAD_FORMATION_WHEEL):
+		step = -1
+	elif event.is_action_pressed(InputBindings.PAD_ORDER_WHEEL):
+		step = 1
+	if step == 0 or is_capturing():
+		super(event)
+		return
+	_tabs.current_tab = posmod(_tabs.current_tab + step, _tabs.get_tab_count())
+	var first: Control = _first_focusable(_tabs.get_current_tab_control())
+	if first != null:
+		first.grab_focus()
+	get_viewport().set_input_as_handled()
+
+
+static func _first_focusable(root: Node) -> Control:
+	var stack: Array[Node] = [root]
+	while not stack.is_empty():
+		var node: Node = stack.pop_front()
+		if node is Control and (node as Control).focus_mode == Control.FOCUS_ALL and (node as Control).is_visible_in_tree():
+			return node as Control
+		var children: Array[Node] = node.get_children()
+		stack = children + stack
+	return null
+
+
 func _cancel() -> bool:
 	if is_capturing():
 		_cancel_capture()

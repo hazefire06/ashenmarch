@@ -354,6 +354,13 @@ func set_health_bars(on: bool) -> void:
 		_units.show_all_health = on
 
 
+## Shows every health bar while held (F10, the pad's View held); let go,
+## they show as the Health toggle says.
+func show_health_held(held: bool) -> void:
+	if _units != null:
+		_units.show_all_health = held or _health_on
+
+
 ## The next move's pending turn, in ROTATE_STEPs.
 func pending_rotation() -> int:
 	return _pending_rotation
@@ -523,7 +530,12 @@ func end_facing(at: Vector2) -> void:
 		return
 	var from: Vector3 = _pick_ground(_order_at)
 	var direction: Vector2 = _drag_direction()
-	if from == Vector3.INF or direction == Vector2.ZERO:
+	if from == Vector3.INF:
+		return
+	if direction == Vector2.ZERO:
+		# Dragged off the map (into the sky): the order still goes, facing
+		# the usual way.
+		order_at(_order_at, _order_attack, _order_queue)
 		return
 	if _order_unit >= 0:
 		_turn_unit(_order_unit, direction)
@@ -843,7 +855,7 @@ func _handle_keys(event: InputEvent) -> bool:
 		clear_current_group()
 		return true
 	if event.is_action_pressed(InputBindings.HEALTH_BARS, false, true):
-		_units.show_all_health = true
+		show_health_held(true)
 		return true
 	if debug_keys_enabled and event.is_action_pressed(InputBindings.SWITCH_SIDE):
 		switch_side()
@@ -858,8 +870,8 @@ func _handle_keys(event: InputEvent) -> bool:
 # let go before it saved, recalls the group. Mac browsers drop the release
 # of a key let go while Cmd is down, so letting go of a modifier counts too.
 func _key_released(key: InputEventKey) -> void:
-	if _units != null and key.is_action_released(InputBindings.HEALTH_BARS):
-		_units.show_all_health = _health_on
+	if key.is_action_released(InputBindings.HEALTH_BARS):
+		show_health_held(false)
 	if _hold_slot < 0:
 		return
 	if key.physical_keycode != _hold_key and not MODIFIER_KEYS.has(key.physical_keycode):
@@ -1200,8 +1212,8 @@ func unit_at(at: Vector2, selectable_only: bool = true) -> int:
 	return best
 
 
-## The screen point of a unit's feet, for snapping a cursor to it; INF if it
-## has no sprite or is behind the camera.
+## The middle of a unit's sprite on screen, for a pad's cursor to go to; INF
+## if it has no sprite or is behind the camera.
 func screen_point_of(unit_id: int) -> Vector2:
 	for sprite: UnitSprite in _units.sprites():
 		if sprite.unit_id == unit_id:
@@ -1209,6 +1221,40 @@ func screen_point_of(unit_id: int) -> Vector2:
 				return Vector2.INF
 			return _screen_rect(sprite).get_center()
 	return Vector2.INF
+
+
+## The middle of the standing unit's sprite nearest the screen point within
+## `radius` pixels, either side, for a pad's cursor to stick to; INF if none.
+func nearest_unit_point(at: Vector2, radius: float) -> Vector2:
+	var best: Vector2 = Vector2.INF
+	var best_distance: float = radius
+	for sprite: UnitSprite in _units.sprites():
+		if sprite.is_dead() or not sprite.is_pickable() or _camera.is_position_behind(sprite.global_position):
+			continue
+		var center: Vector2 = _screen_rect(sprite).get_center()
+		var d: float = center.distance_to(at)
+		if d <= best_distance:
+			best_distance = d
+			best = center
+	return best
+
+
+## Draws a selection box from `from` to `to` (the pad's A held and moved);
+## box_select gives it effect, end_box_preview takes it away.
+func preview_box(from: Vector2, to: Vector2) -> void:
+	_pressing = true
+	_dragging = true
+	_press_unit = -1
+	_press_orders = false
+	_press_at = from
+	_drag_to = to
+	queue_redraw()
+
+
+func end_box_preview() -> void:
+	_pressing = false
+	_dragging = false
+	queue_redraw()
 
 
 # Screen rectangle the sprite's quad covers. A standing quad is a billboard

@@ -151,6 +151,7 @@ var last_step_ms: float = 0.0
 
 var _sim_ms: float = 0.0
 var _speed: int = NORMAL_SPEED
+var _pad: PadController
 var _rate_before: int = World.TICK_RATE
 ## The DebugWeather preset F6 last picked.
 var _weather_preset: int = 0
@@ -278,8 +279,17 @@ func _ready() -> void:
 	_control_bar.menu_requested.connect(_pause_menu.open)
 	_control_bar.center_requested.connect(center_on_selection)
 	_selection.center_requested.connect(center_on_selection)
+	_pad = PadController.new()
+	_pad.name = "Pad"
+	$Hud.add_child(_pad)
+	_pad.setup(self, _selection, _camera, _overhead_map, _control_bar, $Hud)
 	_control_bar.speed_step_requested.connect(func(step: int) -> void: set_game_speed(_speed + step))
 	_control_bar.set_game_speed_visible(allows_game_speed())
+	_pause_menu.speed_step_requested.connect(func(step: int) -> void: set_game_speed(_speed + step))
+	_pause_menu.show_game_speed(ControlBar.speed_text(GAME_SPEEDS[_speed]), allows_game_speed())
+	if _skirmish_hud != null:
+		_pause_menu.set_scoreboard_visible(true)
+		_pause_menu.scoreboard_requested.connect(_skirmish_hud.toggle_scoreboard)
 	_overhead_map.set_orders(_selection)
 	_selection.order_given.connect(_sfx.acknowledge)
 	_pause_menu.opened.connect(_on_pause_menu_opened)
@@ -397,6 +407,7 @@ func set_game_speed(index: int) -> void:
 	_speed = clampi(index, 0, GAME_SPEEDS.size() - 1)
 	Engine.physics_ticks_per_second = roundi(World.TICK_RATE * GAME_SPEEDS[_speed])
 	_control_bar.set_game_speed(GAME_SPEEDS[_speed])
+	_pause_menu.show_game_speed(ControlBar.speed_text(GAME_SPEEDS[_speed]))
 
 
 func _exit_tree() -> void:
@@ -433,6 +444,23 @@ func center_on_selection() -> void:
 			count += 1
 	if count > 0:
 		_camera.glide_to(sum / count / float(World.UNITS_PER_METER))
+
+
+## The pad's control-bar focus (PadController, L3): the bar's buttons, the
+## unit info panel's cells and the replay bar's take focus (on), or none do and
+## focus is let go (off).
+func set_hud_focus(on: bool) -> void:
+	_control_bar.set_focus_enabled(on)
+	_info_panel.set_focus_enabled(on)
+	if _replay_bar != null:
+		_replay_bar.set_focus_enabled(on)
+	if not on:
+		get_viewport().gui_release_focus()
+
+
+## The pad's controller.
+func pad() -> PadController:
+	return _pad
 
 
 ## Puts the current key bindings into everything that names them: the control

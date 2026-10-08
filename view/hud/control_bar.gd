@@ -306,7 +306,12 @@ func set_menu_enabled(enabled: bool) -> void:
 
 ## Shows the game speed ("2x").
 func set_game_speed(speed: float) -> void:
-	_speed.text = ("%dx" % roundi(speed)) if speed >= 1.0 else "1/%dx" % roundi(1.0 / speed)
+	_speed.text = speed_text(speed)
+
+
+## A game speed as the player reads it: "2x", "1/2x".
+static func speed_text(speed: float) -> String:
+	return ("%dx" % roundi(speed)) if speed >= 1.0 else "1/%dx" % roundi(1.0 / speed)
 
 
 ## Shows or hides the game speed buttons: hidden while watching a replay
@@ -454,6 +459,16 @@ func _selection_summary(selection: UnitSelection) -> String:
 	for type_name: String in counts:
 		parts.append("%d %s" % [counts[type_name], type_name])
 	return "%d selected: %s" % [selection.size(), ", ".join(parts)]
+
+
+## Lets the bar's buttons take focus, so the pad's D-pad moves between them
+## and A presses one, and puts focus on the first (on); or gives the keys back
+## to the game (off). Off is how the bar always is otherwise: a focused button
+## would take Space and Enter for itself.
+func set_focus_enabled(on: bool) -> void:
+	var first: Button = HudFocus.enable(self, on)
+	if first != null:
+		first.grab_focus()
 
 
 # Buttons never take keyboard focus, so the number keys keep reaching the game.
