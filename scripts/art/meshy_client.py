@@ -318,5 +318,5 @@ def _server_message(error: urllib.error.HTTPError, api_key: str) -> str:
     """Meshy's own message for an error, with the key scrubbed in case it is echoed back."""
     try:
         return str(json.loads(error.read().decode("utf-8")).get("message", "")).replace(api_key, "[redacted]")[:200]
-    except (ValueError, AttributeError):
+    except (ValueError, AttributeError, OSError, http.client.HTTPException):  # no JSON, or the body itself was cut off
         return ""

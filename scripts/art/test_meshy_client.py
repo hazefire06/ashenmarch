@@ -560,6 +560,19 @@ class DroppedReplyTest(unittest.TestCase):
                     self.assertFalse(caught.may_have_created)
                     self.assertNotIn("pay twice", str(caught))
 
+    def test_an_error_body_that_drops_mid_read_still_gives_the_status(self) -> None:
+        # The server answered 503 and then dropped the connection while the body was read for Meshy's message.
+        for error in (*HTTP_EXCEPTIONS, TimeoutError("timed out"), ConnectionResetError("reset")):
+            for method in ("POST", "GET"):
+                with self.subTest(error=type(error).__name__, method=method):
+                    body = mock.MagicMock()
+                    body.read.side_effect = error
+                    refusal = urllib.error.HTTPError("https://api.meshy.ai/x", 503, "Unavailable", {}, body)
+                    caught = self.call(opener_that(raises=refusal), method)
+                    self.assertIn("HTTP 503", str(caught))
+                    self.assertEqual(caught.may_have_created, method == "POST")
+                    self.assertEqual(caught.retryable, method == "GET")
+
     def test_the_error_text_never_carries_what_the_exception_held(self) -> None:
         caught = self.call(opener_that(raises=http.client.BadStatusLine("Bearer not-a-real-key")), "GET")
         self.assertNotIn("not-a-real-key", str(caught))
