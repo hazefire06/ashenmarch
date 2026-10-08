@@ -357,3 +357,58 @@ func test_a_freeze_undone_before_the_view_redraws_holds_nothing() -> void:
 	_view.frozen = false
 	_view._process(0.0)
 	assert_true(_art_body(_sprite(_shieldman)).is_playing(), "the rebuilt body isn't left held")
+
+
+# A mission decided by the Shieldman's death: MainView runs after_step (the
+# KILL starts the death on its first frame), then freezes the view in the
+# same physics frame, before the body has drawn any of the fall. Returns the
+# body once the death has had time to play (4 frames at 12 fps: a third of a
+# second).
+func _die_as_the_view_freezes(source_x: int, source_z: int) -> AnimatedSprite3D:
+	var event: CombatEvent = CombatEvent.new(CombatEvent.Kind.KILL, 0, _shieldman.id)
+	event.source_x = source_x
+	event.source_z = source_z
+	_shieldman.kill()
+	_world.combat_events.append(event)
+	_view.after_step()
+	_world.combat_events.clear()
+	_view.frozen = true
+	_view._process(0.0)
+	var body: AnimatedSprite3D = _art_body(_sprite(_shieldman))
+	await wait_seconds(0.5)
+	return body
+
+
+func test_a_death_on_the_tick_that_freezes_the_view_still_falls() -> void:
+	# From the south: the body keeps facing the camera, so only hold() could
+	# stop it.
+	var body: AnimatedSprite3D = await _die_as_the_view_freezes(30 * M, 40 * M)
+	assert_eq(body.animation, &"die_4")
+	assert_eq(body.frame, 3, "the body fell to its corpse frame")
+	assert_false(body.is_playing(), "and lies there")
+	_view.frozen = false
+	_view._process(0.0)
+	assert_eq(body.frame, 3, "thawing doesn't fell it again")
+
+
+func test_a_death_that_turns_the_body_as_the_view_freezes_still_falls() -> void:
+	# From the north: the body turns to face it on the first frame drawn, after
+	# the freeze, which switches it to die_0's frames while held.
+	var body: AnimatedSprite3D = await _die_as_the_view_freezes(30 * M, 20 * M)
+	assert_eq(body.animation, &"die_0")
+	assert_eq(body.frame, 3, "the body fell to its corpse frame")
+	assert_false(body.is_playing(), "and lies there")
+
+
+func test_a_corpse_rebuilt_while_frozen_shows_its_last_frame() -> void:
+	_kill(_shieldman, 30 * M, 20 * M)
+	_view.frozen = true
+	_view._process(0.0)
+	_view.set_art_enabled(false)
+	_view.set_art_enabled(true)
+	_view._process(0.0)
+	var body: AnimatedSprite3D = _art_body(_sprite(_shieldman))
+	assert_eq(body.animation, &"die_0")
+	assert_eq(body.frame, 3)
+	await wait_seconds(0.2)
+	assert_eq(body.frame, 3, "it stays the corpse")

@@ -26,7 +26,8 @@ extends Node3D
 ## which can only darken, so a hit flashes ART_HIT_TINT rather than white. A
 ## dead art body turns to face the blow (away from it if its death falls
 ## forward) and its last death frame stays as the corpse, still a billboard.
-## hold() stops it on its frame while the sim isn't stepping.
+## hold() stops it on its frame while the sim isn't stepping; a death still
+## plays out to its corpse.
 
 const RING_COLOR: Color = Color(1.0, 0.92, 0.35)
 const FACING_COLOR: Color = Color(0.08, 0.08, 0.08)
@@ -346,7 +347,10 @@ func face_camera(camera_forward: Vector2) -> void:
 
 ## Stops the art body on its frame (held) or lets it play on from there: the
 ## sim isn't stepping, so nothing should walk or swing in place. It still
-## turns with the camera. A placeholder has nothing to hold.
+## turns with the camera. A dead body isn't held: its death plays out to the
+## corpse, as a placeholder lies down at once, so the death that decides a
+## mission (the view freezes on that tick) still falls. A placeholder has
+## nothing to hold.
 func hold(held: bool) -> void:
 	if held == _held:
 		return
@@ -354,7 +358,8 @@ func hold(held: bool) -> void:
 	if _art_body == null:
 		return
 	if held:
-		_art_body.pause()
+		if not _dead:
+			_art_body.pause()
 	elif not _played_out():
 		# play() with no name resumes from the frame it stopped on, but would
 		# start a finished death over, so a corpse is left as it is.
@@ -483,7 +488,8 @@ func _build_art_body() -> void:
 # Plays _anim for _dir. A restart starts at start_frame. Otherwise a change
 # of direction mid-animation keeps its frame and progress, so turning
 # doesn't restart a swing; a change of animation starts it from the top. A
-# held body takes the new frames but stays on its frame.
+# held body takes the new frames but stays on its frame, unless it is dead
+# (hold).
 func _show(restart: bool, start_frame: int) -> void:
 	var wanted: StringName = UnitArt.anim_name(_anim, _dir)
 	if not restart and _art_body.animation == wanted:
@@ -497,7 +503,7 @@ func _show(restart: bool, start_frame: int) -> void:
 	elif same_motion:
 		_art_body.set_frame_and_progress(mini(frame, _art.frames.get_frame_count(wanted) - 1), progress)
 	_shown = _anim
-	if _held:
+	if _held and not _dead:
 		_art_body.pause()
 
 
