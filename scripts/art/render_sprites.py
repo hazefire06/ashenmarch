@@ -50,7 +50,7 @@ from mathutils import Euler, Matrix, Vector
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 from clips import pick_clip  # noqa: E402
-from unit_spec import NAME, AnimEntry, AttachEntry, PropSpec, UnitSpec, load_prop_spec, load_spec  # noqa: E402
+from unit_spec import NAME, AnimEntry, AttachEntry, PropSpec, UnitSpec, animation_file, load_prop_spec, load_spec  # noqa: E402
 
 REPO = HERE.parent.parent
 CELL = 160
@@ -712,7 +712,7 @@ def render_unit(unit: str, src_root: Path, out_root: Path, engine: str = "EEVEE"
         contact: list[Path | None] = []
         for entry in spec.animations:
             frames_dir = work / entry.name
-            info = render_animation(spec, unit_dir / entry.file, entry, props, frames_dir, engine)
+            info = render_animation(spec, animation_file(unit_dir, entry), entry, props, frames_dir, engine)
             sidecar["clipped"] += info.pop("clipped")
             sheet = out_dir / info["sheet"]
             tile(sheet_cells(frames_dir, info["frames"]), info["columns"], DIRECTIONS * info["rows_per_direction"], sheet)
@@ -754,7 +754,7 @@ def render_attach(unit: str, src_root: Path, engine: str = "EEVEE", repo: Path |
     with tempfile.TemporaryDirectory() as tmp:
         cells: list[Path | None] = []
         for entry in rows:
-            staged = stage_animation(spec, unit_dir / entry.file, entry, props, engine, size)
+            staged = stage_animation(spec, animation_file(unit_dir, entry), entry, props, engine, size)
             if not cells:
                 print(f"bones of {unit}'s rig: {', '.join(b.name for b in staged.armature.pose.bones)}")
             count = len(staged.frames)

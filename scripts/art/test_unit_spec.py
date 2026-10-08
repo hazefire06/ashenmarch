@@ -8,7 +8,7 @@ import unittest
 from pathlib import Path
 
 from clips import pick_clip
-from unit_spec import AttachEntry, PropSpec, SpecError, load_prop_spec, load_spec, load_style
+from unit_spec import MAX_CANDIDATES, AnimEntry, AttachEntry, PropSpec, SpecError, animation_file, load_prop_spec, load_spec, load_style
 
 ART_SRC = Path(__file__).resolve().parent.parent.parent / "art-src"
 # TOML values that are not a whole number of 0 or more (a count), or not a whole number from 100 to 300000 (a polycount).
@@ -134,10 +134,72 @@ class SpecErrorsTest(unittest.TestCase):
         with self.assertRaisesRegex(SpecError, "candidates must be a"):
             load_spec(self.spec('candidates = 3\n[animations.idle]\nfile = "a.glb"\n'))
 
+    def test_the_candidates_total_has_an_upper_bound_too(self) -> None:
+        # cand-10000 would be bought and then refused by model/PICK as malformed.
+        anim = '[animations.idle]\nfile = "a.glb"\n'
+        with self.assertRaisesRegex(SpecError, f"lists {MAX_CANDIDATES + 1} candidates; at most {MAX_CANDIDATES}"):
+            load_spec(self.spec(f"[candidates]\nlite = {MAX_CANDIDATES}\nfull = 1\n" + anim))
+        self.assertEqual(load_spec(self.spec(f"[candidates]\nlite = {MAX_CANDIDATES}\n" + anim)).lite, MAX_CANDIDATES)
+        with self.assertRaisesRegex(SpecError, "needs at least one candidate"):
+            load_spec(self.spec("[candidates]\n" + anim))
+
+    def test_the_animation_name_message_states_the_length_limit(self) -> None:
+        with self.assertRaisesRegex(SpecError, "at most 32 characters"):
+            load_spec(self.spec(f'[animations.{"a" * 33}]\nfile = "a.glb"\n'))
+
+    def test_an_animation_file_is_a_relative_path_without_dot_dot(self) -> None:
+        # The renderer opens unit_dir / file, so an absolute path or `..` would read any GLB on the machine.
+        for file in ("/etc/x.glb", "/abs/x.glb", "../x.glb", "anims/../../x.glb", "..", "a/../b.glb", "C:\\x.glb", "anims\\x.glb", "", "a\u0000b.glb"):
+            with self.subTest(file=file):
+                path = self.spec(f'[animations.idle]\nfile = {json.dumps(file)}\n')
+                with self.assertRaisesRegex(SpecError, "animation idle: file must be a relative path") as caught:
+                    load_spec(path)
+                self.assertNotIn("\x00", str(caught.exception))
+        for file in (3, True, ["a.glb"]):
+            with self.subTest(file=file):
+                with self.assertRaisesRegex(SpecError, "animation idle: file must be a relative path"):
+                    load_spec(self.spec(f'[animations.idle]\nfile = {json.dumps(file)}\n'))
+
+    def test_an_animation_file_inside_the_unit_folder_loads(self) -> None:
+        for file in ("anims/x.glb", "x.glb", "anims/sub/x.glb", "anims/./x.glb"):
+            with self.subTest(file=file):
+                self.assertEqual(load_spec(self.spec(f'[animations.idle]\nfile = "{file}"\n')).animations[0].file, file)
+
+    def test_a_rig_animation_may_not_name_a_file_outside_either(self) -> None:
+        with self.assertRaisesRegex(SpecError, "animation walk: file must be a relative path"):
+            load_spec(self.spec('[animations.walk]\nrig = "walk"\nfile = "../walk.glb"\n'))
+
+    def test_the_renderer_opens_an_animation_file_only_inside_the_unit_folder(self) -> None:
+        unit_dir = self.dir
+        (unit_dir / "anims").mkdir()
+        outside = Path(self._tmp.name) / "elsewhere"
+        outside.mkdir()
+        entry = AnimEntry("idle", "anims/x.glb", None, None, None, True)
+        self.assertEqual(animation_file(unit_dir, entry), unit_dir / "anims" / "x.glb")  # a file that doesn't exist yet is fine
+        (unit_dir / "linked").symlink_to(outside, target_is_directory=True)
+        with self.assertRaisesRegex(SpecError, "animation idle: file 'linked/x.glb' resolves outside unit_x/"):
+            animation_file(unit_dir, AnimEntry("idle", "linked/x.glb", None, None, None, True))
+        with self.assertRaisesRegex(SpecError, "animation idle"):
+            animation_file(unit_dir, AnimEntry("idle", "../elsewhere/x.glb", None, None, None, True))
+
     def test_an_animation_is_a_rig_clip_or_a_library_action_not_both(self) -> None:
         with self.assertRaisesRegex(SpecError, "animation walk: set rig or action, not both"):
             load_spec(self.spec('[animations.walk]\nrig = "walk"\naction = 4\nclip = "Walk"\n'))
         load_spec(self.spec('[animations.walk]\nrig = "walk"\n[animations.attack]\naction = 4\nclip = "Slash"\n'))
+
+    def test_a_recipe_that_is_not_toml_or_not_utf8_is_a_spec_error(self) -> None:
+        # tomllib's own errors, and the decoder's (whose message holds bytes), used to escape as tracebacks.
+        path = self.dir / "spec.toml"
+        for name, data in (("broken", b"id = \n"), ("not utf-8", b'id = "unit_x"\nprompt = "\xff\xfe"\n'), ("escape", b"id = \x1b\n")):
+            with self.subTest(case=name):
+                path.write_bytes(data)
+                for load in (load_spec, load_prop_spec):
+                    with self.assertRaises(SpecError) as caught:
+                        load(path)
+                    self.assertIn(str(path), str(caught.exception))
+                    self.assertNotIn("\x1b", str(caught.exception))
+                    self.assertNotIn("\xff", str(caught.exception))
+                    self.assertNotIn("\n", str(caught.exception))
 
     def test_a_long_prompt_is_refused(self) -> None:
         spec = load_spec(self.spec('[animations.idle]\nfile = "a.glb"\n'))
@@ -297,6 +359,12 @@ class PropSpecTest(unittest.TestCase):
             with self.subTest(polycount=value):
                 self.assertEqual(load_prop_spec(self.prop(self.GOOD + f"polycount = {value}\n")).polycount, value)
 
+    def test_the_candidates_total_has_an_upper_bound_too(self) -> None:
+        head = self.GOOD.split("[candidates]")[0]
+        with self.assertRaisesRegex(SpecError, f"lists {MAX_CANDIDATES + 1} candidates; at most {MAX_CANDIDATES}"):
+            load_prop_spec(self.prop(head + f"[candidates]\nlite = {MAX_CANDIDATES}\nfull = 1\n"))
+        self.assertEqual(load_prop_spec(self.prop(head + f"[candidates]\nfull = {MAX_CANDIDATES}\n")).full, MAX_CANDIDATES)
+
     def test_candidates_must_be_a_table(self) -> None:
         with self.assertRaisesRegex(SpecError, "candidates must be a"):
             load_prop_spec(self.prop('id = "prop_x"\nfaction = "light"\nlength_m = 1\nprompt = "p"\ncandidates = [1]\n'))
@@ -342,6 +410,16 @@ class StyleTest(unittest.TestCase):
         self.assertTrue(style.prop_suffix.startswith("Stylized fantasy strategy-game prop"))
         self.assertIn("no hands or figure", style.prop_suffix)
         self.assertNotIn("A-pose", style.prop_suffix)
+
+    def test_a_style_that_is_not_toml_is_a_spec_error(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "style.toml"
+            for data in (b"suffix = \n", b"\xff\xfe"):
+                path.write_bytes(data)
+                with self.assertRaises(SpecError) as caught:
+                    load_style(path)
+                self.assertIn(str(path), str(caught.exception))
+                self.assertNotIn("\n", str(caught.exception))
 
     def test_a_style_without_a_prop_suffix_is_refused(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

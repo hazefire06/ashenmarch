@@ -27,7 +27,7 @@ import math
 import re
 import tomllib
 from dataclasses import dataclass
-from pathlib import Path
+from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import Any
 
 PREVIEW_MODELS: dict[str, str] = {"lite": "meshy-6-lite", "full": "meshy-7.1"}
@@ -127,7 +127,7 @@ def _full_prompt(recipe_id: str, prompt: str, palette: str, suffix: str) -> str:
 
 
 def load_style(path: Path) -> Style:
-    data = tomllib.loads(path.read_text(encoding="utf-8"))
+    data = _read_toml(path)
     try:
         return Style(
             suffix=str(data["suffix"]),
@@ -139,7 +139,7 @@ def load_style(path: Path) -> Style:
 
 
 def load_spec(path: Path) -> UnitSpec:
-    data = tomllib.loads(path.read_text(encoding="utf-8"))
+    data = _read_toml(path)
     try:
         lite, full, polycount = _candidates(path, data, default_polycount=30000)
         spec = UnitSpec(
@@ -165,7 +165,7 @@ def load_spec(path: Path) -> UnitSpec:
 
 
 def load_prop_spec(path: Path) -> PropSpec:
-    data = tomllib.loads(path.read_text(encoding="utf-8"))
+    data = _read_toml(path)
     try:
         lite, full, polycount = _candidates(path, data, default_polycount=6000)
         spec = PropSpec(
@@ -186,6 +186,17 @@ def load_prop_spec(path: Path) -> PropSpec:
     return spec
 
 
+def _read_toml(path: Path) -> dict[str, Any]:
+    """The parsed file, with a bad one turned into a SpecError. tomllib's message is a position or a repr'd character, so it
+    is safe to show; the decoder's holds the offending bytes, so it is not."""
+    try:
+        return tomllib.loads(path.read_text(encoding="utf-8"))
+    except tomllib.TOMLDecodeError as error:
+        raise SpecError(f"{path}: {error}") from None
+    except UnicodeDecodeError:
+        raise SpecError(f"{path}: isn't UTF-8 text") from None
+
+
 def _candidates(path: Path, data: dict[str, Any], default_polycount: int) -> tuple[int, int, int]:
     """lite, full and polycount from the optional [candidates] table. They decide what is bought and at what size, so they
     are checked here. No table means nothing to buy, which the renderer's recipes rely on; a table must list a candidate."""
@@ -195,8 +206,11 @@ def _candidates(path: Path, data: dict[str, Any], default_polycount: int) -> tup
     lite = _whole(path, "candidates.lite", table.get("lite", 0), 0, MAX_CANDIDATES)
     full = _whole(path, "candidates.full", table.get("full", 0), 0, MAX_CANDIDATES)
     polycount = _whole(path, "candidates.polycount", table.get("polycount", default_polycount), *POLYCOUNT_RANGE)
-    if "candidates" in data and not 1 <= lite + full <= MAX_CANDIDATES:
-        raise SpecError(f"{path}: [candidates] needs at least one candidate (lite plus full, at most {MAX_CANDIDATES})")
+    if "candidates" in data:
+        if lite + full < 1:
+            raise SpecError(f"{path}: [candidates] needs at least one candidate (lite plus full)")
+        if lite + full > MAX_CANDIDATES:  # cand-10000 would be bought and then refused as malformed by model/PICK
+            raise SpecError(f"{path}: [candidates] lists {lite + full} candidates; at most {MAX_CANDIDATES}")
     return lite, full, polycount
 
 
@@ -258,13 +272,37 @@ def _is_number(value: Any) -> bool:
         return False
 
 
+def _relative_file(name: str, file: Any) -> str:
+    """An animation's GLB, relative to the unit's folder. The renderer opens unit_dir / file, so an absolute path or a `..`
+    would let a recipe read any file on the machine."""
+    ok = isinstance(file, str) and bool(file) and "\0" not in file and "\\" not in file
+    if ok:
+        posix, windows = PurePosixPath(file), PureWindowsPath(file)
+        ok = not posix.is_absolute() and ".." not in posix.parts and not windows.drive
+    if not ok:
+        raise SpecError(f"animation {name}: file must be a relative path inside the unit's folder, with no '..', not {str(file)[:40]!r}")
+    return file
+
+
+def animation_file(unit_dir: Path, entry: AnimEntry) -> Path:
+    """Where an animation's GLB is. The recipe's path is relative (checked on load), but a symlink inside the folder could
+    still lead out of it, so the renderer opens only what resolves inside unit_dir."""
+    path = unit_dir / entry.file
+    if not path.resolve().is_relative_to(unit_dir.resolve()):
+        raise SpecError(f"animation {entry.name}: file {entry.file[:40]!r} resolves outside {unit_dir.name}/ (a symlink?)")
+    return path
+
+
 def _anim(name: str, entry: dict[str, Any]) -> AnimEntry:
     # The name becomes output paths in render_sprites (a sheet, its .import and a review gif), so no path pieces.
     if NAME.fullmatch(name) is None:
-        raise SpecError(f"animation name {name[:40]!r} must be lowercase letters, digits and _ (it names output files), starting with a letter")
+        raise SpecError(f"animation name {name[:40]!r} must be lowercase letters, digits and _ (it names output files), "
+                        "starting with a letter, at most 32 characters")
     rig = entry.get("rig")
     action = entry.get("action")
     file = entry.get("file")
+    if file is not None:
+        file = _relative_file(name, file)
     if rig is not None and action is not None:  # action_id would be bought for a clip no file uses
         raise SpecError(f"animation {name}: set rig or action, not both")
     if rig is not None:
