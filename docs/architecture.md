@@ -314,6 +314,7 @@ The Ripper prefers ranged and support units, so an attack-moving Ripper runs pas
 - **Gibs** (`view/effects/gibs.gd`) are the only Godot physics in the game, and cosmetic only.
   - **Trigger**: overkill ≥ 25% of the victim's max hp, so mostly Reaver blows today; explosions later.
   - **Ground**: a `StaticBody3D` with a `HeightMapShape3D` built from the sim heights, offset by half the map extent because the shape is centered on its origin.
+  - **Containment**: half-space walls on the map's edges keep chunks on the map, and a chunk whose center is ever under the heightmap is put back on top (Godot Physics' heightmap has no thickness, so a hard landing can sink a chunk until it is pushed out the bottom).
   - **Layers**: chunks sit on physics layers 9 (ground) and 10 (gibs) and collide only with those.
   - **Settling**: physics runs at the 30 Hz tick rate, so chunks use continuous collision detection. A chunk freezes once it sleeps, or after 4 s, and stays for the mission. At most 150 simulate at once; the oldest freeze first.
 - **Tooltip** (`view/hud/unit_tooltip.gd`)
