@@ -6,6 +6,13 @@ to know what to render. Each animation comes from one of:
 - the free walk or run clip from the rig task (`rig`),
 - a local GLB (`file`; used by the Blender test fixture).
 
+An animation can also set:
+- `audition = true`: a clip rendered for review only (its GIF and contact-sheet row), never shipped.
+  A clip the game plays (GAME_ANIMS) can't be one.
+- `bob_m` and `bob_hz`: a hover, the figure bobbing up and down by bob_m metres at bob_hz cycles a second.
+  Both are 0 (off) by default; a bob needs a rate.
+- `stride_m`: a stride length in metres that replaces the measured one, for a floating unit with no foot contact.
+
 Held gear is a separate recipe (spec §6.2a): a prop, art-src/props/<id>/spec.toml,
 bought as its own textured, unrigged model. A unit lists what it carries as
 `[[attach]]` tables (prop, bone, offset, rotation); the renderer fixes each
@@ -35,6 +42,8 @@ MAX_PROMPT = 800
 MAX_CANDIDATES = 9999  # candidates are labelled cand-1 to cand-9999, the widest a model/PICK marker may hold
 POLYCOUNT_RANGE = (100, 300000)  # what Meshy's target_polycount accepts
 LOOPING = frozenset({"idle", "walk"})
+# Mirrors UnitArtBuilder.GAME_ANIMS: the clips the game plays. Anything else is an audition.
+GAME_ANIMS: frozenset[str] = frozenset({"idle", "walk", "attack", "die", "shoot", "throw", "cast", "place"})
 RIG_CLIPS = frozenset({"walk", "run"})
 # Unit and prop names become folder names under art-src, so they must not hold path pieces.
 NAME = re.compile(r"[a-z][a-z0-9_]{0,31}")
@@ -62,6 +71,10 @@ class AnimEntry:
     action_id: int | None
     impact: float | None
     loop: bool
+    audition: bool = False  # rendered for review only: no game sheet, no sidecar entry
+    bob_m: float = 0.0  # hover: how far the figure rises and falls (m); 0 is no bob
+    bob_hz: float = 0.0  # hover: cycles a second; above 0 whenever bob_m is
+    stride_m: float | None = None  # replaces the measured stride (m) when no foot touches the ground
 
 
 @dataclass(frozen=True)
@@ -318,6 +331,20 @@ def _anim(name: str, entry: dict[str, Any]) -> AnimEntry:
     impact = entry.get("impact")
     if impact is not None and not 0.0 <= float(impact) <= 1.0:
         raise SpecError(f"animation {name}: impact is a fraction of the clip, 0..1")
+    audition = entry.get("audition", False)
+    if not isinstance(audition, bool):
+        raise SpecError(f"animation {name}: audition is true or false")
+    if audition and name in GAME_ANIMS:
+        raise SpecError(f"animation {name}: a clip the game plays can't be an audition")
+    bob_m = _non_negative(name, "bob_m", entry.get("bob_m", 0.0))
+    bob_hz = _non_negative(name, "bob_hz", entry.get("bob_hz", 0.0))
+    if bob_m > 0 and bob_hz <= 0:
+        raise SpecError(f"animation {name}: a bob needs bob_hz > 0")
+    stride_m = entry.get("stride_m")
+    if stride_m is not None:
+        if not _is_number(stride_m) or stride_m <= 0:
+            raise SpecError(f"animation {name}: stride_m must be a finite number above 0, not {str(stride_m)[:40]!r}")
+        stride_m = float(stride_m)
     return AnimEntry(
         name=name,
         file=str(file),
@@ -325,4 +352,15 @@ def _anim(name: str, entry: dict[str, Any]) -> AnimEntry:
         action_id=int(action) if action is not None else None,
         impact=float(impact) if impact is not None else None,
         loop=name in LOOPING,
+        audition=audition,
+        bob_m=bob_m,
+        bob_hz=bob_hz,
+        stride_m=stride_m,
     )
+
+
+def _non_negative(name: str, key: str, value: Any) -> float:
+    """A finite number of 0 or more. TOML `true` would pass as 1, and `nan` would pass every comparison."""
+    if not _is_number(value) or value < 0:
+        raise SpecError(f"animation {name}: {key} must be a finite number, 0 or more, not {str(value)[:40]!r}")
+    return float(value)

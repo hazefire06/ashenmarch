@@ -46,11 +46,12 @@ action = 219
 clip = "Right_Hand_Sword_Slash"
 impact = 0.45
 
-# Auditioned on the contact sheet only; the game plays "attack".
+# Auditioned on the contact sheet only (review/), never shipped; the game plays "attack".
 [animations.attack_alt]
 action = 97
 clip = "Left_Slash"
 impact = 0.45
+audition = true
 
 [animations.die]
 action = 189

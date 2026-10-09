@@ -8,7 +8,7 @@ import unittest
 from pathlib import Path
 
 from clips import pick_clip
-from unit_spec import MAX_CANDIDATES, AnimEntry, AttachEntry, PropSpec, SpecError, animation_file, load_prop_spec, load_spec, load_style
+from unit_spec import MAX_CANDIDATES, AnimEntry, AttachEntry, PropSpec, SpecError, UnitSpec, animation_file, load_prop_spec, load_spec, load_style
 
 ART_SRC = Path(__file__).resolve().parent.parent.parent / "art-src"
 # TOML values that are not a whole number of 0 or more (a count), or not a whole number from 100 to 300000 (a polycount).
@@ -27,6 +27,7 @@ class ShieldmanSpecTest(unittest.TestCase):
         self.assertEqual((walk.file, walk.action_id, walk.loop), ("anims/rig_walk.glb", None, True))
         attack = spec.animations[2]
         self.assertEqual((attack.file, attack.clip, attack.impact, attack.loop), ("anims/actions.glb", "Right_Hand_Sword_Slash", 0.45, False))
+        self.assertTrue(next(a for a in spec.animations if a.name == "attack_alt").audition)
 
     def test_the_full_prompt_fits_meshy(self) -> None:
         spec = load_spec(ART_SRC / "units" / "shieldman" / "spec.toml")
@@ -452,3 +453,42 @@ class PickClipTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class A3RecipeFieldsTest(unittest.TestCase):
+    def _load(self, animations: str) -> UnitSpec:
+        folder = Path(self._tmp.name) / "unit_x"
+        folder.mkdir(exist_ok=True)  # the refusal test loads several recipes in one test
+        (folder / "spec.toml").write_text(
+            'id = "unit_x"\nfaction = "dark"\nheight_m = 1.8\nprompt = "x"\n' + animations, encoding="utf-8")
+        return load_spec(folder / "spec.toml")
+
+    def setUp(self) -> None:
+        self._tmp = tempfile.TemporaryDirectory()
+
+    def tearDown(self) -> None:
+        self._tmp.cleanup()
+
+    def test_new_fields_default_off(self) -> None:
+        spec = self._load('[animations.idle]\naction = 0\nclip = "Idle"\n')
+        entry = spec.animations[0]
+        self.assertEqual((entry.audition, entry.bob_m, entry.bob_hz, entry.stride_m), (False, 0.0, 0.0, None))
+
+    def test_an_audition_clip_parses(self) -> None:
+        spec = self._load('[animations.attack_alt]\naction = 128\nclip = "Heavy_Hammer_Swing"\nimpact = 0.5\naudition = true\n')
+        self.assertTrue(spec.animations[0].audition)
+
+    def test_a_game_clip_cannot_be_an_audition(self) -> None:
+        with self.assertRaises(SpecError):
+            self._load('[animations.attack]\naction = 97\nclip = "Left_Slash"\naudition = true\n')
+
+    def test_hover_and_stride_parse(self) -> None:
+        spec = self._load('[animations.walk]\naction = 0\nclip = "Idle"\nbob_m = 0.08\nbob_hz = 0.8\nstride_m = 1.2\n')
+        entry = spec.animations[0]
+        self.assertEqual((entry.bob_m, entry.bob_hz, entry.stride_m), (0.08, 0.8, 1.2))
+
+    def test_bad_hover_and_stride_are_refused(self) -> None:
+        for bad in ("bob_m = -0.1\nbob_hz = 1.0\n", "bob_m = 0.1\n", "bob_m = 0.1\nbob_hz = 0.0\n",
+                    "bob_m = nan\nbob_hz = 1.0\n", "stride_m = 0.0\n", "stride_m = inf\n", "bob_m = true\nbob_hz = 1.0\n"):
+            with self.subTest(bad=bad), self.assertRaises(SpecError):
+                self._load('[animations.walk]\naction = 0\nclip = "Idle"\n' + bad)
