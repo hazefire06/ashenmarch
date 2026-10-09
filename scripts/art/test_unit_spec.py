@@ -3,12 +3,13 @@ from __future__ import annotations
 
 import json
 import math
+import re
 import tempfile
 import unittest
 from pathlib import Path
 
 from clips import pick_clip
-from unit_spec import MAX_CANDIDATES, AnimEntry, AttachEntry, PropSpec, SpecError, UnitSpec, animation_file, load_prop_spec, load_spec, load_style
+from unit_spec import GAME_ANIMS, MAX_CANDIDATES, AnimEntry, AttachEntry, PropSpec, SpecError, UnitSpec, animation_file, load_prop_spec, load_spec, load_style
 
 ART_SRC = Path(__file__).resolve().parent.parent.parent / "art-src"
 # TOML values that are not a whole number of 0 or more (a count), or not a whole number from 100 to 300000 (a polycount).
@@ -451,10 +452,6 @@ class PickClipTest(unittest.TestCase):
             pick_clip(["A|Walk", "A|Run"], None)
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class A3RecipeFieldsTest(unittest.TestCase):
     def _load(self, animations: str) -> UnitSpec:
         folder = Path(self._tmp.name) / "unit_x"
@@ -482,6 +479,18 @@ class A3RecipeFieldsTest(unittest.TestCase):
         with self.assertRaises(SpecError):
             self._load('[animations.attack]\naction = 97\nclip = "Left_Slash"\naudition = true\n')
 
+    def test_an_audition_must_be_a_real_boolean(self) -> None:
+        for bad in ("audition = 1\n", 'audition = "true"\n', "audition = 0\n"):
+            with self.subTest(bad=bad), self.assertRaisesRegex(SpecError, "true or false"):
+                self._load('[animations.attack_alt]\naction = 128\nclip = "Heavy_Hammer_Swing"\n' + bad)
+
+    def test_game_anims_match_the_builders_list(self) -> None:
+        # GAME_ANIMS is mirrored by hand from the GDScript constant, which spans several lines.
+        source = (Path(__file__).resolve().parent / "unit_art_builder.gd").read_text(encoding="utf-8")
+        block = re.search(r"const GAME_ANIMS: Array\[StringName\] = \[(.*?)\]", source, re.DOTALL)
+        self.assertIsNotNone(block, "GAME_ANIMS not found in unit_art_builder.gd")
+        self.assertEqual(set(re.findall(r'&"(\w+)"', block.group(1))), GAME_ANIMS)
+
     def test_hover_and_stride_parse(self) -> None:
         spec = self._load('[animations.walk]\naction = 0\nclip = "Idle"\nbob_m = 0.08\nbob_hz = 0.8\nstride_m = 1.2\n')
         entry = spec.animations[0]
@@ -489,6 +498,11 @@ class A3RecipeFieldsTest(unittest.TestCase):
 
     def test_bad_hover_and_stride_are_refused(self) -> None:
         for bad in ("bob_m = -0.1\nbob_hz = 1.0\n", "bob_m = 0.1\n", "bob_m = 0.1\nbob_hz = 0.0\n",
-                    "bob_m = nan\nbob_hz = 1.0\n", "stride_m = 0.0\n", "stride_m = inf\n", "bob_m = true\nbob_hz = 1.0\n"):
+                    "bob_m = nan\nbob_hz = 1.0\n", "stride_m = 0.0\n", "stride_m = inf\n", "bob_m = true\nbob_hz = 1.0\n",
+                    "bob_m = 0.1\nbob_hz = true\n", "stride_m = true\n"):
             with self.subTest(bad=bad), self.assertRaises(SpecError):
                 self._load('[animations.walk]\naction = 0\nclip = "Idle"\n' + bad)
+
+
+if __name__ == "__main__":
+    unittest.main()

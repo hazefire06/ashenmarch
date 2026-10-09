@@ -24,9 +24,10 @@ Blender's Python imports this file too.
 A recipe is checked as it loads, because its values buy things or name files:
 candidate counts and the polycount are whole numbers in range, animation names
 are plain names, and an animation takes its clip from the rig or a library
-action, never both. A recipe with no [candidates] table loads (the renderer
-needs no candidates) but buys nothing; one that has the table lists at least
-one candidate.
+action, never both. An audition is never a clip the game plays, a bob has a
+rate, and a stride is above zero. A recipe with no [candidates] table loads
+(the renderer needs no candidates) but buys nothing; one that has the table
+lists at least one candidate.
 """
 from __future__ import annotations
 
