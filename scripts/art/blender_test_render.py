@@ -15,6 +15,8 @@ follows it, but props attach to it. Its clips:
   while two foot boxes, on LeftFoot and RightFoot, take turns sliding
   backward while planted, one 1.2 m stride per cycle (the way Meshy's rig
   walk plays).
+Any clip can also be exported with no action at all (animated=False), which
+the renderer must refuse.
 The prop, "stick", is a blue 0.6 x 0.2 x 0.2 m box, long along its own X,
 whose recipe sizes it to 0.9 m. A second prop, "slant", is a thin stick
 with a pommel, generated lying diagonally in its own frame the way the
@@ -33,6 +35,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 import bmesh
 import bpy
@@ -61,6 +64,11 @@ STICK_M = 0.9
 # 1.8 m head, so a fit that counted it would shrink the body by about 11 px.
 STICK_OFFSET = (0.1, 0.6, 0.45)
 STICK_ROTATION = (20.0, 30.0, 90.0)
+# In Hand's axes: back over the body's centre line (Y is world +X) and 1 m up, which centres the stick (lying level,
+# 0.3 m thick) 0.5 m above the top of the 1.8 m head. It raises the figure's extents but must not raise its height.
+ABOVE_THE_HEAD_OFFSET = (0.0, -HAND_HEAD[0], 1.0)
+# The fixture's body at rest, as (centre, size) boxes: the 0.5 x 0.3 x 1.8 m block and the red nose on its chest.
+BODY_BOXES = (((0.0, 0.0, 0.9), (0.5, 0.3, 1.8)), ((0.0, -0.25, 1.0), (0.2, 0.2, 0.2)))
 # The slant: a thin 0.6 m stick with a 0.1 m pommel past its +X end (0.65 m in all), turned 45 degrees about Y before
 # export. Its bounding box is only 0.52 m on its longest side, so sizing by the box would make it 1.13 m, not 0.9.
 # The pommel puts its vertices' mean 0.12 m from its bounding box's centre, which is where it must be centred.
@@ -96,6 +104,11 @@ ATTACK = """
 file = "anims/idle.glb"
 impact = 0.5
 """
+AUDITION = """
+[animations.idle_alt]
+file = "anims/idle.glb"
+audition = true
+"""
 STICK_SPEC = """id = "stick"
 faction = "light"
 length_m = 0.9
@@ -104,10 +117,11 @@ prompt = "test stick"
 EXTENTS = re.compile(r"extents (\w+): lowest (-?[\d.]+) above the bottom, highest (-?[\d.]+), half-width (-?[\d.]+) \(cell (\d+)\)")
 
 
-def attach_toml(bone: str, prop: str = "stick", rotation: tuple[float, float, float] = STICK_ROTATION) -> str:
-    """The unit's [[attach]] table for a prop, at STICK_OFFSET and (by default) STICK_ROTATION."""
+def attach_toml(bone: str, prop: str = "stick", rotation: tuple[float, float, float] = STICK_ROTATION,
+                offset: tuple[float, float, float] = STICK_OFFSET) -> str:
+    """The unit's [[attach]] table for a prop, by default at STICK_OFFSET and STICK_ROTATION."""
     return (f'\n[[attach]]\nprop = "{prop}"\nbone = "{bone}"\n'
-            f"offset = [{', '.join(map(str, STICK_OFFSET))}]\nrotation = [{', '.join(map(str, rotation))}]\n")
+            f"offset = [{', '.join(map(str, offset))}]\nrotation = [{', '.join(map(str, rotation))}]\n")
 
 
 def fixture_spec(*parts: str, height: float = 1.8, bone: str = "Hand", attach: bool = False) -> str:
@@ -146,8 +160,11 @@ def foot_path(phase: float) -> Vector:
     return Vector((0.0, STRIDE_M * (0.25 - 0.5 * u), 0.12 * math.sin(math.pi * u)))
 
 
-def build_fixture(path: Path, clip: str, parented: bool = False) -> None:
+def build_fixture(path: Path, clip: str, parented: bool = False, animated: bool = True) -> None:
     """Writes the fixture GLB with one clip: idle, walk, rise, in_place (1 s) or in_place_slow (2 s).
+
+    Without animated, the clip is keyed but not exported: the file holds the
+    rig and the body and no action.
 
     With parented, the armature hangs under an Empty scaled 0.01 and is
     itself scaled 100 (net identity), the way some exporters hand over a
@@ -221,7 +238,7 @@ def build_fixture(path: Path, clip: str, parented: bool = False) -> None:
             key("Hips", frame, Vector())
         for name in feet:
             key(name, frame, foot_path(t if name == "LeftFoot" else (t + 0.5) % 1.0))
-    bpy.ops.export_scene.gltf(filepath=str(path), export_format="GLB", export_animations=True)
+    bpy.ops.export_scene.gltf(filepath=str(path), export_format="GLB", export_animations=animated)
 
 
 def build_stick(path: Path) -> None:
@@ -295,6 +312,41 @@ def render(root: Path) -> tuple[Path, dict, str]:
         sidecar = rs.render_unit("fixture", root / "art-src", root / "assets" / "units", engine="WORKBENCH")
     print(printed.getvalue(), end="")
     return root / "assets" / "units" / "fixture", sidecar, printed.getvalue()
+
+
+def render_fixture(root: Path, parented: bool = False) -> tuple[Path, dict, str]:
+    """Builds the plain fixture (idle, walk and rise) under root, a folder with no art-src yet, and renders it."""
+    make_unit(root, fixture_spec(IDLE, WALK, RISE), {"idle": "idle", "walk": "walk", "rise": "rise"}, parented)
+    return render(root)
+
+
+def render_fixture_with_prop_above_the_head(root: Path) -> tuple[dict, str]:
+    """The fixture's idle carrying the stick on Hand, moved to 0.5 m above the head, built and rendered in a new
+    folder under root; returns (sidecar, what it printed)."""
+    variant = Path(tempfile.mkdtemp(dir=root))
+    make_unit(variant, HEAD.format(height=1.8) + attach_toml("Hand", rotation=(0.0, 0.0, 0.0), offset=ABOVE_THE_HEAD_OFFSET) + IDLE,
+              {"idle": "idle"}, stick=True)
+    _, sidecar, printed = render(variant)
+    return sidecar, printed
+
+
+def render_fixture_with_audition(root: Path) -> tuple[dict, Path, Path]:
+    """The fixture's idle plus an audition, idle_alt, from the same file, built and rendered in a new folder under
+    root; returns (sidecar, the unit's assets folder, its review folder)."""
+    variant = Path(tempfile.mkdtemp(dir=root))
+    unit_dir = make_unit(variant, fixture_spec(IDLE, AUDITION), {"idle": "idle"})
+    out, sidecar, _ = render(variant)
+    return sidecar, out, unit_dir / "review"
+
+
+def render_fixture_without_actions(root: Path, clip: str | None = "walk") -> dict:
+    """The fixture's walk re-exported without its action, as anims/static.glb, under a walk entry that names clip
+    (or none), built and rendered in a new folder under root; returns the sidecar, if it renders at all."""
+    variant = Path(tempfile.mkdtemp(dir=root))
+    named = f'clip = "{clip}"\n' if clip is not None else ""
+    unit_dir = make_unit(variant, fixture_spec(f'\n[animations.walk]\nfile = "anims/static.glb"\n{named}'), {})
+    build_fixture(unit_dir / "anims" / "static.glb", "walk", animated=False)
+    return render(variant)[1]
 
 
 def at(sheet: np.ndarray, row: int, column: int, size: int = rs.CELL) -> np.ndarray:
@@ -383,6 +435,12 @@ def extents(printed: str) -> dict[str, tuple[float, float, float, int]]:
     return {m[1]: (float(m[2]), float(m[3]), float(m[4]), int(m[5])) for m in EXTENTS.finditer(printed)}
 
 
+def body_corners() -> np.ndarray:
+    """World corners (16, 3) of the fixture's body at rest, as it stands in idle."""
+    return np.array([(cx + x * sx / 2, cy + y * sy / 2, cz + z * sz / 2)
+                     for (cx, cy, cz), (sx, sy, sz) in BODY_BOXES for x in (-1, 1) for y in (-1, 1) for z in (-1, 1)])
+
+
 def body_rows_in_front_view() -> tuple[float, float]:
     """Where the fixture's 0.5 x 0.3 x 1.8 m body lands in direction 4, in px from the bottom: its near bottom edge and far top edge."""
     return (rs.FEET_PX - 0.15 * math.sin(ELEVATION) * rs.PIXELS_PER_METER,
@@ -393,9 +451,9 @@ class RenderSpritesTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls._tmp = tempfile.TemporaryDirectory()
-        root = Path(cls._tmp.name)
-        cls.unit_dir = make_unit(root, fixture_spec(IDLE, WALK, RISE), {"idle": "idle", "walk": "walk", "rise": "rise"})
-        cls.out, cls.sidecar, cls.printed = render(root)
+        cls.root = Path(cls._tmp.name)
+        cls.unit_dir = cls.root / "art-src" / "units" / "fixture"
+        cls.out, cls.sidecar, cls.printed = render_fixture(cls.root)
         cls.walk = rs.read_rgba(cls.out / "walk.png")
         cls.idle = rs.read_rgba(cls.out / "idle.png")
         cls.rise = rs.read_rgba(cls.out / "rise.png")
@@ -485,6 +543,78 @@ class RenderSpritesTest(unittest.TestCase):
 
     def test_extents_are_not_in_the_sidecar(self) -> None:
         self.assertNotIn("extents", self.sidecar["animations"]["idle"])
+
+    def test_figure_height_comes_from_the_body_not_the_props(self) -> None:
+        # The fixture block is 1.8 m tall, seen from 50 degrees: its top sits at (highest px - FEET_PX) /
+        # PIXELS_PER_METER, worst over the directions (a diagonal view shows the far top corner highest).
+        plain = self.sidecar["figure_height_m"]
+        self.assertGreater(plain, 1.0)
+        self.assertLess(plain, 1.8)
+        highest = max(float(rs.project(body_corners(), d)[1].max()) for d in range(rs.DIRECTIONS))
+        self.assertAlmostEqual(plain, (highest - rs.FEET_PX) / rs.PIXELS_PER_METER, delta=0.005)
+        self.assertNotIn("figure_px", self.sidecar["animations"]["idle"])
+        # A stick 0.5 m above the head reaches well past the body in the extents, and doesn't raise the figure.
+        with_prop, printed = render_fixture_with_prop_above_the_head(self.root)
+        self.assertGreater(extents(printed)["idle"][1], highest + 10.0, "the prop does stand above the head")
+        self.assertAlmostEqual(with_prop["figure_height_m"], plain, delta=0.01)
+
+    def test_an_audition_clip_is_review_only(self) -> None:
+        sidecar, assets, review = render_fixture_with_audition(self.root)
+        self.assertNotIn("idle_alt", sidecar["animations"])
+        self.assertFalse((assets / "idle_alt.png").exists())
+        self.assertFalse((assets / "idle_alt.png.import").exists())
+        self.assertTrue((review / "idle_alt.gif").exists())
+        self.assertEqual(rs.read_rgba(review / "contact.png").shape[0], 2 * rs.STRIDE, "a contact-sheet row each: idle, idle_alt")
+        self.assertIn("idle", sidecar["animations"], "the game's clips still ship")
+        self.assertTrue((assets / "idle.png").exists())
+
+
+class RenderGuardTest(unittest.TestCase):
+    """What stops a render before its work is wasted. Each test builds its own fixture in its own folder."""
+
+    def setUp(self) -> None:
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.root = Path(self._tmp.name)
+
+    def test_a_sheet_taller_than_4096_px_is_refused(self) -> None:
+        # 4096 px holds 24 rows of 168 px: three rows of 24 frames for each of 8 directions, 72 frames at most.
+        self.assertEqual(rs.MAX_SHEET_ROWS, 24)
+        self.assertLessEqual(rs.DIRECTIONS * rs.sheet_layout(72)[1], rs.MAX_SHEET_ROWS)
+        self.assertGreater(rs.DIRECTIONS * rs.sheet_layout(73)[1], rs.MAX_SHEET_ROWS)
+        # With room for 8 rows, idle (one row a direction) renders and rise (30 frames, two rows a direction) is
+        # refused before any of its frames are drawn.
+        make_unit(self.root, fixture_spec(IDLE, RISE), {"idle": "idle", "rise": "rise"})
+        with mock.patch.object(rs, "MAX_SHEET_ROWS", 8), mock.patch.object(rs, "render_to", wraps=rs.render_to) as drawn:
+            with self.assertRaisesRegex(RuntimeError, "rise: 30 frames .* taller than"):
+                render(self.root)
+        self.assertEqual(drawn.call_count, rs.DIRECTIONS, "idle's frames only")
+        self.assertFalse((self.root / "assets" / "units" / "fixture" / "fixture.json").exists())
+
+    def test_a_clip_whose_file_has_no_animation_is_an_error(self) -> None:
+        # The fixture's walk GLB, re-exported without its action, under an entry that names a clip: the render must
+        # stop, not draw one frame. An entry naming no clip (as a rig walk does) is refused just the same.
+        for clip in ("walk", None):
+            with self.subTest(clip=clip), mock.patch.object(rs, "render_to", wraps=rs.render_to) as drawn:
+                with self.assertRaisesRegex(RuntimeError, "static.glb: no animation"):
+                    render_fixture_without_actions(self.root, clip)
+                self.assertEqual(drawn.call_count, 0)
+
+    def test_ffmpeg_is_checked_before_rendering(self) -> None:
+        # Every entry point checks before it resets the scene or imports a file, so nothing is loaded or drawn.
+        with mock.patch.object(rs.shutil, "which", return_value=None), \
+                mock.patch.object(rs, "import_glb", wraps=rs.import_glb) as imported:
+            with self.assertRaisesRegex(RuntimeError, "ffmpeg"):
+                render_fixture(self.root, parented=False)
+            for call in (lambda: rs.render_attach("fixture", self.root / "art-src", engine="WORKBENCH"),
+                         lambda: rs.render_candidates("fixture", self.root / "art-src", engine="WORKBENCH"),
+                         lambda: rs.render_prop_candidates("stick", self.root / "art-src")):
+                with self.assertRaisesRegex(RuntimeError, "ffmpeg"):
+                    call()
+        self.assertEqual(imported.call_count, 0, "no file was imported")
+        # nothing was rendered: no frames, no sheets
+        self.assertFalse(any(self.root.rglob("*.png")))
+        self.assertFalse((self.root / "assets").exists())
 
 
 class ParentedRenderTest(unittest.TestCase):

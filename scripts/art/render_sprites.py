@@ -21,11 +21,22 @@ cancelled, so the unit animates in place; the walk's travel per cycle is
 saved as stride_m, so the game can play the legs at ground speed. A clip
 that already plays in place (Meshy's rig walk) has its stride measured from
 the planted foot instead. The unit's props (spec §6.2a) are fixed to their
-bones after the height fit, so they never count toward it. Sheets wrap at
-MAX_SHEET_PX wide. Sheets, import settings and a JSON sidecar go to
-assets/units/<unit>/. The contact sheet, per-animation GIFs and the attach
+bones after the height fit, so they never count toward it. The sidecar's
+figure_height_m is how tall the drawn body stands above the feet, worst over
+idle's frames and directions, props excluded (a raised sword doesn't count).
+
+Sheets wrap at MAX_SHEET_PX wide. Sheets, import settings and a JSON sidecar go
+to assets/units/<unit>/. The contact sheet, per-animation GIFs and the attach
 preview go to art-src/units/<unit>/review/; a prop's candidate sheet to
-art-src/props/<prop>/review/. Nothing is written, or read, through a symlink.
+art-src/props/<prop>/review/. An audition clip (`audition = true`) is for
+review only: its GIF and contact-sheet row, but no sheet, import settings or
+sidecar entry. Nothing is written, or read, through a symlink.
+
+Three guards stop a render before the work is wasted: ffmpeg must be on the
+PATH before anything loads; a clip's file must hold an animation (one with
+none would be a single still); and a sheet may be at most MAX_SHEET_PX tall
+(MAX_SHEET_ROWS rows, 72 frames at 12 fps), checked before the clip's frames
+are drawn. Auditions make no sheet, so the height cap skips them.
 """
 from __future__ import annotations
 
@@ -60,6 +71,7 @@ FEET_PX = 40
 PIXELS_PER_METER = 52.0
 # Web (WebGL) may cap textures at 4096 px, so a long animation's frames wrap onto more rows.
 MAX_SHEET_PX = 4096
+MAX_SHEET_ROWS = MAX_SHEET_PX // STRIDE  # 24 rows of 168 px; 8 directions x 3 = 72 frames at most
 ELEVATION_DEG = 50.0
 DIRECTIONS = 8
 FPS = 12
@@ -112,7 +124,7 @@ class Staged:
     armature: bpy.types.Object
     holder: bpy.types.Object
     base: Vector
-    action: bpy.types.Action | None
+    action: bpy.types.Action
     start: float
     end: float
     frames: list[float]
@@ -561,6 +573,11 @@ def opaque_mean_color(path: Path) -> list[float]:
     return [round(float(c), 3) for c in solid[:, :3].mean(axis=0)]
 
 
+def require_ffmpeg() -> None:
+    if shutil.which("ffmpeg") is None:
+        raise RuntimeError("ffmpeg not found (brew install ffmpeg); checked before rendering so no work is wasted")
+
+
 def ffmpeg(*args: str) -> None:
     exe = shutil.which("ffmpeg")
     if exe is None:
@@ -625,13 +642,14 @@ def stage_animation(spec: UnitSpec, glb: Path, entry: AnimEntry, props: list[Pro
     configure_render(engine, size)
     camera = make_camera()
     armature, actions = import_glb(glb)
+    if not actions:  # every clip, a rig walk with no clip name included: drawn, it would be one still frame
+        named = f", but it names clip {entry.clip!r}" if entry.clip else ""
+        raise RuntimeError(f"{glb.name}: no animation in the file, so {entry.name} has nothing to play{named}")
     holder = adopt_imports(camera)
-    action = None
-    if actions:
-        name = pick_clip([a.name for a in actions], entry.clip)
-        action = next(a for a in actions if a.name == name)
-        assign(armature, action)
-    start, end = (float(action.frame_range[0]), float(action.frame_range[1])) if action else (1.0, 1.0)
+    name = pick_clip([a.name for a in actions], entry.clip)
+    action = next(a for a in actions if a.name == name)
+    assign(armature, action)
+    start, end = float(action.frame_range[0]), float(action.frame_range[1])
     set_frame(start)
     fit(holder, spec.height_m)
     prop_meshes = attach_props(armature, props, start)  # after fit(), so props never count toward the height
@@ -655,29 +673,45 @@ def impact_index(entry: AnimEntry, frames: int) -> int:
 
 
 def render_animation(spec: UnitSpec, glb: Path, entry: AnimEntry, props: list[Prop], frames_dir: Path, engine: str) -> dict[str, Any]:
+    """Draws one animation's frames into frames_dir; returns its sidecar entry, plus "clipped" and, for idle,
+    "figure_px" (the body's highest px above the feet, props excluded) for render_unit to take out."""
     staged = stage_animation(spec, glb, entry, props, engine)
+    frames = len(staged.frames)
+    columns, rows = sheet_layout(frames)
+    # Checked before any frame is drawn. An audition makes no sheet, so it may run long.
+    if not entry.audition and DIRECTIONS * rows > MAX_SHEET_ROWS:
+        raise RuntimeError(f"{entry.name}: {frames} frames at {FPS} fps makes a sheet {DIRECTIONS * rows * STRIDE} px tall, "
+                           f"taller than the {MAX_SHEET_ROWS} rows of {STRIDE} px that fit in {MAX_SHEET_PX}; "
+                           "pick a shorter clip or mark it audition = true")
     stride_m = 0.0
-    if staged.action is not None and entry.name in ("walk", "run"):
+    if entry.name in ("walk", "run"):
         stride_m = measure_stride(staged, entry)
 
+    body = [o for o in bpy.context.scene.objects if o.type == "MESH" and o not in staged.prop_meshes]
+    figure = entry.name == "idle"
     clipped: list[str] = []
     extents = Extents()
+    body_extents = Extents()
     for i, frame in enumerate(staged.frames):
         pose_at(staged, frame)
-        points = world_vertices()
+        body_points = world_vertices(body)
+        points = np.concatenate([body_points, world_vertices(staged.prop_meshes)])
         for d in range(DIRECTIONS):
             place_camera(staged.camera, d)
             extents.add(points, d)
+            if figure:
+                body_extents.add(body_points, d)
             path = frames_dir / f"d{d}" / f"f{i:03d}.png"
             render_to(path)
             if touches_border(path):
                 clipped.append(f"{entry.name}/d{d}f{i}")
     print(extents.line(entry.name))
-    frames = len(staged.frames)
-    columns, rows = sheet_layout(frames)
-    return {"sheet": f"{entry.name}.png", "frames": frames, "fps": FPS, "loop": entry.loop,
-            "impact_frame": impact_index(entry, frames), "stride_m": round(stride_m, 4),
-            "columns": columns, "rows_per_direction": rows, "clipped": clipped}
+    info: dict[str, Any] = {"sheet": f"{entry.name}.png", "frames": frames, "fps": FPS, "loop": entry.loop,
+                            "impact_frame": impact_index(entry, frames), "stride_m": round(stride_m, 4),
+                            "columns": columns, "rows_per_direction": rows, "clipped": clipped}
+    if figure and math.isfinite(body_extents.highest):
+        info["figure_px"] = body_extents.highest - FEET_PX
+    return info
 
 
 def key_frame(name: str, info: dict[str, Any]) -> int:
@@ -691,6 +725,7 @@ def key_frame(name: str, info: dict[str, Any]) -> int:
 
 
 def render_unit(unit: str, src_root: Path, out_root: Path, engine: str = "EEVEE", repo: Path | None = None) -> dict[str, Any]:
+    require_ffmpeg()
     unit_dir = src_root / "units" / unit
     out_dir = out_root / unit
     review = unit_dir / "review"
@@ -713,14 +748,19 @@ def render_unit(unit: str, src_root: Path, out_root: Path, engine: str = "EEVEE"
         for entry in spec.animations:
             frames_dir = work / entry.name
             info = render_animation(spec, animation_file(unit_dir, entry), entry, props, frames_dir, engine)
-            sidecar["clipped"] += info.pop("clipped")
-            sheet = out_dir / info["sheet"]
-            tile(sheet_cells(frames_dir, info["frames"]), info["columns"], DIRECTIONS * info["rows_per_direction"], sheet)
-            write_import_settings(sheet)
+            sidecar["clipped"] += info.pop("clipped")  # an audition's count too: it is reviewed
+            figure_px = info.pop("figure_px", None)
+            if figure_px is not None:
+                sidecar["figure_height_m"] = round(figure_px / PIXELS_PER_METER, 3)
+                print(f"figure height: {sidecar['figure_height_m']:.3f} m ({figure_px:.1f} px above the feet, props excluded)")
+            if not entry.audition:  # an audition is for review only: no sheet, no import settings, no sidecar entry
+                sheet = out_dir / info["sheet"]
+                tile(sheet_cells(frames_dir, info["frames"]), info["columns"], DIRECTIONS * info["rows_per_direction"], sheet)
+                write_import_settings(sheet)
+                sidecar["animations"][entry.name] = info
             gif(frames_dir, info["frames"], review / f"{entry.name}.gif")
             k = key_frame(entry.name, info)
             contact += [frames_dir / f"d{d}" / f"f{k:03d}.png" for d in range(DIRECTIONS)]
-            sidecar["animations"][entry.name] = info
         tile(contact, DIRECTIONS, len(spec.animations), review / "contact.png")
         first = "idle" if "idle" in sidecar["animations"] else spec.animations[0].name
         sidecar["gib_color"] = opaque_mean_color(work / first / "d4" / "f000.png")
@@ -737,9 +777,11 @@ def render_attach(unit: str, src_root: Path, engine: str = "EEVEE", repo: Path |
     """The attach preview, for tuning offsets by eye: review/attach.png.
 
     Columns are directions 0, 2, 4 and 6; rows are idle's first frame, then
-    each attack* animation at its impact frame. Cells are twice the game
-    cell, through the same camera and pivot, so twice the pixels per metre.
+    each attack* animation at its impact frame, auditions included (tuning a
+    prop needs them). Cells are twice the game cell, through the same camera
+    and pivot, so twice the pixels per metre.
     """
+    require_ffmpeg()
     unit_dir = src_root / "units" / unit
     review = unit_dir / "review"
     repo = repo_root(src_root, repo)
@@ -775,6 +817,7 @@ def candidate_files(folder: Path) -> list[Path]:
 
 
 def render_candidates(unit: str, src_root: Path, engine: str = "EEVEE", repo: Path | None = None) -> Path:
+    require_ffmpeg()
     unit_dir = src_root / "units" / unit
     refuse_planted_links(repo_root(src_root, repo), [unit_dir, unit_dir / "review"])
     spec = load_spec(unit_dir / "spec.toml")
@@ -829,6 +872,7 @@ def configure_prop_review() -> bpy.types.Object:
 def render_prop_candidates(prop: str, src_root: Path, repo: Path | None = None) -> Path:
     """A prop's candidate sheet: one row per candidates/cand-N.glb, seen from
     the front, side, back and three-quarter above, each framed to its bounds."""
+    require_ffmpeg()
     prop_dir = src_root / "props" / prop
     refuse_planted_links(repo_root(src_root, repo), [prop_dir, prop_dir / "review"])
     load_prop_spec(prop_dir / "spec.toml")  # checks the recipe is there and its id matches
