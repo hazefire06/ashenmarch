@@ -1,0 +1,10 @@
+# The Longbow's bow (spec §6.2a, §11).
+id = "longbow_bow"
+faction = "light"
+length_m = 1.75
+prompt = "Tall wooden longbow, a single gently curved stave of yew with a leather-wrapped handgrip in the middle, taut bowstring, plain and sturdy"
+
+[candidates]
+lite = 2
+full = 0
+polycount = 6000

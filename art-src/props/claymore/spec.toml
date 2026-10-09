@@ -1,0 +1,10 @@
+# The Reaver's two-handed sword (spec §6.2a, §11).
+id = "claymore"
+faction = "light"
+length_m = 1.35
+prompt = "Scottish two-handed claymore greatsword, long straight double-edged steel blade, cross-guard with downward-angled arms ending in quatrefoils, long leather-wrapped grip, round wheel pommel"
+
+[candidates]
+lite = 2
+full = 0
+polycount = 6000

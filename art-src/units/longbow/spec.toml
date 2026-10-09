@@ -1,0 +1,36 @@
+# The Longbow's art recipe (spec §5, §11). Archer; the dagger in melee is too small to model.
+id = "longbow"
+faction = "light"
+height_m = 1.78
+prompt = "Scottish highland archer and gamekeeper, hooded cloak in muted green and brown hunting tartan, leather jerkin over a linen shirt, kilt, quiver of arrows on the back, hunting knife at the belt, short beard, weathered calm face, soft leather boots, empty hands"
+die_falls_forward = true
+
+[[attach]]
+prop = "longbow_bow"
+bone = "LeftHand"
+
+[candidates]
+lite = 4
+full = 0
+polycount = 30000
+
+[animations.idle]
+action = 0
+clip = "Idle"
+
+[animations.walk]
+rig = "walk"
+
+[animations.shoot]
+action = 224
+clip = "Archery_Shot"
+impact = 0.55
+
+[animations.attack]
+action = 97
+clip = "Left_Slash"
+impact = 0.45
+
+[animations.die]
+action = 184
+clip = "Shot_and_Fall_Forward"

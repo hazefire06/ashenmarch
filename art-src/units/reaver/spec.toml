@@ -1,0 +1,38 @@
+# The Reaver's art recipe (spec §5, §11). Shock melee: bare-chested berserker.
+id = "reaver"
+faction = "light"
+height_m = 1.85
+prompt = "Scottish highland berserker, bare-chested and heavily muscled, blue woad swirl tattoos across chest and arms, wild mane of copper-red hair and a braided beard, kilt in dark red and green tartan held by a wide studded leather belt, leather bracers, fur-trimmed leather boots, battle scars, empty hands"
+die_falls_forward = false
+
+# Held gear (spec §6.2a); offsets and rotations solved from the meshes, then tuned with make art-attach.
+[[attach]]
+prop = "claymore"
+bone = "RightHand"
+
+[candidates]
+lite = 4
+full = 0
+polycount = 30000
+
+[animations.idle]
+action = 89
+clip = "Combat_Stance"
+
+[animations.walk]
+rig = "run"
+
+[animations.attack]
+action = 237
+clip = "Charged_Axe_Chop"
+impact = 0.5
+
+[animations.attack_alt]
+action = 128
+clip = "Heavy_Hammer_Swing"
+impact = 0.5
+audition = true
+
+[animations.die]
+action = 183
+clip = "Shot_and_Fall_Backward"
