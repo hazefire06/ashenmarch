@@ -20,8 +20,12 @@ it so every direction is lit alike. The root bone's horizontal travel is
 cancelled, so the unit animates in place; the walk's travel per cycle is
 saved as stride_m, so the game can play the legs at ground speed. A clip
 that already plays in place (Meshy's rig walk) has its stride measured from
-the planted foot instead. The unit's props (spec §6.2a) are fixed to their
-bones after the height fit, so they never count toward it. The sidecar's
+the planted foot instead, and a recipe's stride_m replaces either (a floating
+unit has no foot to measure). A recipe's bob_m and bob_hz lift the whole figure
+on a sine, stretched to a whole number of cycles per clip so a loop stays
+seamless; the lift counts in the extents and the figure's height. The unit's props
+(spec §6.2a) are fixed to their bones after the height fit, so they never count
+toward it. The sidecar's
 figure_height_m is how tall the drawn body stands above the feet, worst over
 idle's frames and directions, props excluded (a raised sword doesn't count).
 
@@ -661,12 +665,27 @@ def stage_animation(spec: UnitSpec, glb: Path, entry: AnimEntry, props: list[Pro
                   sample_frames(start, end, scene_fps(), entry.loop), prop_meshes)
 
 
-def pose_at(staged: Staged, frame: float) -> None:
-    """Poses the animation at frame, with the root's horizontal travel cancelled."""
+def bob_offset(entry: AnimEntry, start: float, end: float, frame: float, rate: float) -> float:
+    """Metres to lift the figure at frame: a sine of bob_m whose period is stretched so the
+    clip holds a whole number of cycles (at least one), so a looping clip stays seamless."""
+    if entry.bob_m <= 0.0:
+        return 0.0
+    duration = max((end - start) / rate, 1e-6)
+    cycles = max(1, round(entry.bob_hz * duration))
+    t = (frame - start) / rate
+    return entry.bob_m * math.sin(2.0 * math.pi * cycles * t / duration)
+
+
+def pose_at(staged: Staged, frame: float, entry: AnimEntry) -> None:
+    """Poses the animation at frame, with the root's horizontal travel cancelled and entry's hover bob added.
+
+    The bob lifts the whole figure (the Fit holder, which the props ride with) after the cancel and before any
+    vertex is read, so a bob counts in the extents, the clipping check and the figure's height."""
     staged.holder.location = staged.base
     set_frame(frame)
     xy = root_xy(staged.armature)
-    staged.holder.location = staged.base - Vector((xy.x, xy.y, 0.0))
+    lift = bob_offset(entry, staged.start, staged.end, frame, scene_fps())
+    staged.holder.location = staged.base - Vector((xy.x, xy.y, -lift))
     bpy.context.view_layer.update()
 
 
@@ -689,7 +708,8 @@ def render_animation(spec: UnitSpec, glb: Path, entry: AnimEntry, props: list[Pr
                            "pick a shorter clip or mark it audition = true")
     stride_m = 0.0
     if entry.name in ("walk", "run"):
-        stride_m = measure_stride(staged, entry)
+        # A recipe's stride_m stands in for the measurement: a floating unit has no foot on the ground to measure.
+        stride_m = entry.stride_m if entry.stride_m is not None else measure_stride(staged, entry)
 
     body = [o for o in bpy.context.scene.objects if o.type == "MESH" and o not in staged.prop_meshes]
     figure = entry.name == "idle"
@@ -697,7 +717,7 @@ def render_animation(spec: UnitSpec, glb: Path, entry: AnimEntry, props: list[Pr
     extents = Extents()
     body_extents = Extents()
     for i, frame in enumerate(staged.frames):
-        pose_at(staged, frame)
+        pose_at(staged, frame, entry)
         body_points = world_vertices(body)
         points = np.concatenate([body_points, world_vertices(staged.prop_meshes)])
         for d in range(DIRECTIONS):
@@ -811,7 +831,7 @@ def render_attach(unit: str, src_root: Path, engine: str = "EEVEE", repo: Path |
             if not cells:
                 print(f"bones of {unit}'s rig: {', '.join(b.name for b in staged.armature.pose.bones)}")
             count = len(staged.frames)
-            pose_at(staged, staged.frames[key_frame(entry.name, {"frames": count, "impact_frame": impact_index(entry, count)})])
+            pose_at(staged, staged.frames[key_frame(entry.name, {"frames": count, "impact_frame": impact_index(entry, count)})], entry)
             for d in ATTACH_VIEWS:
                 place_camera(staged.camera, d)
                 path = Path(tmp) / f"{entry.name}_d{d}.png"

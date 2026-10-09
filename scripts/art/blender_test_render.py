@@ -9,7 +9,8 @@ Hips. A second bone, Hand, sticks out sideways (+X) from the chest; no mesh
 follows it, but props attach to it. Its clips:
 - walk: carries it 1.2 m forward in one second with a small bob, while the
   hand drops 0.6 m and turns 90 degrees about its own Z;
-- idle: holds still;
+- idle: holds still (one frame);
+- still: holds still for 1 s (24 scene frames), for a clip with something to loop over;
 - rise: lifts it 1 m over 30 rendered frames, so its sheet wraps;
 - in place, over 1 s (in_place) or 2 s (in_place_slow): the root stays put
   while two foot boxes, on LeftFoot and RightFoot, take turns sliding
@@ -114,6 +115,12 @@ RISE_AUDITION = """
 file = "anims/rise.glb"
 audition = true
 """
+HOVER_IDLE = """
+[animations.idle]
+file = "anims/still.glb"
+bob_m = {bob_m}
+bob_hz = {bob_hz}
+"""
 RISING_IDLE = """
 [animations.idle]
 file = "anims/rise.glb"
@@ -170,7 +177,7 @@ def foot_path(phase: float) -> Vector:
 
 
 def build_fixture(path: Path, clip: str, parented: bool = False, animated: bool = True) -> None:
-    """Writes the fixture GLB with one clip: idle, walk, rise, in_place (1 s) or in_place_slow (2 s).
+    """Writes the fixture GLB with one clip: idle, still (1 s), walk, rise, in_place (1 s) or in_place_slow (2 s).
 
     Without animated, the clip is keyed but not exported: the file holds the
     rig and the body and no action.
@@ -234,7 +241,7 @@ def build_fixture(path: Path, clip: str, parented: bool = False, animated: bool 
         pose.rotation_quaternion = Quaternion((0.0, 0.0, 1.0), math.radians(degrees))  # about the bone's own Z
         pose.keyframe_insert("rotation_quaternion", frame=frame)
 
-    span = {"idle": 1, "walk": 24, "rise": RISE_SPAN, "in_place": 24, "in_place_slow": 48}[clip]
+    span = {"idle": 1, "still": 24, "walk": 24, "rise": RISE_SPAN, "in_place": 24, "in_place_slow": 48}[clip]
     for frame in range(1, span + 2):
         t = (frame - 1) / span
         if clip == "walk":
@@ -356,6 +363,24 @@ def render_fixture_with_audition(root: Path) -> tuple[dict, Path, Path]:
     return sidecar, out, unit_dir / "review"
 
 
+def render_fixture_with_bob(root: Path, bob_m: float, bob_hz: float) -> tuple[dict, np.ndarray]:
+    """The fixture's 1 s still clip as an idle with the given bob, built and rendered in a new folder under root;
+    returns (sidecar, the idle sheet)."""
+    variant = Path(tempfile.mkdtemp(dir=root))
+    make_unit(variant, fixture_spec(HOVER_IDLE.format(bob_m=bob_m, bob_hz=bob_hz)), {"still": "still"})
+    out, sidecar, _ = render(variant)
+    return sidecar, rs.read_rgba(out / "idle.png")
+
+
+def render_fixture_with_walk_override(root: Path, stride_m: float, clip: str = "in_place") -> tuple[dict, str]:
+    """The fixture's `clip` as a walk with a stride_m override, built and rendered in a new folder under root;
+    returns (sidecar, what it printed). The default clip plays in place with feet, so it has a stride to measure."""
+    variant = Path(tempfile.mkdtemp(dir=root))
+    make_unit(variant, fixture_spec(f'\n[animations.walk]\nfile = "anims/{clip}.glb"\nstride_m = {stride_m}\n'), {clip: clip})
+    _, sidecar, printed = render(variant)
+    return sidecar, printed
+
+
 def render_fixture_without_actions(root: Path, clip: str | None = "walk") -> dict:
     """The fixture's walk re-exported without its action, as anims/static.glb, under a walk entry that names clip
     (or none), built and rendered in a new folder under root; returns the sidecar, if it renders at all."""
@@ -379,6 +404,11 @@ def cell(sheet: np.ndarray, frame: int, direction: int, info: dict | None = None
     columns = info["columns"] if info else sheet.shape[1] // rs.STRIDE
     rows = info["rows_per_direction"] if info else 1
     return at(sheet, direction * rows + frame // columns, frame % columns)
+
+
+def lowest_opaque_row(sheet: np.ndarray, frame: int, direction: int, info: dict) -> int:
+    """The lowest row (0 is the cell's bottom edge) of that frame's cell with any alpha."""
+    return int(np.nonzero((cell(sheet, frame, direction, info)[..., 3] > 0.0).any(axis=1))[0].min())
 
 
 def red_mask(px: np.ndarray) -> np.ndarray:
@@ -599,6 +629,55 @@ class RenderSpritesTest(unittest.TestCase):
         self.assertIn("idle", sidecar["animations"], "the game's clips still ship")
         self.assertTrue((assets / "idle.png").exists())
 
+    def test_a_hover_bob_moves_the_figure_and_loops_seamlessly(self) -> None:
+        sidecar, sheet = render_fixture_with_bob(self.root, bob_m=0.2, bob_hz=1.0)   # idle 1 s, bob 0.2 m
+        info = sidecar["animations"]["idle"]
+        frames = info["frames"]
+        self.assertEqual(frames, 12)
+        lows = [lowest_opaque_row(sheet, f, 4, info) for f in range(frames)]
+        # 0.2 m up and down at 50 degrees is about 0.2 * cos(50) * 52 = 6.7 px each way
+        self.assertGreaterEqual(max(lows) - min(lows), 10)
+        # whole cycles: a looping clip's first frame and the frame after its last coincide,
+        # so frame 0 and the last frame differ by one step of the sine, not a jump
+        self.assertLessEqual(abs(lows[0] - lows[-1]), 3)
+
+    def test_a_stride_override_replaces_the_measurement(self) -> None:
+        sidecar, printed = render_fixture_with_walk_override(self.root, stride_m=0.9)   # in-place walk fixture plus stride_m = 0.9
+        self.assertAlmostEqual(sidecar["animations"]["walk"]["stride_m"], 0.9, places=4)
+        self.assertNotIn("stride walk:", printed, "the feet are not measured when the recipe gives the stride")
+
+    def test_a_stride_override_needs_no_feet(self) -> None:
+        # A floating unit's walk has neither root travel nor foot bones; measured, it is an error (see InPlaceWalkTest).
+        sidecar, _ = render_fixture_with_walk_override(self.root, stride_m=0.9, clip="idle")
+        self.assertAlmostEqual(sidecar["animations"]["walk"]["stride_m"], 0.9, places=4)
+
+
+class BobOffsetTest(unittest.TestCase):
+    """bob_offset by itself: a whole number of sine cycles per clip, at least one."""
+
+    def entry(self, bob_m: float, bob_hz: float) -> rs.AnimEntry:
+        return rs.AnimEntry("idle", "anims/idle.glb", None, None, None, True, bob_m=bob_m, bob_hz=bob_hz)
+
+    def test_no_bob_is_no_lift(self) -> None:
+        self.assertEqual(rs.bob_offset(self.entry(0.0, 0.0), 1.0, 25.0, 7.0, 24.0), 0.0)
+
+    def test_a_clip_holds_whole_cycles(self) -> None:
+        # 1 s at 24 scene fps. 1.4 Hz rounds to one cycle, 2.6 Hz to three; each ends where it began.
+        for hz, cycles in ((1.0, 1), (1.4, 1), (2.6, 3)):
+            entry = self.entry(0.2, hz)
+            lift = [rs.bob_offset(entry, 1.0, 25.0, 1.0 + 24.0 * i / 48, 24.0) for i in range(49)]
+            self.assertAlmostEqual(lift[0], 0.0, places=9)
+            self.assertAlmostEqual(lift[-1], 0.0, places=9, msg=f"{hz} Hz")
+            rises = sum(1 for a, b in zip(lift, lift[1:]) if a <= 0.0 < b)  # each cycle climbs through zero once
+            self.assertEqual(rises, cycles, msg=f"{hz} Hz")
+            self.assertAlmostEqual(max(lift), 0.2, delta=0.01)
+
+    def test_a_slow_bob_still_completes_a_cycle(self) -> None:
+        # 0.2 Hz over 1 s would be a fifth of a cycle: the clip stretches it to one.
+        entry = self.entry(0.2, 0.2)
+        self.assertAlmostEqual(rs.bob_offset(entry, 1.0, 25.0, 7.0, 24.0), 0.2, delta=1e-9)   # a quarter through: the crest
+        self.assertAlmostEqual(rs.bob_offset(entry, 1.0, 25.0, 25.0, 24.0), 0.0, places=9)
+
 
 class RenderGuardTest(unittest.TestCase):
     """What stops a render before its work is wasted. Each test builds its own fixture in its own folder."""
@@ -768,8 +847,9 @@ class PropRenderTest(unittest.TestCase):
     def test_prop_turns_with_the_bone(self) -> None:
         # In world metres: bound at the walk's first frame, and at its last, where Hand has dropped 0.6 m and turned 90 degrees.
         staged = self.stage(self.root, "walk")
+        staged_entry = next(e for e in rs.load_spec(self.unit_dir / "spec.toml").animations if e.name == "walk")
         self.assert_stick_at(staged, stick_corners(HAND_HEAD))
-        rs.pose_at(staged, staged.end)
+        rs.pose_at(staged, staged.end, staged_entry)
         self.assert_stick_at(staged, stick_corners((HAND_HEAD[0], HAND_HEAD[1], HAND_HEAD[2] - HAND_DROP_M), HAND_TURN_DEG))
 
     def test_props_count_in_the_extents(self) -> None:
