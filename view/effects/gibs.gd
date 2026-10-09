@@ -7,8 +7,10 @@ extends Node3D
 ## the sim: chunks never affect a unit and the sim never reads them.
 ##
 ## The ground is a StaticBody3D with a HeightMapShape3D built from the sim's
-## heights, and refreshed where explosions scar the terrain. Chunks collide
-## only with that and with each other, on their own physics layers. A chunk freezes (becomes static) once it sleeps or
+## heights, and refreshed where explosions scar the terrain, walled at the
+## map's edges. A chunk whose center is ever found under it is put back on
+## top. Chunks collide only with the ground and with each other, on their own
+## physics layers. A chunk freezes (becomes static) once it sleeps or
 ## after SETTLE_SECONDS, and at most MAX_LIVE_CHUNKS simulate at once, so a
 ## long fight costs nothing per frame once the gore has settled.
 
@@ -56,8 +58,10 @@ var _live: Dictionary[RigidBody3D, float] = {}
 var _ground: StaticBody3D
 var _shape: HeightMapShape3D
 ## Sample heights in meters, the same array the shape holds, kept so a
-## refresh can patch part of it.
+## refresh can patch part of it and so a chunk can be checked against it.
 var _map: PackedFloat32Array = PackedFloat32Array()
+## Meters between adjacent samples.
+var _cell: float = 1.0
 var _floor_y: float = 0.0
 var _material: PhysicsMaterial
 var _materials: Dictionary[Color, StandardMaterial3D] = {}
@@ -85,8 +89,8 @@ func setup(terrain: Terrain) -> void:
 	# The shape's samples are always 1 unit apart, so scaling x and z by the
 	# cell size in meters spaces them like the terrain's. It is 1 for 1 m
 	# cells, which is Riverside.
-	var cell: float = terrain.cell_size / mm
-	collider.scale = Vector3(cell, 1.0, cell)
+	_cell = terrain.cell_size / mm
+	collider.scale = Vector3(_cell, 1.0, _cell)
 	_ground = StaticBody3D.new()
 	_ground.name = "Ground"
 	_ground.collision_layer = GROUND_LAYER
@@ -95,6 +99,17 @@ func setup(terrain: Terrain) -> void:
 	# world origin, so shift the body by half the map's extent.
 	_ground.position = Vector3(terrain.extent_x(), 0.0, terrain.extent_z()) / mm * 0.5
 	_ground.add_child(collider)
+	# The heightmap ends at the map's edges with nothing past them, so a chunk
+	# that tumbled over one would fall out of the world. A wall on each edge,
+	# a half-space (so nothing can pass through it), keeps every chunk on the
+	# map. In the body's space the edges are at -/+ half the extent.
+	for outward: Vector3 in [Vector3.LEFT, Vector3.RIGHT, Vector3.FORWARD, Vector3.BACK]:
+		var boundary: WorldBoundaryShape3D = WorldBoundaryShape3D.new()
+		# Solid behind the plane: the normal points back in, over the map.
+		boundary.plane = Plane(-outward, -absf(outward.dot(_ground.position)))
+		var wall: CollisionShape3D = CollisionShape3D.new()
+		wall.shape = boundary
+		_ground.add_child(wall)
 	add_child(_ground)
 	_floor_y = terrain.heights[0] / mm
 	for h: int in terrain.heights:
@@ -160,6 +175,7 @@ func _physics_process(delta: float) -> void:
 	for chunk: RigidBody3D in _live:
 		var age: float = _live[chunk] + delta
 		_live[chunk] = age
+		_keep_above_ground(chunk)
 		if chunk.sleeping or age >= SETTLE_SECONDS or chunk.global_position.y < _floor_y:
 			settled.append(chunk)
 	for chunk: RigidBody3D in settled:
@@ -175,6 +191,58 @@ func _freeze(chunk: RigidBody3D) -> void:
 	chunk.freeze = true
 	if _live.is_empty():
 		set_physics_process(false)
+
+
+# Godot's heightmap is a surface with no thickness, and a body caught in it is
+# pushed out of whichever side is nearer. A chunk landing hard can end a step
+# a few centimeters into it (contacts only start on the next step, and
+# continuous collision detection only slows bodies that are fast for their
+# size), and the contacts at its corners then often spin it deeper instead of
+# lifting it. Once its center is under the surface the nearer side is the
+# bottom, and it falls out of the world. So a chunk found with its center
+# under the ground is put back on top, resting on its lowest corner, and stops
+# falling.
+func _keep_above_ground(chunk: RigidBody3D) -> void:
+	var p: Vector3 = chunk.position
+	var ground: float = _ground_height(p.x, p.z)
+	if p.y >= ground:
+		return
+	var half: Vector3 = _half_extents(chunk)
+	var b: Basis = chunk.basis
+	# Half the box's height as it is turned now.
+	var half_height: float = absf(b.x.y) * half.x + absf(b.y.y) * half.y + absf(b.z.y) * half.z
+	chunk.position.y = ground + half_height
+	chunk.linear_velocity.y = maxf(chunk.linear_velocity.y, 0.0)
+
+
+# The ground collider's height in meters at (x, z) in this node's space (sample
+# (0, 0) at the origin, like the terrain's; not the offset ground body's space). Godot's HeightMapShape3D splits each cell into two
+# triangles along the diagonal from sample (i + 1, j) to (i, j + 1), so this
+# does too: on a steep cell, bilinear heights can be well off the collider.
+func _ground_height(x: float, z: float) -> float:
+	if _shape == null:
+		return -INF
+	var w: int = _shape.map_width
+	var fx: float = clampf(x / _cell, 0.0, w - 1.0)
+	var fz: float = clampf(z / _cell, 0.0, _shape.map_depth - 1.0)
+	var i: int = mini(int(fx), w - 2)
+	var j: int = mini(int(fz), _shape.map_depth - 2)
+	var u: float = fx - i
+	var v: float = fz - j
+	var k: int = j * w + i
+	if u + v <= 1.0:
+		# The triangle with corners (i, j), (i + 1, j) and (i, j + 1).
+		return _map[k] + (_map[k + 1] - _map[k]) * u + (_map[k + w] - _map[k]) * v
+	# The one with corners (i + 1, j + 1), (i, j + 1) and (i + 1, j).
+	var far: float = _map[k + w + 1]
+	return far + (_map[k + w] - far) * (1.0 - u) + (_map[k + 1] - far) * (1.0 - v)
+
+
+static func _half_extents(chunk: RigidBody3D) -> Vector3:
+	for child: Node in chunk.get_children():
+		if child is CollisionShape3D:
+			return ((child as CollisionShape3D).shape as BoxShape3D).size * 0.5
+	return Vector3.ZERO
 
 
 func _make_chunk(color: Color) -> RigidBody3D:
