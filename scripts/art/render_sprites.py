@@ -26,11 +26,13 @@ figure_height_m is how tall the drawn body stands above the feet, worst over
 idle's frames and directions, props excluded (a raised sword doesn't count).
 
 Sheets wrap at MAX_SHEET_PX wide. Sheets, import settings and a JSON sidecar go
-to assets/units/<unit>/. The contact sheet, per-animation GIFs and the attach
-preview go to art-src/units/<unit>/review/; a prop's candidate sheet to
-art-src/props/<prop>/review/. An audition clip (`audition = true`) is for
-review only: its GIF and contact-sheet row, but no sheet, import settings or
-sidecar entry. Nothing is written, or read, through a symlink.
+to assets/units/<unit>/ only once every clip has drawn, the sidecar last, so a
+render that stops early leaves the last good set untouched. The contact sheet,
+per-animation GIFs and the attach preview go to art-src/units/<unit>/review/; a
+prop's candidate sheet to art-src/props/<prop>/review/. An audition clip
+(`audition = true`) is for review only: its GIF and contact-sheet row, but no
+sheet, import settings or sidecar entry. Nothing is written, or read, through
+a symlink.
 
 Three guards stop a render before the work is wasted: ffmpeg must be on the
 PATH before anything loads; a clip's file must hold an animation (one with
@@ -680,8 +682,10 @@ def render_animation(spec: UnitSpec, glb: Path, entry: AnimEntry, props: list[Pr
     columns, rows = sheet_layout(frames)
     # Checked before any frame is drawn. An audition makes no sheet, so it may run long.
     if not entry.audition and DIRECTIONS * rows > MAX_SHEET_ROWS:
+        limit = MAX_SHEET_ROWS // DIRECTIONS * (MAX_SHEET_PX // STRIDE)  # 3 rows of 24 a direction: 72 frames
         raise RuntimeError(f"{entry.name}: {frames} frames at {FPS} fps makes a sheet {DIRECTIONS * rows * STRIDE} px tall, "
-                           f"taller than the {MAX_SHEET_ROWS} rows of {STRIDE} px that fit in {MAX_SHEET_PX}; "
+                           f"taller than the {MAX_SHEET_ROWS} rows of {STRIDE} px that fit in {MAX_SHEET_PX}, so a clip "
+                           f"has at most {limit} frames ({limit / FPS:g} s at {FPS} fps); "
                            "pick a shorter clip or mark it audition = true")
     stride_m = 0.0
     if entry.name in ("walk", "run"):
@@ -743,10 +747,12 @@ def render_unit(unit: str, src_root: Path, out_root: Path, engine: str = "EEVEE"
         "gib_color": [0.5, 0.5, 0.5], "clipped": [], "animations": {},
     }
     work = Path(tempfile.mkdtemp(prefix=f"render-{unit}-"))
+    frames_root = work / "frames"
+    staging = work / "sheets"  # the game sheets wait here until every clip has drawn
     try:
         contact: list[Path | None] = []
         for entry in spec.animations:
-            frames_dir = work / entry.name
+            frames_dir = frames_root / entry.name
             info = render_animation(spec, animation_file(unit_dir, entry), entry, props, frames_dir, engine)
             sidecar["clipped"] += info.pop("clipped")  # an audition's count too: it is reviewed
             figure_px = info.pop("figure_px", None)
@@ -754,19 +760,24 @@ def render_unit(unit: str, src_root: Path, out_root: Path, engine: str = "EEVEE"
                 sidecar["figure_height_m"] = round(figure_px / PIXELS_PER_METER, 3)
                 print(f"figure height: {sidecar['figure_height_m']:.3f} m ({figure_px:.1f} px above the feet, props excluded)")
             if not entry.audition:  # an audition is for review only: no sheet, no import settings, no sidecar entry
-                sheet = out_dir / info["sheet"]
-                tile(sheet_cells(frames_dir, info["frames"]), info["columns"], DIRECTIONS * info["rows_per_direction"], sheet)
-                write_import_settings(sheet)
+                tile(sheet_cells(frames_dir, info["frames"]), info["columns"], DIRECTIONS * info["rows_per_direction"],
+                     staging / info["sheet"])
                 sidecar["animations"][entry.name] = info
             gif(frames_dir, info["frames"], review / f"{entry.name}.gif")
             k = key_frame(entry.name, info)
             contact += [frames_dir / f"d{d}" / f"f{k:03d}.png" for d in range(DIRECTIONS)]
         tile(contact, DIRECTIONS, len(spec.animations), review / "contact.png")
         first = "idle" if "idle" in sidecar["animations"] else spec.animations[0].name
-        sidecar["gib_color"] = opaque_mean_color(work / first / "d4" / "f000.png")
+        sidecar["gib_color"] = opaque_mean_color(frames_root / first / "d4" / "f000.png")
+        # Every clip drew: only now do the sheets replace the last render's, and the sidecar goes last. A render
+        # that stops early (a guard, a clip-name typo, a crash) never leaves new sheets beside an old sidecar,
+        # which the builder would cut with the old layout. Copied, not moved: the temp folder may be another volume.
+        out_dir.mkdir(parents=True, exist_ok=True)
+        for sheet in [clip["sheet"] for clip in sidecar["animations"].values()]:
+            shutil.copyfile(staging / sheet, out_dir / sheet)
+            write_import_settings(out_dir / sheet)
     finally:
         shutil.rmtree(work, ignore_errors=True)
-    out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / f"{unit}.json").write_text(json.dumps(sidecar, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     if sidecar["clipped"]:
         print(f"WARNING: {len(sidecar['clipped'])} frames touch the cell edge (clipped): {sidecar['clipped'][:8]} ...")

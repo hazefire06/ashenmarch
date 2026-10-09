@@ -109,6 +109,15 @@ AUDITION = """
 file = "anims/idle.glb"
 audition = true
 """
+RISE_AUDITION = """
+[animations.rise_alt]
+file = "anims/rise.glb"
+audition = true
+"""
+RISING_IDLE = """
+[animations.idle]
+file = "anims/rise.glb"
+"""
 STICK_SPEC = """id = "stick"
 faction = "light"
 length_m = 0.9
@@ -318,6 +327,14 @@ def render_fixture(root: Path, parented: bool = False) -> tuple[Path, dict, str]
     """Builds the plain fixture (idle, walk and rise) under root, a folder with no art-src yet, and renders it."""
     make_unit(root, fixture_spec(IDLE, WALK, RISE), {"idle": "idle", "walk": "walk", "rise": "rise"}, parented)
     return render(root)
+
+
+def render_variant(root: Path, spec: str, clips: dict[str, str]) -> tuple[dict, str]:
+    """A fixture with the given spec and clips, built and rendered in a new folder under root; returns (sidecar, what it printed)."""
+    variant = Path(tempfile.mkdtemp(dir=root))
+    make_unit(variant, spec, clips)
+    _, sidecar, printed = render(variant)
+    return sidecar, printed
 
 
 def render_fixture_with_prop_above_the_head(root: Path) -> tuple[dict, str]:
@@ -550,6 +567,7 @@ class RenderSpritesTest(unittest.TestCase):
         plain = self.sidecar["figure_height_m"]
         self.assertGreater(plain, 1.0)
         self.assertLess(plain, 1.8)
+        self.assertEqual(plain, round(plain, 3), "rounded to 0.001 m")
         highest = max(float(rs.project(body_corners(), d)[1].max()) for d in range(rs.DIRECTIONS))
         self.assertAlmostEqual(plain, (highest - rs.FEET_PX) / rs.PIXELS_PER_METER, delta=0.005)
         self.assertNotIn("figure_px", self.sidecar["animations"]["idle"])
@@ -557,6 +575,19 @@ class RenderSpritesTest(unittest.TestCase):
         with_prop, printed = render_fixture_with_prop_above_the_head(self.root)
         self.assertGreater(extents(printed)["idle"][1], highest + 10.0, "the prop does stand above the head")
         self.assertAlmostEqual(with_prop["figure_height_m"], plain, delta=0.01)
+
+    def test_figure_height_is_the_worst_over_idles_frames(self) -> None:
+        # Idle playing the rise file: 29 looping frames, the last lifting the body 28/29 m, which the 50 degree camera
+        # shows cos(50) as tall. That frame's top counts, not the first frame's.
+        sidecar, _ = render_variant(self.root, fixture_spec(RISING_IDLE), {"rise": "rise"})
+        self.assertEqual(sidecar["animations"]["idle"]["frames"], 29)
+        lift = RISE_M * 28 / 29 * math.cos(ELEVATION)
+        self.assertAlmostEqual(sidecar["figure_height_m"], self.sidecar["figure_height_m"] + lift, delta=0.01)
+
+    def test_figure_height_needs_an_idle_clip(self) -> None:
+        sidecar, _ = render_variant(self.root, fixture_spec(ATTACK), {"idle": "idle"})
+        self.assertEqual(sorted(sidecar["animations"]), ["attack"])
+        self.assertNotIn("figure_height_m", sidecar)
 
     def test_an_audition_clip_is_review_only(self) -> None:
         sidecar, assets, review = render_fixture_with_audition(self.root)
@@ -584,12 +615,23 @@ class RenderGuardTest(unittest.TestCase):
         self.assertGreater(rs.DIRECTIONS * rs.sheet_layout(73)[1], rs.MAX_SHEET_ROWS)
         # With room for 8 rows, idle (one row a direction) renders and rise (30 frames, two rows a direction) is
         # refused before any of its frames are drawn.
+        # The message gives the limit in frames: 8 rows hold one row of 24 frames a direction.
         make_unit(self.root, fixture_spec(IDLE, RISE), {"idle": "idle", "rise": "rise"})
         with mock.patch.object(rs, "MAX_SHEET_ROWS", 8), mock.patch.object(rs, "render_to", wraps=rs.render_to) as drawn:
-            with self.assertRaisesRegex(RuntimeError, "rise: 30 frames .* taller than"):
+            with self.assertRaisesRegex(RuntimeError, r"rise: 30 frames .* taller than .* at most 24 frames \(2 s at 12 fps\)"):
                 render(self.root)
         self.assertEqual(drawn.call_count, rs.DIRECTIONS, "idle's frames only")
-        self.assertFalse((self.root / "assets" / "units" / "fixture" / "fixture.json").exists())
+        # Nothing reached assets/: idle's sheet waited in the work folder, so no new sheet sits beside an old sidecar.
+        self.assertFalse((self.root / "assets").exists(), "idle's sheet waited in the work folder")
+
+    def test_an_audition_may_run_past_the_height_cap(self) -> None:
+        # The same 8 rows of room: rise as an audition (two rows a direction) draws all its frames, for review only.
+        unit_dir = make_unit(self.root, fixture_spec(IDLE, RISE_AUDITION), {"idle": "idle", "rise": "rise"})
+        with mock.patch.object(rs, "MAX_SHEET_ROWS", 8):
+            out, sidecar, _ = render(self.root)
+        self.assertTrue((unit_dir / "review" / "rise_alt.gif").exists())
+        self.assertFalse((out / "rise_alt.png").exists())
+        self.assertEqual(sorted(sidecar["animations"]), ["idle"])
 
     def test_a_clip_whose_file_has_no_animation_is_an_error(self) -> None:
         # The fixture's walk GLB, re-exported without its action, under an entry that names a clip: the render must
