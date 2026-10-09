@@ -46,7 +46,7 @@ Success looks like this:
 | `feature/PHASE-A0-art-audio-design` | This spec. The A-track in `docs/prompts.md`. Replace CLAUDE.md's "Do not spend time on art until told to" with a pointer to this spec. `.gitattributes` (LFS), `assets/LICENSES.md`, `.gitignore` additions, gitleaks hook and workflow. | Tim approves this spec |
 | `feature/PHASE-A1-unit-sprites` | Meshy script, Blender render script, `UnitArt`, sprite integration. Shieldman only. | **Tim approves the Shieldman contact sheet before any Godot code is written**, then reviews in-engine |
 | `feature/PHASE-A2-audio` | Generation and processing scripts, sound bank, `AudioDirector`, ambience, barks, the Shieldman's voice, one music loop | Tim listens to a test build |
-| `feature/PHASE-A3-roster` | The other 9 units' art and voices. Assets only; may be several PRs. | A contact sheet per unit |
+| `feature/PHASE-A3-roster` | The other 9 units' art (voices moved to A2 on 2026-10-08), plus the small pipeline changes the roster needs (§11). | A contact sheet per unit |
 
 On 2026-10-07 Tim folded A0 into the A1 PR: `feature/PHASE-A1-unit-sprites` carries both, and A0's own PR (#10) closes in its favour.
 
@@ -457,6 +457,51 @@ ElevenLabs returns looping SFX as MP3 only, so loops are converted to OGG.
   - Shieldman barks are voiced; ambience and the Riverside music loop play;
   - GUT tests pass;
   - Tim approves a listening build.
-- **A3:** every v1 unit has art, and every light-side unit has barks, each with an approved contact sheet or line list.
+- **A3:** every v1 unit has art, each with an approved contact sheet. (Light-side barks moved to A2.)
 
 Each branch gets its own implementation plan. The first plan covers A0 and A1.
+
+## 11. A3: the rest of the roster (decided 2026-10-08)
+
+**Scope.**
+- Art only, for the nine other v1 units. Voices and barks move to A2, which is re-planned around Phase 10's audio system first.
+- A3 runs while Phase 11 (controls) is in progress elsewhere, so it touches no input, selection or `main.gd` code.
+
+**Order.** Four batches, light side first. In each batch, Tim picks candidates and approves contact sheets for all the batch's units together.
+
+**Candidates.** 4 Lite candidates per unit (20 credits). Lite picks have been good enough (the Shieldman is one), and the saving funds the roster.
+
+**Pipeline changes first** (free, before any credits are spent):
+- **Figure height.** The renderer records the drawn body's height above the feet, from idle, props excluded, as `figure_height_m` in the sidecar. `UnitArt` carries it, and `UnitSprite.height` uses it for an art body, so picking and overlays match the figure (about 1.4 m drawn for the Shieldman, where the placeholder is 1.8 m). Without it, a click on a rear-rank unit selects the one in front.
+- **Strike clips.** `UnitArt` requires idle, walk, die (unless the body bursts), and at least one strike clip: `attack`, `shoot`, `throw` or `cast`. A unit with no melee (Drifter, Stormcaller, Blightbag) needs no `attack`. Every strike or act clip present (`attack`, `shoot`, `throw`, `cast`, `place`) needs an impact frame.
+- **Bursting bodies.** An art type with `bursts_on_death` always bursts into gibs on death, whatever the overkill, so it never stands as an idle "corpse".
+- **Hover.** A recipe animation can set `bob_m` and `bob_hz`. The renderer then bobs the figure up and down as a whole number of cycles per clip, so loops stay seamless. It can also set `stride_m` to replace a measured stride, for a floating unit with no foot contact.
+- **Audition clips.** An animation marked `audition = true` renders to `review/` only: its GIF and a contact-sheet row, with no game sheet and no sidecar entry. This replaces shipping `attack_alt.png`.
+- **Guards.**
+  - A sheet taller than 4096 px is refused, which means more than 72 frames at 12 fps.
+  - A clip whose file has no animation is an error, not a one-frame sheet.
+  - ffmpeg is checked before rendering starts.
+
+**Units.**
+- Every unit uses Meshy library actions; clip names come from Meshy's animation library.
+- Every one also has `idle` = 0 Idle, unless shown otherwise.
+- **Props** are separate Meshy models on bones (§6.2a).
+
+| Batch | Unit | Look (§5) | Props | Clips |
+|---|---|---|---|---|
+| 1 | Reaver | Bare-chested berserker, wild mane | Claymore, both hands (on RightHand) | idle 89 Combat_Stance; walk = rig run; attack 237 Charged_Axe_Chop; audition 128 Heavy_Hammer_Swing; die 183 Shot_and_Fall_Backward |
+| 1 | Longbow | Hooded plaid, the clan's gamekeeper | Longbow (LeftHand) | walk = rig walk; shoot 224 Archery_Shot; attack 97 Left_Slash (dagger, too small to model); die 184 Shot_and_Fall_Forward (`die_falls_forward`) |
+| 2 | Sapper | Satchel of bottles, singed, leather apron | Satchel (hip, on Hips) | walk = rig walk; throw 239 Crouch_Pull_and_Throw; place 274 Female_Crouch_Pick_Up_Place_Side; attack 97 Left_Slash; die 8 Dead |
+| 2 | Warden | Herb-wife with a staff | Staff (RightHand) | walk = rig walk; attack 219 Right_Hand_Sword_Slash; cast 129 (heal); die 189 dying_backwards |
+| 3 | Husk | Rotted peat-bog corpse | — | walk 123 Unsteady_Walk; attack 198 Punch_Combo; die 187 Knock_Down |
+| 3 | Ripper | Gaunt long-clawed ghoul | — | walk 16 RunFast; attack 192 Right_Jab_from_Guard; throw 421 Over_Shoulder_Throw; place 276 Male_Bend_Over_Pick_Up (pick-up); die 182 Shot_and_Blown_Back |
+| 3 | Blightbag | Bloated corpse with gas sacs, but **humanoid**: clear arms and legs, sacs on the torso, so Meshy can rig it | — | walk 119 Slow_Orc_Walk; attack 255 Angry_Ground_Stomp; `bursts_on_death` (no die) |
+| 4 | Drifter | Hooded spectre; long robes hide the legs | Bow (LeftHand) | idle and walk = 0 Idle with hover bob, walk `stride_m` set; shoot 224 Archery_Shot; die 8 Dead |
+| 4 | Stormcaller | Gaunt caster, lightning-scarred | Staff (RightHand) | walk = rig walk; cast 131 (lightning); die 181 Electrocuted_Fall |
+
+**Credits.**
+- **Per unit:** about 47 (candidates 20, refine 10, rig 5, about 4 actions at 3 each).
+- **Per prop:** about 20.
+- **Per batch:** about 135–150. **Total:** about 560, or about 650 with retries.
+- **Monthly cap:** the key's 150-credit monthly cap fits one batch a month; about 300 a month allows two.
+- **Unverified:** the Meshy library spells 129 and 131 "mage_soell_cast" and "mage_soell_cast_2". The spelling was not confirmed word for word. A wrong name fails at the free render step, never at purchase.
