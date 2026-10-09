@@ -110,7 +110,8 @@ func mark_dead() -> void:
 
 func _strike_started(input: AnimInput) -> Play:
 	if input.windup_left > 0 and _last_windup == 0:
-		return _timed(_pick([&"attack"], &"idle"), input.windup_left)
+		# attack first; a unit with no melee clip (a confused archer) uses its other strike clip
+		return _timed(_pick(UnitArt.STRIKE_ANIMS, &"idle"), input.windup_left)
 	if input.aim_left > 0 and _last_aim == 0:
 		return _timed(_pick(RANGED_ANIMS, &"attack"), input.aim_left)
 	if input.act_left > 0 and _last_act == 0:

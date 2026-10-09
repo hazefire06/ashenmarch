@@ -45,9 +45,12 @@ static func sidecar_errors(sidecar: Dictionary) -> PackedStringArray:
 
 
 ## Why the sidecar's layout doesn't fit its sheets, or an empty array if it
-## does. Only the animations the game plays are checked. Run before build():
-## a sidecar that disagrees with its sheets would otherwise cut cells from
-## past a texture's edge (or divide by zero) and fail far from the cause.
+## does. Only the animations the game plays are checked. A sheet must be
+## exactly columns * stride wide and 8 * rows_per_direction * stride tall:
+## too small and a frame is cut off, too large and it is a stale sheet whose
+## cells would be cut from the wrong places without a word. Run before
+## build(): a sidecar that disagrees with its sheets would otherwise cut cells
+## from past a texture's edge (or divide by zero) and fail far from the cause.
 ## sheets is as for build().
 static func layout_errors(sidecar: Dictionary, sheets: Dictionary) -> PackedStringArray:
 	var errors: PackedStringArray = PackedStringArray()
@@ -84,6 +87,13 @@ static func layout_errors(sidecar: Dictionary, sheets: Dictionary) -> PackedStri
 		var size: Vector2 = sheet.get_size()
 		if right > size.x or bottom > size.y:
 			errors.append("%s: frames reach outside the %dx%d sheet, which would need %dx%d" % [key, int(size.x), int(size.y), right, bottom])
+			continue
+		# Exactly the stride grid, not just big enough: a larger sheet is a stale
+		# one (from a longer clip), and build() would cut the wrong cells from it.
+		var wide: int = columns * stride
+		var tall: int = UnitArt.DIRECTIONS * rows_per_direction * stride
+		if int(size.x) != wide or int(size.y) != tall:
+			errors.append("%s: the sheet is %dx%d, but the sidecar's layout makes it %dx%d" % [key, int(size.x), int(size.y), wide, tall])
 	return errors
 
 
@@ -93,6 +103,7 @@ static func build(sidecar: Dictionary, sheets: Dictionary) -> UnitArt:
 	art.unit_id = StringName(sidecar["unit"])
 	art.cell_px = int(sidecar["cell"])
 	art.feet_px = int(sidecar["feet_px"])
+	art.figure_height_m = float(sidecar.get("figure_height_m", 0.0))
 	art.pixels_per_meter = float(sidecar["pixels_per_meter"])
 	art.bursts_on_death = bool(sidecar.get("bursts_on_death", false))
 	art.die_falls_forward = bool(sidecar.get("die_falls_forward", false))

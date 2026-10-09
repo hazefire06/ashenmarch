@@ -235,8 +235,14 @@ func _react_to_combat() -> Dictionary[int, Vector2]:
 			CombatEvent.Kind.KILL:
 				var blow: Vector2 = _blow_direction(event, target)
 				blows[target.id] = blow
-				if _gibs != null and Gibs.should_gib(event.overkill, target.type.max_hp):
+				var art: UnitArt = _art_for(target)
+				var bursts: bool = art != null and art.bursts_on_death
+				if _gibs != null and (bursts or Gibs.should_gib(event.overkill, target.type.max_hp)):
 					_burst(target, blow)
+				elif bursts:
+					# No gibs to throw (a test, or gore off): the body still goes.
+					_sprite_for(target).set_gibbed()
+					_gibbed[target.id] = true
 	return blows
 
 

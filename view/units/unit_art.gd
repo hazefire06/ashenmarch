@@ -13,8 +13,13 @@ extends Resource
 
 const DIRECTIONS: int = 8
 const STEP: float = TAU / DIRECTIONS
-## Every art has these; die too, unless the body bursts.
-const REQUIRED: Array[StringName] = [&"idle", &"walk", &"attack"]
+## Every art has idle and walk, die unless the body bursts, and at least one
+## strike clip.
+const REQUIRED: Array[StringName] = [&"idle", &"walk"]
+## A strike: the melee swing, or the release of a shot, a throw or a spell.
+const STRIKE_ANIMS: Array[StringName] = [&"attack", &"shoot", &"throw", &"cast"]
+## Clips timed to land on a sim tick, so each needs its impact frame.
+const TIMED_ANIMS: Array[StringName] = [&"attack", &"shoot", &"throw", &"cast", &"place"]
 
 @export var unit_id: StringName = &""
 @export var frames: SpriteFrames
@@ -26,6 +31,9 @@ const REQUIRED: Array[StringName] = [&"idle", &"walk", &"attack"]
 @export var cell_px: int = 160
 ## Pixels from the cell's bottom edge to the feet.
 @export var feet_px: int = 40
+## Meters from the feet to the top of the drawn body (idle, props left out);
+## 0 when the render didn't record it. Picking and overlays use it.
+@export var figure_height_m: float = 0.0
 @export var gib_color: Color = Color.GRAY
 ## The body becomes gibs instead of a corpse (a Blightbag), so there is no die.
 @export var bursts_on_death: bool = false
@@ -80,6 +88,8 @@ func validate() -> PackedStringArray:
 	for anim: StringName in needed:
 		if not has_anim(anim):
 			errors.append("%s: missing %s" % [who, anim])
+	if not STRIKE_ANIMS.any(func(strike: StringName) -> bool: return has_anim(strike)):
+		errors.append("%s: no strike clip (attack, shoot, throw or cast)" % who)
 	for anim: StringName in _anims():
 		for dir: int in DIRECTIONS:
 			var name: StringName = anim_name(anim, dir)
@@ -90,8 +100,11 @@ func validate() -> PackedStringArray:
 		var impact: int = impact_frames[anim]
 		if impact < 0 or impact >= count:
 			errors.append("%s: %s impact frame %d is outside 0..%d" % [who, anim, impact, count - 1])
-	if has_anim(&"attack") and not impact_frames.has(&"attack"):
-		errors.append("%s: attack has no impact frame" % who)
+	for anim: StringName in TIMED_ANIMS:
+		if has_anim(anim) and not impact_frames.has(anim):
+			errors.append("%s: %s has no impact frame" % [who, anim])
+	if figure_height_m < 0.0:
+		errors.append("%s: figure_height_m must not be negative, not %s" % [who, figure_height_m])
 	return errors
 
 

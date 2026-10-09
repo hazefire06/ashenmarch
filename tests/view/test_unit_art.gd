@@ -135,6 +135,40 @@ func test_validate_catches_missing_and_broken_animations() -> void:
 	assert_string_contains(" ".join(unaimed.validate()), "attack has no impact frame")
 
 
+func test_a_unit_without_melee_needs_no_attack_clip() -> void:
+	var art: UnitArt = TestArt.art(&"x", {
+		"idle": [1, 12, true, -1], "walk": [12, 12, true, -1], "shoot": [8, 12, false, 5], "die": [4, 12, false, -1],
+	})
+	assert_eq(art.validate(), PackedStringArray())
+
+
+func test_some_strike_clip_is_required() -> void:
+	var art: UnitArt = TestArt.art(&"x", {"idle": [1, 12, true, -1], "walk": [12, 12, true, -1], "die": [4, 12, false, -1]})
+	assert_string_contains(" ".join(art.validate()), "no strike clip")
+
+
+func test_every_strike_and_act_clip_needs_an_impact_frame() -> void:
+	for anim: String in ["shoot", "throw", "cast", "place"]:
+		var anims: Dictionary = {"idle": [1, 12, true, -1], "walk": [12, 12, true, -1], "attack": [6, 12, false, 3], "die": [4, 12, false, -1]}
+		anims[anim] = [6, 12, false, -1]
+		assert_string_contains(" ".join(TestArt.art(&"x", anims).validate()), "%s has no impact frame" % anim, anim)
+
+
+func test_a_negative_figure_height_is_invalid() -> void:
+	var art: UnitArt = TestArt.art()
+	art.figure_height_m = -1.0
+	assert_string_contains(" ".join(art.validate()), "figure_height_m")
+	art.figure_height_m = 0.0
+	assert_eq(art.validate(), PackedStringArray(), "0 is unknown, not an error")
+
+
+func test_the_builder_reads_figure_height_when_present() -> void:
+	var side: Dictionary = TestArt.sidecar(&"x")
+	assert_eq(UnitArtBuilder.build(side, TestArt.sheets(side)).figure_height_m, 0.0, "absent: unknown")
+	side["figure_height_m"] = 1.41
+	assert_almost_eq(UnitArtBuilder.build(side, TestArt.sheets(side)).figure_height_m, 1.41, 0.0001)
+
+
 func test_a_sound_layout_has_no_errors() -> void:
 	var side: Dictionary = TestArt.sidecar(&"x")
 	assert_eq(UnitArtBuilder.layout_errors(side, TestArt.sheets(side)), PackedStringArray())
@@ -180,6 +214,38 @@ func test_layout_rejects_a_sheet_too_small_for_its_frames() -> void:
 	assert_string_contains(" ".join(UnitArtBuilder.layout_errors(side, sheets)), "attack: frames reach outside the")
 
 
+func test_layout_rejects_a_sheet_larger_than_the_sidecar_implies() -> void:
+	# A stale sheet from a longer clip: every frame it needs is inside it, but
+	# the builder would cut the wrong cells from it, silently.
+	var side: Dictionary = TestArt.sidecar(&"x")
+	var s: int = TestArt.STRIDE
+	var sheets: Dictionary = TestArt.sheets(side)
+	sheets[&"walk"] = _blank_sheet(13 * s, UnitArt.DIRECTIONS * s)
+	var wider: PackedStringArray = UnitArtBuilder.layout_errors(side, sheets)
+	assert_eq(wider.size(), 1, "only the walk sheet is wrong")
+	assert_string_contains(" ".join(wider), "walk: the sheet is %dx%d, but the sidecar's layout makes it %dx%d" % [13 * s, 8 * s, 12 * s, 8 * s])
+	sheets[&"walk"] = TestArt.sheets(side)[&"walk"]
+	sheets[&"attack"] = _blank_sheet(6 * s, (UnitArt.DIRECTIONS + 1) * s)
+	var taller: PackedStringArray = UnitArtBuilder.layout_errors(side, sheets)
+	assert_eq(taller.size(), 1, "only the attack sheet is wrong")
+	assert_string_contains(" ".join(taller), "attack: the sheet is %dx%d, but the sidecar's layout makes it %dx%d" % [6 * s, 9 * s, 6 * s, 8 * s])
+
+
+func test_layout_rejects_a_wrapped_sheet_of_the_wrong_size() -> void:
+	var side: Dictionary = TestArt.sidecar(&"x")
+	var attack: Dictionary = side["animations"]["attack"]
+	attack["frames"] = 30
+	attack["columns"] = 24
+	attack["rows_per_direction"] = 2
+	var sheets: Dictionary = TestArt.sheets(side)
+	var s: int = TestArt.STRIDE
+	# The sheet a one-row layout would have, and one with a row too many in each direction.
+	sheets[&"attack"] = _blank_sheet(24 * s, UnitArt.DIRECTIONS * s)
+	assert_string_contains(" ".join(UnitArtBuilder.layout_errors(side, sheets)), "attack: frames reach outside")
+	sheets[&"attack"] = _blank_sheet(24 * s, UnitArt.DIRECTIONS * 3 * s)
+	assert_string_contains(" ".join(UnitArtBuilder.layout_errors(side, sheets)), "attack: the sheet is")
+
+
 func test_layout_rejects_a_missing_sheet() -> void:
 	var side: Dictionary = TestArt.sidecar(&"x")
 	var sheets: Dictionary = TestArt.sheets(side)
@@ -213,9 +279,10 @@ func test_a_wrapped_sheet_must_reach_its_second_row() -> void:
 	assert_string_contains(" ".join(UnitArtBuilder.layout_errors(side, sheets)), "attack: frames reach outside")
 
 
-func test_a_sheet_that_exactly_holds_its_last_cell_fits() -> void:
-	# The last cell ends a gutter and a cell past its stride origin; the
-	# trailing gutter isn't needed. One pixel less and the cell is cut off.
+func test_a_sheet_must_be_exactly_the_size_the_sidecar_implies() -> void:
+	# The far corner of the last cell is a gutter short of the full stride grid.
+	# Short of that corner a frame is cut off ("reach outside"); short of the
+	# grid it is still the wrong sheet.
 	var side: Dictionary = TestArt.sidecar(&"x")
 	var attack: Dictionary = side["animations"]["attack"]
 	attack["frames"] = 30
@@ -225,8 +292,10 @@ func test_a_sheet_that_exactly_holds_its_last_cell_fits() -> void:
 	var s: int = TestArt.STRIDE
 	var right: int = 23 * s + TestArt.GUTTER + TestArt.CELL
 	var bottom: int = (7 * 2 + 1) * s + TestArt.GUTTER + TestArt.CELL
+	sheets[&"attack"] = _blank_sheet(24 * s, 16 * s)
+	assert_eq(UnitArtBuilder.layout_errors(side, sheets), PackedStringArray(), "columns * stride by 8 * rows * stride")
 	sheets[&"attack"] = _blank_sheet(right, bottom)
-	assert_eq(UnitArtBuilder.layout_errors(side, sheets), PackedStringArray(), "exactly the size of the last cell's far corner")
+	assert_string_contains(" ".join(UnitArtBuilder.layout_errors(side, sheets)), "attack: the sheet is", "the last cell fits, but the grid is not whole")
 	sheets[&"attack"] = _blank_sheet(right, bottom - 1)
 	assert_string_contains(" ".join(UnitArtBuilder.layout_errors(side, sheets)), "attack: frames reach outside", "one pixel too short")
 	sheets[&"attack"] = _blank_sheet(right - 1, bottom)

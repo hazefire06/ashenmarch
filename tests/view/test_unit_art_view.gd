@@ -184,6 +184,34 @@ func test_gibs_take_the_art_color() -> void:
 	assert_false(_gibs._materials.has(_shieldman.type.placeholder_color), "not the placeholder's")
 
 
+func test_an_art_body_is_as_tall_as_its_figure() -> void:
+	var art: UnitArt = TestArt.art(&"shieldman")
+	art.figure_height_m = 1.4
+	var view: UnitsView = _art_view(_world, art, UnitSelection.new(), _gibs)
+	assert_almost_eq(_sprite_in(view, _shieldman).height, 1.4, 0.0001)
+	var placeholder: float = _longbow.type.body_height / float(World.UNITS_PER_METER)
+	assert_almost_eq(_sprite_in(view, _longbow).height, placeholder, 0.0001, "placeholders unchanged")
+
+
+func test_an_art_body_with_unknown_figure_height_keeps_the_type_height() -> void:
+	# before_each's art has figure_height_m = 0
+	assert_almost_eq(_sprite(_shieldman).height, _shieldman.type.body_height / float(World.UNITS_PER_METER), 0.0001)
+
+
+func test_a_bursting_art_body_always_bursts() -> void:
+	var view: UnitsView = _art_view(_world, TestArt.art(&"shieldman", {}, true), UnitSelection.new(), _gibs)
+	var before: int = _gibs.live_chunk_count()
+	_kill_in(view, _world, _shieldman, 30 * M, 29 * M, 0)
+	assert_gt(_gibs.live_chunk_count(), before, "burst with no overkill")
+	assert_false(_art_body(_sprite_in(view, _shieldman)).visible, "the body is gone")
+
+
+func test_a_bursting_art_body_with_no_gibs_still_goes() -> void:
+	var view: UnitsView = _art_view(_world, TestArt.art(&"shieldman", {}, true), UnitSelection.new(), null)
+	_kill_in(view, _world, _shieldman, 30 * M, 29 * M, 0)
+	assert_false(_art_body(_sprite_in(view, _shieldman)).visible, "no gibs, but the body still goes")
+
+
 func test_a_frozen_view_holds_the_art_frame_and_a_thawed_one_plays_on() -> void:
 	_walk()
 	var body: AnimatedSprite3D = _art_body(_sprite(_shieldman))

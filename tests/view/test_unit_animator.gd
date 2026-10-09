@@ -47,6 +47,16 @@ func test_a_swing_lands_its_impact_frame_on_the_blow() -> void:
 	assert_almost_eq(play.speed_scale, 1.25, 0.0001)
 
 
+func test_a_melee_strike_without_an_attack_clip_plays_a_strike_clip() -> void:
+	var animator: UnitAnimator = UnitAnimator.new(TestArt.art(&"x", {
+		"idle": [1, 12, true, -1], "walk": [12, 12, true, -1], "shoot": [8, 12, false, 5], "die": [4, 12, false, -1],
+	}))
+	var input: UnitAnimator.AnimInput = UnitAnimator.AnimInput.new()
+	input.alive = true
+	input.windup_left = 6
+	assert_eq(animator.after_tick(input).anim, &"shoot")
+
+
 func test_a_swing_in_progress_carries_on() -> void:
 	_tick({"windup_left": 6})
 	var play: UnitAnimator.Play = _tick({"windup_left": 5, "moving": true, "ground_speed": 2.0})

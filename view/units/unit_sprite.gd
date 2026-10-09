@@ -75,7 +75,8 @@ const ART_HIT_TINT: Color = Color(1.0, 0.45, 0.4)
 
 var unit_id: int
 var type_index: int
-## Meters: quad height and half width, for screen-space picking.
+## Meters: body height and half width, for screen-space picking. The height is
+## the quad's, or the drawn figure's for an art body whose figure is known.
 var height: float
 var half_width: float
 
@@ -127,6 +128,10 @@ func setup(unit: Unit, art: UnitArt = null) -> void:
 	half_width = t.body_radius / mm + 0.05
 	_color = t.placeholder_color
 	_art = art
+	# An art body is as tall as the figure it draws (shorter than the type's
+	# body at the 50 degree render), so picking and overlays match it.
+	if _art != null and _art.figure_height_m > 0.0:
+		height = _art.figure_height_m
 	name = "Unit_%d" % unit.id
 
 	if _art != null:
