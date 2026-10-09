@@ -23,9 +23,9 @@ that already plays in place (Meshy's rig walk) has its stride measured from
 the planted foot instead, and a recipe's stride_m replaces either (a floating
 unit has no foot to measure). A recipe's bob_m and bob_hz lift the whole figure
 on a sine, stretched to a whole number of cycles per clip so a loop stays
-seamless; the lift counts in the extents and the figure's height. The unit's props
-(spec §6.2a) are fixed to their bones after the height fit, so they never count
-toward it. The sidecar's
+seamless; the lift counts in the extents and in the figure's height (a hover's
+crest counts, as a raised arm does). The unit's props (spec §6.2a) are fixed to
+their bones after the height fit, so they never count toward it. The sidecar's
 figure_height_m is how tall the drawn body stands above the feet, worst over
 idle's frames and directions, props excluded (a raised sword doesn't count).
 
@@ -67,7 +67,7 @@ from mathutils import Euler, Matrix, Vector
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 from clips import pick_clip  # noqa: E402
-from unit_spec import NAME, AnimEntry, AttachEntry, PropSpec, UnitSpec, animation_file, load_prop_spec, load_spec  # noqa: E402
+from unit_spec import NAME, STRIDE_ANIMS, AnimEntry, AttachEntry, PropSpec, UnitSpec, animation_file, load_prop_spec, load_spec  # noqa: E402
 
 REPO = HERE.parent.parent
 CELL = 160
@@ -665,15 +665,19 @@ def stage_animation(spec: UnitSpec, glb: Path, entry: AnimEntry, props: list[Pro
                   sample_frames(start, end, scene_fps(), entry.loop), prop_meshes)
 
 
+def bob_cycles(entry: AnimEntry, start: float, end: float, rate: float) -> int:
+    """Whole sine cycles of entry's bob in the clip: bob_hz over the clip's length, rounded, at least one."""
+    return max(1, round(entry.bob_hz * max((end - start) / rate, 1e-6)))
+
+
 def bob_offset(entry: AnimEntry, start: float, end: float, frame: float, rate: float) -> float:
     """Metres to lift the figure at frame: a sine of bob_m whose period is stretched so the
     clip holds a whole number of cycles (at least one), so a looping clip stays seamless."""
     if entry.bob_m <= 0.0:
         return 0.0
     duration = max((end - start) / rate, 1e-6)
-    cycles = max(1, round(entry.bob_hz * duration))
     t = (frame - start) / rate
-    return entry.bob_m * math.sin(2.0 * math.pi * cycles * t / duration)
+    return entry.bob_m * math.sin(2.0 * math.pi * bob_cycles(entry, start, end, rate) * t / duration)
 
 
 def pose_at(staged: Staged, frame: float, entry: AnimEntry) -> None:
@@ -685,7 +689,7 @@ def pose_at(staged: Staged, frame: float, entry: AnimEntry) -> None:
     set_frame(frame)
     xy = root_xy(staged.armature)
     lift = bob_offset(entry, staged.start, staged.end, frame, scene_fps())
-    staged.holder.location = staged.base - Vector((xy.x, xy.y, -lift))
+    staged.holder.location = staged.base + Vector((-xy.x, -xy.y, lift))
     bpy.context.view_layer.update()
 
 
@@ -706,10 +710,20 @@ def render_animation(spec: UnitSpec, glb: Path, entry: AnimEntry, props: list[Pr
                            f"taller than the {MAX_SHEET_ROWS} rows of {STRIDE} px that fit in {MAX_SHEET_PX}, so a clip "
                            f"has at most {limit} frames ({limit / FPS:g} s at {FPS} fps); "
                            "pick a shorter clip or mark it audition = true")
+    # A bob on too few frames is flat (it aliases to its zero), so it is refused before the work, like the height cap.
+    if entry.bob_m > 0.0:
+        cycles = bob_cycles(entry, staged.start, staged.end, scene_fps())
+        steps = frames if entry.loop else frames - 1  # a clip that doesn't loop also draws its end
+        if steps <= 2 * cycles:
+            raise RuntimeError(f"{entry.name}: a bob needs more frames than twice its {cycles} cycle(s), and this clip "
+                               f"draws only {frames}; give it a longer clip or take the bob out")
     stride_m = 0.0
-    if entry.name in ("walk", "run"):
-        # A recipe's stride_m stands in for the measurement: a floating unit has no foot on the ground to measure.
-        stride_m = entry.stride_m if entry.stride_m is not None else measure_stride(staged, entry)
+    if entry.name in STRIDE_ANIMS:
+        if entry.stride_m is not None:  # a floating unit has no foot on the ground to measure
+            stride_m = entry.stride_m
+            print(f"stride {entry.name}: {stride_m:.3f} m (the recipe's)")
+        else:
+            stride_m = measure_stride(staged, entry)
 
     body = [o for o in bpy.context.scene.objects if o.type == "MESH" and o not in staged.prop_meshes]
     figure = entry.name == "idle"

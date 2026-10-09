@@ -12,6 +12,7 @@ An animation can also set:
 - `bob_m` and `bob_hz`: a hover, the figure bobbing up and down by bob_m metres at bob_hz cycles a second.
   Both are 0 (off) by default; a bob needs a rate.
 - `stride_m`: a stride length in metres that replaces the measured one, for a floating unit with no foot contact.
+  Only a walk or run has a stride, so any other clip that sets it is refused.
 
 Held gear is a separate recipe (spec §6.2a): a prop, art-src/props/<id>/spec.toml,
 bought as its own textured, unrigged model. A unit lists what it carries as
@@ -46,6 +47,7 @@ LOOPING = frozenset({"idle", "walk"})
 # Mirrors UnitArtBuilder.GAME_ANIMS: the clips the game plays. Anything else is an audition.
 GAME_ANIMS: frozenset[str] = frozenset({"idle", "walk", "attack", "die", "shoot", "throw", "cast", "place"})
 RIG_CLIPS = frozenset({"walk", "run"})
+STRIDE_ANIMS = frozenset({"walk", "run"})  # the clips that carry a stride_m, which the game plays the legs by
 # Unit and prop names become folder names under art-src, so they must not hold path pieces.
 NAME = re.compile(r"[a-z][a-z0-9_]{0,31}")
 FACTIONS = ("light", "dark")
@@ -346,6 +348,8 @@ def _anim(name: str, entry: dict[str, Any]) -> AnimEntry:
         if not _is_number(stride_m) or stride_m <= 0:
             raise SpecError(f"animation {name}: stride_m must be a finite number above 0, not {str(stride_m)[:40]!r}")
         stride_m = float(stride_m)
+        if name not in STRIDE_ANIMS:  # the renderer would ignore it and the game would play the legs at zero speed
+            raise SpecError(f"animation {name}: stride_m belongs to a walk or run clip; {name} has no stride to replace")
     return AnimEntry(
         name=name,
         file=str(file),

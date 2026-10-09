@@ -630,21 +630,40 @@ class RenderSpritesTest(unittest.TestCase):
         self.assertTrue((assets / "idle.png").exists())
 
     def test_a_hover_bob_moves_the_figure_and_loops_seamlessly(self) -> None:
-        sidecar, sheet = render_fixture_with_bob(self.root, bob_m=0.2, bob_hz=1.0)   # idle 1 s, bob 0.2 m
-        info = sidecar["animations"]["idle"]
-        frames = info["frames"]
-        self.assertEqual(frames, 12)
-        lows = [lowest_opaque_row(sheet, f, 4, info) for f in range(frames)]
-        # 0.2 m up and down at 50 degrees is about 0.2 * cos(50) * 52 = 6.7 px each way
-        self.assertGreaterEqual(max(lows) - min(lows), 10)
-        # whole cycles: a looping clip's first frame and the frame after its last coincide,
-        # so frame 0 and the last frame differ by one step of the sine, not a jump
-        self.assertLessEqual(abs(lows[0] - lows[-1]), 3)
+        bob_m = 0.2   # idle 1 s
+        for bob_hz in (1.0, 1.4):   # 1.4 Hz is not a whole number of cycles in 1 s: the clip stretches it to one
+            with self.subTest(bob_hz=bob_hz):
+                sidecar, sheet = render_fixture_with_bob(self.root, bob_m=bob_m, bob_hz=bob_hz)
+                info = sidecar["animations"]["idle"]
+                frames = info["frames"]
+                self.assertEqual(frames, 12)
+                lows = [lowest_opaque_row(sheet, f, 4, info) for f in range(frames)]
+                # 0.2 m up and down at 50 degrees is about 0.2 * cos(50) * 52 = 6.7 px each way
+                self.assertGreaterEqual(max(lows) - min(lows), 10)
+                # Whole cycles: a looping clip's first frame and the frame after its last coincide, so the last frame
+                # and frame 0 differ by one step of the sine, never more than the clip's biggest step (+1 px, which
+                # is what the row quantising can add) ...
+                wrap = abs(lows[0] - lows[-1])
+                self.assertLessEqual(wrap, max(abs(b - a) for a, b in zip(lows, lows[1:])) + 1)
+                # ... and that step is one cycle's: sin(2 pi / frames) of the bob (3.3 px), not a faster or slower one's.
+                one_step_px = bob_m * math.cos(ELEVATION) * rs.PIXELS_PER_METER * math.sin(2.0 * math.pi / frames)
+                self.assertAlmostEqual(wrap, one_step_px, delta=1.5)
+                # The crest counts toward the figure's height, as a raised arm does: the still body plus the lift.
+                self.assertAlmostEqual(sidecar["figure_height_m"], self.sidecar["figure_height_m"] + bob_m * math.cos(ELEVATION), delta=0.01)
+
+    def test_a_bob_needs_frames_to_show_in(self) -> None:
+        # The fixture's idle is one frame: a bob would sample only its zero. Refused, not rendered without the hover.
+        variant = Path(tempfile.mkdtemp(dir=self.root))
+        make_unit(variant, fixture_spec('\n[animations.idle]\nfile = "anims/idle.glb"\nbob_m = 0.2\nbob_hz = 1.0\n'), {"idle": "idle"})
+        with self.assertRaisesRegex(RuntimeError, r"idle: a bob needs more frames than twice its 1 cycle\(s\)"):
+            rs.render_unit("fixture", variant / "art-src", variant / "assets" / "units", engine="WORKBENCH")
+        self.assertFalse((variant / "assets").exists(), "refused before anything was written")
 
     def test_a_stride_override_replaces_the_measurement(self) -> None:
         sidecar, printed = render_fixture_with_walk_override(self.root, stride_m=0.9)   # in-place walk fixture plus stride_m = 0.9
         self.assertAlmostEqual(sidecar["animations"]["walk"]["stride_m"], 0.9, places=4)
-        self.assertNotIn("stride walk:", printed, "the feet are not measured when the recipe gives the stride")
+        self.assertIn("stride walk: 0.900 m (the recipe's)", printed)
+        self.assertNotIn("from the feet", printed, "the feet are not measured when the recipe gives the stride")
 
     def test_a_stride_override_needs_no_feet(self) -> None:
         # A floating unit's walk has neither root travel nor foot bones; measured, it is an error (see InPlaceWalkTest).
@@ -656,7 +675,7 @@ class BobOffsetTest(unittest.TestCase):
     """bob_offset by itself: a whole number of sine cycles per clip, at least one."""
 
     def entry(self, bob_m: float, bob_hz: float) -> rs.AnimEntry:
-        return rs.AnimEntry("idle", "anims/idle.glb", None, None, None, True, bob_m=bob_m, bob_hz=bob_hz)
+        return rs.AnimEntry(name="idle", file="anims/idle.glb", clip=None, action_id=None, impact=None, loop=True, bob_m=bob_m, bob_hz=bob_hz)
 
     def test_no_bob_is_no_lift(self) -> None:
         self.assertEqual(rs.bob_offset(self.entry(0.0, 0.0), 1.0, 25.0, 7.0, 24.0), 0.0)

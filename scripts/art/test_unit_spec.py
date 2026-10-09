@@ -503,6 +503,14 @@ class A3RecipeFieldsTest(unittest.TestCase):
             with self.subTest(bad=bad), self.assertRaises(SpecError):
                 self._load('[animations.walk]\naction = 0\nclip = "Idle"\n' + bad)
 
+    def test_stride_m_is_for_a_walk_or_a_run(self) -> None:
+        # Only those two clips carry a stride; anywhere else the renderer would ignore it and the game would
+        # play the legs at zero speed.
+        self.assertEqual(self._load('[animations.run]\nfile = "anims/run.glb"\nstride_m = 2.0\n').animations[0].stride_m, 2.0)
+        for name in ("idle", "glide", "walk_alt"):
+            with self.subTest(name=name), self.assertRaisesRegex(SpecError, "stride_m.*walk or run"):
+                self._load(f'[animations.{name}]\nfile = "anims/idle.glb"\nstride_m = 1.2\n')
+
 
 if __name__ == "__main__":
     unittest.main()
