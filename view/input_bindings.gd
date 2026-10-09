@@ -75,6 +75,8 @@ const CYCLE_STATUS: StringName = &"debug_cycle_status"
 const TOGGLE_AI_DEBUG: StringName = &"debug_toggle_ai"
 ## F7: shows or hides a skirmish's scoreboard (SkirmishHud).
 const TOGGLE_SCOREBOARD: StringName = &"toggle_scoreboard"
+## Debug: F12 draws every unit as its placeholder, or with its art again.
+const TOGGLE_ART: StringName = &"debug_toggle_art"
 ## Index i is formation Formations.Kind i and group slot i; keys 1..9, 0.
 const FORMATIONS: Array[StringName] = [
 	&"formation_1", &"formation_2", &"formation_3", &"formation_4", &"formation_5",
@@ -382,6 +384,7 @@ static func defaults() -> Dictionary[StringName, InputEvent]:
 	events[CYCLE_STATUS] = _key(KEY_F8)
 	events[TOGGLE_AI_DEBUG] = _key(KEY_F5)
 	events[TOGGLE_SCOREBOARD] = _key(KEY_F7)
+	events[TOGGLE_ART] = _key(KEY_F12)
 	for i: int in NUMBER_KEYS.size():
 		events[FORMATIONS[i]] = _key(NUMBER_KEYS[i])
 		events[GROUP_SAVES[i]] = _with_modifier(_key(NUMBER_KEYS[i]), DEFAULT_SAVE_MODIFIER)

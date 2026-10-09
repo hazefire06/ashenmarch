@@ -1,0 +1,57 @@
+# The Shieldman's art recipe (spec §5, §6.1). meshy.py buys from it;
+# render_sprites.py renders from it. Animation ids are Meshy library actions
+# (https://docs.meshy.ai/en/api/animation-library); clip is the library name,
+# used to find the clip inside the downloaded GLB. Final picks are made from
+# the contact sheet.
+id = "shieldman"
+faction = "light"
+height_m = 1.8
+prompt = "Scottish highland clansman warrior, kilt in red and green tartan, round wooden targe shield with an iron boss on the left arm, basket-hilted broadsword in the right hand, blue woad war paint on the face, wild ginger beard, blue wool bonnet, leather belt and sporran, rough leather boots"
+die_falls_forward = false
+
+# Held gear is bought separately (art-src/props/<prop>, spec §6.2a) and fixed to a
+# bone of rigged.glb when the sprites render. Offsets (m) and rotations (degrees,
+# XYZ) are in the bone's own axes; check them with `make art-attach`.
+# Solved from the meshes, then picked by eye on 2026-10-07.
+
+# The grip sits at the palm's centre; the blade leaves the fist on the thumb side,
+# so it stands up in the combat stance and swings out at impact.
+[[attach]]
+prop = "broadsword"
+bone = "RightHand"
+offset = [0.159, 0.093, -0.267]
+rotation = [-43.3, -41.6, 123.3]
+
+# Centred along the forearm, studded face out, strapped to the outside of the arm.
+[[attach]]
+prop = "targe"
+bone = "LeftForeArm"
+offset = [0.148, 0.159, 0.059]
+rotation = [122.7, 63.8, 35.6]
+
+[candidates]
+lite = 2
+full = 2
+polycount = 30000
+
+[animations.idle]
+action = 89
+clip = "Combat_Stance"
+
+[animations.walk]
+rig = "walk"
+
+[animations.attack]
+action = 219
+clip = "Right_Hand_Sword_Slash"
+impact = 0.45
+
+# Auditioned on the contact sheet only; the game plays "attack".
+[animations.attack_alt]
+action = 97
+clip = "Left_Slash"
+impact = 0.45
+
+[animations.die]
+action = 189
+clip = "dying_backwards"

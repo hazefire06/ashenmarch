@@ -3,7 +3,7 @@ MAC_APP := build/mac/Ashenmarch.app
 WIN_EXE := build/windows/Ashenmarch.exe
 WEB_HTML := build/web/index.html
 
-.PHONY: import run demo demo-projectiles demo-abilities demo-ai test check-sim export-mac export-windows export-web export-all serve-web sfx bench profile-sim golden-replays verify-replays verify-replays-app verify-replays-x86 maps fixtures playtest skirmish-playtest capture capture-skirmish
+.PHONY: import run demo demo-projectiles demo-abilities demo-ai test check-sim export-mac export-windows export-web export-all serve-web sfx bench profile-sim golden-replays verify-replays verify-replays-app verify-replays-x86 maps fixtures playtest skirmish-playtest capture capture-skirmish hooks check-leaks check-layout test-art art-candidates art-render art-attach art-prop-candidates art-build
 
 # Builds the .godot/ import and class_name cache. A fresh clone has none, and
 # GUT can't resolve class_name types without it.
@@ -196,3 +196,53 @@ build/.gdignore:
 # Serves build/web at http://127.0.0.1:8060/ with the COOP/COEP headers.
 serve-web:
 	python3 scripts/serve_web.py
+
+# Installs the leak-scan pre-commit hook into the repo's shared hooks folder.
+# It runs in every worktree, and does nothing in a checkout without
+# .gitleaks.toml (see scripts/hooks/pre-commit). Refuses to overwrite a
+# different hook.
+hooks:
+	@hooks_dir="$$(git rev-parse --git-common-dir)/hooks"; \
+	if [ -e "$$hooks_dir/pre-commit" ] && ! cmp -s scripts/hooks/pre-commit "$$hooks_dir/pre-commit"; then \
+		echo "hooks: $$hooks_dir/pre-commit exists and differs; not overwriting it"; exit 1; \
+	fi; \
+	cp scripts/hooks/pre-commit "$$hooks_dir/pre-commit"; \
+	chmod +x "$$hooks_dir/pre-commit"; \
+	echo "hooks: installed $$hooks_dir/pre-commit"
+	git lfs install --local
+
+check-layout:
+	scripts/check_asset_layout.sh
+
+check-leaks:
+	scripts/check_leak_rules.sh
+
+BLENDER ?= /Applications/Blender.app/Contents/MacOS/Blender
+BLENDER_RUN = $(BLENDER) -b --factory-startup --python-exit-code 1
+
+# Python and Blender tests for the art pipeline (scripts/art/). Not part of
+# `make test`, so the game's tests never need Blender.
+test-art:
+	python3 -m unittest discover -s scripts/art -p "test_*.py"
+	$(BLENDER_RUN) --python scripts/art/blender_test_render.py
+
+# Renders UNIT's Meshy candidates into art-src/units/UNIT/review/candidates.png (free).
+art-candidates:
+	$(BLENDER_RUN) --python scripts/art/render_sprites.py -- $(UNIT) --candidates
+
+# Renders UNIT's animations into assets/units/UNIT/ plus its review sheets (free).
+art-render:
+	$(BLENDER_RUN) --python scripts/art/render_sprites.py -- $(UNIT)
+
+# Renders UNIT's idle and attacks with its props into art-src/units/UNIT/review/attach.png,
+# for tuning the [[attach]] offsets and rotations by eye (free).
+art-attach:
+	$(BLENDER_RUN) --python scripts/art/render_sprites.py -- $(UNIT) --attach
+
+# Renders PROP's Meshy candidates into art-src/props/PROP/review/candidates.png (free).
+art-prop-candidates:
+	$(BLENDER_RUN) --python scripts/art/render_sprites.py -- $(PROP) --prop-candidates
+
+# Builds data/art/UNIT.tres from the render and lists it in data/art/catalog.tres.
+art-build: import
+	$(GODOT) --headless --path . -s scripts/art/build_unit_art.gd -- $(UNIT)

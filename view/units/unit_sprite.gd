@@ -1,12 +1,13 @@
 class_name UnitSprite
 extends Node3D
-## Placeholder look for one unit until the art pass: a flat-colored quad that
-## always faces the camera, pivoting on its feet at this node's origin, the
-## type's name above it, a tick on the ground showing which way it faces, a
-## ring when selected, and a health bar when hurt or selected. A full
-## billboard (rather than one turning only about the vertical axis) keeps the
-## quad a clean upright rectangle on screen at the steep RTS camera pitch,
-## where a vertical quad would look squashed and lean with perspective.
+## One unit's look: its type's art (below) or, without art, a placeholder: a
+## flat-colored quad that always faces the camera, pivoting on its feet at
+## this node's origin, with a tick on the ground showing which way it faces.
+## Either way the type's name floats above it, a ring shows when selected,
+## and a health bar when hurt or selected. A full billboard (rather than one
+## turning only about the vertical axis) keeps the quad a clean upright
+## rectangle on screen at the steep RTS camera pitch, where a vertical quad
+## would look squashed and lean with perspective.
 ##
 ## A hit or block tints the quad for FLASH_TIME (a heal tints it green), and
 ## show_notice() floats a line of text over the unit for NOTICE_TIME. Status
@@ -16,6 +17,17 @@ extends Node3D
 ## billboarding and lies on the ground, head away from the killing blow, dimmed
 ## and unlabeled, and stays there. A gibbed body is not drawn at all; the gibs
 ## replace it.
+##
+## A unit whose type has art (UnitArt) gets an animated billboard instead of
+## the quad: the frames for the direction it faces on screen (face_camera,
+## every frame), playing what UnitAnimator picks from the sim each tick
+## (animate). Its overlays are the same, minus the facing tick, since the art
+## shows facing. Flashes and status tints become the sprite's modulate,
+## which can only darken, so a hit flashes ART_HIT_TINT rather than white. A
+## dead art body turns to face the blow (away from it if its death falls
+## forward) and its last death frame stays as the corpse, still a billboard.
+## hold() stops it on its frame while the sim isn't stepping; a death still
+## plays out to its corpse.
 
 const RING_COLOR: Color = Color(1.0, 0.92, 0.35)
 const FACING_COLOR: Color = Color(0.08, 0.08, 0.08)
@@ -56,6 +68,10 @@ const HP_HUE_FULL: float = 0.33
 const LYING_LIFT: float = 0.06
 ## Below this squared length a direction counts as zero.
 const MIN_DIRECTION_SQUARED: float = 0.0001
+## How dark a dead art body gets (the placeholder uses DEAD_TINT).
+const ART_DEAD_TINT: Color = Color(0.7, 0.7, 0.7)
+## An art body's hit flash: modulate only darkens, so it cuts green and blue.
+const ART_HIT_TINT: Color = Color(1.0, 0.45, 0.4)
 
 var unit_id: int
 var type_index: int
@@ -91,9 +107,18 @@ var _confused: bool = false
 var _burning: bool = false
 var _flicker: float = 0.0
 var _status_tag: Label3D
+var _art: UnitArt
+var _art_body: AnimatedSprite3D
+var _animator: UnitAnimator
+## Direction index (UnitArt) the art body shows, and the animation it plays.
+var _dir: int = 4
+var _anim: StringName = &"idle"
+var _shown: StringName = &""
+## The art body stands still on its frame (hold).
+var _held: bool = false
 
 
-func setup(unit: Unit) -> void:
+func setup(unit: Unit, art: UnitArt = null) -> void:
 	unit_id = unit.id
 	type_index = unit.type_index
 	var t: UnitType = unit.type
@@ -101,18 +126,13 @@ func setup(unit: Unit) -> void:
 	height = t.body_height / mm
 	half_width = t.body_radius / mm + 0.05
 	_color = t.placeholder_color
+	_art = art
 	name = "Unit_%d" % unit.id
 
-	var quad: QuadMesh = QuadMesh.new()
-	quad.size = Vector2(half_width * 2.0, height)
-	quad.center_offset = Vector3(0.0, height * 0.5, 0.0)
-	_body_material = _unshaded(_color)
-	_body_material.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
-	_body_material.cull_mode = BaseMaterial3D.CULL_DISABLED
-	_body = MeshInstance3D.new()
-	_body.mesh = quad
-	_body.material_override = _body_material
-	add_child(_body)
+	if _art != null:
+		_build_art_body()
+	else:
+		_build_placeholder_body()
 
 	_label = _make_label(t.display_name, Color.WHITE)
 	_label.position = Vector3(0.0, height + 0.3, 0.0)
@@ -143,6 +163,9 @@ func setup(unit: Unit) -> void:
 	_facing_pivot.add_child(tick_instance)
 	add_child(_facing_pivot)
 	set_facing(unit.facing_x, unit.facing_z)
+	if _art_body != null:
+		_dir = UnitArt.direction_index(_facing, Vector2(0.0, -1.0))
+		_show(true, 0)
 
 	_hp = unit.hp
 	_max_hp = maxi(t.max_hp, 1)
@@ -157,8 +180,11 @@ func set_selected(selected: bool) -> void:
 	_refresh_overlays()
 
 
-## Turns the ground tick toward (x, z), any length.
+## Turns the ground tick toward (x, z), any length. A dead art body keeps the
+## way it fell.
 func set_facing(x: int, z: int) -> void:
+	if _dead and _art_body != null:
+		return
 	if x != 0 or z != 0:
 		_facing = Vector2(x, z).normalized()
 		_facing_pivot.rotation.y = atan2(float(x), float(z))
@@ -174,13 +200,13 @@ func set_hp(hp: int, max_hp: int) -> void:
 	_refresh_overlays()
 
 
-## Tints the body briefly: white for a HIT, steel blue for a BLOCK, green for
-## a HEAL. Other kinds, and a dead unit, do nothing.
+## Tints the body briefly: white for a HIT (ART_HIT_TINT on art), steel blue
+## for a BLOCK, green for a HEAL. Other kinds, and a dead unit, do nothing.
 func flash(kind: CombatEvent.Kind) -> void:
 	if _dead:
 		return
 	if kind == CombatEvent.Kind.HIT:
-		_flash_color = HIT_FLASH_COLOR
+		_flash_color = ART_HIT_TINT if _art_body != null else HIT_FLASH_COLOR
 	elif kind == CombatEvent.Kind.BLOCK:
 		_flash_color = BLOCK_FLASH_COLOR
 	elif kind == CombatEvent.Kind.HEAL:
@@ -253,13 +279,19 @@ func status_text() -> String:
 ## direction (x, z) of the killing blow: the body falls that way, head first.
 ## Zero falls backward from where the unit faced. ground_normal tilts the body
 ## to lie flat on a slope. Repeating the current state does nothing, so a body
-## lies down once and stays put.
+## lies down once and stays put. An art body instead turns to face the blow
+## (away from it if its death falls forward), and its death animation does
+## the falling.
 func set_dead(dead: bool, blow_dir: Vector2 = Vector2.ZERO, ground_normal: Vector3 = Vector3.UP) -> void:
 	if dead == _dead:
 		return
 	_dead = dead
 	_flash_left = 0.0
-	if dead:
+	if _art_body != null:
+		if dead and not blow_dir.is_zero_approx():
+			var toward_blow: Vector2 = -blow_dir.normalized()
+			_facing = -toward_blow if _art.die_falls_forward else toward_blow
+	elif dead:
 		_lay_down(blow_dir if not blow_dir.is_zero_approx() else -_facing, ground_normal)
 	else:
 		_body_material.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
@@ -271,7 +303,10 @@ func set_dead(dead: bool, blow_dir: Vector2 = Vector2.ZERO, ground_normal: Vecto
 ## Hides the body: it burst into gibs. Permanent.
 func set_gibbed() -> void:
 	_gibbed = true
-	_body.visible = false
+	if _art_body != null:
+		_art_body.visible = false
+	else:
+		_body.visible = false
 
 
 func is_dead() -> bool:
@@ -283,9 +318,91 @@ func is_pickable() -> bool:
 	return not _gibbed
 
 
-## World-space corners of the body quad as it lies on the ground, for picking.
-## Only meaningful while dead.
+## True if the body is the type's art, false for the placeholder quad.
+func has_art() -> bool:
+	return _art_body != null
+
+
+## Plays what the sim calls for this tick. Art bodies only.
+func animate(input: UnitAnimator.AnimInput) -> void:
+	if _animator == null:
+		return
+	var play: UnitAnimator.Play = _animator.after_tick(input)
+	_anim = play.anim
+	_art_body.speed_scale = play.speed_scale
+	_show(play.restart, play.start_frame)
+
+
+## Shows the frames for the way the unit faces relative to the camera, whose
+## horizontal forward is camera_forward (ground x, z). Art bodies only; call
+## every frame, since the camera orbits.
+func face_camera(camera_forward: Vector2) -> void:
+	if _art_body == null:
+		return
+	var dir: int = UnitArt.direction_index(_facing, camera_forward)
+	if dir != _dir:
+		_dir = dir
+		_show(false, 0)
+
+
+## Stops the art body on its frame (held) or lets it play on from there: the
+## sim isn't stepping, so nothing should walk or swing in place. It still
+## turns with the camera. A dead body isn't held: its death plays out to the
+## corpse, as a placeholder lies down at once, so the death that decides a
+## mission (the view freezes on that tick) still falls. A placeholder has
+## nothing to hold.
+func hold(held: bool) -> void:
+	if held == _held:
+		return
+	_held = held
+	if _art_body == null:
+		return
+	if held:
+		if not _dead:
+			_art_body.pause()
+	elif not _played_out():
+		# play() with no name resumes from the frame it stopped on, but would
+		# start a finished death over, so a corpse is left as it is.
+		_art_body.play()
+
+
+## The art animation showing ("walk_4"), or empty for a placeholder.
+func shown_animation() -> StringName:
+	return _art_body.animation if _art_body != null else &""
+
+
+## The art frame showing, or -1 for a placeholder.
+func shown_frame() -> int:
+	return _art_body.frame if _art_body != null else -1
+
+
+## Shows the corpse straight away, without replaying the death: for a body
+## rebuilt after the unit died.
+func skip_to_corpse() -> void:
+	if _art_body == null:
+		return
+	_animator.mark_dead()
+	_anim = &"die" if _art.has_anim(&"die") else &"idle"
+	var last: int = _art.frames.get_frame_count(UnitArt.anim_name(_anim, 0)) - 1
+	_show(true, last)
+
+
+## What the gibs look like: the art's colour, or the placeholder's.
+func gib_color() -> Color:
+	return _art.gib_color if _art != null else _color
+
+
+## World-space corners of the body as it lies on the ground, for picking:
+## feet end first, then head end. Only meaningful while dead. An art corpse
+## is a billboard, so its footprint stands in: a body-length rectangle
+## centred on the unit, its head toward the way it fell.
 func lying_corners() -> PackedVector3Array:
+	if _art_body != null:
+		var fall: Vector2 = _facing if _art.die_falls_forward else -_facing
+		var along: Vector3 = Vector3(fall.x, 0.0, fall.y) * (height * 0.5)
+		var across: Vector3 = Vector3(-fall.y, 0.0, fall.x) * half_width
+		var c: Vector3 = global_position
+		return PackedVector3Array([c - along - across, c - along + across, c + along + across, c + along - across])
 	var to_world: Transform3D = global_transform * _body.transform
 	return PackedVector3Array([
 		to_world * Vector3(-half_width, 0.0, 0.0),
@@ -311,17 +428,25 @@ func _process(delta: float) -> void:
 		set_process(false)
 
 
-# Body color: the type's, dimmed when dead, pulled toward a status tint (a
-# burning one flickers), and blended toward the flash color while a flash
-# fades.
+# Body color: the type's (white for art, which is coloured already), dimmed
+# when dead, pulled toward a status tint (a burning one flickers), and
+# blended toward the flash color while a flash fades.
 func _apply_body_color() -> void:
-	var base: Color = _color * DEAD_TINT if _dead else _color
+	var base: Color
+	if _art_body != null:
+		base = ART_DEAD_TINT if _dead else Color.WHITE
+	else:
+		base = _color * DEAD_TINT if _dead else _color
 	if not _dead and (_paralyzed or _confused or _burning):
 		var tint: float = STATUS_TINT
 		if _burning and not _paralyzed and not _confused:
 			tint *= 0.6 + 0.4 * float(int(_flicker / BURN_FLICKER_TIME) % 2)
 		base = base.lerp(_status_color(), tint)
-	_body_material.albedo_color = base.lerp(_flash_color, _flash_left / FLASH_TIME)
+	var color: Color = base.lerp(_flash_color, _flash_left / FLASH_TIME)
+	if _art_body != null:
+		_art_body.modulate = color
+	else:
+		_body_material.albedo_color = color
 
 
 # The most telling status: paralysis, then confusion, then burning.
@@ -333,6 +458,66 @@ func _status_color() -> Color:
 	return BURNING_COLOR
 
 
+func _build_placeholder_body() -> void:
+	var quad: QuadMesh = QuadMesh.new()
+	quad.size = Vector2(half_width * 2.0, height)
+	quad.center_offset = Vector3(0.0, height * 0.5, 0.0)
+	_body_material = _unshaded(_color)
+	_body_material.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+	_body_material.cull_mode = BaseMaterial3D.CULL_DISABLED
+	_body = MeshInstance3D.new()
+	_body.mesh = quad
+	_body.material_override = _body_material
+	add_child(_body)
+
+
+# A billboard pivoting on its feet: alpha-cut edges so hundreds of sprites
+# sort correctly, mipmapped so they stay clean zoomed out.
+func _build_art_body() -> void:
+	_art_body = AnimatedSprite3D.new()
+	_art_body.sprite_frames = _art.frames
+	_art_body.pixel_size = _art.pixel_size()
+	_art_body.offset = _art.feet_offset()
+	_art_body.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	_art_body.alpha_cut = SpriteBase3D.ALPHA_CUT_DISCARD
+	_art_body.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	add_child(_art_body)
+	_animator = UnitAnimator.new(_art)
+
+
+# Plays _anim for _dir. A restart starts at start_frame. Otherwise a change
+# of direction mid-animation keeps its frame and progress, so turning
+# doesn't restart a swing; a change of animation starts it from the top. A
+# held body takes the new frames but stays on its frame, unless it is dead
+# (hold).
+func _show(restart: bool, start_frame: int) -> void:
+	var wanted: StringName = UnitArt.anim_name(_anim, _dir)
+	if not restart and _art_body.animation == wanted:
+		return
+	var same_motion: bool = not restart and _shown == _anim
+	var frame: int = _art_body.frame
+	var progress: float = _art_body.frame_progress
+	_art_body.play(wanted)
+	if restart:
+		_art_body.set_frame_and_progress(start_frame, 0.0)
+	elif same_motion:
+		_art_body.set_frame_and_progress(mini(frame, _art.frames.get_frame_count(wanted) - 1), progress)
+	_shown = _anim
+	if _held and not _dead:
+		_art_body.pause()
+
+
+# The art body showing the end of an animation that doesn't loop (a corpse,
+# a finished strike), which play() would start over.
+func _played_out() -> bool:
+	var anim: StringName = _art_body.animation
+	return (
+		not _art.frames.get_animation_loop(anim)
+		and _art_body.frame >= _art.frames.get_frame_count(anim) - 1
+		and _art_body.frame_progress >= 1.0
+	)
+
+
 # Ring, label, facing tick, and health bar belong to a living unit.
 func _refresh_overlays() -> void:
 	var alive: bool = not _dead
@@ -342,7 +527,8 @@ func _refresh_overlays() -> void:
 		_notice.visible = false
 	if _status_tag != null and not alive:
 		_status_tag.visible = false
-	_facing_pivot.visible = alive
+	# Art shows facing itself.
+	_facing_pivot.visible = alive and _art_body == null
 	_hp_bar.visible = alive and (_selected or _hp < _max_hp)
 
 

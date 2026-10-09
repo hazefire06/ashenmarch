@@ -1,0 +1,70 @@
+{
+  "animations": {
+    "attack": {
+      "columns": 19,
+      "fps": 12,
+      "frames": 19,
+      "impact_frame": 8,
+      "loop": false,
+      "rows_per_direction": 1,
+      "sheet": "attack.png",
+      "stride_m": 0.0
+    },
+    "attack_alt": {
+      "columns": 24,
+      "fps": 12,
+      "frames": 39,
+      "impact_frame": 17,
+      "loop": false,
+      "rows_per_direction": 2,
+      "sheet": "attack_alt.png",
+      "stride_m": 0.0
+    },
+    "die": {
+      "columns": 24,
+      "fps": 12,
+      "frames": 27,
+      "impact_frame": -1,
+      "loop": false,
+      "rows_per_direction": 2,
+      "sheet": "die.png",
+      "stride_m": 0.0
+    },
+    "idle": {
+      "columns": 20,
+      "fps": 12,
+      "frames": 20,
+      "impact_frame": -1,
+      "loop": true,
+      "rows_per_direction": 1,
+      "sheet": "idle.png",
+      "stride_m": 0.0
+    },
+    "walk": {
+      "columns": 12,
+      "fps": 12,
+      "frames": 12,
+      "impact_frame": -1,
+      "loop": true,
+      "rows_per_direction": 1,
+      "sheet": "walk.png",
+      "stride_m": 1.4899
+    }
+  },
+  "bursts_on_death": false,
+  "cell": 160,
+  "clipped": [],
+  "die_falls_forward": false,
+  "directions": 8,
+  "elevation_deg": 50.0,
+  "feet_px": 40,
+  "gib_color": [
+    0.246,
+    0.196,
+    0.184
+  ],
+  "gutter": 4,
+  "pixels_per_meter": 52.0,
+  "stride": 168,
+  "unit": "shieldman"
+}

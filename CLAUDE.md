@@ -37,7 +37,9 @@ sim/            # pure gameplay logic, no Nodes
 view/           # Godot scenes: camera, sprites, HUD, overhead map, effects
 data/           # unit .tres files, formation definitions, map data
 maps/           # heightmaps, passability masks, spawn/trigger layouts, skirmish spawns and flags
-assets/         # placeholder art and audio (original only)
+assets/         # game-ready art and audio (LFS; owned or CC0 only, see assets/LICENSES.md)
+art-src/        # art recipes, Meshy models, render review sheets (LFS; Godot skips it)
+audio-src/      # sound prompts and raw downloads (LFS; Godot skips it)
 tests/          # GUT tests for sim/
 docs/           # design notes, prompts.md
 scripts/        # dev tooling (sim purity check)
@@ -51,7 +53,7 @@ scripts/        # dev tooling (sim purity check)
 - Feature branches: `feature/PHASE-N-short-description`. Squash-merge to `main`. Open a PR even solo; it's the change log.
 - Before starting any phase: enter plan mode, read this file and `docs/prompts.md`, propose the plan, wait for approval.
 - Commit messages: imperative, one line summary, body explains why.
-- Placeholder art: colored capsules/quads with a text label. Do not spend time on art until told to.
+- Placeholder art: colored quads with a text label stay the fallback for any unit without art. Unit art and audio are a parallel track (A0–A3, `docs/specs/2026-10-01-art-audio-design.md`) and are worked on only on `feature/PHASE-A*` branches. API keys live in `~/.config/ashenmarch/secrets.env`, never in the repo.
 
 ## Game design
 
@@ -85,7 +87,7 @@ scripts/        # dev tooling (sim purity check)
 - Paralysis (from touch or gas cloud), Confusion (attacks nearest anything), Burning, Conversion (living units only, permanent), Heal (kills undead outright).
 - Chain detonation: target unit explodes; any unit within radius explodes too, recursively, including friendlies.
 
-### Unit roster, v1 (original names, placeholder art)
+### Unit roster, v1 (original names; placeholder art until a unit's sprites land, as the Shieldman's have)
 Light side (player):
 1. Shieldman: base melee, sword and shield, cheap and sturdy.
 2. Reaver: shock melee, two-handed blade, fast, no shield, high damage.

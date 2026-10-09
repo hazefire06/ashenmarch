@@ -44,6 +44,7 @@ Decisions made in Phase 0 that later phases build on. CLAUDE.md has the rules; t
 - GUT needs the `.godot/` class_name cache, which isn't committed.
 - **On a fresh clone, `godot --headless -s addons/gut/gut_cmdln.gd` prints "Some GUT class_names have not been imported", runs zero tests, and exits 0.** This was verified on GUT 9.7.1 / Godot 4.7.2.
 - Use `make test`, which imports first, or run `godot --headless --import` once before calling `gut_cmdln.gd` directly. CI must do the same, or it will pass without testing anything.
+- **Git LFS is required.** The unit art in `assets/` is in LFS, and `data/art/shieldman.tres` loads its sheets. Install git-lfs before cloning, or run `git lfs install && git lfs pull` in an existing clone. Without it `make test` fails in `test_main_view` and the art tests, and the game draws placeholders.
 
 ## Terrain (Phase 1)
 `sim/terrain.gd` (`Terrain`) holds the ground: a heightfield plus a per-sample water depth and blocked flag. `World.terrain` owns it, and the view reads it from there.
@@ -2063,3 +2064,37 @@ The commander, ADVANCE, MEDIC and the skirmish rules draw no random numbers; `ma
 - **Route caching across ticks,** and the aim budget, for the remaining 30 to 50 ms ticks.
 - **Lockstep must allowlist command kinds.** `CommandCodec` decodes every kind, including the setup and debug ones (spawns, statuses, velocities, a mid-game deploy) that a replay never holds from a player. Taken from a peer, they would be cheats.
 - **The web build at 100 units** runs at 36 to 60 fps (the sim is about 3x native in wasm). Not a target this phase.
+
+## Unit art (track A1)
+
+Designed in `docs/specs/2026-10-01-art-audio-design.md`; built by `docs/plans/2026-10-03-art-audio-a0-a1.md`.
+
+### Pipeline (offline)
+- `art-src/units/<id>/spec.toml` is a unit's recipe: Meshy prompt, height, candidate counts, each animation's source (a Meshy library action and its clip name, the rig's free walk/run, or a local GLB), and the props it carries. `art-src/style.toml` is appended to every prompt.
+- `scripts/art/meshy.py` (`plan` and `prop-plan` free; `candidates`, `build`, `prop-candidates` and `prop-build` paid, run by Tim with a credit cap) buys previews, then texture, rig and animations, downloading at once (links expire in about 3 days). `manifest.json` records each task as it is created, allowlisted fields only and no URLs, so reruns resume instead of paying twice.
+- **Props** (sword, targe) are separate Meshy models in `art-src/props/<id>/`, textured but not rigged. The renderer fixes each rigidly to a bone of the unit's rig (`[[attach]]` in the spec: bone, offset, rotation) at render time and sizes it by its longest principal axis. `make art-attach` renders a tuning sheet for the offsets. A prop is never part of the unit's own model.
+- `scripts/art/render_sprites.py` (headless Blender, `make art-render UNIT=<id>`) renders each animation from 8 directions with an orthographic camera at 50°, lights riding on the camera, root motion cancelled. A clip that already plays in place (Meshy's rig walk) has its walk stride measured from the feet instead of the root. Output in `assets/units/<id>/`:
+  - one sheet per animation, one band of rows per direction, 160 px cells with a 4 px gutter, the feet 40 px up from the cell's bottom edge, at 52 px per metre;
+  - sheets wrap at 4096 px wide (Web may cap textures at 4096 px): the sidecar's `columns` and `rows_per_direction` say how, so frame `i` of direction `d` is at column `i % columns`, row `d * rows_per_direction + i // columns`;
+  - `<id>.json`, the sidecar (frame counts, fps, impact frames, stride, wrap, cell, feet, gib colour), and `.png.import` files (mipmaps, VRAM compressed).
+  - `art-src/units/<id>/review/` gets the contact sheet and per-animation GIFs for Tim's approval. A clip auditioned there but not in the game's animation set (`attack_alt`) is rendered and not built.
+- `scripts/art/build_unit_art.gd` (headless Godot, `make art-build UNIT=<id>`) turns them into `data/art/<id>.tres` (`UnitArt`) and lists it in `data/art/catalog.tres` (`UnitArtCatalog`). Both are generated; never hand-edit them.
+- Keys live in `~/.config/ashenmarch/secrets.env` (700/600), never in the repo; gitleaks rules (`make hooks`, CI) catch a leak.
+
+### Direction convention
+- Direction `d` shows the unit facing `d × 45°` counter-clockwise (seen from above) from the camera's horizontal forward: 0 back, 2 screen-left, 4 front, 6 screen-right.
+- Shared by the renderer (camera placement) and `UnitArt.direction_index`. A Blender fixture test and a Godot test through a real `Camera3D` both pin it.
+
+### In game
+- `MainView` loads the catalog at startup (`MainView.load_art`) and passes it to `UnitsView.setup`. `UnitsView` looks up each unit's type in it. With art, `UnitSprite` builds an `AnimatedSprite3D` billboard (alpha-cut, mipmapped, feet on the node's origin) instead of the quad; the overlays are the same minus the facing tick. Without art it is the placeholder exactly as before.
+- Each frame `UnitsView` passes the camera's horizontal forward, and each sprite shows the matching direction; a direction change mid-swing keeps the frame.
+- Each tick `UnitAnimator` (pure, tested) picks the animation from sim state: a wind-up starting (`windup_left`, `aim_left`, `act_left` rising from 0) plays the strike stretched so its impact frame lands on the blow's tick, clamped to 0.25–4×. A zero-tick shot shows its release. Walking plays at the ground speed the unit actually covered (so wading slows the legs) over the sheet's `stride_m`. Paralysis freezes. Death plays once, the body facing the blow, and the last frame is the corpse.
+- Art bodies tint through `modulate`, which can only darken, so a hit flashes the reddish `ART_HIT_TINT` instead of the placeholder's near-white. While the game is frozen (paused, or the mission decided) art bodies hold their frame instead of walking or swinging in place. A death still plays out to its corpse, as a placeholder lies down at once, so the death that decides a mission falls (the view freezes on that very tick) and a body falling when P is pressed finishes its fall.
+- **F12** (view-only; works paused, decided, and in the campaign) rebuilds every sprite as its placeholder or back (`UnitsView.set_art_enabled`). The dead stay dead and the gibbed stay gone; the stats line names the key.
+- Art that fails `UnitArt.validate()` is left out at startup, with a warning per reason; its unit stays a placeholder and the game starts. A missing catalog file is an empty catalog.
+
+### Not yet
+- Barks, audio and the other nine units (A2, A3). The Sapper's satchel drop has no `place` trigger yet (A3).
+- Direction hysteresis and two-elevation renders only if the in-engine check needs them; MultiMesh only if profiling does.
+- **Figure height.** Picking and the overlays (name, notice, status tag, HP bar) of an art unit still use its type's `body_height`, about 1.5× the drawn figure at the 50° camera: in a dense formation a click on a rear-rank Shieldman can select the one in front, and the labels float above the head. The fix carries the figure's height in px (spec §6.2, planned) from the renderer through the sidecar and `UnitArt` to `UnitSprite.height`. Decide it at Tim's in-engine review, before A3 at the latest.
+- **Not checked:** Windows and Web (Phase 10 does the cross-platform pass). The in-engine check ran on macOS (GL Compatibility on Metal) only; the sheet wrap and the VRAM-compressed, mipmapped sheets are the things to look at.

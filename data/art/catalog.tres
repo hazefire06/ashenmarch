@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="UnitArtCatalog" format=3]
+
+[ext_resource type="Script" path="res://view/units/unit_art.gd" id="1_2vs60"]
+[ext_resource type="Resource" path="res://data/art/shieldman.tres" id="2_agbh4"]
+[ext_resource type="Script" path="res://view/units/unit_art_catalog.gd" id="3_wyav6"]
+
+[resource]
+script = ExtResource("3_wyav6")
+arts = Array[ExtResource("1_2vs60")]([ExtResource("2_agbh4")])
