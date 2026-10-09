@@ -4545,4 +4545,5 @@ impact_frames = Dictionary[StringName, int]({
 &"attack": 8
 })
 stride_m = 1.4899
+figure_height_m = 1.406
 gib_color = Color(0.246, 0.196, 0.184, 1)

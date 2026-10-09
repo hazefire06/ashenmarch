@@ -10,16 +10,6 @@
       "sheet": "attack.png",
       "stride_m": 0.0
     },
-    "attack_alt": {
-      "columns": 24,
-      "fps": 12,
-      "frames": 39,
-      "impact_frame": 17,
-      "loop": false,
-      "rows_per_direction": 2,
-      "sheet": "attack_alt.png",
-      "stride_m": 0.0
-    },
     "die": {
       "columns": 24,
       "fps": 12,
@@ -58,6 +48,7 @@
   "directions": 8,
   "elevation_deg": 50.0,
   "feet_px": 40,
+  "figure_height_m": 1.406,
   "gib_color": [
     0.246,
     0.196,
