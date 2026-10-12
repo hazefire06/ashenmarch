@@ -164,7 +164,7 @@ This runs headless in Blender 5.2.2 LTS (`/Applications/Blender.app/Contents/Mac
 - **Camera:** orthographic at a fixed 50° elevation (the middle of the in-game 35–65°), 8 yaw angles 45° apart, feet pinned to a fixed pivot 40 px above the cell's bottom edge, 52 px per metre.
 - **Lighting is fixed relative to the camera,** so every direction reads the same.
 - **Root motion is stripped** so characters animate in place. Walk stride (metres per cycle) is measured and saved. A clip that already plays in place (its root travels under 5 cm, like Meshy's rig walk) is measured from the feet instead: the planted foot slides backward at ground speed.
-- **Frames:** 12 fps by default (configurable per clip), 160 px cells with a 4 px transparent gap (a 168 px stride) so mipmaps don't bleed between frames. At 128 px with the feet 20 px up, the first Shieldman render clipped dying and attacking frames at the bottom, and props raised overhead need room too.
+- **Frames:** 12 fps by default (an animation's `fps` key, 4 to 30, sets its own), 160 px cells with a 4 px transparent gap (a 168 px stride) so mipmaps don't bleed between frames. A unit whose weapon outgrows the cell sets `[render] cell_px` (a multiple of 8, 128 to 256) and `feet_px` (above 0, under half the cell); the scale stays 52 px per metre, and the sidecar's `cell`, `stride` and `feet_px` carry the frame. At 128 px with the feet 20 px up, the first Shieldman render clipped dying and attacking frames at the bottom, and props raised overhead need room too.
 - **Output:**
   - one PNG sheet per animation into `assets/units/<id>/`, one band of rows per direction. Sheets wrap at 4096 px wide, since Web (WebGL) may cap textures there: 24 columns, so frame `i` of direction `d` sits at column `i % columns`, row `d * rows_per_direction + i // columns`;
   - a JSON sidecar with frame counts, fps, impact frame, stride, `columns` and `rows_per_direction` per animation, figure height in px (planned: not yet written or read; see the figure-height follow-up under Unit art, Not yet, in `architecture.md`), and gib colour;
@@ -476,9 +476,10 @@ Each branch gets its own implementation plan. The first plan covers A0 and A1.
 - **Strike clips.** `UnitArt` requires idle, walk, die (unless the body bursts), and at least one strike clip: `attack`, `shoot`, `throw` or `cast`. A unit with no melee (Drifter, Stormcaller, Blightbag) needs no `attack`. Every strike or act clip present (`attack`, `shoot`, `throw`, `cast`, `place`) needs an impact frame.
 - **Bursting bodies.** An art type with `bursts_on_death` always bursts into gibs on death, whatever the overkill, so it never stands as an idle "corpse".
 - **Hover.** A recipe animation can set `bob_m` and `bob_hz`. The renderer then bobs the figure up and down as a whole number of cycles per clip, so loops stay seamless; a bob on a clip with too few frames to show it is refused. A hover's crest counts toward `figure_height_m`, as a raised arm does, so picking and overlays never clip the figure at any phase. A walk or run can also set `stride_m` to replace a measured stride, for a floating unit with no foot contact; no other clip may.
+- **Frame and frame rate.** The Reaver's claymore (1.35 m) and the Longbow's bow (1.75 m) clip the 160 px cell in their death frames, so a recipe can set a bigger `[render]` frame (192 px, feet 64) and an animation its own `fps`, which keeps long clips such as the Longbow's 5 s `shoot` under the 4096 px cap. Units keep their on-screen size; the game reads the frame and each clip's fps from the sidecar.
 - **Audition clips.** An animation marked `audition = true` renders to `review/` only: its GIF and a contact-sheet row, with no game sheet and no sidecar entry. This replaces shipping `attack_alt.png`.
 - **Guards.**
-  - A sheet taller than 4096 px is refused, which means more than 72 frames at 12 fps.
+  - A sheet taller than 4096 px is refused, which means more than 72 frames in the default 160 px cell (40 in a 192 px one); a lower `fps` fits a longer clip.
   - A clip whose file has no animation is an error, not a one-frame sheet.
   - ffmpeg is checked before rendering starts.
 

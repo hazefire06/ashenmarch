@@ -9,7 +9,7 @@ import unittest
 from pathlib import Path
 
 from clips import pick_clip
-from unit_spec import GAME_ANIMS, MAX_CANDIDATES, AnimEntry, AttachEntry, PropSpec, SpecError, UnitSpec, animation_file, load_prop_spec, load_spec, load_style
+from unit_spec import DEFAULT_CELL_PX, DEFAULT_FEET_PX, DEFAULT_FPS, GAME_ANIMS, MAX_CANDIDATES, AnimEntry, AttachEntry, PropSpec, SpecError, UnitSpec, animation_file, load_prop_spec, load_spec, load_style
 
 ART_SRC = Path(__file__).resolve().parent.parent.parent / "art-src"
 # TOML values that are not a whole number of 0 or more (a count), or not a whole number from 100 to 300000 (a polycount).
@@ -510,6 +510,78 @@ class A3RecipeFieldsTest(unittest.TestCase):
         for name in ("idle", "glide", "walk_alt"):
             with self.subTest(name=name), self.assertRaisesRegex(SpecError, "stride_m.*walk or run"):
                 self._load(f'[animations.{name}]\nfile = "anims/idle.glb"\nstride_m = 1.2\n')
+
+
+    # The unit's frame ([render]) and an animation's frame rate (fps), added with Task 5b.
+    IDLE = '[animations.idle]\naction = 0\nclip = "Idle"\n'
+
+    def test_the_frame_defaults_to_160_px_with_the_feet_40_up(self) -> None:
+        spec = self._load(self.IDLE)
+        self.assertEqual((spec.cell_px, spec.feet_px), (160, 40))
+        self.assertEqual((DEFAULT_CELL_PX, DEFAULT_FEET_PX), (160, 40))
+
+    def test_a_render_table_sets_the_frame(self) -> None:
+        spec = self._load("[render]\ncell_px = 192\nfeet_px = 64\n" + self.IDLE)
+        self.assertEqual((spec.cell_px, spec.feet_px), (192, 64))
+        # Either key alone keeps the other's default, and an empty table is the defaults.
+        for table, want in (("cell_px = 128", (128, 40)), ("feet_px = 64", (160, 64)), ("", (160, 40))):
+            with self.subTest(table=table):
+                spec = self._load(f"[render]\n{table}\n" + self.IDLE)
+                self.assertEqual((spec.cell_px, spec.feet_px), want)
+
+    def test_the_frame_limits_are_inclusive_where_they_say_so(self) -> None:
+        # cell_px runs 128 to 256; the feet must stay strictly under half the cell, one pixel short of it at most.
+        for cell, feet in ((128, 63), (256, 127), (192, 1), (136, 67)):
+            with self.subTest(cell=cell, feet=feet):
+                spec = self._load(f"[render]\ncell_px = {cell}\nfeet_px = {feet}\n" + self.IDLE)
+                self.assertEqual((spec.cell_px, spec.feet_px), (cell, feet))
+
+    def test_bad_cell_sizes_are_refused(self) -> None:
+        # Out of range (100, 260, 0), not a multiple of 8 (190, 129), and not a whole number.
+        for bad in ("100", "260", "0", "-192", "127", "257", "190", "129", "192.0", "1e2", "true", "false", '"192"', "[192]", "1" + "0" * 30):
+            with self.subTest(cell_px=bad), self.assertRaisesRegex(SpecError, "render.cell_px"):
+                self._load(f"[render]\ncell_px = {bad}\n" + self.IDLE)
+
+    def test_bad_feet_heights_are_refused(self) -> None:
+        # 0 and below, half the cell or more (the default cell's half is 80), and not a whole number.
+        for bad in ("0", "-4", "80", "81", "160", "40.0", "true", "false", '"40"', "[40]", "1" + "0" * 30):
+            with self.subTest(feet_px=bad), self.assertRaisesRegex(SpecError, "render.feet_px"):
+                self._load(f"[render]\nfeet_px = {bad}\n" + self.IDLE)
+        # Half of the cell that is set, not of the default one.
+        with self.assertRaisesRegex(SpecError, "render.feet_px"):
+            self._load("[render]\ncell_px = 192\nfeet_px = 96\n" + self.IDLE)
+        with self.assertRaisesRegex(SpecError, "render.feet_px"):
+            self._load("[render]\ncell_px = 128\nfeet_px = 64\n" + self.IDLE)
+
+    def test_an_unknown_render_key_is_refused_instead_of_silently_ignored(self) -> None:
+        for bad in ("cell = 192", "feet = 64", "stride = 200", "cell_px = 192\nfeet_pxx = 64", "pixels_per_meter = 52"):
+            with self.subTest(bad=bad), self.assertRaisesRegex(SpecError, r"\[render\].*unknown key"):
+                self._load(f"[render]\n{bad}\n" + self.IDLE)
+
+    def test_render_must_be_a_table(self) -> None:
+        for bad in ("render = 192\n", 'render = "192"\n', "render = [192]\n"):
+            with self.subTest(bad=bad), self.assertRaisesRegex(SpecError, r"\[render\] table"):
+                self._load(bad + self.IDLE)
+
+    def test_an_animations_fps_defaults_to_12_and_parses(self) -> None:
+        self.assertEqual(self._load(self.IDLE).animations[0].fps, DEFAULT_FPS)
+        self.assertEqual(DEFAULT_FPS, 12)
+        for fps in (4, 6, 30):
+            with self.subTest(fps=fps):
+                self.assertEqual(self._load(self.IDLE + f"fps = {fps}\n").animations[0].fps, fps)
+
+    def test_each_animation_has_its_own_fps(self) -> None:
+        spec = self._load(self.IDLE + 'fps = 6\n[animations.die]\naction = 183\nclip = "Shot_and_Fall_Backward"\n')
+        self.assertEqual([(a.name, a.fps) for a in spec.animations], [("idle", 6), ("die", 12)])
+
+    def test_bad_fps_are_refused(self) -> None:
+        for bad in ("0", "3", "31", "-12", "12.5", "12.0", "true", "false", '"12"', "[12]", "1" + "0" * 30):
+            with self.subTest(fps=bad), self.assertRaisesRegex(SpecError, "animation idle: fps must be a whole number from 4 to 30"):
+                self._load(self.IDLE + f"fps = {bad}\n")
+
+    def test_an_audition_may_set_an_fps_too(self) -> None:
+        spec = self._load('[animations.attack_alt]\naction = 128\nclip = "Heavy_Hammer_Swing"\naudition = true\nfps = 8\n')
+        self.assertEqual(spec.animations[0].fps, 8)
 
 
 if __name__ == "__main__":

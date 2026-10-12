@@ -17,7 +17,8 @@ follows it, but props attach to it. Its clips:
   backward while planted, one 1.2 m stride per cycle (the way Meshy's rig
   walk plays).
 Any clip can also be exported with no action at all (animated=False), which
-the renderer must refuse.
+the renderer must refuse. A recipe can set a bigger frame ([render] cell_px
+and feet_px, drawn here at 192 and 64) and an animation its own fps.
 The prop, "stick", is a blue 0.6 x 0.2 x 0.2 m box, long along its own X,
 whose recipe sizes it to 0.9 m. A second prop, "slant", is a thin stick
 with a pommel, generated lying diagonally in its own frame the way the
@@ -28,10 +29,12 @@ colours are exact.
 from __future__ import annotations
 
 import contextlib
+import dataclasses
 import io
 import math
 import re
 import shutil
+import struct
 import sys
 import tempfile
 import unittest
@@ -47,6 +50,7 @@ from mathutils import Euler, Matrix, Quaternion, Vector
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 import render_sprites as rs  # noqa: E402
+from unit_spec import DEFAULT_CELL_PX, DEFAULT_FEET_PX, DEFAULT_FPS  # noqa: E402
 
 STRIDE_M = 1.2
 HAND_HEAD = (0.25, 0.0, 1.3)
@@ -124,6 +128,18 @@ bob_hz = {bob_hz}
 RISING_IDLE = """
 [animations.idle]
 file = "anims/rise.glb"
+"""
+RENDER = """
+[render]
+cell_px = {cell_px}
+feet_px = {feet_px}
+"""
+BIG_CELL = 192   # a bigger frame than the default 160/40: stride 200, so 20 columns and 20 rows fit under 4096 px
+BIG_FEET = 64
+FPS_WALK = """
+[animations.walk]
+file = "anims/walk.glb"
+fps = {fps}
 """
 STICK_SPEC = """id = "stick"
 faction = "light"
@@ -321,6 +337,11 @@ def make_unit(root: Path, spec: str, clips: dict[str, str], parented: bool = Fal
     return unit_dir
 
 
+def room_for_rows(rows: int):
+    """Patches the frame's sheet cap to `rows` rows, to force the cap on the fixture's short clips."""
+    return mock.patch.object(rs.Frame, "rows_max", new_callable=mock.PropertyMock, return_value=rows)
+
+
 def render(root: Path) -> tuple[Path, dict, str]:
     """Renders the fixture under root; returns (out_dir, sidecar, what it printed)."""
     printed = io.StringIO()
@@ -399,11 +420,12 @@ def at(sheet: np.ndarray, row: int, column: int, size: int = rs.CELL) -> np.ndar
     return sheet[top - size:top, left:left + size]
 
 
-def cell(sheet: np.ndarray, frame: int, direction: int, info: dict | None = None) -> np.ndarray:
-    """Frame `frame` of direction `direction`, laid out as the sidecar entry `info` says (one row per direction without it)."""
-    columns = info["columns"] if info else sheet.shape[1] // rs.STRIDE
+def cell(sheet: np.ndarray, frame: int, direction: int, info: dict | None = None, size: int = rs.CELL) -> np.ndarray:
+    """Frame `frame` of direction `direction`, laid out as the sidecar entry `info` says (one row per direction without it),
+    in cells of `size` px."""
+    columns = info["columns"] if info else sheet.shape[1] // (size + 2 * rs.GUTTER)
     rows = info["rows_per_direction"] if info else 1
-    return at(sheet, direction * rows + frame // columns, frame % columns)
+    return at(sheet, direction * rows + frame // columns, frame % columns, size)
 
 
 def lowest_opaque_row(sheet: np.ndarray, frame: int, direction: int, info: dict) -> int:
@@ -446,6 +468,18 @@ def opaque(px: np.ndarray) -> np.ndarray:
     return px[..., 3] > 0.5
 
 
+def gif_size(path: Path) -> tuple[int, int]:
+    """A GIF's width and height, from its logical screen descriptor."""
+    return struct.unpack("<HH", path.read_bytes()[6:10])
+
+
+def gif_delay_cs(path: Path) -> int:
+    """The first frame's delay in hundredths of a second, from its Graphic Control Extension."""
+    data = path.read_bytes()
+    start = data.index(b"\x21\xf9\x04")
+    return struct.unpack("<H", data[start + 4:start + 6])[0]
+
+
 def mask_box(mask: np.ndarray) -> tuple[float, float, float, float]:
     """Left, right, bottom and top edges of a mask in px; right and top are one past its last pixel."""
     (left, right), (bottom, top) = columns_of(mask), rows_of(mask)
@@ -472,9 +506,10 @@ def stick_corners(head: tuple[float, float, float], turn_deg: float = 0.0) -> np
                      for x in (-1, 1) for y in (-1, 1) for z in (-1, 1)])
 
 
-def box_px(corners: np.ndarray, direction: int) -> tuple[float, float, float, float]:
-    """Left, right, bottom and top of world corners projected into a game cell (rs.project matches Blender's camera; see ProjectionTest)."""
-    x, y = rs.project(corners, direction)
+def box_px(corners: np.ndarray, direction: int, frame: rs.Frame | None = None) -> tuple[float, float, float, float]:
+    """Left, right, bottom and top of world corners projected into a game cell (rs.project matches Blender's camera; see
+    ProjectionTest), in the default frame unless one is given."""
+    x, y = rs.project(corners, direction, frame or rs.Frame())
     return float(x.min()), float(x.max()), float(y.min()), float(y.max())
 
 
@@ -488,10 +523,11 @@ def body_corners() -> np.ndarray:
                      for (cx, cy, cz), (sx, sy, sz) in BODY_BOXES for x in (-1, 1) for y in (-1, 1) for z in (-1, 1)])
 
 
-def body_rows_in_front_view() -> tuple[float, float]:
-    """Where the fixture's 0.5 x 0.3 x 1.8 m body lands in direction 4, in px from the bottom: its near bottom edge and far top edge."""
-    return (rs.FEET_PX - 0.15 * math.sin(ELEVATION) * rs.PIXELS_PER_METER,
-            rs.FEET_PX + (1.8 * math.cos(ELEVATION) + 0.15 * math.sin(ELEVATION)) * rs.PIXELS_PER_METER)
+def body_rows_in_front_view(feet: int = rs.FEET_PX) -> tuple[float, float]:
+    """Where the fixture's 0.5 x 0.3 x 1.8 m body lands in direction 4, in px from the bottom: its near bottom edge and far top edge,
+    with the feet `feet` px up."""
+    return (feet - 0.15 * math.sin(ELEVATION) * rs.PIXELS_PER_METER,
+            feet + (1.8 * math.cos(ELEVATION) + 0.15 * math.sin(ELEVATION)) * rs.PIXELS_PER_METER)
 
 
 class RenderSpritesTest(unittest.TestCase):
@@ -708,24 +744,42 @@ class RenderGuardTest(unittest.TestCase):
 
     def test_a_sheet_taller_than_4096_px_is_refused(self) -> None:
         # 4096 px holds 24 rows of 168 px: three rows of 24 frames for each of 8 directions, 72 frames at most.
-        self.assertEqual(rs.MAX_SHEET_ROWS, 24)
-        self.assertLessEqual(rs.DIRECTIONS * rs.sheet_layout(72)[1], rs.MAX_SHEET_ROWS)
-        self.assertGreater(rs.DIRECTIONS * rs.sheet_layout(73)[1], rs.MAX_SHEET_ROWS)
+        self.assertEqual(rs.Frame().rows_max, 24)
+        self.assertLessEqual(rs.DIRECTIONS * rs.sheet_layout(72)[1], rs.Frame().rows_max)
+        self.assertGreater(rs.DIRECTIONS * rs.sheet_layout(73)[1], rs.Frame().rows_max)
         # With room for 8 rows, idle (one row a direction) renders and rise (30 frames, two rows a direction) is
         # refused before any of its frames are drawn.
         # The message gives the limit in frames: 8 rows hold one row of 24 frames a direction.
         make_unit(self.root, fixture_spec(IDLE, RISE), {"idle": "idle", "rise": "rise"})
-        with mock.patch.object(rs, "MAX_SHEET_ROWS", 8), mock.patch.object(rs, "render_to", wraps=rs.render_to) as drawn:
+        with room_for_rows(8), mock.patch.object(rs, "render_to", wraps=rs.render_to) as drawn:
             with self.assertRaisesRegex(RuntimeError, r"rise: 30 frames .* taller than .* at most 24 frames \(2 s at 12 fps\)"):
                 render(self.root)
         self.assertEqual(drawn.call_count, rs.DIRECTIONS, "idle's frames only")
         # Nothing reached assets/: idle's sheet waited in the work folder, so no new sheet sits beside an old sidecar.
         self.assertFalse((self.root / "assets").exists(), "idle's sheet waited in the work folder")
 
+    def test_a_bigger_cell_lowers_the_height_cap_and_a_lower_fps_fits_under_it(self) -> None:
+        # No patching: at cell 256 (stride 264) 4096 px holds 15 rows, one row of 15 frames for each of 8 directions. rise at
+        # 12 fps (30 frames, two rows a direction) is refused before any frame is drawn but idle's; at 5 fps it is 13 frames.
+        frame = RENDER.format(cell_px=256, feet_px=64)
+        make_unit(self.root, fixture_spec(frame, IDLE, RISE), {"idle": "idle", "rise": "rise"})
+        with mock.patch.object(rs, "render_to", wraps=rs.render_to) as drawn:
+            with self.assertRaisesRegex(RuntimeError, r"rise: 30 frames at 12 fps makes a sheet 4224 px tall, taller than the 15 rows of "
+                                                       r"264 px .* at most 15 frames \(1\.25 s at 12 fps\)"):
+                render(self.root)
+        self.assertEqual(drawn.call_count, rs.DIRECTIONS, "idle's frames only")
+        self.assertFalse((self.root / "assets").exists())
+        variant = Path(tempfile.mkdtemp(dir=self.root))
+        make_unit(variant, fixture_spec(frame, IDLE, '\n[animations.rise]\nfile = "anims/rise.glb"\nfps = 5\n'), {"idle": "idle", "rise": "rise"})
+        out, sidecar, _ = render(variant)
+        rise = sidecar["animations"]["rise"]
+        self.assertEqual((rise["frames"], rise["fps"], rise["columns"], rise["rows_per_direction"]), (13, 5, 13, 1))
+        self.assertEqual(rs.read_rgba(out / "rise.png").shape[:2], (rs.DIRECTIONS * 264, 13 * 264))
+
     def test_an_audition_may_run_past_the_height_cap(self) -> None:
         # The same 8 rows of room: rise as an audition (two rows a direction) draws all its frames, for review only.
         unit_dir = make_unit(self.root, fixture_spec(IDLE, RISE_AUDITION), {"idle": "idle", "rise": "rise"})
-        with mock.patch.object(rs, "MAX_SHEET_ROWS", 8):
+        with room_for_rows(8):
             out, sidecar, _ = render(self.root)
         self.assertTrue((unit_dir / "review" / "rise_alt.gif").exists())
         self.assertFalse((out / "rise_alt.png").exists())
@@ -988,6 +1042,221 @@ class InPlaceWalkTest(unittest.TestCase):
         self.assertIn("Hand", str(caught.exception))
 
 
+class FrameTest(unittest.TestCase):
+    """Frame by itself: the cell, the feet, and the sheet room that follows from them."""
+
+    def test_the_default_frame_is_160_px_with_the_feet_40_up(self) -> None:
+        frame = rs.Frame()
+        self.assertEqual((frame.cell, frame.feet, frame.gutter, frame.stride), (160, 40, 4, 168))
+        self.assertEqual((frame.columns_max, frame.rows_max), (24, 24))
+        self.assertEqual((rs.CELL, rs.FEET_PX, rs.STRIDE), (frame.cell, frame.feet, frame.stride), "the module's names are the default's")
+
+    def test_the_renderer_and_the_recipe_agree_on_the_defaults(self) -> None:
+        # unit_spec holds the defaults a recipe without [render] gets; the renderer's own must not drift from them.
+        self.assertEqual((rs.CELL, rs.FEET_PX, rs.FPS), (DEFAULT_CELL_PX, DEFAULT_FEET_PX, DEFAULT_FPS))
+        self.assertEqual(rs.Frame(), rs.Frame(DEFAULT_CELL_PX, DEFAULT_FEET_PX))
+
+    def test_a_bigger_cell_fits_fewer_columns_and_rows(self) -> None:
+        for cell, stride, room in ((BIG_CELL, 200, 20), (256, 264, 15), (128, 136, 30)):
+            with self.subTest(cell=cell):
+                frame = rs.Frame(cell, 40)
+                self.assertEqual((frame.stride, frame.columns_max, frame.rows_max), (stride, room, room))
+                self.assertLessEqual(frame.columns_max * frame.stride, rs.MAX_SHEET_PX)
+                self.assertGreater((frame.columns_max + 1) * frame.stride, rs.MAX_SHEET_PX, "the widest that fits")
+
+    def test_the_sheet_layout_wraps_at_the_frames_columns(self) -> None:
+        frame = rs.Frame(BIG_CELL, BIG_FEET)
+        self.assertEqual(rs.sheet_layout(12, frame), (12, 1))
+        self.assertEqual(rs.sheet_layout(30, frame), (20, 2))
+        # 20 rows hold two rows of 20 frames for each of 8 directions: 40 frames at most.
+        self.assertLessEqual(rs.DIRECTIONS * rs.sheet_layout(40, frame)[1], frame.rows_max)
+        self.assertGreater(rs.DIRECTIONS * rs.sheet_layout(41, frame)[1], frame.rows_max)
+
+    def test_a_frame_cannot_be_changed(self) -> None:
+        frame = rs.Frame()
+        with self.assertRaises(dataclasses.FrozenInstanceError):
+            frame.cell = BIG_CELL  # type: ignore[misc]
+
+
+class BigFrameTest(unittest.TestCase):
+    """The fixture drawn in a 192 px cell with the feet 64 px up, against the same figure in the default frame. The scale is
+    unchanged (52 px per metre), so a bigger cell is only margin."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls._tmp = tempfile.TemporaryDirectory()
+        cls.root = Path(cls._tmp.name)
+        frame = RENDER.format(cell_px=BIG_CELL, feet_px=BIG_FEET)
+        big = cls.root / "big"
+        big.mkdir()
+        cls.unit_dir = make_unit(big, fixture_spec(frame, IDLE, WALK, RISE), {"idle": "idle", "walk": "walk", "rise": "rise"})
+        cls.out, cls.sidecar, cls.printed = render(big)
+        cls.idle = rs.read_rgba(cls.out / "idle.png")
+        cls.walk = rs.read_rgba(cls.out / "walk.png")
+        cls.rise = rs.read_rgba(cls.out / "rise.png")
+        plain = cls.root / "plain"
+        plain.mkdir()
+        make_unit(plain, fixture_spec(IDLE), {"idle": "idle"})
+        plain_out, cls.plain_sidecar, _ = render(plain)
+        cls.plain_idle = rs.read_rgba(plain_out / "idle.png")
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        cls._tmp.cleanup()
+
+    def front(self) -> np.ndarray:
+        return cell(self.idle, 0, 4, size=BIG_CELL)
+
+    def test_the_sidecar_records_the_frame(self) -> None:
+        sidecar = self.sidecar
+        self.assertEqual((sidecar["cell"], sidecar["feet_px"], sidecar["stride"], sidecar["gutter"]), (BIG_CELL, BIG_FEET, 200, 4))
+        self.assertEqual(sidecar["pixels_per_meter"], rs.PIXELS_PER_METER, "the scale is unchanged")
+
+    def test_each_sheet_is_columns_by_rows_of_the_frames_stride(self) -> None:
+        for name, (columns, rows) in {"idle": (1, 1), "walk": (12, 1), "rise": (20, 2)}.items():
+            with self.subTest(name=name):
+                info = self.sidecar["animations"][name]
+                self.assertEqual((info["columns"], info["rows_per_direction"]), (columns, rows))
+                sheet = getattr(self, name)
+                self.assertEqual(sheet.shape[:2], (rs.DIRECTIONS * rows * 200, columns * 200))
+                self.assertLessEqual(max(sheet.shape[:2]), rs.MAX_SHEET_PX)
+
+    def test_frames_past_the_last_column_continue_on_the_next_row(self) -> None:
+        # The 30-frame rise wraps at 20 columns here (24 in the default frame): frames 20..29 sit on the second row.
+        rise = self.sidecar["animations"]["rise"]
+        per_frame = RISE_M / 29 * math.cos(ELEVATION) * rs.PIXELS_PER_METER
+        for d in (0, 4):
+            base = alpha_centroid_y(cell(self.rise, 0, d, rise, BIG_CELL))
+            for frame in range(rise["frames"]):
+                height = alpha_centroid_y(cell(self.rise, frame, d, rise, BIG_CELL)) - base
+                self.assertAlmostEqual(height, frame * per_frame, delta=0.4, msg=f"d{d} f{frame}")
+            for column in range(10, 20):  # frames 30..39 don't exist: transparent
+                self.assertEqual(float(at(self.rise, 2 * d + 1, column, BIG_CELL)[..., 3].max()), 0.0, column)
+
+    def test_the_feet_sit_on_the_frames_pivot(self) -> None:
+        rows = np.nonzero((self.front()[..., 3] > 0.5).any(axis=1))[0]
+        self.assertTrue(BIG_FEET - 8 <= int(rows.min()) <= BIG_FEET, int(rows.min()))
+        # The same figure in the default frame stands 24 px lower in its cell: the pivot moved, not the figure.
+        plain = np.nonzero((cell(self.plain_idle, 0, 4)[..., 3] > 0.5).any(axis=1))[0]
+        self.assertAlmostEqual(int(rows.min()) - int(plain.min()), BIG_FEET - rs.FEET_PX, delta=1)
+
+    def test_the_figure_is_the_same_size_in_pixels(self) -> None:
+        big_rows, big_columns = rows_of(opaque(self.front())), columns_of(opaque(self.front()))
+        plain = cell(self.plain_idle, 0, 4)
+        plain_rows, plain_columns = rows_of(opaque(plain)), columns_of(opaque(plain))
+        self.assertAlmostEqual(big_rows[1] - BIG_FEET, plain_rows[1] - rs.FEET_PX, delta=1, msg="body top above the feet")
+        self.assertAlmostEqual(big_columns[1] - big_columns[0], plain_columns[1] - plain_columns[0], delta=1, msg="body width")
+        self.assertAlmostEqual(self.sidecar["figure_height_m"], self.plain_sidecar["figure_height_m"], delta=1 / rs.PIXELS_PER_METER)
+        highest = max(float(rs.project(body_corners(), d, rs.Frame(BIG_CELL, BIG_FEET))[1].max()) for d in range(rs.DIRECTIONS))
+        self.assertAlmostEqual(self.sidecar["figure_height_m"], (highest - BIG_FEET) / rs.PIXELS_PER_METER, delta=0.005)
+
+    def test_the_body_is_centred_in_the_bigger_cell(self) -> None:
+        columns = columns_of(opaque(self.front()))
+        self.assertAlmostEqual((columns[0] + columns[1] + 1) / 2, BIG_CELL / 2, delta=1.5)
+
+    def test_the_extents_report_the_cell_and_match_the_pixels(self) -> None:
+        lowest, highest, half, cell_px = extents(self.printed)["idle"]
+        self.assertEqual(cell_px, BIG_CELL)
+        low, high, wide = math.inf, -math.inf, 0.0
+        for d in range(rs.DIRECTIONS):
+            mask = opaque(cell(self.idle, 0, d, size=BIG_CELL))
+            rows, columns = rows_of(mask), columns_of(mask)
+            low, high = min(low, rows[0]), max(high, rows[1] + 1)
+            wide = max(wide, BIG_CELL / 2 - columns[0], columns[1] + 1 - BIG_CELL / 2)
+        self.assertAlmostEqual(lowest, low, delta=1.5)
+        self.assertAlmostEqual(highest, high, delta=1.5)
+        self.assertAlmostEqual(half, wide, delta=1.5)
+
+    def test_nothing_is_clipped(self) -> None:
+        self.assertEqual(self.sidecar["clipped"], [])
+
+    def test_the_review_sheets_use_the_frame_too(self) -> None:
+        review = self.unit_dir / "review"
+        self.assertEqual(rs.read_rgba(review / "contact.png").shape[:2], (3 * 200, rs.DIRECTIONS * 200), "a row each: idle, walk, rise")
+        self.assertEqual(gif_size(review / "walk.gif"), (rs.DIRECTIONS * BIG_CELL, BIG_CELL), "8 directions side by side")
+
+    def test_an_audition_sheet_of_the_big_frame_is_still_review_only(self) -> None:
+        variant = Path(tempfile.mkdtemp(dir=self.root))
+        unit_dir = make_unit(variant, fixture_spec(RENDER.format(cell_px=BIG_CELL, feet_px=BIG_FEET), IDLE, AUDITION), {"idle": "idle"})
+        out, sidecar, _ = render(variant)
+        self.assertEqual(sorted(sidecar["animations"]), ["idle"])
+        self.assertFalse((out / "idle_alt.png").exists())
+        self.assertEqual(rs.read_rgba(unit_dir / "review" / "contact.png").shape[0], 2 * 200)
+
+
+class BigFramePropTest(unittest.TestCase):
+    """The attach preview in a bigger frame is twice that frame's cell, through the same camera and pivot."""
+
+    def test_attach_preview_is_twice_the_frames_cell(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            unit_dir = make_unit(root, fixture_spec(RENDER.format(cell_px=BIG_CELL, feet_px=BIG_FEET), IDLE, ATTACK, attach=True),
+                                 {"idle": "idle"}, stick=True)
+            with contextlib.redirect_stdout(io.StringIO()):
+                dest = rs.render_attach("fixture", root / "art-src", engine="WORKBENCH")
+            self.assertEqual(dest, unit_dir / "review" / "attach.png")
+            size = 2 * BIG_CELL
+            sheet = rs.read_rgba(dest)
+            self.assertEqual(sheet.shape[:2], (2 * (size + 2 * rs.GUTTER), 4 * (size + 2 * rs.GUTTER)))
+            expected = [2 * v for v in box_px(stick_corners(HAND_HEAD), 4, rs.Frame(BIG_CELL, BIG_FEET))]
+            for row in (0, 1):
+                front = at(sheet, row, 2, size)
+                for got, want in zip(mask_box(blue_mask(front)), expected):
+                    self.assertAlmostEqual(got, want, delta=2.5, msg="twice the px per metre, through the big frame's pivot")
+                self.assertAlmostEqual(rows_of(grey_mask(front))[0], 2 * body_rows_in_front_view(BIG_FEET)[0], delta=2.0, msg="twice the pivot")
+
+
+class FrameRateTest(unittest.TestCase):
+    """An animation's own fps: how many frames its clip is sampled to, what the sidecar says, and how fast its GIF plays."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls._tmp = tempfile.TemporaryDirectory()
+        cls.root = Path(cls._tmp.name)
+        cls.unit_dir = make_unit(cls.root, fixture_spec(IDLE, FPS_WALK.format(fps=6)), {"idle": "idle", "walk": "walk"})
+        cls.out, cls.sidecar, cls.printed = render(cls.root)
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        cls._tmp.cleanup()
+
+    def test_a_clip_is_sampled_at_its_own_rate(self) -> None:
+        # The walk is 1 s: 12 frames at the default rate, 6 at 6 fps. Idle, with no fps of its own, stays at 12.
+        walk, idle = self.sidecar["animations"]["walk"], self.sidecar["animations"]["idle"]
+        self.assertEqual((walk["frames"], walk["fps"], walk["loop"], walk["columns"]), (6, 6, True, 6))
+        self.assertEqual((idle["frames"], idle["fps"]), (1, 12))
+        self.assertEqual(rs.read_rgba(self.out / "walk.png").shape[:2], (rs.DIRECTIONS * rs.STRIDE, 6 * rs.STRIDE))
+
+    def test_a_clip_that_does_not_loop_draws_its_end_too(self) -> None:
+        # rise is 58/24 s and draws its last frame as well: 30 frames at 12 fps (see the plain fixture), 13 at 5 fps.
+        variant = Path(tempfile.mkdtemp(dir=self.root))
+        make_unit(variant, fixture_spec(IDLE, '\n[animations.rise]\nfile = "anims/rise.glb"\nfps = 5\n'), {"idle": "idle", "rise": "rise"})
+        _, sidecar, _ = render(variant)
+        self.assertEqual((sidecar["animations"]["rise"]["frames"], sidecar["animations"]["rise"]["fps"]), (13, 5))
+
+    def test_the_stride_is_metres_per_cycle_whatever_the_rate(self) -> None:
+        self.assertAlmostEqual(self.sidecar["animations"]["walk"]["stride_m"], STRIDE_M, delta=0.03)
+
+    def test_an_in_place_walks_stride_is_measured_the_same_at_any_rate(self) -> None:
+        # Measured from the planted foot: sampled at the default rate, so a recipe's fps cannot shift it.
+        slow = f'\n[animations.walk]\nfile = "anims/in_place.glb"\nfps = 4\n'
+        sidecar, _ = render_variant(self.root, fixture_spec(slow), {"in_place": "in_place"})
+        self.assertEqual(sidecar["animations"]["walk"]["fps"], 4)
+        self.assertAlmostEqual(sidecar["animations"]["walk"]["stride_m"], STRIDE_M, delta=0.15)
+
+    def test_the_gif_plays_at_the_clips_rate(self) -> None:
+        review = self.unit_dir / "review"
+        for name, fps in (("walk", 6), ("idle", 12)):
+            with self.subTest(name=name):
+                self.assertAlmostEqual(gif_delay_cs(review / f"{name}.gif"), 100 / fps, delta=1)
+
+    def test_the_cap_message_gives_the_clips_rate(self) -> None:
+        # At cell 256 the cap is 15 frames. rise at 10 fps is 25 frames, refused naming 10 fps (and 1.5 s, not 1.25 s).
+        with self.assertRaisesRegex(RuntimeError, r"rise: 25 frames at 10 fps .* at most 15 frames \(1\.5 s at 10 fps\)"):
+            render_variant(self.root, fixture_spec(RENDER.format(cell_px=256, feet_px=64), IDLE, '\n[animations.rise]\nfile = "anims/rise.glb"\nfps = 10\n'),
+                           {"idle": "idle", "rise": "rise"})
+
+
 class PropCandidatesTest(unittest.TestCase):
     def test_candidate_sheet(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -1015,20 +1284,29 @@ class PropCandidatesTest(unittest.TestCase):
 
 class ProjectionTest(unittest.TestCase):
     def test_projection_matches_blenders_camera(self) -> None:
-        rs.reset_scene()
-        rs.configure_render("WORKBENCH")
-        camera = rs.make_camera()
         points = np.array([(0.0, 0.0, 0.0), (0.3, -0.2, 1.7), (-0.6, 0.4, -0.1), (1.0, 1.0, 2.0)])
+        # The default frame, the bigger one, and an off-centre pivot in the biggest cell.
+        for frame in (rs.Frame(), rs.Frame(BIG_CELL, BIG_FEET), rs.Frame(256, 100)):
+            with self.subTest(cell=frame.cell, feet=frame.feet):
+                rs.reset_scene()
+                rs.configure_render("WORKBENCH", frame.cell)
+                camera = rs.make_camera(frame)
+                for d in range(rs.DIRECTIONS):
+                    rs.place_camera(camera, d)
+                    bpy.context.view_layer.update()
+                    xs, ys = rs.project(points, d, frame)
+                    for (x, y), p in zip(zip(xs, ys), points):
+                        ndc = world_to_camera_view(bpy.context.scene, camera, Vector(p))
+                        self.assertAlmostEqual(x, ndc.x * frame.cell, delta=0.01)
+                        self.assertAlmostEqual(y, ndc.y * frame.cell, delta=0.01)
+                self.assertAlmostEqual(xs[0], frame.cell / 2, delta=1e-3, msg="the origin is the pivot")
+                self.assertAlmostEqual(ys[0], frame.feet, delta=1e-3, msg="the origin is the pivot")
+
+    def test_the_default_frame_is_the_default_argument(self) -> None:
+        points = np.array([(0.3, -0.2, 1.7)])
         for d in range(rs.DIRECTIONS):
-            rs.place_camera(camera, d)
-            bpy.context.view_layer.update()
-            xs, ys = rs.project(points, d)
-            for (x, y), p in zip(zip(xs, ys), points):
-                ndc = world_to_camera_view(bpy.context.scene, camera, Vector(p))
-                self.assertAlmostEqual(x, ndc.x * rs.CELL, delta=0.01)
-                self.assertAlmostEqual(y, ndc.y * rs.CELL, delta=0.01)
-        self.assertAlmostEqual(xs[0], rs.CELL / 2, delta=1e-3, msg="the origin is the pivot")
-        self.assertAlmostEqual(ys[0], rs.FEET_PX, delta=1e-3, msg="the origin is the pivot")
+            for got, want in zip(rs.project(points, d), rs.project(points, d, rs.Frame(rs.CELL, rs.FEET_PX))):
+                self.assertEqual(float(got[0]), float(want[0]))
 
 
 class PlantedSymlinkTest(unittest.TestCase):

@@ -15,34 +15,41 @@ camera's horizontal forward. 0 is seen from behind, 2 faces screen-left, 4
 faces the camera, 6 faces screen-right. Meshy characters face glTF +Z, which
 the importer turns into Blender -Y.
 
-The camera is orthographic at a fixed elevation, with its lights riding on
-it so every direction is lit alike. The root bone's horizontal travel is
-cancelled, so the unit animates in place; the walk's travel per cycle is
-saved as stride_m, so the game can play the legs at ground speed. A clip
-that already plays in place (Meshy's rig walk) has its stride measured from
-the planted foot instead, and a recipe's stride_m replaces either (a floating
-unit has no foot to measure). A recipe's bob_m and bob_hz lift the whole figure
-on a sine, stretched to a whole number of cycles per clip so a loop stays
-seamless; the lift counts in the extents and in the figure's height (a hover's
-crest counts, as a raised arm does). The unit's props (spec §6.2a) are fixed to
-their bones after the height fit, so they never count toward it. The sidecar's
-figure_height_m is how tall the drawn body stands above the feet, worst over
-idle's frames and directions, props excluded (a raised sword doesn't count).
+The camera is orthographic at a fixed elevation, with its lights riding on it
+so every direction is lit alike. Its frame, the cell each sprite is drawn in
+and how high the feet stand in it, is 160 px and 40 px unless the recipe's
+[render] table asks for more room (a claymore or a longbow outgrows 160); the
+scale stays 52 px a metre, so a bigger cell only adds margin. The root bone's
+horizontal travel is cancelled, so the unit animates in place; the walk's
+travel per cycle is saved as stride_m, so the game can play the legs at ground
+speed. A clip that already plays in place (Meshy's rig walk) has its stride
+measured from the planted foot instead, and a recipe's stride_m replaces either
+(a floating unit has no foot to measure). A recipe's bob_m and bob_hz lift the
+whole figure on a sine, stretched to a whole number of cycles per clip so a
+loop stays seamless; the lift counts in the extents and in the figure's height
+(a hover's crest counts, as a raised arm does). The unit's props (spec §6.2a)
+are fixed to their bones after the height fit, so they never count toward it.
+The sidecar's figure_height_m is how tall the drawn body stands above the feet,
+worst over idle's frames and directions, props excluded (a raised sword doesn't
+count).
 
-Sheets wrap at MAX_SHEET_PX wide. Sheets, import settings and a JSON sidecar go
-to assets/units/<unit>/ only once every clip has drawn, the sidecar last, so a
-render that stops early leaves the last good set untouched. The contact sheet,
-per-animation GIFs and the attach preview go to art-src/units/<unit>/review/; a
-prop's candidate sheet to art-src/props/<prop>/review/. An audition clip
-(`audition = true`) is for review only: its GIF and contact-sheet row, but no
-sheet, import settings or sidecar entry. Nothing is written, or read, through
-a symlink.
+Sheets wrap at MAX_SHEET_PX wide, however many cells of the unit's frame that
+holds. Sheets, import settings and a JSON sidecar go to assets/units/<unit>/
+only once every clip has drawn, the sidecar last, so a render that stops early
+leaves the last good set untouched. The contact sheet, per-animation GIFs and
+the attach preview go to art-src/units/<unit>/review/; a prop's candidate sheet
+to art-src/props/<prop>/review/. An audition clip (`audition = true`) is for
+review only: its GIF and contact-sheet row, but no sheet, import settings or
+sidecar entry. Nothing is written, or read, through a symlink.
 
 Three guards stop a render before the work is wasted: ffmpeg must be on the
 PATH before anything loads; a clip's file must hold an animation (one with
-none would be a single still); and a sheet may be at most MAX_SHEET_PX tall
-(MAX_SHEET_ROWS rows, 72 frames at 12 fps), checked before the clip's frames
-are drawn. Auditions make no sheet, so the height cap skips them.
+none would be a single still); and a sheet may be at most MAX_SHEET_PX tall,
+checked before the clip's frames are drawn. That caps a clip's frames by its
+unit's cell: 72 at the default 160 px (24 rows of 168 px, three rows of 24 a
+direction), 40 at 192 px, 15 at 256 px. A clip's own fps (4 to 30 in the
+recipe) sets how many seconds those frames cover. Auditions make no sheet, so
+the height cap skips them.
 """
 from __future__ import annotations
 
@@ -67,20 +74,21 @@ from mathutils import Euler, Matrix, Vector
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 from clips import pick_clip  # noqa: E402
-from unit_spec import NAME, STRIDE_ANIMS, AnimEntry, AttachEntry, PropSpec, UnitSpec, animation_file, load_prop_spec, load_spec  # noqa: E402
+from unit_spec import (DEFAULT_CELL_PX, DEFAULT_FEET_PX, DEFAULT_FPS, NAME, STRIDE_ANIMS, AnimEntry, AttachEntry, PropSpec, UnitSpec,  # noqa: E402
+                       animation_file, load_prop_spec, load_spec)
 
 REPO = HERE.parent.parent
-CELL = 160
+# The default frame, which is what unit_spec says a recipe gets with no [render] table. A unit's own frame is a Frame.
+CELL = DEFAULT_CELL_PX
 GUTTER = 4
 STRIDE = CELL + 2 * GUTTER
-FEET_PX = 40
+FEET_PX = DEFAULT_FEET_PX
 PIXELS_PER_METER = 52.0
 # Web (WebGL) may cap textures at 4096 px, so a long animation's frames wrap onto more rows.
 MAX_SHEET_PX = 4096
-MAX_SHEET_ROWS = MAX_SHEET_PX // STRIDE  # 24 rows of 168 px; 8 directions x 3 = 72 frames at most
 ELEVATION_DEG = 50.0
 DIRECTIONS = 8
-FPS = 12
+FPS = DEFAULT_FPS  # an animation's own fps is on its AnimEntry; this is the rate a stride is measured at
 CAMERA_DISTANCE = 30.0
 FORWARD = Vector((0.0, -1.0, 0.0))
 CANDIDATE_VIEWS = (0, 2, 4, 6)
@@ -116,6 +124,36 @@ detect_3d/compress_to=0
 
 
 @dataclass(frozen=True)
+class Frame:
+    """The frame a unit's sprites are drawn in: the cell's side and how high the feet stand above its bottom edge, both in px.
+
+    The scale is PIXELS_PER_METER whatever the cell, so a bigger cell is margin, not a bigger unit. It also sets how much a
+    4096 px sheet holds: the stride is the cell plus a gutter either side, and as many strides fit across (columns) as down
+    (rows)."""
+    cell: int = CELL
+    feet: int = FEET_PX
+
+    @property
+    def gutter(self) -> int:
+        return GUTTER
+
+    @property
+    def stride(self) -> int:
+        return self.cell + 2 * self.gutter
+
+    @property
+    def columns_max(self) -> int:
+        return MAX_SHEET_PX // self.stride
+
+    @property
+    def rows_max(self) -> int:
+        return MAX_SHEET_PX // self.stride
+
+
+DEFAULT_FRAME = Frame()
+
+
+@dataclass(frozen=True)
 class Prop:
     """One [[attach]] entry, with its recipe and model found and checked."""
     entry: AttachEntry
@@ -144,18 +182,19 @@ class Extents:
     lowest: float = math.inf
     highest: float = -math.inf
     half_width: float = 0.0
+    frame: Frame = DEFAULT_FRAME
 
     def add(self, points: np.ndarray, direction: int) -> None:
         if len(points) == 0:
             return
-        x, y = project(points, direction)
+        x, y = project(points, direction, self.frame)
         self.lowest = min(self.lowest, float(y.min()))
         self.highest = max(self.highest, float(y.max()))
-        self.half_width = max(self.half_width, float(np.abs(x - CELL / 2).max()))
+        self.half_width = max(self.half_width, float(np.abs(x - self.frame.cell / 2).max()))
 
     def line(self, name: str) -> str:
         return (f"extents {name}: lowest {self.lowest:.1f} above the bottom, highest {self.highest:.1f}, "
-                f"half-width {self.half_width:.1f} (cell {CELL})")
+                f"half-width {self.half_width:.1f} (cell {self.frame.cell})")
 
 
 # --- safety -----------------------------------------------------------------
@@ -223,15 +262,15 @@ def configure_render(engine: str, size: int = CELL) -> None:
         scene.cycles.samples = 32
 
 
-def make_camera() -> bpy.types.Object:
-    """The game camera. The image's size doesn't change its framing: a bigger
-    one (the attach preview) just has more pixels per metre."""
+def make_camera(frame: Frame = DEFAULT_FRAME) -> bpy.types.Object:
+    """The game camera, framing one cell of frame. The image's size doesn't change its
+    framing: a bigger one (the attach preview) just has more pixels per metre."""
     scene = bpy.context.scene
     data = bpy.data.cameras.new("SpriteCamera")
     data.type = "ORTHO"
-    data.ortho_scale = CELL / PIXELS_PER_METER
-    # Puts the origin (the unit's feet) FEET_PX above the image's bottom edge.
-    data.shift_y = 0.5 - FEET_PX / CELL
+    data.ortho_scale = frame.cell / PIXELS_PER_METER
+    # Puts the origin (the unit's feet) frame.feet above the image's bottom edge.
+    data.shift_y = 0.5 - frame.feet / frame.cell
     data.clip_start = 0.1
     data.clip_end = 100.0
     camera = bpy.data.objects.new("SpriteCamera", data)
@@ -265,13 +304,13 @@ def place_camera(camera: bpy.types.Object, direction: int) -> None:
     camera.matrix_world = camera_matrix(direction)
 
 
-def project(points: np.ndarray, direction: int) -> tuple[np.ndarray, np.ndarray]:
+def project(points: np.ndarray, direction: int, frame: Frame = DEFAULT_FRAME) -> tuple[np.ndarray, np.ndarray]:
     """World points (N, 3) to game-cell pixels seen from direction: x from the
     cell's left edge, y up from its bottom edge. The camera looks at the
-    origin, which lands on the pivot (CELL / 2, FEET_PX)."""
+    origin, which lands on the pivot (frame.cell / 2, frame.feet)."""
     inverse = np.array(camera_matrix(direction).inverted())
     local = points @ inverse[:3, :3].T + inverse[:3, 3]
-    return CELL / 2 + local[:, 0] * PIXELS_PER_METER, FEET_PX + local[:, 1] * PIXELS_PER_METER
+    return frame.cell / 2 + local[:, 0] * PIXELS_PER_METER, frame.feet + local[:, 1] * PIXELS_PER_METER
 
 
 def drop_importer_helpers() -> None:
@@ -406,9 +445,10 @@ def bone_frame(armature: bpy.types.Object, bone: str) -> Matrix:
     return Matrix.Translation(bone_head(armature, bone)) @ axes.to_matrix().to_4x4()
 
 
-def sample_frames(start: float, end: float, scene_rate: float, loop: bool) -> list[float]:
-    seconds = max((end - start) / scene_rate, 1.0 / FPS)
-    count = max(1, round(seconds * FPS))
+def sample_frames(start: float, end: float, scene_rate: float, loop: bool, fps: int) -> list[float]:
+    """The scene frames to draw for a clip from start to end: fps of them a second, and for a clip that doesn't loop its end too."""
+    seconds = max((end - start) / scene_rate, 1.0 / fps)
+    count = max(1, round(seconds * fps))
     step = (end - start) / count
     return [start + i * step for i in range(count if loop else count + 1)]
 
@@ -513,16 +553,17 @@ def foot_bones(armature: bpy.types.Object) -> list[str]:
 def stride_from_feet(armature: bpy.types.Object, start: float, end: float) -> float:
     """Metres per cycle of a walk that plays in place, from its planted foot.
 
-    Sampled at the render rate, the lower foot (by its head's height) is the
-    one on the ground. Where the same foot is lower at both ends of a step,
-    it slid backward along the unit's facing at ground speed. The median of
-    those slides over the step time is the speed; times the clip's length,
-    the stride.
+    Sampled at the default rate (FPS), whatever rate the clip is rendered at,
+    so a recipe's fps never changes the measurement. The lower foot (by its
+    head's height) is the one on the ground. Where the same foot is lower at
+    both ends of a step, it slid backward along the unit's facing at ground
+    speed. The median of those slides over the step time is the speed; times
+    the clip's length, the stride.
     """
     feet = foot_bones(armature)
     if end <= start:
         raise RuntimeError("the clip plays in place and has no length, so its stride can't be measured")
-    samples = sample_frames(start, end, scene_fps(), loop=False)
+    samples = sample_frames(start, end, scene_fps(), loop=False, fps=FPS)
     step_s = (samples[1] - samples[0]) / scene_fps()
     slides: list[float] = []
     previous: tuple[str, Vector] | None = None
@@ -606,26 +647,26 @@ def tile(cells: list[Path | None], columns: int, rows: int, dest: Path, size: in
                "-frames:v", "1", str(dest))
 
 
-def sheet_layout(frames: int) -> tuple[int, int]:
+def sheet_layout(frames: int, frame: Frame = DEFAULT_FRAME) -> tuple[int, int]:
     """(columns, rows per direction) for an animation's sheet, which wraps at MAX_SHEET_PX wide."""
-    columns = min(frames, MAX_SHEET_PX // STRIDE)
+    columns = min(frames, frame.columns_max)
     return columns, math.ceil(frames / columns)
 
 
-def sheet_cells(frames_dir: Path, frames: int) -> list[Path | None]:
+def sheet_cells(frames_dir: Path, frames: int, frame: Frame = DEFAULT_FRAME) -> list[Path | None]:
     """The sheet's cells, row-major: frame i of direction d sits at column
     i % columns, row d * rows_per_direction + i // columns. None pads a
     direction's last row."""
-    columns, rows = sheet_layout(frames)
+    columns, rows = sheet_layout(frames, frame)
     return [frames_dir / f"d{d}" / f"f{i:03d}.png" if i < frames else None
             for d in range(DIRECTIONS) for i in range(rows * columns)]
 
 
-def gif(frames_dir: Path, frames: int, dest: Path) -> None:
-    """All 8 directions side by side, animated, for review."""
+def gif(frames_dir: Path, frames: int, dest: Path, fps: int) -> None:
+    """All 8 directions side by side, animated at the clip's fps, for review."""
     inputs: list[str] = []
     for d in range(DIRECTIONS):
-        inputs += ["-framerate", str(FPS), "-i", str(frames_dir / f"d{d}" / "f%03d.png")]
+        inputs += ["-framerate", str(fps), "-i", str(frames_dir / f"d{d}" / "f%03d.png")]
     streams = "".join(f"[{d}:v]" for d in range(DIRECTIONS))
     dest.parent.mkdir(parents=True, exist_ok=True)
     ffmpeg(*inputs, "-filter_complex",
@@ -642,11 +683,15 @@ def write_import_settings(sheet: Path) -> None:
 
 # --- rendering --------------------------------------------------------------
 
-def stage_animation(spec: UnitSpec, glb: Path, entry: AnimEntry, props: list[Prop], engine: str, size: int = CELL) -> Staged:
-    """Loads one animation into a fresh scene, fits the body to height_m, then attaches the props."""
+def stage_animation(spec: UnitSpec, glb: Path, entry: AnimEntry, props: list[Prop], engine: str,
+                    frame: Frame = DEFAULT_FRAME, size: int | None = None) -> Staged:
+    """Loads one animation into a fresh scene, fits the body to height_m, then attaches the props.
+
+    The camera frames one cell of frame. size is the image's side in px, the frame's cell unless given (the attach preview
+    draws twice that through the same framing)."""
     reset_scene()
-    configure_render(engine, size)
-    camera = make_camera()
+    configure_render(engine, frame.cell if size is None else size)
+    camera = make_camera(frame)
     armature, actions = import_glb(glb)
     if not actions:  # every clip, a rig walk with no clip name included: drawn, it would be one still frame
         named = f", but it names clip {entry.clip!r}" if entry.clip else ""
@@ -662,7 +707,7 @@ def stage_animation(spec: UnitSpec, glb: Path, entry: AnimEntry, props: list[Pro
     if engine == "WORKBENCH":
         copy_base_colors()
     return Staged(camera, armature, holder, holder.location.copy(), action, start, end,
-                  sample_frames(start, end, scene_fps(), entry.loop), prop_meshes)
+                  sample_frames(start, end, scene_fps(), entry.loop, entry.fps), prop_meshes)
 
 
 def bob_cycles(entry: AnimEntry, start: float, end: float, rate: float) -> int:
@@ -697,19 +742,20 @@ def impact_index(entry: AnimEntry, frames: int) -> int:
     return round(entry.impact * (frames - 1)) if entry.impact is not None else -1
 
 
-def render_animation(spec: UnitSpec, glb: Path, entry: AnimEntry, props: list[Prop], frames_dir: Path, engine: str) -> dict[str, Any]:
+def render_animation(spec: UnitSpec, glb: Path, entry: AnimEntry, props: list[Prop], frames_dir: Path, engine: str,
+                     frame: Frame = DEFAULT_FRAME) -> dict[str, Any]:
     """Draws one animation's frames into frames_dir; returns its sidecar entry, plus "clipped" and, for idle,
     "figure_px" (the body's highest px above the feet, props excluded) for render_unit to take out."""
-    staged = stage_animation(spec, glb, entry, props, engine)
+    staged = stage_animation(spec, glb, entry, props, engine, frame)
     frames = len(staged.frames)
-    columns, rows = sheet_layout(frames)
+    columns, rows = sheet_layout(frames, frame)
     # Checked before any frame is drawn. An audition makes no sheet, so it may run long.
-    if not entry.audition and DIRECTIONS * rows > MAX_SHEET_ROWS:
-        limit = MAX_SHEET_ROWS // DIRECTIONS * (MAX_SHEET_PX // STRIDE)  # 3 rows of 24 a direction: 72 frames
-        raise RuntimeError(f"{entry.name}: {frames} frames at {FPS} fps makes a sheet {DIRECTIONS * rows * STRIDE} px tall, "
-                           f"taller than the {MAX_SHEET_ROWS} rows of {STRIDE} px that fit in {MAX_SHEET_PX}, so a clip "
-                           f"has at most {limit} frames ({limit / FPS:g} s at {FPS} fps); "
-                           "pick a shorter clip or mark it audition = true")
+    if not entry.audition and DIRECTIONS * rows > frame.rows_max:
+        limit = frame.rows_max // DIRECTIONS * frame.columns_max  # 3 rows of 24 a direction at the default frame: 72 frames
+        raise RuntimeError(f"{entry.name}: {frames} frames at {entry.fps} fps makes a sheet {DIRECTIONS * rows * frame.stride} px tall, "
+                           f"taller than the {frame.rows_max} rows of {frame.stride} px that fit in {MAX_SHEET_PX}, so a clip "
+                           f"has at most {limit} frames ({limit / entry.fps:g} s at {entry.fps} fps); "
+                           "pick a shorter clip, give it a lower fps, or mark it audition = true")
     # A bob on too few frames is flat (it aliases to its zero), so it is refused before the work, like the height cap.
     if entry.bob_m > 0.0:
         cycles = bob_cycles(entry, staged.start, staged.end, scene_fps())
@@ -728,10 +774,10 @@ def render_animation(spec: UnitSpec, glb: Path, entry: AnimEntry, props: list[Pr
     body = [o for o in bpy.context.scene.objects if o.type == "MESH" and o not in staged.prop_meshes]
     figure = entry.name == "idle"
     clipped: list[str] = []
-    extents = Extents()
-    body_extents = Extents()
-    for i, frame in enumerate(staged.frames):
-        pose_at(staged, frame, entry)
+    extents = Extents(frame=frame)
+    body_extents = Extents(frame=frame)
+    for i, scene_frame in enumerate(staged.frames):
+        pose_at(staged, scene_frame, entry)
         body_points = world_vertices(body)
         points = np.concatenate([body_points, world_vertices(staged.prop_meshes)])
         for d in range(DIRECTIONS):
@@ -744,11 +790,11 @@ def render_animation(spec: UnitSpec, glb: Path, entry: AnimEntry, props: list[Pr
             if touches_border(path):
                 clipped.append(f"{entry.name}/d{d}f{i}")
     print(extents.line(entry.name))
-    info: dict[str, Any] = {"sheet": f"{entry.name}.png", "frames": frames, "fps": FPS, "loop": entry.loop,
+    info: dict[str, Any] = {"sheet": f"{entry.name}.png", "frames": frames, "fps": entry.fps, "loop": entry.loop,
                             "impact_frame": impact_index(entry, frames), "stride_m": round(stride_m, 4),
                             "columns": columns, "rows_per_direction": rows, "clipped": clipped}
     if figure and math.isfinite(body_extents.highest):
-        info["figure_px"] = body_extents.highest - FEET_PX
+        info["figure_px"] = body_extents.highest - frame.feet
     return info
 
 
@@ -771,11 +817,12 @@ def render_unit(unit: str, src_root: Path, out_root: Path, engine: str = "EEVEE"
     refuse_planted_links(repo, [unit_dir, review, out_dir])
     spec = load_spec(unit_dir / "spec.toml")
     props = resolve_props(spec, src_root, repo)
+    frame = Frame(spec.cell_px, spec.feet_px)
     # out_dir and review/ are made by their first write, so a render that
     # stops early (an unknown bone shows only once the rig is loaded) leaves
     # no empty folders behind.
     sidecar: dict[str, Any] = {
-        "unit": spec.id, "cell": CELL, "gutter": GUTTER, "stride": STRIDE, "feet_px": FEET_PX,
+        "unit": spec.id, "cell": frame.cell, "gutter": frame.gutter, "stride": frame.stride, "feet_px": frame.feet,
         "pixels_per_meter": PIXELS_PER_METER, "elevation_deg": ELEVATION_DEG, "directions": DIRECTIONS,
         "die_falls_forward": spec.die_falls_forward, "bursts_on_death": spec.bursts_on_death,
         "gib_color": [0.5, 0.5, 0.5], "clipped": [], "animations": {},
@@ -787,20 +834,20 @@ def render_unit(unit: str, src_root: Path, out_root: Path, engine: str = "EEVEE"
         contact: list[Path | None] = []
         for entry in spec.animations:
             frames_dir = frames_root / entry.name
-            info = render_animation(spec, animation_file(unit_dir, entry), entry, props, frames_dir, engine)
+            info = render_animation(spec, animation_file(unit_dir, entry), entry, props, frames_dir, engine, frame)
             sidecar["clipped"] += info.pop("clipped")  # an audition's count too: it is reviewed
             figure_px = info.pop("figure_px", None)
             if figure_px is not None:
                 sidecar["figure_height_m"] = round(figure_px / PIXELS_PER_METER, 3)
                 print(f"figure height: {sidecar['figure_height_m']:.3f} m ({figure_px:.1f} px above the feet, props excluded)")
             if not entry.audition:  # an audition is for review only: no sheet, no import settings, no sidecar entry
-                tile(sheet_cells(frames_dir, info["frames"]), info["columns"], DIRECTIONS * info["rows_per_direction"],
-                     staging / info["sheet"])
+                tile(sheet_cells(frames_dir, info["frames"], frame), info["columns"], DIRECTIONS * info["rows_per_direction"],
+                     staging / info["sheet"], frame.cell)
                 sidecar["animations"][entry.name] = info
-            gif(frames_dir, info["frames"], review / f"{entry.name}.gif")
+            gif(frames_dir, info["frames"], review / f"{entry.name}.gif", entry.fps)
             k = key_frame(entry.name, info)
             contact += [frames_dir / f"d{d}" / f"f{k:03d}.png" for d in range(DIRECTIONS)]
-        tile(contact, DIRECTIONS, len(spec.animations), review / "contact.png")
+        tile(contact, DIRECTIONS, len(spec.animations), review / "contact.png", frame.cell)
         first = "idle" if "idle" in sidecar["animations"] else spec.animations[0].name
         sidecar["gib_color"] = opaque_mean_color(frames_root / first / "d4" / "f000.png")
         # Every clip drew: only now do the sheets replace the last render's, and the sidecar goes last. A render
@@ -823,7 +870,7 @@ def render_attach(unit: str, src_root: Path, engine: str = "EEVEE", repo: Path |
 
     Columns are directions 0, 2, 4 and 6; rows are idle's first frame, then
     each attack* animation at its impact frame, auditions included (tuning a
-    prop needs them). Cells are twice the game cell, through the same camera
+    prop needs them). Cells are twice the unit's game cell, through the same camera
     and pivot, so twice the pixels per metre.
     """
     require_ffmpeg()
@@ -833,15 +880,16 @@ def render_attach(unit: str, src_root: Path, engine: str = "EEVEE", repo: Path |
     refuse_planted_links(repo, [unit_dir, review])
     spec = load_spec(unit_dir / "spec.toml")
     props = resolve_props(spec, src_root, repo)
+    frame = Frame(spec.cell_px, spec.feet_px)
     rows = [e for e in spec.animations if e.name == "idle"] + [e for e in spec.animations if e.name.startswith("attack")]
     if not rows:
         raise RuntimeError(f"{unit} has no idle or attack animation to preview")
     dest = review / "attach.png"
-    size = 2 * CELL
+    size = 2 * frame.cell
     with tempfile.TemporaryDirectory() as tmp:
         cells: list[Path | None] = []
         for entry in rows:
-            staged = stage_animation(spec, animation_file(unit_dir, entry), entry, props, engine, size)
+            staged = stage_animation(spec, animation_file(unit_dir, entry), entry, props, engine, frame, size)
             if not cells:
                 print(f"bones of {unit}'s rig: {', '.join(b.name for b in staged.armature.pose.bones)}")
             count = len(staged.frames)

@@ -13,6 +13,12 @@ An animation can also set:
   Both are 0 (off) by default; a bob needs a rate.
 - `stride_m`: a stride length in metres that replaces the measured one, for a floating unit with no foot contact.
   Only a walk or run has a stride, so any other clip that sets it is refused.
+- `fps`: the clip's frame rate, 4 to 30 (12 by default). A lower rate stretches a long clip over fewer frames, to keep its sheet
+  under the 4096 px cap.
+
+A unit can also set a `[render]` table, `cell_px` and `feet_px`: the frame its sprites are drawn in, 160 px with the feet 40 px up
+by default. A unit whose weapon outgrows the cell (a claymore, a longbow) asks for a bigger one; its on-screen size doesn't change,
+but fewer frames fit under the sheet cap, which is what `fps` is for.
 
 Held gear is a separate recipe (spec §6.2a): a prop, art-src/props/<id>/spec.toml,
 bought as its own textured, unrigged model. A unit lists what it carries as
@@ -26,7 +32,7 @@ A recipe is checked as it loads, because its values buy things or name files:
 candidate counts and the polycount are whole numbers in range, animation names
 are plain names, and an animation takes its clip from the rig or a library
 action, never both. An audition is never a clip the game plays, a bob has a
-rate, and a stride is above zero. A recipe with no [candidates] table loads
+rate, a stride is above zero, and the frame and the fps are whole numbers in range. A recipe with no [candidates] table loads
 (the renderer needs no candidates) but buys nothing; one that has the table
 lists at least one candidate.
 """
@@ -48,6 +54,13 @@ LOOPING = frozenset({"idle", "walk"})
 GAME_ANIMS: frozenset[str] = frozenset({"idle", "walk", "attack", "die", "shoot", "throw", "cast", "place"})
 RIG_CLIPS = frozenset({"walk", "run"})
 STRIDE_ANIMS = frozenset({"walk", "run"})  # the clips that carry a stride_m, which the game plays the legs by
+# The sprite frame a unit renders in unless its [render] table says otherwise (render_sprites.py's CELL and FEET_PX are these).
+DEFAULT_CELL_PX = 160
+DEFAULT_FEET_PX = 40
+CELL_PX_RANGE = (128, 256)  # a bigger cell holds a longer weapon, but fits fewer frames under the 4096 px sheet cap
+CELL_PX_STEP = 8
+DEFAULT_FPS = 12
+FPS_RANGE = (4, 30)
 # Unit and prop names become folder names under art-src, so they must not hold path pieces.
 NAME = re.compile(r"[a-z][a-z0-9_]{0,31}")
 FACTIONS = ("light", "dark")
@@ -78,6 +91,7 @@ class AnimEntry:
     bob_m: float = 0.0  # hover: how far the figure rises and falls (m); 0 is no bob
     bob_hz: float = 0.0  # hover: cycles a second; above 0 whenever bob_m is
     stride_m: float | None = None  # replaces the measured stride (m) when no foot touches the ground
+    fps: int = DEFAULT_FPS  # frames a second; the sheet holds this many per second of the clip
 
 
 @dataclass(frozen=True)
@@ -102,6 +116,8 @@ class UnitSpec:
     bursts_on_death: bool
     animations: tuple[AnimEntry, ...]
     attach: tuple[AttachEntry, ...] = ()
+    cell_px: int = DEFAULT_CELL_PX  # the side of one sprite cell
+    feet_px: int = DEFAULT_FEET_PX  # how far above the cell's bottom edge the unit's feet stand
 
     @property
     def pose_mode(self) -> str | None:
@@ -158,6 +174,7 @@ def load_spec(path: Path) -> UnitSpec:
     data = _read_toml(path)
     try:
         lite, full, polycount = _candidates(path, data, default_polycount=30000)
+        cell_px, feet_px = _frame(path, data)
         spec = UnitSpec(
             id=str(data["id"]),
             faction=str(data["faction"]),
@@ -170,6 +187,8 @@ def load_spec(path: Path) -> UnitSpec:
             bursts_on_death=bool(data.get("bursts_on_death", False)),
             animations=tuple(_anim(name, entry) for name, entry in data["animations"].items()),
             attach=_attachments(path, data.get("attach", [])),
+            cell_px=cell_px,
+            feet_px=feet_px,
         )
     except KeyError as missing:
         raise SpecError(f"{path}: missing {missing}") from None
@@ -228,6 +247,23 @@ def _candidates(path: Path, data: dict[str, Any], default_polycount: int) -> tup
         if lite + full > MAX_CANDIDATES:  # cand-10000 would be bought and then refused as malformed by model/PICK
             raise SpecError(f"{path}: [candidates] lists {lite + full} candidates; at most {MAX_CANDIDATES}")
     return lite, full, polycount
+
+
+def _frame(path: Path, data: dict[str, Any]) -> tuple[int, int]:
+    """cell_px and feet_px from the optional [render] table. They size every sheet and place the feet, so they are checked here.
+    The cell is a multiple of 8 from 128 to 256, and the feet stand in its lower half (above the bottom edge, under the middle),
+    so the figure has most of the cell above it. An unknown key is refused: a misspelt `feet_pxx` would otherwise keep the default."""
+    table = data.get("render", {})
+    if not isinstance(table, dict):
+        raise SpecError(f"{path}: render must be a [render] table")
+    unknown = sorted(set(table) - {"cell_px", "feet_px"})
+    if unknown:
+        raise SpecError(f"{path}: [render] has an unknown key {unknown[0]!r}; it takes cell_px and feet_px")
+    cell = _whole(path, "render.cell_px", table.get("cell_px", DEFAULT_CELL_PX), *CELL_PX_RANGE)
+    if cell % CELL_PX_STEP:
+        raise SpecError(f"{path}: render.cell_px must be a multiple of {CELL_PX_STEP}, not {cell}")
+    feet = _whole(path, "render.feet_px", table.get("feet_px", DEFAULT_FEET_PX), 1, cell // 2 - 1)  # under half the cell: cell is even
+    return cell, feet
 
 
 def _whole(path: Path, key: str, value: Any, low: int, high: int) -> int:
@@ -350,6 +386,9 @@ def _anim(name: str, entry: dict[str, Any]) -> AnimEntry:
         stride_m = float(stride_m)
         if name not in STRIDE_ANIMS:  # the renderer would ignore it and the game would play the legs at zero speed
             raise SpecError(f"animation {name}: stride_m belongs to a walk or run clip; {name} has no stride to replace")
+    fps = entry.get("fps", DEFAULT_FPS)
+    if isinstance(fps, bool) or not isinstance(fps, int) or not FPS_RANGE[0] <= fps <= FPS_RANGE[1]:
+        raise SpecError(f"animation {name}: fps must be a whole number from {FPS_RANGE[0]} to {FPS_RANGE[1]}, not {str(fps)[:40]!r}")
     return AnimEntry(
         name=name,
         file=str(file),
@@ -361,6 +400,7 @@ def _anim(name: str, entry: dict[str, Any]) -> AnimEntry:
         bob_m=bob_m,
         bob_hz=bob_hz,
         stride_m=stride_m,
+        fps=fps,
     )
 
 
