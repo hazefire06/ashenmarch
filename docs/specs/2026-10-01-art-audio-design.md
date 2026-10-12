@@ -99,7 +99,7 @@ On 2026-10-07 Tim folded A0 into the A1 PR: `feature/PHASE-A1-unit-sprites` carr
 | Shieldman | Kilt, round targe, basket-hilted broadsword, blue woad, wild ginger beard, bonnet | Boastful brawler. Gruff and loud; two voices, older and younger |
 | Reaver | Bare-chested berserker with a two-handed claymore and a wild mane (a nod to the Border reivers) | Few words, lots of roaring, manic glee |
 | Longbow | Hooded plaid, longbow, quiver; the clan's gamekeeper and poacher | Dry, laconic, deadpan |
-| Sapper | Satchel of clinking bottles, singed eyebrows, leather apron; the clan's tinkerer | Excitable, proud of his "brews" and bangs. Slow, like the unit |
+| Sapper | A dwarf, a head shorter than the humans: satchel of clinking bottles, singed eyebrows, short braided beard, leather apron; the clan's tinkerer | Excitable, proud of his "brews" and bangs. Slow, like the unit |
 | Warden | Herb-wife with a staff and herb pouch | Stern, motherly, scolds the lads. A woman's voice |
 
 **Dark side** (original designs, no voices; non-verbal sounds only):
@@ -492,7 +492,7 @@ Each branch gets its own implementation plan. The first plan covers A0 and A1.
 |---|---|---|---|---|
 | 1 | Reaver | Bare-chested berserker, wild mane | Claymore, both hands (on RightHand) | idle 89 Combat_Stance; walk = rig run; attack 237 Charged_Axe_Chop; audition 128 Heavy_Hammer_Swing; die 183 Shot_and_Fall_Backward |
 | 1 | Longbow | Hooded plaid, the clan's gamekeeper | Longbow (LeftHand) | walk = rig walk; shoot 224 Archery_Shot; attack 97 Left_Slash (dagger, too small to model); die 184 Shot_and_Fall_Forward (`die_falls_forward`) |
-| 2 | Sapper | Satchel of bottles, singed, leather apron | Satchel (hip, on Hips) | walk = rig walk; throw 239 Crouch_Pull_and_Throw; place 274 Female_Crouch_Pick_Up_Place_Side; attack 97 Left_Slash; die 8 Dead |
+| 2 | Sapper | Dwarf (1.35 m), satchel of bottles, singed, leather apron | Satchel (hip, on Hips) | walk = rig walk; throw 239 Crouch_Pull_and_Throw; place 274 Female_Crouch_Pick_Up_Place_Side; attack 97 Left_Slash; die 8 Dead |
 | 2 | Warden | Herb-wife with a staff | Staff (RightHand) | walk = rig walk; attack 219 Right_Hand_Sword_Slash; cast 129 (heal); die 189 dying_backwards |
 | 3 | Husk | Rotted peat-bog corpse | — | walk 123 Unsteady_Walk; attack 198 Punch_Combo; die 187 Knock_Down |
 | 3 | Ripper | Gaunt long-clawed ghoul | — | walk 16 RunFast; attack 192 Right_Jab_from_Guard; throw 421 Over_Shoulder_Throw; place 276 Male_Bend_Over_Pick_Up (pick-up); die 182 Shot_and_Blown_Back |

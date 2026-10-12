@@ -1,16 +1,20 @@
 # The Sapper's art recipe (spec §5, §11). Grenadier: bottles thrown, satchels placed.
+# A dwarf, the clan's tinkerer: a head shorter than the humans, so he reads apart from them.
+# The beard stays short, since a long one is skinned to the chest and stretches when he bends.
 id = "sapper"
 faction = "light"
-height_m = 1.72
-prompt = "Scottish highland tinkerer and grenadier, stocky, singed eyebrows and soot-smudged face, bushy sideburns, leather apron over a rolled-sleeve shirt, kilt, thick leather gloves, brass goggles pushed up on a woollen cap, bandolier of corked glass bottles across the chest, sturdy boots, both hands open and empty, holding nothing"
+height_m = 1.35
+prompt = "Highland dwarf tinkerer and grenadier, short and very stocky, broad shoulders, barrel chest, thick short braided beard, singed eyebrows and soot-smudged face, leather apron over a rolled-sleeve shirt, kilt, thick leather gloves, brass goggles pushed up on a woollen cap, bandolier of corked glass bottles across the chest, sturdy boots, both hands open and empty, holding nothing"
 die_falls_forward = true
 
 [[attach]]
 prop = "satchel"
 bone = "Hips"
 
+# cand-1 to cand-4 were the human Sapper this recipe first asked for (2026-10-12); the dwarf
+# candidates are cand-5 to cand-8. The manifest keeps each one's prompt.
 [candidates]
-lite = 4
+lite = 8
 full = 0
 polycount = 30000
 
