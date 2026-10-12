@@ -9,8 +9,8 @@ func _samples() -> Array[SimCommand]:
 	var ids: PackedInt32Array = PackedInt32Array([7, 3, 12])
 	var types: Array[StringName] = [&"shieldman", &"longbow"]
 	return [
-		MoveUnitsCommand.new(5, ids, 1200, -340, Formations.Kind.WEDGE),
-		AttackMoveCommand.new(6, ids, -5000, 77000, Formations.Kind.CIRCLE),
+		MoveUnitsCommand.new(5, ids, 1200, -340, Formations.Kind.WEDGE, 600, -800),
+		AttackMoveCommand.new(6, ids, -5000, 77000, Formations.Kind.CIRCLE, -1000, 0),
 		StopUnitsCommand.new(7, ids),
 		GroundAttackCommand.new(8, ids, 33000, 44000),
 		UseSpecialCommand.new(9, ids),
@@ -27,6 +27,11 @@ func _samples() -> Array[SimCommand]:
 		SpawnEntityCommand.new(16, 1, 2, 3),
 		SetVelocityCommand.new(17, 23, -4, 5, -6),
 		DespawnEntityCommand.new(18, 23),
+		GuardCommand.new(19, ids),
+		ScatterCommand.new(20, ids),
+		RetreatCommand.new(21, ids, Formations.Kind.STAGGERED_LINE),
+		RoutePointCommand.new(22, ids, 4000, -9000, Formations.Kind.BOX, true, 0, 1000),
+		PatrolCommand.new(23, ids, UnitRoute.Mode.BACK_AND_FORTH),
 	]
 
 
@@ -93,6 +98,10 @@ func test_damaged_records_decode_to_null() -> void:
 		"float field": [1, 0, PackedInt32Array(), 1.5, 0, 0],
 		"untyped id list": [1, 0, [1, 2], 0, 0, 0],
 		"bad formation": [1, 0, PackedInt32Array(), 0, 0, 99],
+		"bad retreat formation": [CommandCodec.Kind.RETREAT, 0, PackedInt32Array(), -1],
+		"attack flag of 2": [CommandCodec.Kind.ROUTE_POINT, 0, PackedInt32Array(), 0, 0, 0, 2, 0, 0],
+		"open patrol": [CommandCodec.Kind.PATROL, 0, PackedInt32Array(), UnitRoute.Mode.OPEN],
+		"patrol mode 9": [CommandCodec.Kind.PATROL, 0, PackedInt32Array(), 9],
 		"bad status": [CommandCodec.Kind.APPLY_STATUS, 0, PackedInt32Array(), 99, 10],
 		"bad faction": [CommandCodec.Kind.SPAWN_UNIT, 0, PackedStringArray(["husk"]), 7, 0, 0, 0, 0],
 		"two type names": [CommandCodec.Kind.SPAWN_UNIT, 0, PackedStringArray(["a", "b"]), 0, 0, 0, 0, 0],
@@ -104,6 +113,29 @@ func test_damaged_records_decode_to_null() -> void:
 	}
 	for case: String in cases:
 		assert_null(CommandCodec.decode(cases[case]), case)
+
+
+func test_a_move_recorded_before_facing_existed_decodes_with_the_automatic_facing() -> void:
+	# Phase 10 replays hold MOVE and ATTACK_MOVE without the facing tail.
+	var ids: PackedInt32Array = PackedInt32Array([4, 9])
+	var move: MoveUnitsCommand = CommandCodec.decode(
+		[CommandCodec.Kind.MOVE, 30, ids, 1000, 2000, Formations.Kind.BOX]
+	) as MoveUnitsCommand
+	assert_not_null(move, "an old MOVE still decodes")
+	if move != null:
+		assert_eq([move.x, move.z, move.formation, move.facing_x, move.facing_z], [1000, 2000, Formations.Kind.BOX, 0, 0])
+	var attack: AttackMoveCommand = CommandCodec.decode(
+		[CommandCodec.Kind.ATTACK_MOVE, 31, ids, -1000, 500, Formations.Kind.WEDGE]
+	) as AttackMoveCommand
+	assert_not_null(attack, "an old ATTACK_MOVE still decodes")
+	if attack != null:
+		assert_eq([attack.facing_x, attack.facing_z], [0, 0])
+
+
+func test_part_of_an_optional_tail_decodes_to_null() -> void:
+	var ids: PackedInt32Array = PackedInt32Array([4])
+	assert_null(CommandCodec.decode([CommandCodec.Kind.MOVE, 0, ids, 0, 0, 0, 1000]), "half a facing")
+	assert_null(CommandCodec.decode([CommandCodec.Kind.MOVE, 0, ids, 0, 0, 0, 1.0, 0]), "a float facing")
 
 
 func test_a_command_the_codec_does_not_know_encodes_to_nothing() -> void:

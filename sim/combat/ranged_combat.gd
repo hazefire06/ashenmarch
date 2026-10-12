@@ -167,11 +167,12 @@ func _decide(world: World, unit: Unit) -> bool:
 	return _hold_or_march(world, unit, confused)
 
 
-# Order NONE or ATTACK_MOVE (or anything, confused): shoot what comes in
-# range.
+# Order NONE, GUARD or ATTACK_MOVE (or anything, confused): shoot what comes
+# in range.
 func _hold_or_march(world: World, unit: Unit, confused: bool) -> bool:
-	if unit.state == Unit.State.MOVING and unit.order == Unit.Order.NONE:
-		# A holding unit only moves to step aside; it shoots when it stops.
+	if unit.state == Unit.State.MOVING and (unit.order == Unit.Order.NONE or unit.order == Unit.Order.GUARD):
+		# A holding unit only moves to step aside, and a guard to step back
+		# or go home; each shoots when it stops.
 		return false
 	var target: Unit = world.get_unit(unit.shot_target_id) if unit.shot_target_id != 0 else null
 	var lost: bool = target != null and not _may_target(world, unit, target, confused)

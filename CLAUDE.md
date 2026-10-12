@@ -74,12 +74,16 @@ scripts/        # dev tooling (sim purity check)
 - Indoor/walled maps: walls block line of sight and projectiles. Ranged units cannot target around corners.
 
 ### Controls
-- Camera: orbit (Q/E), zoom (mouse wheel, V/C), move (WASD), pan (Z/X). Edge scroll optional. Overhead map toggle (Tab).
-- Selection: click, drag box, shift-click add, double-click selects all of that type on screen. Groups saved with Cmd/Ctrl+1..0, recalled with Option/Alt+1..0 (plain 1..0 are formations). Stop: Space. Center camera on selection: H. All keys are rebindable (Settings > Controls). Pause: P (the sim stops stepping; Esc opens the pause menu, after cancelling an armed order).
-- Formations, chosen after selection and applied on the next move order, keys 1-0: short line, long line, loose line, staggered line, box, rabble, shallow encirclement, deep encirclement, wedge, circle.
-- Special ability: T. Attack-move (Cmd/Ctrl+right-click) and ground-target attack (Cmd/Ctrl+left-click; Cmd on macOS, where Ctrl+click is a right click) supported.
-- Skirmish scoreboard: F7.
-- Bottom control bar mirrors all of the above so the game is playable with mouse only.
+- Two presets (Settings > Controls); Modern is the default. Every key, button and pad binding is rebindable (Settings > Controls and > Controller).
+  - Modern: right-click orders. Camera move (WASD), orbit (Q/E), turn in place (Z/X), zoom (mouse wheel, V in, C out). Groups saved with Cmd/Ctrl+1..0, recalled with Option/Alt+1..0 (plain 1..0 are formations).
+  - Classic (Myth II): left-click orders (a left click on your own unit selects it; a left drag from the ground boxes). A/D turn, Z/X strafe, C zooms in, V out. One group key (Cmd on Mac, Alt elsewhere): tap to recall, hold to save.
+- Camera: center on selection (H), overhead map (Tab: click moves the camera, right-click or Option-click sends the selection there). Edge scroll and corner camera (top corners turn, bottom corners orbit) are options.
+- Selection: click, drag box, shift-click add, double-click selects all of that type on screen, Enter all of yours on screen, ` none. F recalls the next group, Delete clears the group the selection came from.
+- Formations, chosen after selection and applied on the next move order, keys 1-0: short line, long line, loose line, staggered line, box, rabble, shallow encirclement, deep encirclement, wedge, circle. Right-drag (Option-drag on Mac) sets the formation's facing; dragged from the one unit selected, it turns that unit. Left/Right arrow turn the next move's formation, or the one under way.
+- Orders: Stop (Space), Guard (G: melee holds the spot; ranged fires at anything in range and steps back from melee), Scatter (B), Retreat (R: the group falls back 15 m from the nearest enemy, in formation, and ends facing it). Waypoints: Shift+order, up to 4 points; Shift+order on the first point again makes a loop, on the last a back-and-forth. Patrols fight. Special ability: T. Attack-move (Cmd/Ctrl+right-click) and ground-target attack (Cmd/Ctrl+left-click; Cmd on macOS, where Ctrl+click is a right click).
+- Pause: P (the sim stops stepping; Esc opens the pause menu, after cancelling an armed order). Game speed F1/F2, 1/2x to 4x, single player only (never in a replay or lockstep). Health bars: hold F10. Skirmish scoreboard: F7. Mac laptops need fn for F-keys.
+- Xbox pad (macOS, Windows, Web): left stick a cursor that sticks to units and pans at the screen's edge; right stick pans, LT/RT orbit, R3 centers (held, the right stick zooms). A selects (twice: by type; held and moved: box; held still: toggle), X orders (held and moved: facing), B backs out, Y special. LB and RB hold the formation and order wheels. D-pad steps through groups (up held saves, down held clears). View opens the overhead map (held: health bars), Menu pauses, L3 puts focus on the control bar. On-screen prompts show the pad's buttons while it is in use. Rumble where the pad supports it (not Xbox pads over USB on macOS).
+- Bottom control bar mirrors all of the above so the game is playable with mouse only, and every menu and the bar are reachable by pad focus.
 
 ### Status effects
 - Paralysis (from touch or gas cloud), Confusion (attacks nearest anything), Burning, Conversion (living units only, permanent), Heal (kills undead outright).

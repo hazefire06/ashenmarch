@@ -1,9 +1,13 @@
 class_name OverheadMap
 extends Control
 ## The Tab overhead map: the heightmap drawn as a shaded, water-tinted image
-## over a dimmed screen, with the camera's focus and facing marked. Click the
-## map to move the camera there. In a skirmish the flags the mode uses are
-## marked too, small discs in the color of whoever holds them.
+## over a dimmed screen, with the camera's focus and facing marked and your
+## units as dots. Click the map to move the camera there; the order button
+## (right click, or Option + click) sends the selection there instead, as a
+## move in its formation (Cmd/Ctrl: an attack-move; Shift: a route point), as
+## in Myth II. The pad's cursor clicks it through click_at. In a skirmish the
+## flags the mode uses are marked too, small discs in the color of whoever
+## holds them.
 ##
 ## North-up: map +x is screen right and map +z is screen down, so z = 0 is the
 ## top edge. Texel (i, j) is sample (i, j), so texel centers sit on the sample
@@ -17,6 +21,9 @@ const MARKER_OUTLINE: Color = Color(0.05, 0.05, 0.05, 0.9)
 const WEDGE_COLOR: Color = Color(1.0, 0.95, 0.6, 0.35)
 const MARKER_RADIUS: float = 5.0
 const FLAG_MARK_RADIUS: float = 6.0
+const UNIT_DOT_RADIUS: float = 2.5
+const UNIT_DOT_COLOR: Color = Color(0.45, 1.0, 0.45, 1.0)
+const SELECTED_DOT_COLOR: Color = Color(1.0, 1.0, 1.0, 1.0)
 const WEDGE_LENGTH: float = 40.0
 const WEDGE_HALF_ANGLE: float = deg_to_rad(30.0)
 ## Hillshade light: from the north-west (-x, -z) and 45 degrees above.
@@ -28,6 +35,7 @@ const SHADE_LIGHT: float = 1.15
 var _terrain: Terrain
 var _camera: RtsCamera
 var _world: World
+var _orders: SelectionController
 var _texture: ImageTexture
 
 
@@ -52,6 +60,12 @@ func setup(terrain: Terrain, camera: RtsCamera, world: World = null) -> void:
 	queue_redraw()
 
 
+## The controller the map sends the selection with, and whose side's units it
+## draws. Without one the map only moves the camera.
+func set_orders(orders: SelectionController) -> void:
+	_orders = orders
+
+
 ## Shows the map if hidden, hides it if shown.
 func toggle() -> void:
 	visible = not visible
@@ -65,14 +79,34 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _gui_input(event: InputEvent) -> void:
-	if _terrain == null or _camera == null:
-		return
 	var click: InputEventMouseButton = event as InputEventMouseButton
-	if click == null or click.button_index != MOUSE_BUTTON_LEFT or not click.pressed:
+	if click == null or not click.pressed:
 		return
-	if _map_rect().has_point(click.position):
-		_camera.focus_on(_screen_to_world(click.position))
+	# The modified buttons first: Godot matches a mouse action whenever at
+	# least its modifiers are held.
+	var send: bool = (
+		click.is_action(InputBindings.ATTACK_MOVE) or click.is_action(InputBindings.COMMAND_ALT)
+		or click.is_action(InputBindings.COMMAND)
+	)
+	if not send and click.button_index != MOUSE_BUTTON_LEFT:
+		return
+	if click_at(click.position, send, click.is_action(InputBindings.ATTACK_MOVE), click.shift_pressed):
 		accept_event()
+
+
+## A click on the map at a screen point: moves the camera there, or (send)
+## sends the selection there, attack-moving or as a route point if asked.
+## False if the point is off the map.
+func click_at(at: Vector2, send: bool, attack: bool = false, queue: bool = false) -> bool:
+	if _terrain == null or _camera == null or not _map_rect().has_point(at):
+		return false
+	var point: Vector2 = _screen_to_world(at)
+	if not send:
+		_camera.focus_on(point)
+	elif _orders != null:
+		var y: float = _terrain.height_at(roundi(point.x * World.UNITS_PER_METER), roundi(point.y * World.UNITS_PER_METER))
+		_orders.order_world(Vector3(point.x, y / World.UNITS_PER_METER, point.y), attack, queue)
+	return true
 
 
 func _process(_delta: float) -> void:
@@ -86,6 +120,7 @@ func _draw() -> void:
 	var rect: Rect2 = _map_rect()
 	draw_texture_rect(_texture, rect, false)
 	draw_rect(rect, BORDER_COLOR, false, 1.0)
+	_draw_units()
 	if _camera != null:
 		_draw_camera()
 	for mark: Dictionary in flag_marks():
@@ -112,6 +147,19 @@ func flag_marks() -> Array[Dictionary]:
 		)
 		marks.append({"flag": flag, "at": at, "color": FlagsView.flag_color(runtime, flag, flash)})
 	return marks
+
+
+# The side the player commands: a dot for each living unit, selected ones
+# white.
+func _draw_units() -> void:
+	if _world == null or _orders == null:
+		return
+	var mm: float = float(World.UNITS_PER_METER)
+	for unit: Unit in _world.units:
+		if not unit.is_alive() or unit.faction != _orders.side:
+			continue
+		var color: Color = SELECTED_DOT_COLOR if _orders.selection.is_selected(unit.id) else UNIT_DOT_COLOR
+		draw_circle(_world_to_screen(Vector2(unit.x, unit.z) / mm), UNIT_DOT_RADIUS, color)
 
 
 # The camera's focus and the way it faces.

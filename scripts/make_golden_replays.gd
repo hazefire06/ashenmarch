@@ -12,6 +12,13 @@ extends SceneTree
 ##                  grenades, gas and lightning.
 ##   skirmish_ctf   AI against AI on The Ford, Capture the Flags: no commands at
 ##                  all, so it checks the commanders and the scoring alone.
+##   riverside_orders_t2
+##                  Riverside at Normal for DRILL_TICKS, the player's side
+##                  given every Phase 11 order (OrdersDrill): facing, rotate,
+##                  guard, scatter, retreat, a loop and a back-and-forth.
+##
+## GOLDEN=name,name (`make golden-replays GOLDEN=riverside_orders_t2`) records
+## only those, so adding a golden doesn't re-record the rest.
 ##
 ## Regenerate them, deliberately, whenever a change alters what the sim does
 ## (any balance or rule change does): `make verify-replays` fails until then.
@@ -25,6 +32,8 @@ const CAMPAIGN_SEED: int = 20261007
 const SKIRMISH_SEED: int = 20261008
 ## A run that hasn't ended by now is cut here.
 const MAX_TICKS: int = 15 * 60 * World.TICK_RATE
+## The orders drill is cut here: it isn't trying to win.
+const DRILL_TICKS: int = 200 * World.TICK_RATE
 
 var _catalog: UnitCatalog
 
@@ -36,11 +45,21 @@ func _initialize() -> void:
 func _run() -> int:
 	_catalog = load(CATALOG_PATH) as UnitCatalog
 	var campaign: CampaignDef = load(CAMPAIGN_PATH) as CampaignDef
+	var only: PackedStringArray = OS.get_environment("GOLDEN").split(",", false)
 	var failed: int = 0
-	failed += _mission(campaign, 0, 2, "riverside_t2")
-	failed += _mission(campaign, 2, 4, "old_mill_t4")
-	failed += _skirmish("skirmish_ctf")
+	if _wanted(only, "riverside_t2"):
+		failed += _mission(campaign, 0, 2, "riverside_t2")
+	if _wanted(only, "old_mill_t4"):
+		failed += _mission(campaign, 2, 4, "old_mill_t4")
+	if _wanted(only, "skirmish_ctf"):
+		failed += _skirmish("skirmish_ctf")
+	if _wanted(only, "riverside_orders_t2"):
+		failed += _drill(campaign, 0, 2, "riverside_orders_t2")
 	return 1 if failed > 0 else 0
+
+
+static func _wanted(only: PackedStringArray, file_name: String) -> bool:
+	return only.is_empty() or only.has(file_name)
 
 
 func _mission(campaign: CampaignDef, index: int, tier: int, file_name: String) -> int:
@@ -64,6 +83,31 @@ func _mission(campaign: CampaignDef, index: int, tier: int, file_name: String) -
 		world.step()
 	var outcome: String = MissionRuntime.Outcome.keys()[world.mission.outcome]
 	return _save(world, recorder, replay, file_name, "%s (tier %d)" % [mission.display_name, tier], "Campaign", outcome)
+
+
+func _drill(campaign: CampaignDef, index: int, tier: int, file_name: String) -> int:
+	var mission: MissionDef = campaign.missions[index]
+	var state: CampaignState = CampaignState.new_campaign(CAMPAIGN_SEED, tier)
+	var plan: DeployPlan = state.plan_deploy(mission, PackedInt32Array(), campaign.soldier_names)
+	var deploy: DeployCommand = plan.command(0, mission)
+	var world_seed: int = state.mission_seed(index)
+	var world: World = MissionSetup.create_world(mission, tier, world_seed, deploy, _catalog)
+	if world == null:
+		printerr("golden: %s didn't build" % file_name)
+		return 1
+	var replay: Replay = Replay.for_mission(mission.resource_path, tier, world_seed, deploy)
+	var recorder: ReplayRecorder = ReplayRecorder.new(replay)
+	world.recorder = recorder
+	world.step()
+	while world.mission.outcome == MissionRuntime.Outcome.NONE and world.tick < DRILL_TICKS:
+		for command: SimCommand in OrdersDrill.orders(world, UnitType.Faction.LIGHT):
+			world.enqueue(command)
+		world.step()
+	var outcome: String = MissionRuntime.Outcome.keys()[world.mission.outcome]
+	return _save(
+		world, recorder, replay, file_name, "%s (tier %d), every Phase 11 order" % [mission.display_name, tier],
+		"Campaign", outcome
+	)
 
 
 func _skirmish(file_name: String) -> int:

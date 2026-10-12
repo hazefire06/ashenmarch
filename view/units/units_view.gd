@@ -49,6 +49,13 @@ var _viewer: UnitType.Faction = UnitType.Faction.LIGHT
 ## that never comes, which the physics frames' fraction would otherwise swing
 ## them back and forth to.
 var frozen: bool = false
+## While true (F10 held, or the bar's HP toggle), every living unit shows its
+## health bar, not only selected and hurt ones.
+var show_all_health: bool = false:
+	set(value):
+		show_all_health = value
+		for unit_id: int in _sprites:
+			_sprites[unit_id].set_health_shown(value)
 
 
 ## gibs may be null, in which case bodies are never destroyed.
@@ -204,6 +211,7 @@ func _sprite_for(unit: Unit) -> UnitSprite:
 		add_child(sprite)
 		sprite.setup(unit)
 		sprite.set_selected(_selection.is_selected(unit.id))
+		sprite.set_health_shown(show_all_health)
 		_sprites[unit.id] = sprite
 		_current[unit.id] = _position_of(unit)
 	return sprite

@@ -1,21 +1,30 @@
 class_name MoveUnitsCommand
 extends SimCommand
-## Moves a group of units to (x, z) in a formation (Formations.Kind). See
-## UnitOrders.move for how missing, dead, and duplicate ids are handled.
+## Moves a group of units to (x, z) in a formation (Formations.Kind), facing
+## (facing_x, facing_z) there; a zero facing is the automatic one, from the
+## group toward the target. See UnitOrders.move for how missing, dead, and
+## duplicate ids are handled.
 
 var unit_ids: PackedInt32Array
 var x: int
 var z: int
 var formation: int
+var facing_x: int
+var facing_z: int
 
 
-func _init(at_tick: int, ids: PackedInt32Array, target_x: int, target_z: int, formation_kind: int) -> void:
+func _init(
+	at_tick: int, ids: PackedInt32Array, target_x: int, target_z: int, formation_kind: int,
+	face_x: int = 0, face_z: int = 0
+) -> void:
 	super(at_tick)
 	unit_ids = ids.duplicate()
 	x = target_x
 	z = target_z
 	formation = formation_kind
+	facing_x = face_x
+	facing_z = face_z
 
 
 func apply(world: World) -> void:
-	UnitOrders.move(world, unit_ids, x, z, formation)
+	UnitOrders.move(world, unit_ids, x, z, formation, false, facing_x, facing_z)

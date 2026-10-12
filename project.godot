@@ -16,6 +16,10 @@ config/version="0.10.0"
 run/main_scene="res://view/app/app.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 
+[autoload]
+
+InputDevice="*res://view/input/input_device.gd"
+
 [debug]
 
 gdscript/warnings/untyped_declaration=2
@@ -23,6 +27,10 @@ gdscript/warnings/untyped_declaration=2
 [editor_plugins]
 
 enabled=PackedStringArray("res://addons/gut/plugin.cfg")
+
+[input_devices]
+
+joypads/ignore_joypad_on_unfocused_application=true
 
 [rendering]
 

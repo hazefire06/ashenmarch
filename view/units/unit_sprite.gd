@@ -79,6 +79,7 @@ var _hp_empty_mesh: QuadMesh
 var _hp: int = 1
 var _max_hp: int = 1
 var _selected: bool = false
+var _health_shown: bool = false
 var _dead: bool = false
 var _gibbed: bool = false
 ## Ground direction (x, z) the unit faces, unit length.
@@ -154,6 +155,12 @@ func setup(unit: Unit) -> void:
 
 func set_selected(selected: bool) -> void:
 	_selected = selected
+	_refresh_overlays()
+
+
+## Shows the health bar even at full health (F10 held, Phase 11).
+func set_health_shown(shown: bool) -> void:
+	_health_shown = shown
 	_refresh_overlays()
 
 
@@ -343,7 +350,7 @@ func _refresh_overlays() -> void:
 	if _status_tag != null and not alive:
 		_status_tag.visible = false
 	_facing_pivot.visible = alive
-	_hp_bar.visible = alive and (_selected or _hp < _max_hp)
+	_hp_bar.visible = alive and (_selected or _health_shown or _hp < _max_hp)
 
 
 # The quad's local frame is x across, y from feet to head, z its face. Lying

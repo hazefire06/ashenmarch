@@ -100,6 +100,9 @@ static func order(world: World, unit_ids: PackedInt32Array, entity_id: int, only
 			best = unit
 			best_d = d
 	if best != null:
+		# The player's errand replaces the unit's route; one it takes on
+		# itself (scavenging, begin) goes back to the leg it was on.
+		UnitRoute.clear(best)
 		begin(world, best, target, Unit.Order.NONE)
 
 
