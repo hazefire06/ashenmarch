@@ -1,0 +1,47 @@
+# The Sapper's art recipe (spec §5, §11). Grenadier: bottles thrown, satchels placed.
+id = "sapper"
+faction = "light"
+height_m = 1.72
+prompt = "Scottish highland tinkerer and grenadier, stocky, singed eyebrows and soot-smudged face, bushy sideburns, leather apron over a rolled-sleeve shirt, kilt, thick leather gloves, brass goggles pushed up on a woollen cap, bandolier of corked glass bottles across the chest, sturdy boots, both hands open and empty, holding nothing"
+die_falls_forward = true
+
+[[attach]]
+prop = "satchel"
+bone = "Hips"
+
+[candidates]
+lite = 4
+full = 0
+polycount = 30000
+
+[animations.idle]
+action = 0
+clip = "Idle"
+
+[animations.walk]
+rig = "walk"
+
+[animations.throw]
+action = 239
+clip = "Crouch_Pull_and_Throw"
+impact = 0.6
+
+[animations.throw_alt]
+action = 421
+clip = "Over_Shoulder_Throw"
+impact = 0.55
+audition = true
+
+[animations.place]
+action = 274
+clip = "Female_Crouch_Pick_Up_Place_Side"
+impact = 0.5
+
+[animations.attack]
+action = 97
+clip = "Left_Slash"
+impact = 0.45
+
+[animations.die]
+action = 8
+clip = "Dead"

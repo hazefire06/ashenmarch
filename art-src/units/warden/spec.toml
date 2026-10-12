@@ -1,0 +1,38 @@
+# The Warden's art recipe (spec §5, §11). Healer-fighter: the clan's herb-wife.
+id = "warden"
+faction = "light"
+height_m = 1.7
+prompt = "Scottish highland herb-wife and healer, stern middle-aged woman, grey-streaked braided hair, woollen shawl in muted blue and green tartan over a long dark dress, leather belt hung with herb pouches and bundles of dried herbs, sturdy boots, both hands open and empty, holding nothing"
+die_falls_forward = false
+
+[[attach]]
+prop = "warden_staff"
+bone = "RightHand"
+
+[candidates]
+lite = 4
+full = 0
+polycount = 30000
+
+[animations.idle]
+action = 0
+clip = "Idle"
+
+[animations.walk]
+rig = "walk"
+
+[animations.attack]
+action = 219
+clip = "Right_Hand_Sword_Slash"
+impact = 0.45
+
+# The heal. Meshy's library spells it "mage_soell_cast" (unverified letter by
+# letter); a wrong name fails at the free render, never at purchase.
+[animations.cast]
+action = 129
+clip = "mage_soell_cast"
+impact = 0.5
+
+[animations.die]
+action = 189
+clip = "dying_backwards"

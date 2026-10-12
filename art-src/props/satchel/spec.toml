@@ -1,0 +1,10 @@
+# The Sapper's satchel, worn at the hip (spec §6.2a, §11).
+id = "satchel"
+faction = "light"
+length_m = 0.45
+prompt = "Leather satchel bag bulging with corked glass bottles, brass buckle, short shoulder strap, worn and singed leather"
+
+[candidates]
+lite = 2
+full = 0
+polycount = 6000
