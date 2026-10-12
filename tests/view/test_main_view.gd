@@ -707,23 +707,20 @@ func _skip_unless_art_is_built() -> bool:
 	return true
 
 
-func test_the_shieldmen_are_drawn_from_the_committed_art_and_nothing_else_is() -> void:
+func test_units_are_drawn_from_the_committed_art_and_the_rest_as_placeholders() -> void:
 	if _skip_unless_art_is_built():
 		return
 	var main: MainView = _sandbox()
 	_step(main)
+	var arts: UnitArtCatalog = MainView.load_art()
 	var shieldmen: int = 0
-	var others: int = 0
 	var drawn: Dictionary[UnitSprite, Unit] = _drawn(main)
 	for sprite: UnitSprite in drawn:
-		var is_shieldman: bool = drawn[sprite].type.id == &"shieldman"
-		assert_eq(sprite.has_art(), is_shieldman, "%s" % drawn[sprite].type.id)
-		if is_shieldman:
+		var id: StringName = drawn[sprite].type.id
+		assert_eq(sprite.has_art(), arts.find(id) != null, "%s" % id)
+		if id == &"shieldman" and sprite.has_art():
 			shieldmen += 1
-		else:
-			others += 1
 	assert_eq(shieldmen, MainView.TEST_SQUAD_SIZE, "the test squad's Shieldmen")
-	assert_gt(others, 0, "and the rest of the squad as placeholders")
 
 
 func test_a_campaign_soldier_is_drawn_from_the_art_too() -> void:
@@ -753,8 +750,10 @@ func test_f12_switches_every_unit_to_its_placeholder_and_back() -> void:
 		assert_false(sprite.has_art())
 	_push(_key(KEY_F12))
 	assert_true(view.art_enabled())
+	var arts: UnitArtCatalog = MainView.load_art()
 	for sprite: UnitSprite in _drawn(main):
-		assert_eq(sprite.has_art(), main.world.get_unit(sprite.unit_id).type.id == &"shieldman")
+		var id: StringName = main.world.get_unit(sprite.unit_id).type.id
+		assert_eq(sprite.has_art(), arts.find(id) != null, "%s" % id)
 
 
 func test_f12_leaves_corpses_as_corpses() -> void:
@@ -831,7 +830,7 @@ func test_load_art_gives_the_committed_shieldman_art() -> void:
 		return
 	var arts: UnitArtCatalog = MainView.load_art()
 	assert_not_null(arts.find(&"shieldman"))
-	assert_null(arts.find(&"husk"))
+	assert_null(arts.find(&"no_such_unit"))
 
 
 func test_load_art_is_empty_without_a_catalog() -> void:

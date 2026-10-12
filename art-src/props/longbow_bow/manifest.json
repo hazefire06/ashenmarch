@@ -1,0 +1,44 @@
+{
+  "tasks": [
+    {
+      "ai_model": "meshy-6-lite",
+      "created_at": 1791579047,
+      "credits": 5,
+      "files": [
+        "candidates/cand-1.glb"
+      ],
+      "finished_at": 1791579072186,
+      "kind": "preview",
+      "label": "cand-1",
+      "prompt": "Tall wooden longbow, a single gently curved stave of yew with a leather-wrapped handgrip in the middle, taut bowstring, plain and sturdy. Palette: warm tartan reds and greens, steel, woad blue. Stylized fantasy strategy-game prop, chunky readable shape, hand-painted textures, muted earthy palette, single object on its own, no hands or figure, centered, plain background",
+      "status": "SUCCEEDED",
+      "task_id": "01a1226e-c6e2-74c3-a6d5-914566fef8b0"
+    },
+    {
+      "ai_model": "meshy-6-lite",
+      "created_at": 1791579076,
+      "credits": 5,
+      "files": [
+        "candidates/cand-2.glb"
+      ],
+      "finished_at": 1791579111304,
+      "kind": "preview",
+      "label": "cand-2",
+      "prompt": "Tall wooden longbow, a single gently curved stave of yew with a leather-wrapped handgrip in the middle, taut bowstring, plain and sturdy. Palette: warm tartan reds and greens, steel, woad blue. Stylized fantasy strategy-game prop, chunky readable shape, hand-painted textures, muted earthy palette, single object on its own, no hands or figure, centered, plain background",
+      "status": "SUCCEEDED",
+      "task_id": "01a1226f-38ee-723c-8513-6f35e882ed19"
+    },
+    {
+      "created_at": 1791608966,
+      "credits": 10,
+      "files": [
+        "model/textured.glb"
+      ],
+      "finished_at": 1791608994168,
+      "kind": "refine",
+      "label": "cand-2",
+      "status": "SUCCEEDED",
+      "task_id": "01a12437-4cd8-70d9-9e44-a3ef9e164930"
+    }
+  ]
+}

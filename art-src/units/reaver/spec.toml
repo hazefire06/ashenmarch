@@ -5,10 +5,20 @@ height_m = 1.85
 prompt = "Scottish highland berserker, bare-chested and heavily muscled, blue woad swirl tattoos across chest and arms, wild mane of copper-red hair and a braided beard, kilt in dark red and green tartan held by a wide studded leather belt, leather bracers, fur-trimmed leather boots, battle scars, empty hands"
 die_falls_forward = false
 
+# The claymore reaches 69 px below the feet and 130 px above them in the death fall, past the
+# default 160 px frame: 216 px with the feet 76 px up leaves 7 px either way (spec §11).
+[render]
+cell_px = 216
+feet_px = 76
+
 # Held gear (spec §6.2a); offsets and rotations solved from the meshes, then tuned with make art-attach.
+# Solved from the meshes (grip at the palm, blade up in the combat stance like the
+# Shieldman's sword), picked by eye on 2026-10-10.
 [[attach]]
 prop = "claymore"
 bone = "RightHand"
+offset = [-0.195, 0.094, -0.313]
+rotation = [31.8, 0.0, 90.0]
 
 [candidates]
 lite = 4
@@ -22,17 +32,21 @@ clip = "Combat_Stance"
 [animations.walk]
 rig = "run"
 
+# Heavy_Hammer_Swing (1.4 s) is the game's swing. Charged_Axe_Chop runs 6.1 s, past the
+# 72-frame sheet limit and far too long for a melee strike, so it is auditioned in review only.
 [animations.attack]
-action = 237
-clip = "Charged_Axe_Chop"
-impact = 0.5
-
-[animations.attack_alt]
 action = 128
 clip = "Heavy_Hammer_Swing"
 impact = 0.5
+
+[animations.attack_alt]
+action = 237
+clip = "Charged_Axe_Chop"
+impact = 0.5
 audition = true
 
+# 3.5 s: at 10 fps it is 36 frames, all a 216 px frame's sheet holds.
 [animations.die]
 action = 183
 clip = "Shot_and_Fall_Backward"
+fps = 10
