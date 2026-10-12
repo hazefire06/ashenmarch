@@ -39,6 +39,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from typing import Any
 from unittest import mock
 
 import bmesh
@@ -337,7 +338,7 @@ def make_unit(root: Path, spec: str, clips: dict[str, str], parented: bool = Fal
     return unit_dir
 
 
-def room_for_rows(rows: int):
+def room_for_rows(rows: int) -> contextlib.AbstractContextManager[Any]:
     """Patches the frame's sheet cap to `rows` rows, to force the cap on the fixture's short clips."""
     return mock.patch.object(rs.Frame, "rows_max", new_callable=mock.PropertyMock, return_value=rows)
 
@@ -1237,10 +1238,14 @@ class FrameRateTest(unittest.TestCase):
     def test_the_stride_is_metres_per_cycle_whatever_the_rate(self) -> None:
         self.assertAlmostEqual(self.sidecar["animations"]["walk"]["stride_m"], STRIDE_M, delta=0.03)
 
-    def test_an_in_place_walks_stride_is_measured_the_same_at_any_rate(self) -> None:
-        # Measured from the planted foot: sampled at the default rate, so a recipe's fps cannot shift it.
-        slow = f'\n[animations.walk]\nfile = "anims/in_place.glb"\nfps = 4\n'
-        sidecar, _ = render_variant(self.root, fixture_spec(slow), {"in_place": "in_place"})
+    def test_an_in_place_walks_stride_is_measured_at_the_default_rate(self) -> None:
+        # Measured from the planted foot, sampled at the default rate whatever the clip's fps, so a recipe's fps cannot shift
+        # it. The fixture's foot slides at a uniform speed, so the stride alone cannot tell the rates apart: check the sampling.
+        slow = '\n[animations.walk]\nfile = "anims/in_place.glb"\nfps = 4\n'
+        with mock.patch.object(rs, "sample_frames", wraps=rs.sample_frames) as sampled:
+            sidecar, _ = render_variant(self.root, fixture_spec(slow), {"in_place": "in_place"})
+        rates = sorted(call.kwargs["fps"] if "fps" in call.kwargs else call.args[4] for call in sampled.call_args_list)
+        self.assertEqual(rates, [4, rs.FPS], "the clip is sampled at its own rate, its stride at the default one")
         self.assertEqual(sidecar["animations"]["walk"]["fps"], 4)
         self.assertAlmostEqual(sidecar["animations"]["walk"]["stride_m"], STRIDE_M, delta=0.15)
 

@@ -161,12 +161,12 @@ art-src/units/<id>/               downloaded GLB/FBX and candidate thumbnails (L
 
 This runs headless in Blender 5.2.2 LTS (`/Applications/Blender.app/Contents/MacOS/Blender`, overridable with `$BLENDER`). It is free, and Claude runs it.
 
-- **Camera:** orthographic at a fixed 50° elevation (the middle of the in-game 35–65°), 8 yaw angles 45° apart, feet pinned to a fixed pivot 40 px above the cell's bottom edge, 52 px per metre.
+- **Camera:** orthographic at a fixed 50° elevation (the middle of the in-game 35–65°), 8 yaw angles 45° apart, feet pinned to a fixed pivot, 40 px above the cell's bottom edge by default (see Frames), 52 px per metre.
 - **Lighting is fixed relative to the camera,** so every direction reads the same.
 - **Root motion is stripped** so characters animate in place. Walk stride (metres per cycle) is measured and saved. A clip that already plays in place (its root travels under 5 cm, like Meshy's rig walk) is measured from the feet instead: the planted foot slides backward at ground speed.
 - **Frames:** 12 fps by default (an animation's `fps` key, 4 to 30, sets its own), 160 px cells with a 4 px transparent gap (a 168 px stride) so mipmaps don't bleed between frames. A unit whose weapon outgrows the cell sets `[render] cell_px` (a multiple of 8, 128 to 256) and `feet_px` (above 0, under half the cell); the scale stays 52 px per metre, and the sidecar's `cell`, `stride` and `feet_px` carry the frame. At 128 px with the feet 20 px up, the first Shieldman render clipped dying and attacking frames at the bottom, and props raised overhead need room too.
 - **Output:**
-  - one PNG sheet per animation into `assets/units/<id>/`, one band of rows per direction. Sheets wrap at 4096 px wide, since Web (WebGL) may cap textures there: 24 columns, so frame `i` of direction `d` sits at column `i % columns`, row `d * rows_per_direction + i // columns`;
+  - one PNG sheet per animation into `assets/units/<id>/`, one band of rows per direction. Sheets wrap at 4096 px wide, since Web (WebGL) may cap textures there: 24 columns at the default cell, so frame `i` of direction `d` sits at column `i % columns`, row `d * rows_per_direction + i // columns`;
   - a JSON sidecar with frame counts, fps, impact frame, stride, `columns` and `rows_per_direction` per animation, figure height in px (planned: not yet written or read; see the figure-height follow-up under Unit art, Not yet, in `architecture.md`), and gib colour;
   - the **contact sheet** for Tim's approval.
 
