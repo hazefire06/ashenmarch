@@ -47,14 +47,21 @@ func snap_to_component(x: int, z: int, mobility: Terrain.Mobility, component: in
 	var center: Vector2i = terrain.nearest_sample(x, z)
 	if terrain.contains(x, z) and _accepts(l, center.x, center.y, component):
 		return Vector2i(x, z)
-	# Ring search outward. A sample on ring r is at least (r - 1/2) cells from
-	# (x, z), so stop once that exceeds the best distance found.
+	# Ring search outward from the sample nearest (x, z) clamped onto the map,
+	# p. A sample s on ring r is at least (r - 1/2) cells from p, and since the
+	# map is a rectangle, |s - (x, z)|^2 >= |s - p|^2 + off2, off2 being how
+	# far off the map (x, z) lies, squared. So stop once that exceeds the best
+	# distance found. Without off2, a point far off the map (a crafted replay)
+	# never stops early and scans every ring of the map.
+	var off_x: int = x - clampi(x, 0, terrain.extent_x())
+	var off_z: int = z - clampi(z, 0, terrain.extent_z())
+	var off2: int = off_x * off_x + off_z * off_z
 	var best: Vector2i = Vector2i(-1, -1)
 	var best_d2: int = -1
 	var max_ring: int = maxi(terrain.size_x, terrain.size_z)
 	for r: int in range(0, max_ring + 1):
 		var near: int = (2 * r - 1) * cs
-		if best_d2 >= 0 and near > 0 and near * near > 4 * best_d2:
+		if best_d2 >= 0 and near > 0 and near * near > 4 * (best_d2 - off2):
 			break
 		for s: Vector2i in _ring(center, r):
 			if not _accepts(l, s.x, s.y, component):

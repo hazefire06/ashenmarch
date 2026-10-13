@@ -19,3 +19,6 @@ export_credentials.cfg
 
 # Python (fixture scripts)
 __pycache__/
+
+# Claude Code's agent worktrees (whole checkouts)
+.claude/worktrees/

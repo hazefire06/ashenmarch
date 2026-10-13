@@ -5,7 +5,9 @@ extends GutTest
 ## tampered replay diverges and names the part of the state that differs;
 ## damaged replays are refused with a reason; the recorder never records the
 ## setup's own commands; subsystem hashes localize a difference. Every order
-## Phase 11 added (OrdersDrill) survives the codec and plays back the same.
+## Phase 11 added (OrdersDrill) survives the codec and plays back the same. A
+## replay that holds what no game records, or more orders than the viewer can
+## play at speed, is refused.
 
 const CAMPAIGN: String = "res://data/campaign/campaign.tres"
 const SKIRMISH_CATALOG: String = "res://data/skirmish/skirmish.tres"
@@ -314,3 +316,51 @@ func test_a_replay_claiming_hours_of_play_is_refused() -> void:
 	var problems: Array[String] = []
 	assert_null(Replay.from_dict(_with(_mission_replay.to_dict(), "end_tick", Replay.MAX_END_TICK + 1), problems))
 	assert_string_contains(problems[0], "length")
+
+
+func test_a_replay_holds_only_what_a_game_records() -> void:
+	# A game never records a spawn; a flood of them would bury the viewer.
+	var spawn: Array = CommandCodec.encode(SpawnUnitCommand.new(10, &"husk", UnitType.Faction.DARK, 20 * M, 20 * M))
+	var problems: Array[String] = []
+	assert_null(Replay.from_dict(_with(_mission_replay.to_dict(), "commands", [spawn]), problems))
+	assert_eq(problems.size(), 1)
+	if problems.size() == 1:
+		assert_string_contains(problems[0], "a game never records")
+	# The debug keys' status and weather do come from a game (a development
+	# launch, where the debug keys are on).
+	var debug: Array = [
+		CommandCodec.encode(ApplyStatusCommand.new(10, PackedInt32Array([1]), StatusEffects.Kind.CONFUSION, 30)),
+		CommandCodec.encode(SetWeatherCommand.new(10, 500, 0, 0, 0, 30)),
+	]
+	assert_not_null(Replay.from_dict(_with(_mission_replay.to_dict(), "commands", debug)))
+
+
+func test_a_replay_that_would_bog_the_viewer_down_is_refused() -> void:
+	# Ordering a group costs the cube of its size (SlotAssignment), so one
+	# order, and one tick's orders, may name only so many units.
+	var good: Dictionary = _mission_replay.to_dict()
+	var full: PackedInt32Array = PackedInt32Array(range(1, Replay.MAX_ORDER_UNITS + 1))
+	var over: PackedInt32Array = PackedInt32Array(range(1, Replay.MAX_ORDER_UNITS + 2))
+	var stops: Array = []
+	for i: int in Replay.MAX_COMMANDS_PER_TICK + 1:
+		stops.append(CommandCodec.encode(StopUnitsCommand.new(10, PackedInt32Array([1]))))
+	var cases: Dictionary[String, Array] = {
+		"an order names too many units": [_move(10, over)],
+		"one tick's orders name too many units": [_move(10, full), _move(10, full), _move(10, PackedInt32Array([1]))],
+		"too many commands in one tick": stops,
+	}
+	for reason: String in cases:
+		var problems: Array[String] = []
+		assert_null(Replay.from_dict(_with(good, "commands", cases[reason]), problems), reason)
+		assert_eq(problems.size(), 1, reason)
+		if problems.size() == 1:
+			assert_string_contains(problems[0], reason)
+	# Up to the limits it loads, and the next tick starts afresh.
+	stops.pop_back()
+	var at_limits: Array = [_move(10, full), _move(10, full)]
+	at_limits.append_array(stops.map(func(record: Array) -> Array: return [record[0], 11] + record.slice(2)))
+	assert_not_null(Replay.from_dict(_with(good, "commands", at_limits)), "at the limits")
+
+
+func _move(tick: int, ids: PackedInt32Array) -> Array:
+	return CommandCodec.encode(MoveUnitsCommand.new(tick, ids, 20 * M, 20 * M, Formations.Kind.SHORT_LINE))
