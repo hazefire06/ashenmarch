@@ -19,7 +19,7 @@ An animation can also set:
   trims the head, `end` alone the tail). A long clip with a short errand in the middle (a 9.5 s place that reaches, touches
   the ground at 2.5 s and then stands still) cuts to the errand instead of filling the sheet or holding the unit. `impact` is a
   fraction of the trimmed clip, the part drawn, not of the whole one. A looping clip (idle, walk) or a rig clip can't be
-  trimmed, because a cut loop has no seam.
+  trimmed, because a cut loop has no seam; nor can a run, because a stride is measured over a whole cycle.
 
 A unit can also set a `[render]` table, `cell_px` and `feet_px`: the frame its sprites are drawn in, 160 px with the feet 40 px up
 by default. A unit whose weapon outgrows the cell (a claymore, a longbow) asks for a bigger one; its on-screen size doesn't change,
@@ -423,7 +423,8 @@ def _anim(name: str, entry: dict[str, Any]) -> AnimEntry:
 def _trim(name: str, entry: dict[str, Any], is_rig: bool) -> tuple[float, float | None]:
     """(start_s, end_s) from an animation's optional start and end: seconds from the clip's own start, 0 or more, with the end
     above the start (an end alone is measured from 0, so it is above 0 too). Whether they reach past the clip's length is
-    the renderer's to say, since only it has the clip. A looping or rig clip takes neither: cutting a loop breaks its seam."""
+    the renderer's to say, since only it has the clip. A looping or rig clip takes neither (cutting a loop breaks its seam), nor
+    does a clip with a stride (walk, run), because a stride is measured over a whole cycle."""
     start = _non_negative(name, "start", entry["start"]) if "start" in entry else None
     end = _non_negative(name, "end", entry["end"]) if "end" in entry else None
     if start is None and end is None:
@@ -433,6 +434,8 @@ def _trim(name: str, entry: dict[str, Any], is_rig: bool) -> tuple[float, float 
         raise SpecError(f"animation {name}: {key} cuts a clip, and a rig clip is a loop; a cut loop has no seam")
     if name in LOOPING:
         raise SpecError(f"animation {name}: {key} cuts a clip, and {name} loops; a cut loop has no seam")
+    if name in STRIDE_ANIMS:  # walk is caught above; this is a run from an action or a file
+        raise SpecError(f"animation {name}: {key} cuts a clip, but {name} has a stride, which is measured over a whole cycle")
     if end is not None and end <= (start or 0.0):
         raise SpecError(f"animation {name}: end must be above start ({start or 0.0:g} s), not {end:g} s")
     return start or 0.0, end

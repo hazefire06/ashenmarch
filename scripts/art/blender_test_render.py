@@ -490,6 +490,26 @@ def gif_delay_cs(path: Path) -> int:
     return struct.unpack("<H", data[start + 4:start + 6])[0]
 
 
+def gif_frames(path: Path) -> int:
+    """How many images a GIF holds, counted by walking its blocks."""
+    data = path.read_bytes()
+    position = 13 + (3 * 2 ** ((data[10] & 7) + 1) if data[10] & 0x80 else 0)  # past the header and the global colour table
+    frames = 0
+    while data[position] != 0x3B:  # the trailer
+        block = data[position]
+        position += 1
+        if block == 0x2C:  # an image: its descriptor, any local colour table and the LZW code size, then its data
+            local = data[position + 8]
+            position += 9 + (3 * 2 ** ((local & 7) + 1) if local & 0x80 else 0) + 1
+            frames += 1
+        else:  # an extension: its label, then its data
+            position += 1
+        while data[position]:  # sub-blocks, each led by its length, up to a zero length
+            position += data[position] + 1
+        position += 1
+    return frames
+
+
 def mask_box(mask: np.ndarray) -> tuple[float, float, float, float]:
     """Left, right, bottom and top edges of a mask in px; right and top are one past its last pixel."""
     (left, right), (bottom, top) = columns_of(mask), rows_of(mask)
@@ -1286,6 +1306,7 @@ class TrimTest(unittest.TestCase):
         cls.out, cls.sidecar, cls.printed = render(cls.root)
         cls.animations = cls.sidecar["animations"]
         cls.sheets = {name: rs.read_rgba(cls.out / f"{name}.png") for name in cls.animations}
+        cls.contact = rs.read_rgba(cls.unit_dir / "review" / "contact.png")
 
     @classmethod
     def tearDownClass(cls) -> None:
@@ -1302,14 +1323,21 @@ class TrimTest(unittest.TestCase):
                 self.assertTrue(np.allclose(self.frame(name, index, d), self.frame("rise", first_untrimmed + index, d), atol=1e-6),
                                 f"{name} frame {index} d{d} is not the untrimmed frame {first_untrimmed + index}")
 
-    def stage(self, spec_text: str, name: str, root: Path | None = None) -> rs.Staged:
-        """Loads and stages (draws nothing) the fixture's `name` animation, under spec_text in root (this class's by default)."""
-        root = root or self.root
+    def stage_with_entry(self, spec_text: str, name: str, root: Path | None = None) -> tuple[rs.Staged, rs.AnimEntry]:
+        """Loads and stages (draws nothing) the fixture's `name` animation under spec_text, with its recipe entry. The recipe is
+        written into root, by default a copy of the class's art-src, so the unit the class rendered keeps the recipe it rendered by."""
+        if root is None:
+            root = Path(tempfile.mkdtemp(dir=self.root))
+            shutil.copytree(self.root / "art-src", root / "art-src", ignore=shutil.ignore_patterns("review"))
         unit_dir = root / "art-src" / "units" / "fixture"
         (unit_dir / "spec.toml").write_text(spec_text, encoding="utf-8")
         spec = rs.load_spec(unit_dir / "spec.toml")
         entry = next(e for e in spec.animations if e.name == name)
-        return rs.stage_animation(spec, unit_dir / entry.file, entry, rs.resolve_props(spec, root / "art-src", root), "WORKBENCH")
+        staged = rs.stage_animation(spec, unit_dir / entry.file, entry, rs.resolve_props(spec, root / "art-src", root), "WORKBENCH")
+        return staged, entry
+
+    def stage(self, spec_text: str, name: str, root: Path | None = None) -> rs.Staged:
+        return self.stage_with_entry(spec_text, name, root)[0]
 
     def test_the_fixture_is_the_length_the_trims_assume(self) -> None:
         self.assertEqual(rs.scene_fps(), SCENE_FPS)
@@ -1317,13 +1345,21 @@ class TrimTest(unittest.TestCase):
 
     def test_a_trim_draws_its_share_of_the_frames_at_the_same_fps(self) -> None:
         # One second at 12 fps is 12 steps, and a clip that doesn't loop draws its end too: 13 frames. The tail is 0.92 s
-        # (11 steps, 12 frames). The sidecar and the sheet say so.
-        for name, frames in (("rise", 30), ("rise_middle", 13), ("rise_head", 13), ("rise_tail", 12)):
+        # (11 steps, 12 frames). The sidecar, the sheet and the review GIF say so.
+        for name, frames in (("rise", 30), ("rise_middle", 13), ("rise_head", 13), ("rise_tail", 12), ("rise_hit", 13)):
             with self.subTest(name=name):
                 info = self.animations[name]
                 self.assertEqual((info["frames"], info["fps"], info["loop"]), (frames, 12, False))
                 self.assertEqual(self.sheets[name].shape[:2], (rs.DIRECTIONS * info["rows_per_direction"] * rs.STRIDE, info["columns"] * rs.STRIDE))
-                self.assertTrue((self.unit_dir / "review" / f"{name}.gif").exists())
+                self.assertEqual(gif_frames(self.unit_dir / "review" / f"{name}.gif"), frames)
+
+    def test_the_contact_sheet_shows_the_key_frame_of_the_trimmed_clip(self) -> None:
+        # A row an animation, a column a direction. A clip with no impact shows its middle frame, and one with an impact that
+        # frame, both counted in the frames drawn: 15 of the whole rise's 30, but 6 of a trim's 13 (12 for the tail).
+        for row, (name, key) in enumerate((("rise", 15), ("rise_middle", 6), ("rise_head", 6), ("rise_tail", 6), ("rise_hit", 6))):
+            for d in range(rs.DIRECTIONS):
+                self.assertTrue(np.allclose(at(self.contact, row, d), self.frame(name, key, d), atol=1e-6), f"{name} d{d}: frame {key}")
+        self.assertFalse(np.allclose(self.frame("rise", 15, 4), self.frame("rise", 6, 4), atol=1e-3), "the rise is at a different height in its frames 6 and 15")
 
     def test_the_first_trimmed_frame_is_the_untrimmed_frame_at_that_time(self) -> None:
         # Frame 0 at start = 1.0 is the untrimmed frame at 1.0 s x 12 fps = 12, and each frame after it the next one: a frame
@@ -1353,6 +1389,21 @@ class TrimTest(unittest.TestCase):
                 self.assertEqual((staged.start, staged.end, len(staged.frames)), want)
                 self.assertEqual((staged.frames[0], staged.frames[-1]), want[:2])
                 self.assertEqual(tuple(staged.action.frame_range), (1.0, 59.0), "the action itself is not changed")
+        self.assertIn("rise_hit", (self.unit_dir / "spec.toml").read_text(encoding="utf-8"), "staging a variant leaves the class's recipe alone")
+
+    def test_a_hover_bob_goes_by_the_trimmed_range(self) -> None:
+        # The 1 s trim at 1 cycle a second holds one whole cycle: level at its start, up a quarter in (6 scene frames), level at
+        # the half, down at three quarters and level again at its end. Over the whole 2.42 s clip, bob_cycles is 2 and the figure
+        # would be 0.088 m down at frame 25.
+        spec = fixture_spec(rise_trim("rise", "start = 1.0\nend = 2.0\nbob_m = 0.1\nbob_hz = 1.0\n"))
+        staged, entry = self.stage_with_entry(spec, "rise")
+
+        def lift(frame: float) -> float:
+            rs.pose_at(staged, frame, entry)
+            return staged.holder.location.z - staged.base.z
+
+        for frame, want in ((25.0, 0.0), (31.0, 0.1), (37.0, 0.0), (43.0, -0.1), (49.0, 0.0)):
+            self.assertAlmostEqual(lift(frame), want, places=6, msg=f"frame {frame:g}")
 
     def test_the_body_is_fitted_and_the_props_attached_at_the_actions_own_first_frame(self) -> None:
         # Not at the trimmed start (frame 25), where the body has risen and the bone stands 0.41 m up.

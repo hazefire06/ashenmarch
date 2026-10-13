@@ -632,6 +632,14 @@ class A3RecipeFieldsTest(unittest.TestCase):
                 with self.subTest(animation=animation, trim=trim), self.assertRaisesRegex(SpecError, r"animation (run|sprint): (start|end) .*rig clip"):
                     self._load(animation + trim)
 
+    def test_a_clip_with_a_stride_cannot_be_trimmed_whatever_its_source(self) -> None:
+        # A stride is metres per cycle, measured over the whole clip, so a cut run would be saved with a wrong one.
+        for animation in ('[animations.run]\naction = 5\nclip = "Run_Fast"\n', '[animations.run]\nfile = "anims/run.glb"\n'):
+            for trim in ("start = 0.5\n", "end = 2.0\n", "start = 0.5\nend = 2.0\n"):
+                with self.subTest(animation=animation, trim=trim), self.assertRaisesRegex(SpecError, r"animation run: (start|end) .*stride"):
+                    self._load(animation + trim)
+        self.assertEqual(self._load('[animations.run]\nfile = "anims/run.glb"\nstride_m = 2.0\n').animations[0].end_s, None)
+
     def test_a_trim_is_not_checked_on_a_clip_that_does_not_set_one(self) -> None:
         # The loop and rig refusals are about the keys, so the same clips load without them.
         spec = self._load(IDLE + '[animations.walk]\nrig = "walk"\n[animations.run]\nrig = "run"\n')
@@ -649,7 +657,6 @@ class A3RecipeFieldsTest(unittest.TestCase):
         spec = self._load('[animations.walk]\nrig = "walk"\nfile = "anims/rig_walk.glb"\nimpact = 0.5\nbob_m = 0.1\nbob_hz = 1.0\n'
                           'stride_m = 1.0\nfps = 8\n[animations.alt]\naction = 1\nclip = "X"\naudition = true\nstart = 0.5\nend = 2.0\n')
         self.assertEqual([a.name for a in spec.animations], ["walk", "alt"])
-
 
 
 class CommittedRecipesTest(unittest.TestCase):
