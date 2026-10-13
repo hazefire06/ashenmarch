@@ -7,9 +7,14 @@ height_m = 1.35
 prompt = "Highland dwarf tinkerer and grenadier, short and very stocky, broad shoulders, barrel chest, thick short braided beard, singed eyebrows and soot-smudged face, leather apron over a rolled-sleeve shirt, kilt, thick leather gloves, brass goggles pushed up on a woollen cap, bandolier of corked glass bottles across the chest, sturdy boots, both hands open and empty, holding nothing"
 die_falls_forward = true
 
+# The satchel rides on the right hip, turned 35 degrees toward the back so the hanging arm swings in
+# front of it: its back flat against the body (arms left out of the measure), upright, at the hips'
+# height less 4 cm.
 [[attach]]
 prop = "satchel"
 bone = "Hips"
+offset = [-0.311, -0.036, -0.165]
+rotation = [-94.3, -116.7, 4.2]
 
 # cand-1 to cand-4 were the human Sapper this recipe first asked for (2026-10-12); the dwarf
 # candidates are cand-5 to cand-8. The manifest keeps each one's prompt.

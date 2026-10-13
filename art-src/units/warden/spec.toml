@@ -5,18 +5,31 @@ height_m = 1.7
 prompt = "Scottish highland herb-wife and healer, stern middle-aged woman, grey-streaked braided hair, woollen shawl in muted blue and green tartan over a long dark dress, leather belt hung with herb pouches and bundles of dried herbs, sturdy boots, both hands open and empty, holding nothing"
 die_falls_forward = false
 
+# The staff reaches 59 px below the feet and 109 px above them, and 75 px to the side, past the
+# default 160 px frame: 184 px with the feet 66 px up fits it (spec §11).
+[render]
+cell_px = 184
+feet_px = 66
+
+# A centre grip through the palm: with the arms hanging, the staff is carried head forward and a
+# little up, and the head stays up through the attack and the cast (the gripping options were
+# measured per clip; the other three point it sideways or head down).
 [[attach]]
 prop = "warden_staff"
 bone = "RightHand"
+offset = [0.0, -0.042, 0.0]
+rotation = [78.7, 27.2, 86.3]
 
 [candidates]
 lite = 4
 full = 0
 polycount = 30000
 
+# 4 s: at 10 fps it is 40 frames, under the 42 a 184 px frame's sheet holds.
 [animations.idle]
 action = 0
 clip = "Idle"
+fps = 10
 
 [animations.walk]
 rig = "walk"
