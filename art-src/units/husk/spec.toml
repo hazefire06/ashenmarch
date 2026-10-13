@@ -1,0 +1,28 @@
+# The Husk's art recipe (spec §5, §11). Base undead melee.
+id = "husk"
+faction = "dark"
+height_m = 1.75
+prompt = "Shambling undead corpse wrapped in rotted peat-bog cloth and sacking, leathery dark brown skin shrunken over bones, sunken eye sockets, matted hair, torn rags, bare bony feet, hunched posture, clawed hands open and empty, holding nothing"
+die_falls_forward = false
+
+[candidates]
+lite = 4
+full = 0
+polycount = 30000
+
+[animations.idle]
+action = 0
+clip = "Idle"
+
+[animations.walk]
+action = 123
+clip = "Unsteady_Walk"
+
+[animations.attack]
+action = 198
+clip = "Punch_Combo"
+impact = 0.4
+
+[animations.die]
+action = 187
+clip = "Knock_Down"

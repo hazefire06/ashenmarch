@@ -1,0 +1,39 @@
+# The Ripper's art recipe (spec §5, §11). Fast raider that picks up and throws.
+id = "ripper"
+faction = "dark"
+height_m = 1.8
+prompt = "Gaunt hunched ghoul, emaciated grey-green skin stretched over ribs, long thin limbs, elongated clawed fingers, lank black hair, torn loincloth, bare feet, feral stance, both hands open and empty, holding nothing"
+die_falls_forward = false
+
+[candidates]
+lite = 4
+full = 0
+polycount = 30000
+
+[animations.idle]
+action = 0
+clip = "Idle"
+
+[animations.walk]
+action = 16
+clip = "RunFast"
+
+[animations.attack]
+action = 192
+clip = "Right_Jab_from_Guard"
+impact = 0.4
+
+[animations.throw]
+action = 421
+clip = "Over_Shoulder_Throw"
+impact = 0.55
+
+# The pick-up of a charge or object, played as the act clip.
+[animations.place]
+action = 276
+clip = "Male_Bend_Over_Pick_Up"
+impact = 0.5
+
+[animations.die]
+action = 182
+clip = "Shot_and_Blown_Back"
