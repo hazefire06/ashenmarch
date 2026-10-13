@@ -7,4 +7,5 @@ prop_suffix = "Stylized fantasy strategy-game prop, chunky readable shape, hand-
 
 [palettes]
 light = "warm tartan reds and greens, steel, woad blue"
-dark = "cold bog brown, bone white, sickly green glow"
+# Not "bone white": with "undead" in a prompt it pulled Meshy to bare skeletons (eight Husks, 2026-10-12).
+dark = "cold bog brown, ashen grey, sickly green glow"

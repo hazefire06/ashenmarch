@@ -89,7 +89,7 @@ On 2026-10-07 Tim folded A0 into the A1 PR: `feature/PHASE-A1-unit-sprites` carr
 
 **Look.**
 - Stylized, chunky proportions with hand-painted textures and strong silhouettes that read at about 100 px tall.
-- Muted, earthy palette. The light side is warm: tartan reds and greens, steel, woad blue. The dark side is cold: bog brown, bone, a sickly green glow.
+- Muted, earthy palette. The light side is warm: tartan reds and greens, steel, woad blue. The dark side is cold: bog brown, ashen grey, a sickly green glow. (It said bone at first; with undead prompts that pulled Meshy to bare skeletons.)
 - One shared style prompt in `art-src/style.toml` is appended to every unit's prompt, so all ten look like one game.
 
 **Light side: Clan Cairnbrae** (working name, easy to change):
