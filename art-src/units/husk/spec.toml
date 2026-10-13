@@ -2,11 +2,15 @@
 id = "husk"
 faction = "dark"
 height_m = 1.75
-prompt = "Shambling undead corpse wrapped in rotted peat-bog cloth and sacking, leathery dark brown skin shrunken over bones, sunken eye sockets, matted hair, torn rags, bare bony feet, hunched posture, clawed hands open and empty, holding nothing"
+# Asked for skin "shrunken over bones" with "sunken eye sockets", all four first candidates came out as
+# bare skeletons, whose bone limbs draw 1-2 px wide. This asks for the flesh instead.
+prompt = "Shambling undead bog corpse, a mummified body pulled from a peat bog, tight wrinkled leathery dark brown skin intact over the whole body, gaunt but fleshed arms and legs, hollow cheeks, matted hair, wrapped in rotted peat-stained cloth and sacking, torn rags, bare feet, clawed hands open and empty, holding nothing"
 die_falls_forward = false
 
+# cand-1 to cand-4 were the skeletons the first prompt gave (2026-10-12); the flesh candidates are cand-5 to cand-8.
+# The manifest keeps each one's prompt.
 [candidates]
-lite = 4
+lite = 8
 full = 0
 polycount = 30000
 
