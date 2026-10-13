@@ -7,14 +7,15 @@ height_m = 1.35
 prompt = "Highland dwarf tinkerer and grenadier, short and very stocky, broad shoulders, barrel chest, thick short braided beard, singed eyebrows and soot-smudged face, leather apron over a rolled-sleeve shirt, kilt, thick leather gloves, brass goggles pushed up on a woollen cap, bandolier of corked glass bottles across the chest, sturdy boots, both hands open and empty, holding nothing"
 die_falls_forward = true
 
-# The satchel rides on the right hip, turned 35 degrees toward the back so the hanging arm swings in
-# front of it: its back flat against the body (arms left out of the measure), upright, at the hips'
-# height less 4 cm.
+# The satchel hangs from the top of the right thigh, so it stays down when he bends over (fixed to the
+# pelvis, it tipped up onto his back; Tim moved it at batch 2's review). It is turned 35 degrees toward
+# the back so the hanging arm swings in front of it: its back flat against the outer thigh (arms left
+# out of the measure), upright, 8 cm below the hip joint.
 [[attach]]
 prop = "satchel"
-bone = "Hips"
-offset = [-0.311, -0.036, -0.165]
-rotation = [-94.3, -116.7, 4.2]
+bone = "RightUpLeg"
+offset = [-0.222, 0.122, 0.148]
+rotation = [73.3, 113.6, -29.7]
 
 # cand-1 to cand-4 were the human Sapper this recipe first asked for (2026-10-12); the dwarf
 # candidates are cand-5 to cand-8. The manifest keeps each one's prompt.
@@ -30,21 +31,26 @@ clip = "Idle"
 [animations.walk]
 rig = "walk"
 
+# Tim chose the standing throw at batch 2's review; the crouching one stays as the comparison.
 [animations.throw]
-action = 239
-clip = "Crouch_Pull_and_Throw"
-impact = 0.6
-
-[animations.throw_alt]
 action = 421
 clip = "Over_Shoulder_Throw"
 impact = 0.55
+
+[animations.throw_alt]
+action = 239
+clip = "Crouch_Pull_and_Throw"
+impact = 0.6
 audition = true
 
+# The library clip runs 9.5 s: he reaches down, touches the ground at 2.5 s, straightens by 5.0 s, then
+# lifts something and stands still. Only the errand is drawn: 4.25 s, 51 frames, the touch its impact.
 [animations.place]
 action = 274
 clip = "Female_Crouch_Pick_Up_Place_Side"
-impact = 0.5
+start = 0.75
+end = 5.0
+impact = 0.41
 
 [animations.attack]
 action = 97

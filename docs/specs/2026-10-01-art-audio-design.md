@@ -149,7 +149,7 @@ art-src/units/<id>/               downloaded GLB/FBX and candidate thumbnails (L
 | Shieldman | 89 Combat_Stance | rig walk | 219 Right_Hand_Sword_Slash (alt 97) | — | 189 dying_backwards |
 | Reaver | 89 | rig run | 237 Charged_Axe_Chop (alt 128) | — | 183 Shot_and_Fall_Backward |
 | Longbow | 0 Idle | rig walk | 224 Archery_Shot; melee 97 Left_Slash | fire arrow reuses 224 | 184 Shot_and_Fall_Forward |
-| Sapper | 0 | rig walk, slowed | 239 Crouch_Pull_and_Throw (alt 421) | place satchel: 274 | 8 Dead |
+| Sapper | 0 | rig walk, slowed | 421 Over_Shoulder_Throw (alt 239) | place satchel: 274 | 8 Dead |
 | Warden | 0 | rig walk | 219 | heal: 129 mage spell cast | 189 |
 | Husk | 0 | 123 Unsteady_Walk (alt 119) | 198 Punch_Combo | idle variant: 386 Zombie_Scream | 187 Knock_Down |
 | Ripper | 0 | 16 RunFast | 192 jab | pick up 276, throw 421 | 182 Shot_and_Blown_Back |
@@ -493,7 +493,7 @@ Each branch gets its own implementation plan. The first plan covers A0 and A1.
 |---|---|---|---|---|
 | 1 | Reaver | Bare-chested berserker, wild mane | Claymore, both hands (on RightHand) | idle 89 Combat_Stance; walk = rig run; attack 237 Charged_Axe_Chop; audition 128 Heavy_Hammer_Swing; die 183 Shot_and_Fall_Backward |
 | 1 | Longbow | Hooded plaid, the clan's gamekeeper | Longbow (LeftHand) | walk = rig walk; shoot 224 Archery_Shot; attack 97 Left_Slash (dagger, too small to model); die 184 Shot_and_Fall_Forward (`die_falls_forward`) |
-| 2 | Sapper | Dwarf (1.35 m), satchel of bottles, singed, leather apron | Satchel (hip, on Hips) | walk = rig walk; throw 239 Crouch_Pull_and_Throw; place 274 Female_Crouch_Pick_Up_Place_Side; attack 97 Left_Slash; die 8 Dead |
+| 2 | Sapper | Dwarf (1.35 m), satchel of bottles, singed, leather apron | Satchel (hip, on Hips) | walk = rig walk; throw 421 Over_Shoulder_Throw; place 274 Female_Crouch_Pick_Up_Place_Side; attack 97 Left_Slash; die 8 Dead |
 | 2 | Warden | Herb-wife with a staff | Staff (RightHand) | walk = rig walk; attack 219 Right_Hand_Sword_Slash; cast 129 (heal); die 189 dying_backwards |
 | 3 | Husk | Rotted peat-bog corpse | — | walk 123 Unsteady_Walk; attack 198 Punch_Combo; die 187 Knock_Down |
 | 3 | Ripper | Gaunt long-clawed ghoul | — | walk 16 RunFast; attack 192 Right_Jab_from_Guard; throw 421 Over_Shoulder_Throw; place 276 Male_Bend_Over_Pick_Up (pick-up); die 182 Shot_and_Blown_Back |
