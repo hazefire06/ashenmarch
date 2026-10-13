@@ -15,6 +15,11 @@ An animation can also set:
   Only a walk or run has a stride, so any other clip that sets it is refused.
 - `fps`: the clip's frame rate, 4 to 30 (12 by default). A lower rate stretches a long clip over fewer frames, to keep its sheet
   under the 4096 px cap.
+- `start` and `end`: the part of the clip to draw, in seconds from the clip's own start (the whole clip by default; `start` alone
+  trims the head, `end` alone the tail). A long clip with a short errand in the middle (a 9.5 s place that reaches, touches
+  the ground at 2.5 s and then stands still) cuts to the errand instead of filling the sheet or holding the unit. `impact` is a
+  fraction of the trimmed clip, the part drawn, not of the whole one. A looping clip (idle, walk) or a rig clip can't be
+  trimmed, because a cut loop has no seam.
 
 A unit can also set a `[render]` table, `cell_px` and `feet_px`: the frame its sprites are drawn in, 160 px with the feet 40 px up
 by default. A unit whose weapon outgrows the cell (a claymore, a longbow) asks for a bigger one; its on-screen size doesn't change,
@@ -32,7 +37,8 @@ A recipe is checked as it loads, because its values buy things or name files:
 candidate counts and the polycount are whole numbers in range, animation names
 are plain names, and an animation takes its clip from the rig or a library
 action, never both. An audition is never a clip the game plays, a bob has a
-rate, a stride is above zero, and the frame and the fps are whole numbers in range. A recipe with no [candidates] table loads
+rate, a stride is above zero, the frame and the fps are whole numbers in range, and a trim is a range above zero with its end
+above its start. An animation table, like [render] and [[attach]], refuses a key it doesn't know. A recipe with no [candidates] table loads
 (the renderer needs no candidates) but buys nothing; one that has the table
 lists at least one candidate.
 """
@@ -61,6 +67,8 @@ CELL_PX_RANGE = (128, 256)  # a bigger cell holds a longer weapon, but fits fewe
 CELL_PX_STEP = 8
 DEFAULT_FPS = 12
 FPS_RANGE = (4, 30)
+# What an [animations.<name>] table may set, in the order its error message lists them.
+ANIM_KEYS = ("action", "clip", "rig", "file", "impact", "audition", "bob_m", "bob_hz", "stride_m", "fps", "start", "end")
 # Unit and prop names become folder names under art-src, so they must not hold path pieces.
 NAME = re.compile(r"[a-z][a-z0-9_]{0,31}")
 FACTIONS = ("light", "dark")
@@ -92,6 +100,8 @@ class AnimEntry:
     bob_hz: float = 0.0  # hover: cycles a second; above 0 whenever bob_m is
     stride_m: float | None = None  # replaces the measured stride (m) when no foot touches the ground
     fps: int = DEFAULT_FPS  # frames a second; the sheet holds this many per second of the clip
+    start_s: float = 0.0  # seconds from the clip's own start where the drawn part begins
+    end_s: float | None = None  # seconds from the clip's own start where it ends; None is the clip's own end
 
 
 @dataclass(frozen=True)
@@ -350,6 +360,9 @@ def _anim(name: str, entry: dict[str, Any]) -> AnimEntry:
     if NAME.fullmatch(name) is None:
         raise SpecError(f"animation name {name[:40]!r} must be lowercase letters, digits and _ (it names output files), "
                         "starting with a letter, at most 32 characters")
+    unknown = sorted(set(entry) - set(ANIM_KEYS))
+    if unknown:  # a misspelt `ned = 5.0` would otherwise draw the whole clip
+        raise SpecError(f"animation {name}: unknown key {unknown[0]!r}; an animation takes {', '.join(ANIM_KEYS[:-1])} and {ANIM_KEYS[-1]}")
     rig = entry.get("rig")
     action = entry.get("action")
     file = entry.get("file")
@@ -389,6 +402,7 @@ def _anim(name: str, entry: dict[str, Any]) -> AnimEntry:
     fps = entry.get("fps", DEFAULT_FPS)
     if isinstance(fps, bool) or not isinstance(fps, int) or not FPS_RANGE[0] <= fps <= FPS_RANGE[1]:
         raise SpecError(f"animation {name}: fps must be a whole number from {FPS_RANGE[0]} to {FPS_RANGE[1]}, not {str(fps)[:40]!r}")
+    start_s, end_s = _trim(name, entry, is_rig=rig is not None)
     return AnimEntry(
         name=name,
         file=str(file),
@@ -401,7 +415,27 @@ def _anim(name: str, entry: dict[str, Any]) -> AnimEntry:
         bob_hz=bob_hz,
         stride_m=stride_m,
         fps=fps,
+        start_s=start_s,
+        end_s=end_s,
     )
+
+
+def _trim(name: str, entry: dict[str, Any], is_rig: bool) -> tuple[float, float | None]:
+    """(start_s, end_s) from an animation's optional start and end: seconds from the clip's own start, 0 or more, with the end
+    above the start (an end alone is measured from 0, so it is above 0 too). Whether they reach past the clip's length is
+    the renderer's to say, since only it has the clip. A looping or rig clip takes neither: cutting a loop breaks its seam."""
+    start = _non_negative(name, "start", entry["start"]) if "start" in entry else None
+    end = _non_negative(name, "end", entry["end"]) if "end" in entry else None
+    if start is None and end is None:
+        return 0.0, None
+    key = "start" if start is not None else "end"
+    if is_rig:
+        raise SpecError(f"animation {name}: {key} cuts a clip, and a rig clip is a loop; a cut loop has no seam")
+    if name in LOOPING:
+        raise SpecError(f"animation {name}: {key} cuts a clip, and {name} loops; a cut loop has no seam")
+    if end is not None and end <= (start or 0.0):
+        raise SpecError(f"animation {name}: end must be above start ({start or 0.0:g} s), not {end:g} s")
+    return start or 0.0, end
 
 
 def _non_negative(name: str, key: str, value: Any) -> float:

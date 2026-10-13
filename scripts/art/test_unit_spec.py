@@ -581,6 +581,97 @@ class A3RecipeFieldsTest(unittest.TestCase):
         spec = self._load('[animations.attack_alt]\naction = 128\nclip = "Heavy_Hammer_Swing"\naudition = true\nfps = 8\n')
         self.assertEqual(spec.animations[0].fps, 8)
 
+    def test_a_trim_defaults_to_the_whole_clip(self) -> None:
+        for body in (IDLE, '[animations.place]\naction = 274\nclip = "Crouch_Place"\n'):
+            with self.subTest(body=body):
+                entry = self._load(body).animations[0]
+                self.assertEqual((entry.start_s, entry.end_s), (0.0, None))
+
+    def test_a_trim_parses(self) -> None:
+        place = '[animations.place]\naction = 274\nclip = "Female_Crouch_Pick_Up_Place_Side"\nimpact = 0.41\n'
+        for trim, want in (("start = 0.75\nend = 5.0\n", (0.75, 5.0)),
+                           ("start = 0.75\n", (0.75, None)),  # the head only
+                           ("end = 5.0\n", (0.0, 5.0)),  # the tail only
+                           ("start = 1\nend = 4\n", (1.0, 4.0)),  # whole seconds are TOML integers
+                           ("start = 0\nend = 0.001\n", (0.0, 0.001))):
+            with self.subTest(trim=trim):
+                entry = self._load(place + trim).animations[0]
+                self.assertEqual((entry.start_s, entry.end_s), want)
+                self.assertIsInstance(entry.start_s, float)
+                self.assertEqual(entry.impact, 0.41)
+
+    def test_a_trim_can_be_set_on_an_audition(self) -> None:
+        entry = self._load('[animations.place_alt]\naction = 274\nclip = "Crouch"\naudition = true\nend = 3.0\n').animations[0]
+        self.assertEqual((entry.start_s, entry.end_s), (0.0, 3.0))
+
+    def test_a_bad_trim_is_refused(self) -> None:
+        # Negative, not a number (bool, string, list, table), not finite. TOML `true` would otherwise pass as 1 second.
+        for key in ("start", "end"):
+            for bad in ("-0.5", "-1", "true", "false", '"1.0"', "[1.0]", "{ a = 1 }", "nan", "-nan", "inf", "-inf", "1" + "0" * 400):
+                with self.subTest(key=key, value=bad), self.assertRaisesRegex(SpecError, f"animation place: {key} must be a finite number, 0 or more"):
+                    self._load(f'[animations.place]\naction = 274\nclip = "Crouch"\n{key} = {bad}\n')
+
+    def test_the_end_must_be_above_the_start(self) -> None:
+        for trim in ("start = 2.0\nend = 2.0\n", "start = 2.0\nend = 1.0\n", "start = 1\nend = 1\n",
+                     "end = 0\n"):  # an end alone is measured from the clip's start, 0 s
+            with self.subTest(trim=trim), self.assertRaisesRegex(SpecError, "animation place: end must be above start"):
+                self._load('[animations.place]\naction = 274\nclip = "Crouch"\n' + trim)
+
+    def test_a_looping_clip_cannot_be_trimmed(self) -> None:
+        # A cut loop has no seam. idle and walk loop whatever their source, and a rig clip is a loop from the rig task.
+        for animation in ('[animations.idle]\naction = 0\nclip = "Idle"\n', '[animations.idle]\nfile = "anims/idle.glb"\n',
+                          '[animations.walk]\nrig = "walk"\n', '[animations.walk]\naction = 4\nclip = "Walk"\n',
+                          '[animations.walk]\nfile = "anims/walk.glb"\n'):
+            for trim in ("start = 0.5\n", "end = 2.0\n", "start = 0.5\nend = 2.0\n"):
+                with self.subTest(animation=animation, trim=trim), self.assertRaisesRegex(SpecError, r"animation (idle|walk): (start|end) .*loop"):
+                    self._load(animation + trim)
+
+    def test_a_rig_clip_cannot_be_trimmed_under_any_name(self) -> None:
+        for animation in ('[animations.run]\nrig = "run"\n', '[animations.sprint]\nrig = "walk"\n'):
+            for trim in ("start = 0.5\n", "end = 2.0\n"):
+                with self.subTest(animation=animation, trim=trim), self.assertRaisesRegex(SpecError, r"animation (run|sprint): (start|end) .*rig clip"):
+                    self._load(animation + trim)
+
+    def test_a_trim_is_not_checked_on_a_clip_that_does_not_set_one(self) -> None:
+        # The loop and rig refusals are about the keys, so the same clips load without them.
+        spec = self._load(IDLE + '[animations.walk]\nrig = "walk"\n[animations.run]\nrig = "run"\n')
+        self.assertEqual([(a.start_s, a.end_s) for a in spec.animations], [(0.0, None)] * 3)
+
+    def test_an_unknown_animation_key_is_refused_instead_of_silently_ignored(self) -> None:
+        # A misspelt `ned = 5.0` would otherwise draw the whole clip.
+        for bad in ("ned = 5.0", "strt = 0.5", "Start = 1", "frames = 40", "fpss = 8", "impact_frame = 3", "loop = true", "stride = 1.2"):
+            key = bad.split(" ")[0]
+            with self.subTest(bad=bad), self.assertRaisesRegex(SpecError, rf"animation place: unknown key '{key}'") as caught:
+                self._load(f'[animations.place]\naction = 274\nclip = "Crouch"\nimpact = 0.4\n{bad}\n')
+            self.assertIn("takes action, clip, rig, file, impact, audition, bob_m, bob_hz, stride_m, fps, start and end", str(caught.exception))
+
+    def test_every_documented_animation_key_is_accepted(self) -> None:
+        spec = self._load('[animations.walk]\nrig = "walk"\nfile = "anims/rig_walk.glb"\nimpact = 0.5\nbob_m = 0.1\nbob_hz = 1.0\n'
+                          'stride_m = 1.0\nfps = 8\n[animations.alt]\naction = 1\nclip = "X"\naudition = true\nstart = 0.5\nend = 2.0\n')
+        self.assertEqual([a.name for a in spec.animations], ["walk", "alt"])
+
+
+
+class CommittedRecipesTest(unittest.TestCase):
+    """Every recipe in art-src loads, so a stricter parser (an unknown key, a range) can't quietly strand a unit. Only the
+    spec.toml files are read: a recipe whose art isn't bought or committed yet still loads."""
+
+    def test_every_committed_unit_recipe_loads(self) -> None:
+        paths = sorted((ART_SRC / "units").glob("*/spec.toml"))
+        self.assertGreaterEqual(len(paths), 5, "the units' recipes were not found")
+        for path in paths:
+            with self.subTest(unit=path.parent.name):
+                spec = load_spec(path)
+                self.assertEqual(spec.id, path.parent.name)
+                self.assertTrue(spec.animations)
+
+    def test_every_committed_prop_recipe_loads(self) -> None:
+        paths = sorted((ART_SRC / "props").glob("*/spec.toml"))
+        self.assertGreaterEqual(len(paths), 6, "the props' recipes were not found")
+        for path in paths:
+            with self.subTest(prop=path.parent.name):
+                self.assertEqual(load_prop_spec(path).id, path.parent.name)
+
 
 if __name__ == "__main__":
     unittest.main()

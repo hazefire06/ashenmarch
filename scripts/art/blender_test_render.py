@@ -142,6 +142,10 @@ FPS_WALK = """
 file = "anims/walk.glb"
 fps = {fps}
 """
+SCENE_FPS = 24   # what the glTF importer sets, so the rise clip (frames 1 to 59) is RISE_SPAN / SCENE_FPS = 2.42 s long
+RISE_SECONDS = RISE_SPAN / SCENE_FPS
+
+
 STICK_SPEC = """id = "stick"
 faction = "light"
 length_m = 0.9
@@ -159,6 +163,11 @@ def attach_toml(bone: str, prop: str = "stick", rotation: tuple[float, float, fl
 
 def fixture_spec(*parts: str, height: float = 1.8, bone: str = "Hand", attach: bool = False) -> str:
     return HEAD.format(height=height) + (attach_toml(bone) if attach else "") + "".join(parts)
+
+
+def rise_trim(name: str, trim: str) -> str:
+    """An animation of the fixture's rise clip with a trim (start and end, in seconds) and anything else the table takes."""
+    return f'\n[animations.{name}]\nfile = "anims/rise.glb"\n{trim}'
 
 
 def make_material(name: str, rgba: tuple[float, float, float, float]) -> bpy.types.Material:
@@ -1260,6 +1269,142 @@ class FrameRateTest(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, r"rise: 25 frames at 10 fps .* at most 15 frames \(1\.5 s at 10 fps\)"):
             render_variant(self.root, fixture_spec(RENDER.format(cell_px=256, feet_px=64), IDLE, '\n[animations.rise]\nfile = "anims/rise.glb"\nfps = 10\n'),
                            {"idle": "idle", "rise": "rise"})
+
+
+class TrimTest(unittest.TestCase):
+    """An animation's start and end (seconds from the clip's own start) draw only that part of the clip. The fixture's rise
+    lifts the body steadily over 58 scene frames (1 to 59, 2.42 s) and draws 30 frames at 12 fps, a frame every 2 scene frames,
+    so a trim that starts on a whole second of it lands on one of the untrimmed frames, exactly, and can be compared with it."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls._tmp = tempfile.TemporaryDirectory()
+        cls.root = Path(cls._tmp.name)
+        cls.unit_dir = make_unit(cls.root, fixture_spec(
+            RISE, rise_trim("rise_middle", "start = 1.0\nend = 2.0\n"), rise_trim("rise_head", "end = 1.0\n"),
+            rise_trim("rise_tail", "start = 1.5\n"), rise_trim("rise_hit", "start = 1.0\nend = 2.0\nimpact = 0.5\n")), {"rise": "rise"})
+        cls.out, cls.sidecar, cls.printed = render(cls.root)
+        cls.animations = cls.sidecar["animations"]
+        cls.sheets = {name: rs.read_rgba(cls.out / f"{name}.png") for name in cls.animations}
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        cls._tmp.cleanup()
+
+    def frame(self, name: str, index: int, direction: int) -> np.ndarray:
+        return cell(self.sheets[name], index, direction, self.animations[name])
+
+    def assert_same_frames(self, name: str, first_untrimmed: int, count: int) -> None:
+        """Each of name's frames is, pixel for pixel in every direction, the untrimmed rise's frame first_untrimmed + its index."""
+        self.assertEqual(self.animations[name]["frames"], count)
+        for index in range(count):
+            for d in range(rs.DIRECTIONS):
+                self.assertTrue(np.allclose(self.frame(name, index, d), self.frame("rise", first_untrimmed + index, d), atol=1e-6),
+                                f"{name} frame {index} d{d} is not the untrimmed frame {first_untrimmed + index}")
+
+    def stage(self, spec_text: str, name: str, root: Path | None = None) -> rs.Staged:
+        """Loads and stages (draws nothing) the fixture's `name` animation, under spec_text in root (this class's by default)."""
+        root = root or self.root
+        unit_dir = root / "art-src" / "units" / "fixture"
+        (unit_dir / "spec.toml").write_text(spec_text, encoding="utf-8")
+        spec = rs.load_spec(unit_dir / "spec.toml")
+        entry = next(e for e in spec.animations if e.name == name)
+        return rs.stage_animation(spec, unit_dir / entry.file, entry, rs.resolve_props(spec, root / "art-src", root), "WORKBENCH")
+
+    def test_the_fixture_is_the_length_the_trims_assume(self) -> None:
+        self.assertEqual(rs.scene_fps(), SCENE_FPS)
+        self.assertEqual(self.animations["rise"]["frames"], 30)
+
+    def test_a_trim_draws_its_share_of_the_frames_at_the_same_fps(self) -> None:
+        # One second at 12 fps is 12 steps, and a clip that doesn't loop draws its end too: 13 frames. The tail is 0.92 s
+        # (11 steps, 12 frames). The sidecar and the sheet say so.
+        for name, frames in (("rise", 30), ("rise_middle", 13), ("rise_head", 13), ("rise_tail", 12)):
+            with self.subTest(name=name):
+                info = self.animations[name]
+                self.assertEqual((info["frames"], info["fps"], info["loop"]), (frames, 12, False))
+                self.assertEqual(self.sheets[name].shape[:2], (rs.DIRECTIONS * info["rows_per_direction"] * rs.STRIDE, info["columns"] * rs.STRIDE))
+                self.assertTrue((self.unit_dir / "review" / f"{name}.gif").exists())
+
+    def test_the_first_trimmed_frame_is_the_untrimmed_frame_at_that_time(self) -> None:
+        # Frame 0 at start = 1.0 is the untrimmed frame at 1.0 s x 12 fps = 12, and each frame after it the next one: a frame
+        # every 1/12 s either way. It matches only if the body was fitted at the clip's own start: 1.0 s in, the body has risen
+        # 0.41 m, and fitting it there would drop the figure by that much.
+        self.assert_same_frames("rise_middle", 12, 13)
+
+    def test_a_trim_of_only_the_head_or_only_the_tail_keeps_the_other_end_of_the_clip(self) -> None:
+        self.assert_same_frames("rise_head", 0, 13)  # end = 1.0 alone: from the clip's start
+        self.assert_same_frames("rise_tail", 18, 12)  # start = 1.5 alone: to the clip's end, the untrimmed frame 29
+
+    def test_the_impact_frame_is_a_fraction_of_the_trimmed_clip(self) -> None:
+        # 13 frames, so impact 0.5 is frame 6 (not 14, round(0.5 x 29) of the whole clip), which is the untrimmed frame 18.
+        info = self.animations["rise_hit"]
+        self.assertEqual((info["frames"], info["impact_frame"]), (13, 6))
+        for d in range(rs.DIRECTIONS):
+            self.assertTrue(np.allclose(self.frame("rise_hit", info["impact_frame"], d), self.frame("rise", 18, d), atol=1e-6), d)
+        self.assertEqual(self.animations["rise"]["impact_frame"], -1)
+
+    def test_the_trimmed_range_is_what_everything_downstream_reads(self) -> None:
+        # Scene frames: the action runs 1 to 59, so 1.0 s in is frame 25.
+        whole = self.stage(fixture_spec(RISE), "rise")
+        self.assertEqual((whole.start, whole.end, len(whole.frames)), (1.0, 59.0, 30))
+        for trim, want in (("start = 1.0\nend = 2.0\n", (25.0, 49.0, 13)), ("end = 1.0\n", (1.0, 25.0, 13)), ("start = 1.5\n", (37.0, 59.0, 12))):
+            with self.subTest(trim=trim):
+                staged = self.stage(fixture_spec(rise_trim("rise", trim)), "rise")
+                self.assertEqual((staged.start, staged.end, len(staged.frames)), want)
+                self.assertEqual((staged.frames[0], staged.frames[-1]), want[:2])
+                self.assertEqual(tuple(staged.action.frame_range), (1.0, 59.0), "the action itself is not changed")
+
+    def test_the_body_is_fitted_and_the_props_attached_at_the_actions_own_first_frame(self) -> None:
+        # Not at the trimmed start (frame 25), where the body has risen and the bone stands 0.41 m up.
+        root = Path(tempfile.mkdtemp(dir=self.root))
+        make_unit(root, fixture_spec(RISE, attach=True), {"rise": "rise"}, stick=True)
+        whole = self.stage(fixture_spec(RISE, attach=True), "rise", root)
+        fitted = (tuple(whole.base), tuple(whole.holder.scale))  # staging the next clip resets the scene, removing these objects
+        with mock.patch.object(rs, "attach_props", wraps=rs.attach_props) as attached:
+            trimmed = self.stage(fixture_spec(rise_trim("rise", "start = 1.0\nend = 2.0\n"), attach=True), "rise", root)
+        self.assertEqual(attached.call_args.args[2], 1.0)
+        self.assertEqual((tuple(trimmed.base), tuple(trimmed.holder.scale)), fitted)
+        self.assertEqual(trimmed.start, 25.0)
+
+    def test_a_trim_past_the_end_of_the_clip_is_refused_before_anything_is_drawn(self) -> None:
+        # The clip is 2.42 s long. The message names the animation and the length.
+        for trim, key in (("end = 3.0\n", "end"), ("start = 3.0\n", "start"), ("start = 1.0\nend = 3.0\n", "end")):
+            variant = Path(tempfile.mkdtemp(dir=self.root))
+            make_unit(variant, fixture_spec(rise_trim("rise", trim)), {"rise": "rise"})
+            with self.subTest(trim=trim), mock.patch.object(rs, "render_to", wraps=rs.render_to) as drawn:
+                with self.assertRaisesRegex(RuntimeError, rf"rise: {key} = 3 s is past the end of the clip, which is 2\.42 s long"):
+                    render(variant)
+                self.assertEqual(drawn.call_count, 0)
+            self.assertFalse((variant / "assets").exists())
+
+    def test_an_end_within_half_a_scene_frame_of_the_clips_end_is_allowed(self) -> None:
+        half_frame_s = 0.5 / SCENE_FPS
+        for end in (RISE_SECONDS, RISE_SECONDS + 0.9 * half_frame_s):
+            with self.subTest(end=end):
+                staged = self.stage(fixture_spec(rise_trim("rise", f"end = {end!r}\n")), "rise")
+                self.assertEqual((staged.start, staged.end, len(staged.frames)), (1.0, 59.0, 30), "the clip's own end, not past it")
+        with self.assertRaisesRegex(RuntimeError, r"rise: end = 2\.43\d* s is past the end of the clip, which is 2\.42 s long"):
+            self.stage(fixture_spec(rise_trim("rise", f"end = {RISE_SECONDS + 1.1 * half_frame_s!r}\n")), "rise")
+
+    def test_a_trim_that_leaves_nothing_is_refused(self) -> None:
+        # A start at the clip's end, or past it by less than the half frame the end is allowed, has no frames to draw.
+        for start in (RISE_SECONDS, RISE_SECONDS + 0.4 / SCENE_FPS):
+            with self.subTest(start=start), self.assertRaisesRegex(RuntimeError, r"rise: the trim leaves nothing of the clip, which is 2\.42 s long"):
+                self.stage(fixture_spec(rise_trim("rise", f"start = {start!r}\n")), "rise")
+
+    def test_a_clip_over_the_height_cap_renders_once_trimmed(self) -> None:
+        # With room for 8 rows (24 frames a direction) the whole rise (30 frames) is refused, and the message offers the trim.
+        # Trimmed to a second (13 frames) it fits.
+        refused = Path(tempfile.mkdtemp(dir=self.root))
+        make_unit(refused, fixture_spec(RISE), {"rise": "rise"})
+        with room_for_rows(8), mock.patch.object(rs, "render_to", wraps=rs.render_to) as drawn:
+            with self.assertRaisesRegex(RuntimeError, r"rise: 30 frames .* at most 24 frames \(2 s at 12 fps\); "
+                                                       r"pick a shorter clip, trim it with start/end, give it a lower fps, or mark it audition = true"):
+                render(refused)
+        self.assertEqual(drawn.call_count, 0)
+        with room_for_rows(8):
+            sidecar, _ = render_variant(self.root, fixture_spec(rise_trim("rise", "start = 1.0\nend = 2.0\n")), {"rise": "rise"})
+        self.assertEqual((sidecar["animations"]["rise"]["frames"], sidecar["animations"]["rise"]["rows_per_direction"]), (13, 1))
 
 
 class PropCandidatesTest(unittest.TestCase):

@@ -42,14 +42,18 @@ to art-src/props/<prop>/review/. An audition clip (`audition = true`) is for
 review only: its GIF and contact-sheet row, but no sheet, import settings or
 sidecar entry. Nothing is written, or read, through a symlink.
 
-Three guards stop a render before the work is wasted: ffmpeg must be on the
+Four guards stop a render before the work is wasted: ffmpeg must be on the
 PATH before anything loads; a clip's file must hold an animation (one with
-none would be a single still); and a sheet may be at most MAX_SHEET_PX tall,
+none would be a single still); a recipe's start or end must not run past the
+clip's length; and a sheet may be at most MAX_SHEET_PX tall,
 checked before the clip's frames are drawn. That caps a clip's frames by its
 unit's cell: 72 at the default 160 px (24 rows of 168 px, three rows of 24 a
 direction), 40 at 192 px, 15 at 256 px. A clip's own fps (4 to 30 in the
-recipe) sets how many seconds those frames cover. Auditions make no sheet, so
-the height cap skips them.
+recipe) sets how many seconds those frames cover, and its start and end
+(seconds into the clip) draw only part of it, which is also how a long clip
+fits: the body is still fitted, and the props attached, at the clip's own
+first frame, and `frames`, `impact_frame`, the extents, the GIF and a bob all
+go by the part drawn. Auditions make no sheet, so the height cap skips them.
 """
 from __future__ import annotations
 
@@ -701,13 +705,33 @@ def stage_animation(spec: UnitSpec, glb: Path, entry: AnimEntry, props: list[Pro
     action = next(a for a in actions if a.name == name)
     assign(armature, action)
     start, end = float(action.frame_range[0]), float(action.frame_range[1])
+    clip_start, clip_end = trimmed_range(entry, start, end, scene_fps())  # before the work, like the height cap
+    # The body is fitted, and the props attached, at the action's own first frame, not the trim's: a trimmed clip may begin
+    # mid-crouch, and fitting a crouched body would scale it up.
     set_frame(start)
     fit(holder, spec.height_m)
     prop_meshes = attach_props(armature, props, start)  # after fit(), so props never count toward the height
     if engine == "WORKBENCH":
         copy_base_colors()
-    return Staged(camera, armature, holder, holder.location.copy(), action, start, end,
-                  sample_frames(start, end, scene_fps(), entry.loop, entry.fps), prop_meshes)
+    return Staged(camera, armature, holder, holder.location.copy(), action, clip_start, clip_end,
+                  sample_frames(clip_start, clip_end, scene_fps(), entry.loop, entry.fps), prop_meshes)
+
+
+def trimmed_range(entry: AnimEntry, start: float, end: float, rate: float) -> tuple[float, float]:
+    """The scene frames, from start to end, that entry draws of a clip running start to end at rate frames a second: its own start
+    and end (seconds from the clip's start), or the whole clip with neither. A start or end more than half a scene frame past
+    the clip's length is refused, and so is a trim that leaves no frames; an end up to that half frame past is the clip's end."""
+    if entry.start_s == 0.0 and entry.end_s is None:
+        return start, end
+    length_s = (end - start) / rate
+    for key, seconds in (("start", entry.start_s), ("end", entry.end_s)):
+        if seconds is not None and seconds > length_s + 0.5 / rate:
+            raise RuntimeError(f"{entry.name}: {key} = {seconds:g} s is past the end of the clip, which is {length_s:.2f} s long")
+    clip_start = min(start + entry.start_s * rate, end)
+    clip_end = end if entry.end_s is None else min(start + entry.end_s * rate, end)
+    if clip_end <= clip_start:
+        raise RuntimeError(f"{entry.name}: the trim leaves nothing of the clip, which is {length_s:.2f} s long")
+    return clip_start, clip_end
 
 
 def bob_cycles(entry: AnimEntry, start: float, end: float, rate: float) -> int:
@@ -755,7 +779,7 @@ def render_animation(spec: UnitSpec, glb: Path, entry: AnimEntry, props: list[Pr
         raise RuntimeError(f"{entry.name}: {frames} frames at {entry.fps} fps makes a sheet {DIRECTIONS * rows * frame.stride} px tall, "
                            f"taller than the {frame.rows_max} rows of {frame.stride} px that fit in {MAX_SHEET_PX}, so a clip "
                            f"has at most {limit} frames ({limit / entry.fps:g} s at {entry.fps} fps); "
-                           "pick a shorter clip, give it a lower fps, or mark it audition = true")
+                           "pick a shorter clip, trim it with start/end, give it a lower fps, or mark it audition = true")
     # A bob on too few frames is flat (it aliases to its zero), so it is refused before the work, like the height cap.
     if entry.bob_m > 0.0:
         cycles = bob_cycles(entry, staged.start, staged.end, scene_fps())
