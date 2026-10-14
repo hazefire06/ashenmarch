@@ -45,8 +45,8 @@ audition = true
 
 # The library clip runs 9.5 s: he bends from 0.75 s, touches the ground at 2.5 s, straightens by 5.0 s, then
 # lifts something and stands still. Only the reach is drawn: 1.7-3.5 s, 23 frames, the touch its impact. The head is cut
-# because the whole bend can't play inside the sim's errand wind-ups (8 ticks when he strikes a herb plant, 9 for the
-# pick-up the Ripper and the Warden make) within the animator's 4x limit; the tail so the errand holds the body less.
+# because the whole bend can't play inside his errand's wind-up (the 8-tick melee wind-up: he plays it only when he
+# strikes a herb plant, since he picks nothing up) within the animator's 4x limit; the tail so the errand holds the body less.
 [animations.place]
 action = 274
 clip = "Female_Crouch_Pick_Up_Place_Side"

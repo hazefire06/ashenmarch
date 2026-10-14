@@ -41,7 +41,7 @@ bob_hz = 1.2
 stride_m = 8.8
 
 # The library clip runs 5 s: he lifts a hand and turns until 1.25 s, draws from 2.25 s and looses at 2.75 s, holds the aim to 4 s
-# and lowers the bow. Only the draw and the release are drawn: 1.25-3.75 s, 31 frames, the loosing its impact. The head is cut
+# and lowers the bow. 1.25-3.75 s is drawn, 31 frames: the end of the turn, the draw and the release, the loosing its impact. The head is cut
 # because the sim's 15-tick (0.5 s) draw can't play the whole run-up inside the animator's 4x limit; the tail so the strike
 # holds the body less.
 [animations.shoot]
