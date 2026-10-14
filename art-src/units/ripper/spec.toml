@@ -5,6 +5,12 @@ height_m = 1.8
 prompt = "Gaunt hunched ghoul, emaciated grey-green skin stretched over ribs, long thin limbs, elongated clawed fingers, lank black hair, torn loincloth, bare feet, feral stance, both hands open and empty, holding nothing"
 die_falls_forward = false
 
+# Blown back in the death, he lands 42 px below the feet, past the default frame's 40; his throw reaches
+# 103 px above them. The default 160 px frame with the feet 48 px up fits both (spec §11).
+[render]
+cell_px = 160
+feet_px = 48
+
 [candidates]
 lite = 4
 full = 0
@@ -28,11 +34,15 @@ action = 421
 clip = "Over_Shoulder_Throw"
 impact = 0.55
 
-# The pick-up of a charge or object, played as the act clip.
+# The pick-up of a charge or object, played as the act clip. The library clip runs 7.2 s: he bends, his hand
+# touches the ground at 1.5 s and is back near its rest by 2.25 s; then he lifts the thing overhead, holds it
+# and lowers it. Only the grab is drawn: 1.75 s, 22 frames, the touch its impact.
 [animations.place]
 action = 276
 clip = "Male_Bend_Over_Pick_Up"
-impact = 0.5
+start = 0.5
+end = 2.25
+impact = 0.57
 
 [animations.die]
 action = 182

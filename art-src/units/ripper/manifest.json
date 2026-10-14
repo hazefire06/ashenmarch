@@ -1,0 +1,106 @@
+{
+  "tasks": [
+    {
+      "ai_model": "meshy-6-lite",
+      "created_at": 1791858427,
+      "credits": 5,
+      "files": [
+        "candidates/cand-1.glb"
+      ],
+      "finished_at": 1791858457777,
+      "kind": "preview",
+      "label": "cand-1",
+      "prompt": "Gaunt hunched ghoul, emaciated grey-green skin stretched over ribs, long thin limbs, elongated clawed fingers, lank black hair, torn loincloth, bare feet, feral stance, both hands open and empty, holding nothing. Palette: cold bog brown, bone white, sickly green glow. Stylized fantasy strategy-game character, chunky heroic proportions, hand-painted textures, strong readable silhouette, muted earthy palette, full body, standing in A-pose, centered, plain background",
+      "status": "SUCCEEDED",
+      "task_id": "01a13315-c738-70f4-a902-9277b339eed6"
+    },
+    {
+      "ai_model": "meshy-6-lite",
+      "created_at": 1791858460,
+      "credits": 5,
+      "files": [
+        "candidates/cand-2.glb"
+      ],
+      "finished_at": 1791858489590,
+      "kind": "preview",
+      "label": "cand-2",
+      "prompt": "Gaunt hunched ghoul, emaciated grey-green skin stretched over ribs, long thin limbs, elongated clawed fingers, lank black hair, torn loincloth, bare feet, feral stance, both hands open and empty, holding nothing. Palette: cold bog brown, bone white, sickly green glow. Stylized fantasy strategy-game character, chunky heroic proportions, hand-painted textures, strong readable silhouette, muted earthy palette, full body, standing in A-pose, centered, plain background",
+      "status": "SUCCEEDED",
+      "task_id": "01a13316-498c-723d-92b5-6c9118b687d9"
+    },
+    {
+      "ai_model": "meshy-6-lite",
+      "created_at": 1791858492,
+      "credits": 5,
+      "files": [
+        "candidates/cand-3.glb"
+      ],
+      "finished_at": 1791858554766,
+      "kind": "preview",
+      "label": "cand-3",
+      "prompt": "Gaunt hunched ghoul, emaciated grey-green skin stretched over ribs, long thin limbs, elongated clawed fingers, lank black hair, torn loincloth, bare feet, feral stance, both hands open and empty, holding nothing. Palette: cold bog brown, bone white, sickly green glow. Stylized fantasy strategy-game character, chunky heroic proportions, hand-painted textures, strong readable silhouette, muted earthy palette, full body, standing in A-pose, centered, plain background",
+      "status": "SUCCEEDED",
+      "task_id": "01a13316-c613-7360-9a42-1c83178bca12"
+    },
+    {
+      "ai_model": "meshy-6-lite",
+      "created_at": 1791858556,
+      "credits": 5,
+      "files": [
+        "candidates/cand-4.glb"
+      ],
+      "finished_at": 1791858581526,
+      "kind": "preview",
+      "label": "cand-4",
+      "prompt": "Gaunt hunched ghoul, emaciated grey-green skin stretched over ribs, long thin limbs, elongated clawed fingers, lank black hair, torn loincloth, bare feet, feral stance, both hands open and empty, holding nothing. Palette: cold bog brown, bone white, sickly green glow. Stylized fantasy strategy-game character, chunky heroic proportions, hand-painted textures, strong readable silhouette, muted earthy palette, full body, standing in A-pose, centered, plain background",
+      "status": "SUCCEEDED",
+      "task_id": "01a13317-bd86-72a4-8007-7fc664030bae"
+    },
+    {
+      "created_at": 1791859390,
+      "credits": 10,
+      "files": [
+        "model/textured.glb"
+      ],
+      "finished_at": 1791859426540,
+      "kind": "refine",
+      "label": "cand-4",
+      "status": "SUCCEEDED",
+      "task_id": "01a13324-7719-75a6-9a79-216719e2454b"
+    },
+    {
+      "created_at": 1791859427,
+      "credits": 5,
+      "files": [
+        "anims/rig_run.glb",
+        "anims/rig_walk.glb",
+        "model/rigged.glb"
+      ],
+      "finished_at": 1791859439840,
+      "kind": "rig",
+      "label": "cand-4",
+      "status": "SUCCEEDED",
+      "task_id": "01a13325-08d4-7040-a27d-1587510b5751"
+    },
+    {
+      "action_ids": [
+        0,
+        16,
+        182,
+        192,
+        276,
+        421
+      ],
+      "created_at": 1791859441,
+      "credits": 18,
+      "files": [
+        "anims/actions.glb"
+      ],
+      "finished_at": 1791859461838,
+      "kind": "animate",
+      "label": "cand-4:0,16,182,192,276,421",
+      "status": "SUCCEEDED",
+      "task_id": "01a13325-41a9-7712-a922-e9c72d767816"
+    }
+  ]
+}

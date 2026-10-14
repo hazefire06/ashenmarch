@@ -1,0 +1,216 @@
+{
+  "tasks": [
+    {
+      "ai_model": "meshy-6-lite",
+      "created_at": 1791858250,
+      "credits": 5,
+      "files": [
+        "candidates/cand-1.glb"
+      ],
+      "finished_at": 1791858303383,
+      "kind": "preview",
+      "label": "cand-1",
+      "prompt": "Shambling undead corpse wrapped in rotted peat-bog cloth and sacking, leathery dark brown skin shrunken over bones, sunken eye sockets, matted hair, torn rags, bare bony feet, hunched posture, clawed hands open and empty, holding nothing. Palette: cold bog brown, bone white, sickly green glow. Stylized fantasy strategy-game character, chunky heroic proportions, hand-painted textures, strong readable silhouette, muted earthy palette, full body, standing in A-pose, centered, plain background",
+      "status": "SUCCEEDED",
+      "task_id": "01a13313-1561-75dd-bf35-4e05b1c52b5e"
+    },
+    {
+      "ai_model": "meshy-6-lite",
+      "created_at": 1791858305,
+      "credits": 5,
+      "files": [
+        "candidates/cand-2.glb"
+      ],
+      "finished_at": 1791858340136,
+      "kind": "preview",
+      "label": "cand-2",
+      "prompt": "Shambling undead corpse wrapped in rotted peat-bog cloth and sacking, leathery dark brown skin shrunken over bones, sunken eye sockets, matted hair, torn rags, bare bony feet, hunched posture, clawed hands open and empty, holding nothing. Palette: cold bog brown, bone white, sickly green glow. Stylized fantasy strategy-game character, chunky heroic proportions, hand-painted textures, strong readable silhouette, muted earthy palette, full body, standing in A-pose, centered, plain background",
+      "status": "SUCCEEDED",
+      "task_id": "01a13313-e997-7571-aaaa-6854779c3f0f"
+    },
+    {
+      "ai_model": "meshy-6-lite",
+      "created_at": 1791858342,
+      "credits": 5,
+      "files": [
+        "candidates/cand-3.glb"
+      ],
+      "finished_at": 1791858377848,
+      "kind": "preview",
+      "label": "cand-3",
+      "prompt": "Shambling undead corpse wrapped in rotted peat-bog cloth and sacking, leathery dark brown skin shrunken over bones, sunken eye sockets, matted hair, torn rags, bare bony feet, hunched posture, clawed hands open and empty, holding nothing. Palette: cold bog brown, bone white, sickly green glow. Stylized fantasy strategy-game character, chunky heroic proportions, hand-painted textures, strong readable silhouette, muted earthy palette, full body, standing in A-pose, centered, plain background",
+      "status": "SUCCEEDED",
+      "task_id": "01a13314-7a49-76e8-bacc-ec04a62a33ac"
+    },
+    {
+      "ai_model": "meshy-6-lite",
+      "created_at": 1791858379,
+      "credits": 5,
+      "files": [
+        "candidates/cand-4.glb"
+      ],
+      "finished_at": 1791858426062,
+      "kind": "preview",
+      "label": "cand-4",
+      "prompt": "Shambling undead corpse wrapped in rotted peat-bog cloth and sacking, leathery dark brown skin shrunken over bones, sunken eye sockets, matted hair, torn rags, bare bony feet, hunched posture, clawed hands open and empty, holding nothing. Palette: cold bog brown, bone white, sickly green glow. Stylized fantasy strategy-game character, chunky heroic proportions, hand-painted textures, strong readable silhouette, muted earthy palette, full body, standing in A-pose, centered, plain background",
+      "status": "SUCCEEDED",
+      "task_id": "01a13315-0b19-7368-a19e-76189808d984"
+    },
+    {
+      "ai_model": "meshy-6-lite",
+      "created_at": 1791859219,
+      "credits": 5,
+      "files": [
+        "candidates/cand-5.glb"
+      ],
+      "finished_at": 1791859255882,
+      "kind": "preview",
+      "label": "cand-5",
+      "prompt": "Shambling undead bog corpse, a mummified body pulled from a peat bog, tight wrinkled leathery dark brown skin intact over the whole body, gaunt but fleshed arms and legs, hollow cheeks, matted hair, wrapped in rotted peat-stained cloth and sacking, torn rags, bare feet, clawed hands open and empty, holding nothing. Palette: cold bog brown, bone white, sickly green glow. Stylized fantasy strategy-game character, chunky heroic proportions, hand-painted textures, strong readable silhouette, muted earthy palette, full body, standing in A-pose, centered, plain background",
+      "status": "SUCCEEDED",
+      "task_id": "01a13321-db88-7594-8ae7-d80f4c0e5e41"
+    },
+    {
+      "ai_model": "meshy-6-lite",
+      "created_at": 1791859257,
+      "credits": 5,
+      "files": [
+        "candidates/cand-6.glb"
+      ],
+      "finished_at": 1791859318646,
+      "kind": "preview",
+      "label": "cand-6",
+      "prompt": "Shambling undead bog corpse, a mummified body pulled from a peat bog, tight wrinkled leathery dark brown skin intact over the whole body, gaunt but fleshed arms and legs, hollow cheeks, matted hair, wrapped in rotted peat-stained cloth and sacking, torn rags, bare feet, clawed hands open and empty, holding nothing. Palette: cold bog brown, bone white, sickly green glow. Stylized fantasy strategy-game character, chunky heroic proportions, hand-painted textures, strong readable silhouette, muted earthy palette, full body, standing in A-pose, centered, plain background",
+      "status": "SUCCEEDED",
+      "task_id": "01a13322-71e8-72cf-8c0d-c7cd73f6d10a"
+    },
+    {
+      "ai_model": "meshy-6-lite",
+      "created_at": 1791859320,
+      "credits": 5,
+      "files": [
+        "candidates/cand-7.glb"
+      ],
+      "finished_at": 1791859353454,
+      "kind": "preview",
+      "label": "cand-7",
+      "prompt": "Shambling undead bog corpse, a mummified body pulled from a peat bog, tight wrinkled leathery dark brown skin intact over the whole body, gaunt but fleshed arms and legs, hollow cheeks, matted hair, wrapped in rotted peat-stained cloth and sacking, torn rags, bare feet, clawed hands open and empty, holding nothing. Palette: cold bog brown, bone white, sickly green glow. Stylized fantasy strategy-game character, chunky heroic proportions, hand-painted textures, strong readable silhouette, muted earthy palette, full body, standing in A-pose, centered, plain background",
+      "status": "SUCCEEDED",
+      "task_id": "01a13323-6888-7056-bbe2-f70dc4e6f616"
+    },
+    {
+      "ai_model": "meshy-6-lite",
+      "created_at": 1791859357,
+      "credits": 5,
+      "files": [
+        "candidates/cand-8.glb"
+      ],
+      "finished_at": 1791859387906,
+      "kind": "preview",
+      "label": "cand-8",
+      "prompt": "Shambling undead bog corpse, a mummified body pulled from a peat bog, tight wrinkled leathery dark brown skin intact over the whole body, gaunt but fleshed arms and legs, hollow cheeks, matted hair, wrapped in rotted peat-stained cloth and sacking, torn rags, bare feet, clawed hands open and empty, holding nothing. Palette: cold bog brown, bone white, sickly green glow. Stylized fantasy strategy-game character, chunky heroic proportions, hand-painted textures, strong readable silhouette, muted earthy palette, full body, standing in A-pose, centered, plain background",
+      "status": "SUCCEEDED",
+      "task_id": "01a13323-f990-765d-962b-089e3de53fa9"
+    },
+    {
+      "ai_model": "meshy-6-lite",
+      "created_at": 1791861225,
+      "credits": 5,
+      "files": [
+        "candidates/cand-9.glb"
+      ],
+      "finished_at": 1791861260911,
+      "kind": "preview",
+      "label": "cand-9",
+      "prompt": "Shambling bog zombie with leathery dark brown bog-tanned skin covering a whole fleshy body, gaunt but muscled arms and legs, hollow cheeks, matted hair, wrapped in rotted peat-stained cloth and sacking, torn rags, bare feet, clawed hands open and empty, holding nothing. Palette: cold bog brown, ashen grey, sickly green glow. Stylized fantasy strategy-game character, chunky heroic proportions, hand-painted textures, strong readable silhouette, muted earthy palette, full body, standing in A-pose, centered, plain background",
+      "status": "SUCCEEDED",
+      "task_id": "01a13340-7715-72ea-a848-68d345bb6ce1"
+    },
+    {
+      "ai_model": "meshy-6-lite",
+      "created_at": 1791861263,
+      "credits": 5,
+      "files": [
+        "candidates/cand-10.glb"
+      ],
+      "finished_at": 1791861311845,
+      "kind": "preview",
+      "label": "cand-10",
+      "prompt": "Shambling bog zombie with leathery dark brown bog-tanned skin covering a whole fleshy body, gaunt but muscled arms and legs, hollow cheeks, matted hair, wrapped in rotted peat-stained cloth and sacking, torn rags, bare feet, clawed hands open and empty, holding nothing. Palette: cold bog brown, ashen grey, sickly green glow. Stylized fantasy strategy-game character, chunky heroic proportions, hand-painted textures, strong readable silhouette, muted earthy palette, full body, standing in A-pose, centered, plain background",
+      "status": "SUCCEEDED",
+      "task_id": "01a13341-0ec9-764d-ba53-bfd838402176"
+    },
+    {
+      "ai_model": "meshy-6-lite",
+      "created_at": 1791861316,
+      "credits": 5,
+      "files": [
+        "candidates/cand-11.glb"
+      ],
+      "finished_at": 1791861364023,
+      "kind": "preview",
+      "label": "cand-11",
+      "prompt": "Shambling bog zombie with leathery dark brown bog-tanned skin covering a whole fleshy body, gaunt but muscled arms and legs, hollow cheeks, matted hair, wrapped in rotted peat-stained cloth and sacking, torn rags, bare feet, clawed hands open and empty, holding nothing. Palette: cold bog brown, ashen grey, sickly green glow. Stylized fantasy strategy-game character, chunky heroic proportions, hand-painted textures, strong readable silhouette, muted earthy palette, full body, standing in A-pose, centered, plain background",
+      "status": "SUCCEEDED",
+      "task_id": "01a13341-dca0-723b-9ab4-45eb6638743d"
+    },
+    {
+      "ai_model": "meshy-6-lite",
+      "created_at": 1791861369,
+      "credits": 5,
+      "files": [
+        "candidates/cand-12.glb"
+      ],
+      "finished_at": 1791861403886,
+      "kind": "preview",
+      "label": "cand-12",
+      "prompt": "Shambling bog zombie with leathery dark brown bog-tanned skin covering a whole fleshy body, gaunt but muscled arms and legs, hollow cheeks, matted hair, wrapped in rotted peat-stained cloth and sacking, torn rags, bare feet, clawed hands open and empty, holding nothing. Palette: cold bog brown, ashen grey, sickly green glow. Stylized fantasy strategy-game character, chunky heroic proportions, hand-painted textures, strong readable silhouette, muted earthy palette, full body, standing in A-pose, centered, plain background",
+      "status": "SUCCEEDED",
+      "task_id": "01a13342-aaba-7733-b9fd-ebeae3871d87"
+    },
+    {
+      "created_at": 1791919579,
+      "credits": 10,
+      "files": [
+        "model/textured.glb"
+      ],
+      "finished_at": 1791919661837,
+      "kind": "refine",
+      "label": "cand-9",
+      "status": "SUCCEEDED",
+      "task_id": "01a136ba-e13c-7110-b229-632b130eca01"
+    },
+    {
+      "created_at": 1791919663,
+      "credits": 5,
+      "files": [
+        "anims/rig_run.glb",
+        "anims/rig_walk.glb",
+        "model/rigged.glb"
+      ],
+      "finished_at": 1791919677487,
+      "kind": "rig",
+      "label": "cand-9",
+      "status": "SUCCEEDED",
+      "task_id": "01a136bc-2a4e-779e-9266-d1f7a2ac56d9"
+    },
+    {
+      "action_ids": [
+        0,
+        123,
+        187,
+        198
+      ],
+      "created_at": 1791919679,
+      "credits": 12,
+      "files": [
+        "anims/actions.glb"
+      ],
+      "finished_at": 1791919690358,
+      "kind": "animate",
+      "label": "cand-9:0,123,187,198",
+      "status": "SUCCEEDED",
+      "task_id": "01a136bc-6722-73a6-95b7-996f4d656e06"
+    }
+  ]
+}

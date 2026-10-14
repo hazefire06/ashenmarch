@@ -7,6 +7,12 @@ height_m = 1.75
 prompt = "Shambling bog zombie with leathery dark brown bog-tanned skin covering a whole fleshy body, gaunt but muscled arms and legs, hollow cheeks, matted hair, wrapped in rotted peat-stained cloth and sacking, torn rags, bare feet, clawed hands open and empty, holding nothing"
 die_falls_forward = false
 
+# Knocked down, he drops 41 px below the feet and flings 110 px above them, past the default frame. The
+# default 160 px frame with the feet 46 px up fits both; a bigger frame would cut his 48-frame idle (spec §11).
+[render]
+cell_px = 160
+feet_px = 46
+
 # cand-1 to cand-8 were skeletons from the first two prompts (2026-10-12); cand-9 to cand-12 are the zombie.
 # The manifest keeps each one's prompt.
 [candidates]

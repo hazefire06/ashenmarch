@@ -1,0 +1,81 @@
+{
+  "animations": {
+    "attack": {
+      "columns": 24,
+      "fps": 12,
+      "frames": 25,
+      "impact_frame": 10,
+      "loop": false,
+      "rows_per_direction": 2,
+      "sheet": "attack.png",
+      "stride_m": 0.0
+    },
+    "die": {
+      "columns": 24,
+      "fps": 12,
+      "frames": 33,
+      "impact_frame": -1,
+      "loop": false,
+      "rows_per_direction": 2,
+      "sheet": "die.png",
+      "stride_m": 0.0
+    },
+    "idle": {
+      "columns": 24,
+      "fps": 12,
+      "frames": 48,
+      "impact_frame": -1,
+      "loop": true,
+      "rows_per_direction": 2,
+      "sheet": "idle.png",
+      "stride_m": 0.0
+    },
+    "place": {
+      "columns": 22,
+      "fps": 12,
+      "frames": 22,
+      "impact_frame": 12,
+      "loop": false,
+      "rows_per_direction": 1,
+      "sheet": "place.png",
+      "stride_m": 0.0
+    },
+    "throw": {
+      "columns": 24,
+      "fps": 12,
+      "frames": 53,
+      "impact_frame": 29,
+      "loop": false,
+      "rows_per_direction": 3,
+      "sheet": "throw.png",
+      "stride_m": 0.0
+    },
+    "walk": {
+      "columns": 6,
+      "fps": 12,
+      "frames": 6,
+      "impact_frame": -1,
+      "loop": true,
+      "rows_per_direction": 1,
+      "sheet": "walk.png",
+      "stride_m": 2.6885
+    }
+  },
+  "bursts_on_death": false,
+  "cell": 160,
+  "clipped": [],
+  "die_falls_forward": false,
+  "directions": 8,
+  "elevation_deg": 50.0,
+  "feet_px": 48,
+  "figure_height_m": 1.392,
+  "gib_color": [
+    0.17,
+    0.181,
+    0.166
+  ],
+  "gutter": 4,
+  "pixels_per_meter": 52.0,
+  "stride": 168,
+  "unit": "ripper"
+}
