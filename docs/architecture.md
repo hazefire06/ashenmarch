@@ -2162,7 +2162,7 @@ Designed in `docs/specs/2026-10-01-art-audio-design.md`; built by `docs/plans/20
   - `<id>.json`, the sidecar (frame counts, fps, impact frames, stride, wrap, cell, feet, `figure_height_m`, gib colour), and `.png.import` files (mipmaps, VRAM compressed).
   - `art-src/units/<id>/review/` gets the contact sheet and per-animation GIFs for Tim's approval. A clip marked `audition = true` is drawn there and not built: no sheet, no sidecar entry. A clip the game plays can't be one. (This replaced a hard-coded `attack_alt`.)
 - **Figure height.** The renderer measures the drawn body's height above the feet in idle (worst over its frames and directions), props excluded and a hover's crest included, and writes it as the sidecar's `figure_height_m`. The builder copies it to `UnitArt.figure_height_m`, and `UnitSprite` uses it for picking and the overlays (name, notice, status tag, HP bar) in place of the type's `body_height`. Art without it (0) keeps `body_height`.
-- **Hover.** `bob_m` and `bob_hz` on an animation lift the whole figure on a sine, stretched to a whole number of cycles a clip so a loop stays seamless; a bob on too few frames is refused. A floater's walk can set `stride_m` in place of a measured one (no foot to measure; any other clip that sets it is refused): the Drifter's walk is its idle clip as a glide.
+- **Hover.** `bob_m` and `bob_hz` on an animation lift the whole figure on a sine, stretched to a whole number of cycles a clip so a loop stays seamless; a bob on too few frames is refused. A floater's walk can set `stride_m` in place of a measured one (no foot to measure; any other clip that sets it is refused): the Drifter's walk is its idle clip as a glide, its `stride_m` the speed times the clip's length so it plays at 1×.
 - **Trim.** `start` and `end` (seconds from the clip's own start; either alone is allowed) draw part of a long library clip. The body is still fitted at the clip's own first frame; `frames`, `impact_frame`, the extents and the GIF go by the part drawn, so `impact` is a fraction of the trimmed part. A trim is refused on idle, walk, run and rig clips (a cut loop has no seam, and a stride is measured over a whole cycle), and a `start` or `end` past the clip's end stops the render.
 - **Guards.** ffmpeg is checked before any render, and a recipe animation whose file holds no action fails with a clear error instead of drawing one still.
 - `scripts/art/build_unit_art.gd` (headless Godot, `make art-build UNIT=<id>`) turns them into `data/art/<id>.tres` (`UnitArt`) and lists it in `data/art/catalog.tres` (`UnitArtCatalog`). Both are generated; never hand-edit them.
@@ -2189,13 +2189,13 @@ All ten v1 units have art. Frame is `[render]` cell/feet in px (160/40 is the de
 |---|---|---|---|
 | Shieldman | 1 (A1) | 160/40 | — |
 | Reaver | 3 | 216/76 | die at 10 fps |
-| Longbow | 3 | 184/68 | shoot at 8 fps, idle at 10 |
-| Sapper | 6 | 160/40 | a dwarf (Tim's call); satchel on the right thigh (`RightUpLeg`); standing throw, crouching throw as an audition; place trimmed to 0.75–5.0 s |
+| Longbow | 3 | 184/68 | idle at 10 fps; shoot trimmed to 1.6–3.75 s; attack trimmed to 0.85–2.4 s |
+| Sapper | 6 | 160/40 | a dwarf (Tim's call); satchel on the right thigh (`RightUpLeg`); standing throw, crouching throw as an audition; place trimmed to 1.7–3.5 s; attack trimmed to 0.65–2.4 s |
 | Warden | 3 | 184/66 | idle at 10 fps; staff carried head forward |
 | Husk | 9 | 160/46 | a bog zombie |
-| Ripper | 4 | 160/48 | place trimmed to 0.5–2.25 s |
+| Ripper | 4 | 160/48 | attack trimmed to 0.35–1.75 s; throw trimmed to 1.25–3.4 s; place trimmed to 0.5–2.25 s |
 | Blightbag | 4 | 160/40 | bursts |
-| Drifter | 3 | 160/54 | hover and glide |
+| Drifter | 3 | 160/54 | hover and glide (walk `stride_m` 8.8 m: 2.2 m/s over the 4 s clip, so it plays at 1×); shoot trimmed to 1.25–3.75 s |
 | Stormcaller | 1 | 192/59 | a cloaked skeleton (Tim's call); idle at 10 fps; die trimmed to 2.0–5.25 s |
 
 - **Credits:** 606 in all. Batch 1 (Reaver, Longbow) 134; batch 2 (Sapper, Warden) 160; batch 3 (Husk, Ripper, Blightbag) 184; batch 4 (Drifter, Stormcaller) 128.
@@ -2205,7 +2205,8 @@ For whoever buys the next unit.
 - **"Empty hands" isn't enough.** 3 of 4 Longbow candidates came with a bow molded into the hand. "Both hands open and empty, holding nothing" held for most candidates after that. Two still carried something (knives, a sack), so look for it at the pick.
 - **Bone words make skeletons.** The dark palette's "bone white", beside "undead", "corpse" and "bones" in a prompt, gave eight skeleton Husks over two prompts, and bare bone limbs draw 1–2 px wide. The palette now reads "ashen grey", and a "bog zombie" prompt with skin over the whole body gave flesh. The Stormcaller still came out a skeleton from "gaunt", "thin" and "cracked", and was kept: its cloak gives it mass.
 - **Watch for borrowed looks at the pick.** Three Ripper candidates (bald, huge pointed ears, big eyes) came too close to a famous film creature.
-- **Library clips run long:** a 9.5 s place, a 7.2 s pick-up, a 6.3 s electrocuted fall, a 5.9 s crouching throw. The game holds a unit until its strike clip ends, so trim to the errand. A timeline of hip and hand heights every 0.25 s shows where the action is.
+- **Library clips run long:** a 9.5 s place, a 7.2 s pick-up, a 6.3 s electrocuted fall, a 5.9 s crouching throw. The body's animation holds after the strike (the clip plays to its end) while the sim moves on, so trim the tail to the errand. A clip's impact must also fit the unit's wind-up within the animator's 4× clamp, so trim the head too: aim for the impact at most about 3× the wind-up (ticks / 30) from the trimmed start, which leaves room for veterans' shorter wind-ups. A timeline of hip and hand heights every 0.25 s shows where the action is. `tests/view/test_unit_art_timing.gd` checks every unit's walk rate and every impact against the clamp, from the sim's own wind-ups.
+- **A floater's glide needs its stride set from its speed.** The Drifter's walk is a 4 s idle clip, so `stride_m` is its move speed times the clip's length (2.2 × 4 = 8.8 m). A short stride made it play clamped at 4× with a 5 Hz bob.
 - **A weapon or a fall that outgrows the 160 px cell** often needs only higher feet in the same cell (Husk 46, Ripper 48, Drifter 54). A bigger cell holds fewer frames a clip, which costs an fps drop or a trim.
 - **Solve a prop's grip from the meshes** and measure it per clip in world space; a by-eye look at a 50° camera misleads.
   - With Meshy's hanging-arm idle, no grip stands a staff upright. A centre grip through the palm keeps its head up through the attack and the cast.
@@ -2216,5 +2217,7 @@ For whoever buys the next unit.
 
 ### Not yet
 - Barks and audio (A2). The Sapper's satchel drop plays no `place`: the sim drops a charge instantly (`UnitOrders.use_special`, no wind-up), so the view has no wind-up to time a clip to. `place` plays for pick-ups and plant strikes only; a drop with a clip would need a wind-up in the sim.
+- **Texture memory.** The 45 committed sheets import to about 554 MB per texture format (528 MiB; 609 MB before the final-review trims), and the project imports both S3TC and ETC2. `MainView.load_art` loads every unit's sheets at startup, against about 30 MB after A1. A Web export would carry about 0.55 GB per format it includes. This was measured from the imported `.ctex` files, not in a running build or an export. Follow-up: load art per mission roster (the catalog holds paths and `UnitsView` loads a type's art on its first sprite), and consider tighter cells (a 1.4 m figure uses about 73 px of a 160–216 px cell).
+- **The dwarf's sim size.** The Sapper's sim data (`data/units/sapper.tres`: `body_height`, `ranged_launch_height` and the like) is still human-sized, so his grenades leave from above his drawn head and arrows hit there. Changing sim data re-records the goldens, so it waits.
 - Direction hysteresis and two-elevation renders only if the in-engine check needs them; MultiMesh only if profiling does.
 - **Not checked:** Windows and Web (Phase 10 does the cross-platform pass). The in-engine check ran on macOS (GL Compatibility on Metal) only; the sheet wrap and the VRAM-compressed, mipmapped sheets are the things to look at.
