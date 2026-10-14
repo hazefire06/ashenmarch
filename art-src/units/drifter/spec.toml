@@ -1,0 +1,38 @@
+# The Drifter's art recipe (spec §5, §11). Floating undead archer: long robes, a hover bob,
+# and a glide that reuses the idle clip with a fixed stride (no foot contact to measure).
+id = "drifter"
+faction = "dark"
+height_m = 1.85
+prompt = "Hooded spectre in long tattered grey-black robes reaching the ankles, thin legs barely visible beneath, gaunt pale ashen face in shadow under the hood, thin pale hands, faint sickly green glow under the hood, both hands open and empty, holding nothing"
+die_falls_forward = false
+
+[[attach]]
+prop = "drifter_bow"
+bone = "LeftHand"
+
+[candidates]
+lite = 4
+full = 0
+polycount = 30000
+
+[animations.idle]
+action = 0
+clip = "Idle"
+bob_m = 0.08
+bob_hz = 0.8
+
+[animations.walk]
+action = 0
+clip = "Idle"
+bob_m = 0.08
+bob_hz = 1.2
+stride_m = 1.2
+
+[animations.shoot]
+action = 224
+clip = "Archery_Shot"
+impact = 0.55
+
+[animations.die]
+action = 8
+clip = "Dead"

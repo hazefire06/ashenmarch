@@ -1,0 +1,33 @@
+# The Stormcaller's art recipe (spec §5, §11). Lightning caster.
+id = "stormcaller"
+faction = "dark"
+height_m = 1.85
+prompt = "Gaunt ghoulish sorcerer, tall and thin, cracked grey skin marked with glowing blue-white lightning scars, tattered dark hooded mantle with a high collar, rune-marked cloth wrappings, long thin grey-skinned hands, wild white hair, both hands open and empty, holding nothing"
+die_falls_forward = false
+
+[[attach]]
+prop = "storm_staff"
+bone = "RightHand"
+
+[candidates]
+lite = 4
+full = 0
+polycount = 30000
+
+[animations.idle]
+action = 0
+clip = "Idle"
+
+[animations.walk]
+rig = "walk"
+
+# The lightning. Meshy's library spells it "mage_soell_cast_2" (unverified letter
+# by letter); a wrong name fails at the free render, never at purchase.
+[animations.cast]
+action = 131
+clip = "mage_soell_cast_2"
+impact = 0.55
+
+[animations.die]
+action = 181
+clip = "Electrocuted_Fall"
