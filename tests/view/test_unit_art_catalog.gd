@@ -4,6 +4,11 @@ extends GutTest
 ## either way. Also pins the committed, generated Shieldman art.
 
 const SHIELDMAN_PATH: String = "res://data/art/shieldman.tres"
+## The ten unit types of the v1 roster (the villager is not one: it is not drawn with art).
+const V1_UNITS: Array[StringName] = [
+	&"shieldman", &"reaver", &"longbow", &"sapper", &"warden",
+	&"husk", &"ripper", &"blightbag", &"drifter", &"stormcaller",
+]
 
 
 func test_find_and_put_replace_and_keep_order() -> void:
@@ -83,3 +88,22 @@ func test_the_committed_catalog_lists_the_shieldman_by_reference() -> void:
 		assert_eq(listed.resource_path, SHIELDMAN_PATH, "by reference to its own file, not an embedded copy")
 	assert_eq(catalog.invalid_reasons(), PackedStringArray())
 	assert_eq(catalog.without_invalid().arts.size(), catalog.arts.size())
+
+
+func test_every_v1_unit_has_valid_committed_art() -> void:
+	# A3's deliverable. The catalog tests above validate whatever it lists, so a rebuild that dropped
+	# an entry would pass and that unit would quietly become a placeholder.
+	var catalog: UnitArtCatalog = UnitArtCatalog.load_or_new()
+	if catalog.arts.is_empty():
+		pending("%s lists no art; run make art-build UNIT=<id>" % UnitArtCatalog.DEFAULT_PATH)
+		return
+	var units: UnitCatalog = TestTerrains.catalog()
+	for id: StringName in V1_UNITS:
+		assert_not_null(units.find(id), "%s is a unit type in data/units" % id)
+		var art: UnitArt = catalog.find(id)
+		assert_not_null(art, "%s has art in the catalog" % id)
+		if art != null:
+			assert_eq(art.validate(), PackedStringArray(), "%s's art is valid" % id)
+	var shieldman: UnitArt = catalog.find(&"shieldman")
+	if shieldman != null:
+		assert_almost_eq(shieldman.figure_height_m, 1.406, 0.001, "the figure height the renderer measured")

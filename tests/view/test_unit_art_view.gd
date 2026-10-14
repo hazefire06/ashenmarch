@@ -366,6 +366,24 @@ func test_a_rebuild_keeps_the_hurt_the_selected_and_the_hidden_as_they_were() ->
 		assert_null(_sprite_in(view, husk), "still out of sight in the water: " + which)
 
 
+func test_a_rebuild_keeps_every_health_bar_shown_while_health_is_forced_on() -> void:
+	# F10 held (or the bar's HP toggle) shows every living unit's bar, hurt or not; F12 rebuilds every sprite.
+	_view.after_step()
+	var units: Array[Unit] = [_shieldman, _longbow]
+	for unit: Unit in units:
+		assert_false(_hp_bar_showing(_sprite(unit)), "a healthy, unselected unit shows no bar unless forced")
+	_view.show_all_health = true
+	for rebuild: int in 2:
+		for enabled: bool in [false, true]:
+			_view.set_art_enabled(enabled)
+			var which: String = "art" if enabled else "placeholders"
+			for unit: Unit in units:
+				assert_true(_hp_bar_showing(_sprite(unit)), "forced on, unit %d, %s, rebuild %d" % [unit.id, which, rebuild])
+	_view.show_all_health = false
+	for unit: Unit in units:
+		assert_false(_hp_bar_showing(_sprite(unit)), "back off")
+
+
 func test_a_rebuild_leaves_one_sprite_per_unit_under_its_own_name() -> void:
 	_view.set_art_enabled(false)
 	var sprites: Array[UnitSprite] = []
