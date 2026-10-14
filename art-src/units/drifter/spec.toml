@@ -31,17 +31,25 @@ clip = "Idle"
 bob_m = 0.08
 bob_hz = 0.8
 
+# One glide cycle covers what he floats in the clip's 4 s at his full speed of 2.2 m/s (8.8 m), so the walk plays at 1x
+# with the 1.2 Hz bob, not clamped at 4x (a 1.2 m stride made it 7.3x).
 [animations.walk]
 action = 0
 clip = "Idle"
 bob_m = 0.08
 bob_hz = 1.2
-stride_m = 1.2
+stride_m = 8.8
 
+# The library clip runs 5 s: he lifts a hand and turns until 1.25 s, draws from 2.25 s and looses at 2.75 s, holds the aim to 4 s
+# and lowers the bow. Only the draw and the release are drawn: 1.25-3.75 s, 31 frames, the loosing its impact. The head is cut
+# because the sim's 15-tick (0.5 s) draw can't play the whole run-up inside the animator's 4x limit; the tail so the strike
+# holds the body less.
 [animations.shoot]
 action = 224
 clip = "Archery_Shot"
-impact = 0.55
+start = 1.25
+end = 3.75
+impact = 0.6
 
 [animations.die]
 action = 8

@@ -1,12 +1,12 @@
 {
   "animations": {
     "attack": {
-      "columns": 21,
+      "columns": 20,
       "fps": 12,
-      "frames": 39,
-      "impact_frame": 17,
+      "frames": 20,
+      "impact_frame": 7,
       "loop": false,
-      "rows_per_direction": 2,
+      "rows_per_direction": 1,
       "sheet": "attack.png",
       "stride_m": 0.0
     },
@@ -32,9 +32,9 @@
     },
     "shoot": {
       "columns": 21,
-      "fps": 8,
-      "frames": 41,
-      "impact_frame": 22,
+      "fps": 12,
+      "frames": 27,
+      "impact_frame": 14,
       "loop": false,
       "rows_per_direction": 2,
       "sheet": "shoot.png",

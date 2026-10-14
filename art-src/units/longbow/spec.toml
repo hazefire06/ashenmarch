@@ -33,17 +33,26 @@ fps = 10
 [animations.walk]
 rig = "walk"
 
-# 5 s: at 8 fps it is 41 frames.
+# The library clip runs 5 s: he stands with the bow down until 1.5 s, raises and draws it, looses at 2.75 s, holds the aim to
+# 4 s and lowers the bow. Only the raise, draw and release are drawn: 1.6-3.75 s, 27 frames, under the 42 a 184 px frame's sheet
+# holds even at 12 fps, the release its impact. The head is cut because the sim's 12-tick (0.4 s) draw can't play the whole
+# run-up inside the animator's 4x limit (the arrow left 0.3 s before the release); the tail so the strike holds the body less.
 [animations.shoot]
 action = 224
 clip = "Archery_Shot"
-impact = 0.55
-fps = 8
+start = 1.6
+end = 3.75
+impact = 0.54
 
+# The library clip runs 3.2 s: he winds up and swings, the cut landing at 1.4 s, then settles back into a crouch. Only the swing
+# is drawn: 0.85-2.4 s, 20 frames, the cut its impact. The head is cut because the sim's 6-tick (0.2 s) swing can't play the
+# whole wind-up inside the animator's 4x limit; the tail so the strike holds the body less.
 [animations.attack]
 action = 97
 clip = "Left_Slash"
-impact = 0.45
+start = 0.85
+end = 2.4
+impact = 0.37
 
 [animations.die]
 action = 184

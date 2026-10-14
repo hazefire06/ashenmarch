@@ -24,15 +24,25 @@ clip = "Idle"
 action = 16
 clip = "RunFast"
 
+# The library clip runs 2.0 s: he raises a fist from his guard, jabs at 0.8 s and drops back into it. Only the jab is drawn:
+# 0.35-1.75 s, 18 frames, the jab its impact. The head is cut because the sim's 5-tick (0.17 s) swing can't play the whole
+# raise inside the animator's 4x limit; the tail so the strike holds the body less.
 [animations.attack]
 action = 192
 clip = "Right_Jab_from_Guard"
-impact = 0.4
+start = 0.35
+end = 1.75
+impact = 0.35
 
+# The library clip runs 4.3 s: he hunches and shifts until 1.25 s, winds up and throws at 2.4 s, then straightens and stands.
+# Only the wind-up and the throw are drawn: 1.25-3.4 s, 27 frames, the release its impact. The head is cut because the sim's
+# 12-tick (0.4 s) wind-up can't play the whole run-up inside the animator's 4x limit; the tail so the strike holds the body less.
 [animations.throw]
 action = 421
 clip = "Over_Shoulder_Throw"
-impact = 0.55
+start = 1.25
+end = 3.4
+impact = 0.54
 
 # The pick-up of a charge or object, played as the act clip. The library clip runs 7.2 s: he bends, his hand
 # touches the ground at 1.5 s and is back near its rest by 2.25 s; then he lifts the thing overhead, holds it

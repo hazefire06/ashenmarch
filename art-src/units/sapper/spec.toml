@@ -43,19 +43,26 @@ clip = "Crouch_Pull_and_Throw"
 impact = 0.6
 audition = true
 
-# The library clip runs 9.5 s: he reaches down, touches the ground at 2.5 s, straightens by 5.0 s, then
-# lifts something and stands still. Only the errand is drawn: 4.25 s, 52 frames, the touch its impact.
+# The library clip runs 9.5 s: he bends from 0.75 s, touches the ground at 2.5 s, straightens by 5.0 s, then
+# lifts something and stands still. Only the reach is drawn: 1.7-3.5 s, 23 frames, the touch its impact. The head is cut
+# because the whole bend can't play inside the sim's errand wind-ups (8 ticks when he strikes a herb plant, 9 for the
+# pick-up the Ripper and the Warden make) within the animator's 4x limit; the tail so the errand holds the body less.
 [animations.place]
 action = 274
 clip = "Female_Crouch_Pick_Up_Place_Side"
-start = 0.75
-end = 5.0
-impact = 0.41
+start = 1.7
+end = 3.5
+impact = 0.45
 
+# The library clip runs 3.2 s: he winds up and swings, the cut landing at 1.4 s, then settles back into a crouch. Only the swing
+# is drawn: 0.65-2.4 s, 22 frames, the cut its impact. The head is cut because the sim's 8-tick (0.27 s) swing can't play the
+# whole wind-up inside the animator's 4x limit; the tail so the strike holds the body less.
 [animations.attack]
 action = 97
 clip = "Left_Slash"
-impact = 0.45
+start = 0.65
+end = 2.4
+impact = 0.43
 
 [animations.die]
 action = 8

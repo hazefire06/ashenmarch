@@ -32,7 +32,7 @@ clip = "Combat_Stance"
 [animations.walk]
 rig = "run"
 
-# Heavy_Hammer_Swing (1.4 s) is the game's swing. Charged_Axe_Chop runs 6.1 s, past the
+# Heavy_Hammer_Swing (1.8 s) is the game's swing. Charged_Axe_Chop runs 6.1 s, past the
 # 72-frame sheet limit and far too long for a melee strike, so it is auditioned in review only.
 [animations.attack]
 action = 128

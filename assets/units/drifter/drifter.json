@@ -23,10 +23,10 @@
     "shoot": {
       "columns": 24,
       "fps": 12,
-      "frames": 61,
-      "impact_frame": 33,
+      "frames": 31,
+      "impact_frame": 18,
       "loop": false,
-      "rows_per_direction": 3,
+      "rows_per_direction": 2,
       "sheet": "shoot.png",
       "stride_m": 0.0
     },
@@ -38,7 +38,7 @@
       "loop": true,
       "rows_per_direction": 2,
       "sheet": "walk.png",
-      "stride_m": 1.2
+      "stride_m": 8.8
     }
   },
   "bursts_on_death": false,

@@ -1,12 +1,12 @@
 {
   "animations": {
     "attack": {
-      "columns": 24,
+      "columns": 18,
       "fps": 12,
-      "frames": 25,
-      "impact_frame": 10,
+      "frames": 18,
+      "impact_frame": 6,
       "loop": false,
-      "rows_per_direction": 2,
+      "rows_per_direction": 1,
       "sheet": "attack.png",
       "stride_m": 0.0
     },
@@ -43,10 +43,10 @@
     "throw": {
       "columns": 24,
       "fps": 12,
-      "frames": 53,
-      "impact_frame": 29,
+      "frames": 27,
+      "impact_frame": 14,
       "loop": false,
-      "rows_per_direction": 3,
+      "rows_per_direction": 2,
       "sheet": "throw.png",
       "stride_m": 0.0
     },

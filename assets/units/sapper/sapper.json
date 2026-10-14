@@ -1,12 +1,12 @@
 {
   "animations": {
     "attack": {
-      "columns": 24,
+      "columns": 22,
       "fps": 12,
-      "frames": 39,
-      "impact_frame": 17,
+      "frames": 22,
+      "impact_frame": 9,
       "loop": false,
-      "rows_per_direction": 2,
+      "rows_per_direction": 1,
       "sheet": "attack.png",
       "stride_m": 0.0
     },
@@ -31,12 +31,12 @@
       "stride_m": 0.0
     },
     "place": {
-      "columns": 24,
+      "columns": 23,
       "fps": 12,
-      "frames": 52,
-      "impact_frame": 21,
+      "frames": 23,
+      "impact_frame": 10,
       "loop": false,
-      "rows_per_direction": 3,
+      "rows_per_direction": 1,
       "sheet": "place.png",
       "stride_m": 0.0
     },
