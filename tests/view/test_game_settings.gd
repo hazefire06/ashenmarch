@@ -228,3 +228,14 @@ func test_a_file_that_builds_a_resource_reads_as_the_defaults() -> void:
 	assert_false(GameSettings.fullscreen(_path), "the whole file is ignored")
 	_write("[display]\nfullscreen=true\nsneaky=Object(Node,\"name\":\"x\")\n")
 	assert_false(GameSettings.fullscreen(_path))
+
+
+func test_a_resource_split_from_its_bracket_is_refused_too() -> void:
+	# The parser skips whitespace and ; comments between a constructor's name
+	# and its bracket, so a substring check for "Resource(" was not enough.
+	for sneaky: String in [
+		"Resource (\"user://x.gd\")", "Resource\t(\"user://x.gd\")", "Resource\n(\"user://x.gd\")",
+		"Resource;c\n(\"user://x.gd\")", "Object (RefCounted)", "ExtResource(\"1\")", "SubResource(\"1\")",
+	]:
+		_write("[display]\nfullscreen=true\nsneaky=%s\n" % sneaky)
+		assert_false(GameSettings.fullscreen(_path), sneaky.c_escape())

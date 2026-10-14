@@ -44,7 +44,7 @@ impact = 0.6
 audition = true
 
 # The library clip runs 9.5 s: he reaches down, touches the ground at 2.5 s, straightens by 5.0 s, then
-# lifts something and stands still. Only the errand is drawn: 4.25 s, 51 frames, the touch its impact.
+# lifts something and stands still. Only the errand is drawn: 4.25 s, 52 frames, the touch its impact.
 [animations.place]
 action = 274
 clip = "Female_Crouch_Pick_Up_Place_Side"

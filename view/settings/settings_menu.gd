@@ -4,8 +4,13 @@ extends MenuScreen
 ## - Display: fullscreen, window size, vsync, frame cap, 3D render scale and
 ##   interface scale.
 ## - Audio: a volume per bus.
-## - Controls: edge scroll, every rebindable action, the group modifiers, and
-##   Reset all.
+## - Controls: the preset (Modern or Classic), edge scroll, the corner camera,
+##   every rebindable action, the group keys (Modern's two modifiers, or
+##   Classic's one), and Reset all. A preset keeps its own rebinds: switching
+##   shows the other's.
+## - Controller: every pad binding, the cursor's speed and whether it sticks
+##   to units, rumble strength (with whether this controller can), and Reset
+##   controller.
 ##
 ## Each change is saved to the settings file the moment it is made
 ## (GameSettings), then `changed` tells the App to apply it (a write that
@@ -14,7 +19,10 @@ extends MenuScreen
 ## because it opens over the main menu and over a paused mission alike.
 ##
 ## Rebinding: press an action's button, then the key or mouse button (with any
-## modifiers) for it; Esc cancels. A key another action already uses moves to
+## modifiers) for it; Esc cancels. On the Controller tab, the pad button, or
+## a stick or trigger pushed well over; the pad's Menu button, Esc, or
+## PAD_CAPTURE_SECONDS of nothing cancels (Menu always pauses, so it can't be
+## bound). A key another action already uses moves to
 ## the action that gave it up (a swap, so nothing is left unbound). A key that
 ## saves or recalls a group is refused: the group modifier is the thing to
 ## change.
@@ -26,6 +34,13 @@ signal closed
 
 const EDGE_SCROLL_HINT: String = "Pan the camera by pushing the mouse against the edge of the window."
 const PRESS_A_KEY: String = "Press a key... (Esc cancels)"
+const PRESS_A_PAD_BUTTON: String = "Press a pad button... (Menu cancels)"
+const PAD_CAPTURE_SECONDS: float = 5.0
+## A stick or trigger pushed this far is the binding.
+const PAD_CAPTURE_AXIS: float = 0.6
+const CORNER_CAMERA_HINT: String = "Push the mouse into a top corner to turn the camera, a bottom corner to orbit it."
+const PRESET_NAMES: PackedStringArray = ["Modern", "Classic"]
+const PRESET_HINT: String = "Classic: left click gives orders, A/D turn, Z/X strafe, C zooms in and V out, and a group is saved by holding its key."
 const MODIFIER_KEYS: Array[Key] = [KEY_SHIFT, KEY_CTRL, KEY_ALT, KEY_META]
 
 var _path: String = GameSettings.DEFAULT_PATH
@@ -38,8 +53,18 @@ var _note: Label
 ## The binding buttons by action, and the action waiting for a key.
 var _binding_buttons: Dictionary[StringName, Button] = {}
 var _capturing: StringName = &""
+## The pad binding buttons by action, the action waiting for a pad button,
+## and how long it has waited.
+var _pad_buttons: Dictionary[StringName, Button] = {}
+var _capturing_pad: StringName = &""
+var _pad_wait: float = 0.0
+var _rumble_status: Label
+# The shoulder buttons may be rebound to triggers: a pull turns one tab.
+var _tab_edges: PadEdges = PadEdges.new([InputBindings.PAD_FORMATION_WHEEL, InputBindings.PAD_ORDER_WHEEL] as Array[StringName])
+var _preset: OptionButton
 var _save_modifier: OptionButton
 var _recall_modifier: OptionButton
+var _classic_modifier: OptionButton
 
 
 func _init() -> void:
@@ -67,6 +92,7 @@ func setup(settings_path: String = GameSettings.DEFAULT_PATH) -> void:
 	_tabs.add_child(_display_tab())
 	_tabs.add_child(_audio_tab())
 	_tabs.add_child(_controls_tab())
+	_tabs.add_child(_controller_tab())
 	_note = MenuKit.paragraph("", 14, MenuKit.WARN_COLOR)
 	_note.name = "Note"
 	_note.visible = false
@@ -84,9 +110,17 @@ func setup(settings_path: String = GameSettings.DEFAULT_PATH) -> void:
 		_focus_default()
 
 
-## True while waiting for the key to bind.
+## True while waiting for the key (or pad button) to bind.
 func is_capturing() -> bool:
-	return _capturing != &""
+	return _capturing != &"" or _capturing_pad != &""
+
+
+## Starts waiting for the pad button, stick or trigger to bind `action` to.
+func capture_pad(action: StringName) -> void:
+	_cancel_capture()
+	_capturing_pad = action
+	_pad_wait = 0.0
+	_pad_buttons[action].text = PRESS_A_PAD_BUTTON
 
 
 ## Starts waiting for the key or button to bind `action` to (what pressing
@@ -100,6 +134,11 @@ func capture(action: StringName) -> void:
 ## Binds the action being captured to `event`, as if it had been pressed. Does
 ## nothing when nothing is being captured.
 func bind_captured(event: InputEvent) -> void:
+	if _capturing_pad != &"":
+		var pad_action: StringName = _capturing_pad
+		_capturing_pad = &""
+		_rebind_pad(pad_action, event)
+		return
 	if not is_capturing():
 		return
 	var action: StringName = _capturing
@@ -109,6 +148,36 @@ func bind_captured(event: InputEvent) -> void:
 
 func _focus_default() -> void:
 	_focus(_fullscreen)
+
+
+# The pad's shoulder buttons turn the tabs, and focus goes to the new tab's
+# first control.
+func _unhandled_input(event: InputEvent) -> void:
+	var step: int = 0
+	_tab_edges.feed(event)
+	if _tab_edges.pressed(event, InputBindings.PAD_FORMATION_WHEEL):
+		step = -1
+	elif _tab_edges.pressed(event, InputBindings.PAD_ORDER_WHEEL):
+		step = 1
+	if step == 0 or is_capturing():
+		super(event)
+		return
+	_tabs.current_tab = posmod(_tabs.current_tab + step, _tabs.get_tab_count())
+	var first: Control = _first_focusable(_tabs.get_current_tab_control())
+	if first != null:
+		first.grab_focus()
+	get_viewport().set_input_as_handled()
+
+
+static func _first_focusable(root: Node) -> Control:
+	var stack: Array[Node] = [root]
+	while not stack.is_empty():
+		var node: Node = stack.pop_front()
+		if node is Control and (node as Control).focus_mode == Control.FOCUS_ALL and (node as Control).is_visible_in_tree():
+			return node as Control
+		var children: Array[Node] = node.get_children()
+		stack = children + stack
+	return null
 
 
 func _cancel() -> bool:
@@ -123,6 +192,9 @@ func _cancel() -> bool:
 # binding; Esc cancels. Read in _input, ahead of the GUI, so the press can't
 # also click a button or move focus.
 func _input(event: InputEvent) -> void:
+	if _capturing_pad != &"":
+		_capture_pad_input(event)
+		return
 	if not is_capturing():
 		return
 	if event is InputEventKey and event.is_pressed() and not event.is_echo():
@@ -160,11 +232,82 @@ static func _portable(pressed: InputEventWithModifiers) -> InputEvent:
 
 
 func _cancel_capture() -> void:
-	if not is_capturing():
+	if _capturing_pad != &"":
+		var pad_action: StringName = _capturing_pad
+		_capturing_pad = &""
+		_pad_buttons[pad_action].text = InputBindings.label_for(pad_action, InputBindings.Device.PAD)
+	if _capturing == &"":
 		return
 	var action: StringName = _capturing
 	_capturing = &""
 	_binding_buttons[action].text = InputBindings.label_for(action)
+
+
+# While a pad binding is captured: a pad button pressed (Menu cancels) or an
+# axis pushed past PAD_CAPTURE_AXIS binds; Esc cancels. Nothing else gets
+# through, so the press can't also move focus or press a button.
+func _capture_pad_input(event: InputEvent) -> void:
+	if event is InputEventJoypadButton and (event as InputEventJoypadButton).pressed:
+		get_viewport().set_input_as_handled()
+		var button: InputEventJoypadButton = event
+		if button.button_index == JOY_BUTTON_START:
+			_cancel_capture()
+		else:
+			bind_captured(InputBindings.text_to_event("joy_button:%d" % button.button_index))
+	elif event is InputEventJoypadMotion:
+		get_viewport().set_input_as_handled()
+		var motion: InputEventJoypadMotion = event
+		if absf(motion.axis_value) >= PAD_CAPTURE_AXIS:
+			bind_captured(InputBindings.text_to_event(
+				"joy_axis:%d:%s" % [motion.axis, "plus" if motion.axis_value > 0.0 else "minus"]
+			))
+	elif event is InputEventKey and event.is_pressed():
+		get_viewport().set_input_as_handled()
+		if (event as InputEventKey).physical_keycode == KEY_ESCAPE:
+			_cancel_capture()
+
+
+func _process(delta: float) -> void:
+	super(delta)
+	if _capturing_pad != &"":
+		_pad_wait += delta
+		if _pad_wait >= PAD_CAPTURE_SECONDS:
+			_cancel_capture()
+	if _rumble_status != null and is_visible_in_tree():
+		_rumble_status.text = PadRumble.status()
+
+
+# The pad's own swap: the button another action is on moves to the one that
+# gave it up.
+func _rebind_pad(action: StringName, event: InputEvent) -> void:
+	var previous: InputEvent = InputBindings.event_of(action, InputBindings.Device.PAD)
+	var clashes: Array[StringName] = InputBindings.conflicts(action, event)
+	var changes: Dictionary[StringName, InputEvent] = {action: event}
+	var swapped: PackedStringArray = PackedStringArray()
+	for other: StringName in clashes:
+		if previous != null:
+			changes[other] = previous
+		swapped.append(InputBindings.ACTION_NAMES[other])
+	if not _saved(GameSettings.set_padbinds(changes, _path)):
+		_refresh_bindings()
+		return
+	InputBindings.apply(changes)
+	if swapped.is_empty() or previous == null:
+		_say("")
+	else:
+		_say("%s was on %s; it now uses %s." % [
+			InputBindings.event_label(event), ", ".join(swapped), InputBindings.event_label(previous),
+		])
+	_refresh_bindings()
+
+
+func _reset_controller() -> void:
+	_cancel_capture()
+	if not _saved(GameSettings.clear_pad_controls(_path)):
+		return
+	GameSettings.apply_bindings(_path)
+	_say("The controller is back to its defaults.")
+	_refresh_bindings()
 
 
 func _rebind(action: StringName, event: InputEvent) -> void:
@@ -198,10 +341,24 @@ func _reset_controls() -> void:
 	if not _saved(GameSettings.clear_controls(_path)):
 		return
 	GameSettings.apply_bindings(_path)
-	_save_modifier.select(InputBindings.DEFAULT_SAVE_MODIFIER)
-	_recall_modifier.select(InputBindings.DEFAULT_RECALL_MODIFIER)
 	_say("Controls are back to their defaults.")
 	_refresh_bindings()
+
+
+func _on_preset_selected(index: int) -> void:
+	_cancel_capture()
+	if not _saved(GameSettings.set_preset(index, _path)):
+		_preset.select(GameSettings.preset(_path))
+		return
+	GameSettings.apply_bindings(_path)
+	_say("")
+	_refresh_bindings()
+
+
+func _on_classic_modifier_selected(index: int) -> void:
+	if _saved(GameSettings.set_classic_group_modifier(index, _path)):
+		InputBindings.set_classic_group_modifier(index as InputBindings.GroupModifier)
+		_say("")
 
 
 func _on_modifier_selected(_index: int) -> void:
@@ -221,6 +378,17 @@ func _on_modifier_selected(_index: int) -> void:
 func _refresh_bindings() -> void:
 	for action: StringName in _binding_buttons:
 		_binding_buttons[action].text = InputBindings.label_for(action)
+	for action: StringName in _pad_buttons:
+		_pad_buttons[action].text = InputBindings.label_for(action, InputBindings.Device.PAD)
+		_pad_buttons[action].icon = InputPrompts.glyph_for(action)
+	var classic: bool = GameSettings.preset(_path) == InputBindings.Preset.CLASSIC
+	var saved: Array[int] = GameSettings.group_modifiers(_path)
+	_save_modifier.select(saved[0])
+	_recall_modifier.select(saved[1])
+	_classic_modifier.select(GameSettings.classic_group_modifier(_path))
+	_save_modifier.get_parent().visible = not classic
+	_recall_modifier.get_parent().visible = not classic
+	_classic_modifier.get_parent().visible = classic
 
 
 func _say(text: String) -> void:
@@ -287,6 +455,10 @@ func _controls_tab() -> Control:
 	tab.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	tab.add_theme_constant_override("separation", 6)
 	scroller.add_child(tab)
+	_preset = _add_choice(tab, "Preset", "Controls", PRESET_NAMES, GameSettings.preset(_path), _on_preset_selected)
+	var preset_hint: Label = MenuKit.paragraph(PRESET_HINT, 14, MenuKit.MUTED_COLOR)
+	preset_hint.custom_minimum_size.x = 340.0
+	tab.add_child(preset_hint)
 	_edge_scroll = _add_toggle(tab, "EdgeScrollCheck", "Edge scroll", GameSettings.edge_scroll(_path))
 	_edge_scroll.toggled.connect(func(on: bool) -> void:
 		_saved_or_undo(GameSettings.set_edge_scroll(on, _path), _edge_scroll, on)
@@ -294,6 +466,13 @@ func _controls_tab() -> Control:
 	var hint: Label = MenuKit.paragraph(EDGE_SCROLL_HINT, 14, MenuKit.MUTED_COLOR)
 	hint.custom_minimum_size.x = 340.0
 	tab.add_child(hint)
+	var corners: CheckBox = _add_toggle(tab, "CornerCameraCheck", "Corner camera", GameSettings.corner_camera(_path))
+	corners.toggled.connect(func(on: bool) -> void:
+		_saved_or_undo(GameSettings.set_corner_camera(on, _path), corners, on)
+	)
+	var corner_hint: Label = MenuKit.paragraph(CORNER_CAMERA_HINT, 14, MenuKit.MUTED_COLOR)
+	corner_hint.custom_minimum_size.x = 340.0
+	tab.add_child(corner_hint)
 	for section: String in InputBindings.REBINDABLE:
 		tab.add_child(MenuKit.label(section, MenuKit.HEADING_SIZE, MenuKit.TEXT_COLOR))
 		for action: StringName in InputBindings.REBINDABLE[section]:
@@ -308,13 +487,70 @@ func _controls_tab() -> Control:
 			tab.add_child(row)
 	tab.add_child(MenuKit.label("Groups", MenuKit.HEADING_SIZE, MenuKit.TEXT_COLOR))
 	var modifiers: PackedStringArray = PackedStringArray()
-	for modifier: int in InputBindings.GroupModifier.size():
-		modifiers.append("%s + number" % InputBindings.modifier_label(modifier as InputBindings.GroupModifier))
+	for modifier: InputBindings.GroupModifier in InputBindings.MODERN_GROUP_MODIFIERS:
+		modifiers.append("%s + number" % InputBindings.modifier_label(modifier))
 	var saved: Array[int] = GameSettings.group_modifiers(_path)
 	_save_modifier = _add_choice(tab, "SaveModifier", "Save a group", modifiers, saved[0], _on_modifier_selected)
 	_recall_modifier = _add_choice(tab, "RecallModifier", "Recall a group", modifiers, saved[1], _on_modifier_selected)
+	var classic_modifiers: PackedStringArray = PackedStringArray()
+	for modifier: int in InputBindings.GroupModifier.size():
+		var key: String = InputBindings.modifier_label(modifier as InputBindings.GroupModifier)
+		if modifier == InputBindings.GroupModifier.COMMAND_OR_ALT:
+			# Otherwise it reads the same as Cmd/Ctrl on a Mac, or Alt elsewhere.
+			key = "Cmd on a Mac, Alt elsewhere"
+		classic_modifiers.append("%s + number (hold to save)" % key)
+	_classic_modifier = _add_choice(
+		tab, "ClassicModifier", "Group key", classic_modifiers, GameSettings.classic_group_modifier(_path),
+		_on_classic_modifier_selected
+	)
 	var reset: Button = MenuKit.button("ResetControls", "Reset all controls")
 	reset.pressed.connect(_reset_controls)
+	tab.add_child(reset)
+	_refresh_bindings()
+	return scroller
+
+
+func _controller_tab() -> Control:
+	var scroller: ScrollContainer = MenuKit.scroller()
+	scroller.name = "Controller"
+	var tab: VBoxContainer = VBoxContainer.new()
+	tab.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	tab.add_theme_constant_override("separation", 6)
+	scroller.add_child(tab)
+	_add_slider(tab, "CursorSpeed", "Cursor speed", GameSettings.CURSOR_SPEED_MIN, GameSettings.CURSOR_SPEED_MAX, 10,
+		GameSettings.cursor_speed(_path), func(percent: int) -> void:
+			_saved(GameSettings.set_pad_setting(GameSettings.CURSOR_SPEED, percent, _path))
+	)
+	var snap: CheckBox = _add_toggle(tab, "CursorSnapCheck", "Cursor sticks to units", GameSettings.cursor_snap(_path))
+	snap.toggled.connect(func(on: bool) -> void:
+		_saved_or_undo(GameSettings.set_pad_setting(GameSettings.CURSOR_SNAP, on, _path), snap, on)
+	)
+	_add_slider(tab, "Rumble", "Rumble (0 is off)", 0, 100, 10, GameSettings.rumble(_path), func(percent: int) -> void:
+		_saved(GameSettings.set_pad_setting(GameSettings.RUMBLE, percent, _path))
+	)
+	_rumble_status = MenuKit.paragraph(PadRumble.status(), 14, MenuKit.MUTED_COLOR)
+	_rumble_status.name = "RumbleStatus"
+	_rumble_status.custom_minimum_size.x = 340.0
+	tab.add_child(_rumble_status)
+	for section: String in InputBindings.PAD_REBINDABLE:
+		tab.add_child(MenuKit.label(section, MenuKit.HEADING_SIZE, MenuKit.TEXT_COLOR))
+		for action: StringName in InputBindings.PAD_REBINDABLE[section]:
+			var row: HBoxContainer = HBoxContainer.new()
+			var name_label: Label = MenuKit.label(InputBindings.ACTION_NAMES[action])
+			name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			row.add_child(name_label)
+			var button: Button = MenuKit.button("Pad_%s" % action, InputBindings.label_for(action, InputBindings.Device.PAD), 220.0)
+			button.icon = InputPrompts.glyph_for(action)
+			button.expand_icon = false
+			button.add_theme_constant_override("icon_max_width", 22)
+			button.pressed.connect(capture_pad.bind(action))
+			row.add_child(button)
+			_pad_buttons[action] = button
+			tab.add_child(row)
+	var menu_note: Label = MenuKit.paragraph("The Menu button always pauses.", 14, MenuKit.MUTED_COLOR)
+	tab.add_child(menu_note)
+	var reset: Button = MenuKit.button("ResetController", "Reset controller")
+	reset.pressed.connect(_reset_controller)
 	tab.add_child(reset)
 	return scroller
 

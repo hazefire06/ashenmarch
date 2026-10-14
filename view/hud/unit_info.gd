@@ -81,7 +81,11 @@ static func activity(unit: Unit, world: World = null) -> String:
 	var bombarding: bool = unit.order == Unit.Order.GROUND_ATTACK and (
 		unit.state == Unit.State.SHOOTING or unit.state == Unit.State.IDLE
 	)
-	return "Bombarding" if bombarding else Unit.State.keys()[unit.state].capitalize()
+	if bombarding:
+		return "Bombarding"
+	if unit.order == Unit.Order.GUARD and unit.state == Unit.State.IDLE:
+		return "Guarding"
+	return Unit.State.keys()[unit.state].capitalize()
 
 
 ## "Paralyzed 2.3 s · Confused 4.0 s · Burning 1.0 s" for the effects on the

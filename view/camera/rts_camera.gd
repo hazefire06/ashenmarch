@@ -33,6 +33,8 @@ const HEIGHT_SMOOTH_RATE: float = 8.0
 const MIN_CLEARANCE: float = 2.0
 ## Edge scroll: how close to a window edge (pixels) the mouse must be to pan.
 const EDGE_SCROLL_MARGIN: float = 12.0
+## Corner camera: how far into a corner (pixels each way) turns or orbits.
+const CORNER_SIZE: float = 48.0
 ## How fast glide_to closes on its point, per second, and how close is there.
 const GLIDE_RATE: float = 8.0
 const GLIDE_DONE: float = 0.05
@@ -50,6 +52,16 @@ var distance: float = DEFAULT_DISTANCE
 ## edge itself still scrolls). Off by default: it needs a window the mouse can't stray out of,
 ## and a dev who drags a window around shouldn't lose the map.
 var edge_scroll: bool = false
+## Myth II's corner preference (Settings: Corner camera): the mouse in a top
+## corner turns the camera in place toward that side, in a bottom corner
+## orbits it, instead of panning. Like edge scroll, not over a button.
+var corner_camera: bool = false
+## The pad's share of the camera, set by PadController every frame: pan (x right, y forward, each -1..1, the right stick and the cursor
+## pushed into an edge), orbit (-1 left .. 1 right, the triggers) and zoom
+## (-1 out .. 1 in, R3 held with the right stick).
+var pad_pan: Vector2 = Vector2.ZERO
+var pad_orbit: float = 0.0
+var pad_zoom: float = 0.0
 
 var _terrain: Terrain
 var _camera: Camera3D
@@ -133,6 +145,26 @@ func _notification(what: int) -> void:
 		_mouse_in_window = true
 
 
+## What a mouse at `mouse` in a window `size` pixels across asks of the corner
+## camera: (turn, orbit), each -1 (left), 1 (right) or 0. Top corners turn,
+## bottom corners orbit; anywhere else, nothing.
+static func corner_turn(mouse: Vector2, size: Vector2, corner: float = CORNER_SIZE) -> Vector2:
+	if not Rect2(Vector2.ZERO, size).has_point(mouse):
+		return Vector2.ZERO
+	var side: float = 0.0
+	if mouse.x < corner:
+		side = -1.0
+	elif mouse.x > size.x - corner:
+		side = 1.0
+	if side == 0.0:
+		return Vector2.ZERO
+	if mouse.y < corner:
+		return Vector2(side, 0.0)
+	if mouse.y > size.y - corner:
+		return Vector2(0.0, side)
+	return Vector2.ZERO
+
+
 ## The pan direction a mouse at `mouse` asks for when the window is `size`
 ## pixels across: x +1 right and -1 left, y +1 forward (the top edge) and -1
 ## back (the bottom edge), 0 away from the edges. A corner asks for both. A
@@ -158,11 +190,14 @@ func _process(delta: float) -> void:
 	_update_zoom(delta)
 	# Q/E orbit the camera around the focus. Decreasing yaw swings the camera
 	# toward its own left, so Q (the left key) lowers yaw.
-	var orbit: float = Input.get_axis(InputBindings.CAM_ORBIT_LEFT, InputBindings.CAM_ORBIT_RIGHT)
-	yaw += orbit * ORBIT_SPEED * delta
+	var orbit: float = Input.get_axis(InputBindings.CAM_ORBIT_LEFT, InputBindings.CAM_ORBIT_RIGHT) + pad_orbit
 	# Z/X turn the camera in place; Z turns the view left (raises yaw).
 	var swivel: float = Input.get_axis(InputBindings.CAM_SWIVEL_RIGHT, InputBindings.CAM_SWIVEL_LEFT)
-	_swivel(swivel * SWIVEL_SPEED * delta)
+	var corner: Vector2 = _corner()
+	swivel -= corner.x
+	orbit += corner.y
+	yaw += clampf(orbit, -1.0, 1.0) * ORBIT_SPEED * delta
+	_swivel(clampf(swivel, -1.0, 1.0) * SWIVEL_SPEED * delta)
 	_move(delta)
 	_glide(delta)
 	var blend: float = 1.0 - exp(-HEIGHT_SMOOTH_RATE * delta)
@@ -189,7 +224,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _update_zoom(delta: float) -> void:
-	var held: float = Input.get_axis(InputBindings.CAM_ZOOM_OUT, InputBindings.CAM_ZOOM_IN)
+	var held: float = clampf(Input.get_axis(InputBindings.CAM_ZOOM_OUT, InputBindings.CAM_ZOOM_IN) + pad_zoom, -1.0, 1.0)
 	if held != 0.0:
 		var scale_factor: float = pow(HELD_ZOOM_PER_SECOND, -held * delta)
 		_target_distance = clampf(_target_distance * scale_factor, MIN_DISTANCE, MAX_DISTANCE)
@@ -218,8 +253,9 @@ func _move(delta: float) -> void:
 	# Not over a button: the control bar fills the bottom of the window, and
 	# reaching for its buttons shouldn't drag the map. (Anything else under the
 	# mouse, the bar's own padding included, still scrolls.)
-	if edge_scroll and _mouse_in_window and not _mouse_over_button():
+	if edge_scroll and _mouse_in_window and not _mouse_over_button() and _corner() == Vector2.ZERO:
 		input += edge_direction(_mouse_position(), get_viewport().get_visible_rect().size)
+	input += pad_pan
 	input = input.limit_length(1.0)
 	if input == Vector2.ZERO:
 		return
@@ -244,6 +280,14 @@ func _glide(delta: float) -> void:
 		_gliding = false
 	focus.x = next.x
 	focus.z = next.y
+
+
+# What the corner camera asks for now: (turn, orbit), or zero when it is off,
+# the mouse is out of the window or over a button.
+func _corner() -> Vector2:
+	if not corner_camera or not _mouse_in_window or _mouse_over_button():
+		return Vector2.ZERO
+	return corner_turn(_mouse_position(), get_viewport().get_visible_rect().size)
 
 
 # Where the mouse is, and whether a button is under it. Methods of their own so

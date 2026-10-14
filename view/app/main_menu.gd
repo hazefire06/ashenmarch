@@ -3,7 +3,9 @@ extends MenuScreen
 ## The first screen: the title and five buttons. Each is a signal for the App,
 ## which decides what opens next: the campaign menu, the skirmish setup, the
 ## recorded games, the Settings overlay, or the end of the game.
-## Quit is left off the Web build, where a page can't close itself.
+## Quit is left off the Web build, where a page can't close itself. On the
+## web a browser shows a pad to the page only once a button is pressed on it,
+## so until one is, a line at the foot says so (pad_hint_shown).
 
 ## Campaign was pressed.
 signal campaign_pressed
@@ -18,8 +20,10 @@ signal quit_pressed
 
 const TITLE: String = "Ashenmarch"
 const TITLE_SIZE: int = 72
+const PAD_HINT: String = "Controller: press any button on it to start using it."
 
 var _campaign: Button
+var _pad_hint: Label
 
 
 func _init() -> void:
@@ -48,6 +52,30 @@ func _init() -> void:
 	var quit: Button = _add_button(buttons, "QuitButton", "Quit")
 	quit.pressed.connect(func() -> void: quit_pressed.emit())
 	quit.visible = not OS.has_feature("web")
+	_pad_hint = MenuKit.paragraph(PAD_HINT, 14, MenuKit.MUTED_COLOR)
+	_pad_hint.name = "PadHint"
+	_pad_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_pad_hint.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
+	_pad_hint.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_pad_hint.offset_top = -48.0
+	_pad_hint.offset_bottom = -24.0
+	add_child(_pad_hint)
+	_pad_hint.visible = false
+
+
+func _ready() -> void:
+	super()
+	InputDeviceTracker.tracker().pads_changed.connect(_refresh_pad_hint)
+	_refresh_pad_hint()
+
+
+## True while the "press any button" line is up: on the web, with no pad seen.
+func pad_hint_shown() -> bool:
+	return _pad_hint.visible
+
+
+func _refresh_pad_hint() -> void:
+	_pad_hint.visible = OS.has_feature("web") and not InputDeviceTracker.tracker().pad_connected()
 
 
 func _focus_default() -> void:

@@ -4,7 +4,8 @@ extends GutTest
 ## would be, and played back to identical checkpoints and final hash. A
 ## tampered replay diverges and names the part of the state that differs;
 ## damaged replays are refused with a reason; the recorder never records the
-## setup's own commands; subsystem hashes localize a difference.
+## setup's own commands; subsystem hashes localize a difference. Every order
+## Phase 11 added (OrdersDrill) survives the codec and plays back the same.
 
 const CAMPAIGN: String = "res://data/campaign/campaign.tres"
 const SKIRMISH_CATALOG: String = "res://data/skirmish/skirmish.tres"
@@ -46,6 +47,40 @@ func test_a_recorded_skirmish_plays_back_identically() -> void:
 	assert_true(player.verified(), "every checkpoint and the end match: %s" % player.divergence)
 	assert_eq(player.world.state_hash(), _skirmish_world.state_hash())
 	assert_not_null(player.world.skirmish)
+
+
+func test_every_phase_11_order_plays_back_identically() -> void:
+	var setup: SkirmishSetup = _skirmish_setup()
+	var world: World = SkirmishSetup.create_world(setup, _catalog)
+	var replay: Replay = Replay.for_skirmish(setup)
+	var recorder: ReplayRecorder = ReplayRecorder.new(replay)
+	world.recorder = recorder
+	world.step()
+	var routed: bool = false
+	var guarded: bool = false
+	var end: int = OrdersDrill.SCHEDULE[-1] + 30
+	while world.tick < end:
+		for command: SimCommand in OrdersDrill.orders(world, setup.player_faction()):
+			assert_true(world.enqueue(command))
+		world.step()
+		for unit: Unit in world.units:
+			routed = routed or not unit.route.is_empty()
+			guarded = guarded or unit.order == Unit.Order.GUARD
+	recorder.finish(world)
+	assert_true(routed and guarded, "the drill put units on routes and on guard")
+	var kinds: Array[int] = []
+	for record: Array in replay.commands:
+		if not kinds.has(record[0]):
+			kinds.append(record[0])
+	for kind: int in [
+		CommandCodec.Kind.MOVE, CommandCodec.Kind.GUARD, CommandCodec.Kind.SCATTER, CommandCodec.Kind.RETREAT,
+		CommandCodec.Kind.ROUTE_POINT, CommandCodec.Kind.PATROL, CommandCodec.Kind.ATTACK_MOVE,
+	]:
+		assert_has(kinds, kind, "recorded %s" % CommandCodec.Kind.find_key(kind))
+	var player: ReplayPlayer = _play(_through_bytes(replay))
+	assert_eq(player.error, "")
+	assert_true(player.verified(), "every checkpoint and the end match: %s" % player.divergence)
+	assert_eq(player.world.state_hash(), world.state_hash())
 
 
 func test_playback_can_be_spread_over_calls() -> void:

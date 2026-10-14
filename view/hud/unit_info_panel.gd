@@ -34,6 +34,7 @@ var _more: Label
 var _shown_ids: PackedInt32Array = PackedInt32Array()
 var _shown_tick: int = -1
 var _cell_ids: PackedInt32Array = PackedInt32Array()
+var _focusable: bool = false
 
 
 ## bar is the control bar the panel sits above; null docks it at the bottom.
@@ -52,6 +53,13 @@ func _process(_delta: float) -> void:
 	if _world.tick != _shown_tick:
 		refresh()
 	_dock()
+
+
+## Lets the cells take focus while the pad's control-bar mode is on
+## (HudFocus); new cells follow.
+func set_focus_enabled(on: bool) -> void:
+	_focusable = on
+	HudFocus.enable(self, on)
 
 
 ## Rebuilds the panel from the selection and the World as they are now.
@@ -173,7 +181,7 @@ func _rebuild_cells(units: Array[Unit]) -> void:
 	for unit: Unit in units.slice(0, MAX_CELLS):
 		var cell: Button = Button.new()
 		cell.custom_minimum_size = CELL_SIZE
-		cell.focus_mode = Control.FOCUS_NONE
+		cell.focus_mode = Control.FOCUS_ALL if _focusable else Control.FOCUS_NONE
 		cell.text = unit.type.display_name.substr(0, 2)
 		var index: int = _cell_ids.size()
 		cell.pressed.connect(func() -> void: press_cell(index, Input.is_key_pressed(KEY_SHIFT)))

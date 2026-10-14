@@ -60,6 +60,11 @@ func show_state(tick: int, end_tick: int, paused: bool, speed: int, note: String
 	_note.visible = note != ""
 
 
+## Lets the bar's buttons take focus while the pad's control-bar mode is on.
+func set_focus_enabled(on: bool) -> void:
+	HudFocus.enable(self, on)
+
+
 func _button(parent: Control, button_name: String, text: String) -> Button:
 	var b: Button = Button.new()
 	b.name = button_name

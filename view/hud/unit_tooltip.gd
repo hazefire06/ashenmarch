@@ -6,7 +6,8 @@ extends PanelContainer
 ## special, and what it carries), or failing that the herb plant or loose
 ## object under it (UnitInfo.describe_thing). Hidden when the cursor is over
 ## nothing or over another HUD control. It never takes mouse input, so it
-## can't block a click. Reads the World; never writes it.
+## can't block a click. It follows whichever pointer is in use, the mouse or
+## the pad's cursor (Pointer). Reads the World; never writes it.
 
 ## Panel offset from the cursor, in pixels, and the gap kept to the window edge.
 const CURSOR_OFFSET: Vector2 = Vector2(18.0, 22.0)
@@ -61,7 +62,7 @@ func _process(_delta: float) -> void:
 		_label.text = text
 		# Shrink back to fit: a container never shrinks by itself.
 		reset_size()
-	_place(get_viewport().get_mouse_position())
+	_place(Pointer.position_in(get_viewport()))
 	visible = true
 
 
@@ -71,9 +72,9 @@ func _process(_delta: float) -> void:
 # layer and this panel, don't count.
 func _hovered_text() -> String:
 	var viewport: Viewport = get_viewport()
-	if viewport.gui_get_hovered_control() != null:
+	if not Pointer.using_pad() and viewport.gui_get_hovered_control() != null:
 		return ""
-	var at: Vector2 = viewport.get_mouse_position()
+	var at: Vector2 = Pointer.position_in(viewport)
 	var unit_id: int = _controller.unit_at(at, false)
 	if unit_id >= 0:
 		var unit: Unit = _world.get_unit(unit_id)

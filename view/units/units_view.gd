@@ -68,6 +68,13 @@ var _blows: Dictionary[int, Vector2] = {}
 var frozen: bool = false
 ## frozen as _process last saw it: whether the sprites are held.
 var _held: bool = false
+## While true (F10 held, or the bar's HP toggle), every living unit shows its
+## health bar, not only selected and hurt ones.
+var show_all_health: bool = false:
+	set(value):
+		show_all_health = value
+		for unit_id: int in _sprites:
+			_sprites[unit_id].set_health_shown(value)
 
 
 ## gibs may be null, in which case bodies are never destroyed. arts may be
@@ -318,6 +325,7 @@ func _sprite_for(unit: Unit) -> UnitSprite:
 		# In step with the rest: held while _process has the view frozen. A
 		# change of frozen since reaches it with all the others.
 		sprite.hold(_held)
+		sprite.set_health_shown(show_all_health)
 		_sprites[unit.id] = sprite
 		_current[unit.id] = _position_of(unit)
 	return sprite
