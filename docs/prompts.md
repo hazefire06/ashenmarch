@@ -267,7 +267,7 @@ Plan first: sound generation and processing scripts, the sound bank, AudioDirect
 ### A3: The rest of the roster
 
 ```
-Read CLAUDE.md and the art and audio spec. A1 and A2 are merged.
+Read CLAUDE.md and the art and audio spec. A1 is merged.
 
-Plan first: art and voices for the other nine units, one contact sheet or line list per unit for my approval. Branch feature/PHASE-A3-roster.
+Plan first: art only for the other nine units (voices moved to A2 on 2026-10-08), one contact sheet per unit for my approval. Branch feature/PHASE-A3-roster.
 ```

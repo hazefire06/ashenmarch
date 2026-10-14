@@ -2065,20 +2065,26 @@ The commander, ADVANCE, MEDIC and the skirmish rules draw no random numbers; `ma
 - **Lockstep must allowlist command kinds.** `CommandCodec` decodes every kind, including the setup and debug ones (spawns, statuses, velocities, a mid-game deploy) that a replay never holds from a player. Taken from a peer, they would be cheats.
 - **The web build at 100 units** runs at 36 to 60 fps (the sim is about 3x native in wasm). Not a target this phase.
 
-## Unit art (track A1)
+## Unit art (tracks A1 and A3)
 
-Designed in `docs/specs/2026-10-01-art-audio-design.md`; built by `docs/plans/2026-10-03-art-audio-a0-a1.md`.
+Designed in `docs/specs/2026-10-01-art-audio-design.md`; built by `docs/plans/2026-10-03-art-audio-a0-a1.md` (A1) and `docs/plans/2026-10-08-art-a3-roster.md` (A3).
 
 ### Pipeline (offline)
-- `art-src/units/<id>/spec.toml` is a unit's recipe: Meshy prompt, height, candidate counts, each animation's source (a Meshy library action and its clip name, the rig's free walk/run, or a local GLB), and the props it carries. `art-src/style.toml` is appended to every prompt.
+- `art-src/units/<id>/spec.toml` is a unit's recipe: Meshy prompt, height, candidate counts, each animation's source (a Meshy library action and its clip name, the rig's free walk/run, or a local GLB), and the props it carries. `art-src/style.toml` is appended to every prompt. `scripts/art/unit_spec.py`'s docstring lists every recipe key; a recipe is checked as it loads, and an animation table, `[render]` and `[[attach]]` refuse a key they don't know. A test loads every committed unit and prop recipe (`CommittedRecipesTest`).
 - `scripts/art/meshy.py` (`plan` and `prop-plan` free; `candidates`, `build`, `prop-candidates` and `prop-build` paid, run by Tim with a credit cap) buys previews, then texture, rig and animations, downloading at once (links expire in about 3 days). `manifest.json` records each task as it is created, allowlisted fields only and no URLs, so reruns resume instead of paying twice.
-- **Props** (sword, targe) are separate Meshy models in `art-src/props/<id>/`, textured but not rigged. The renderer fixes each rigidly to a bone of the unit's rig (`[[attach]]` in the spec: bone, offset, rotation) at render time and sizes it by its longest principal axis. `make art-attach` renders a tuning sheet for the offsets. A prop is never part of the unit's own model.
+- **Props** (swords, bows, staves, a targe, a satchel) are separate Meshy models in `art-src/props/<id>/`, textured but not rigged. The renderer fixes each rigidly to a bone of the unit's rig (`[[attach]]` in the spec: bone, offset, rotation) at render time and sizes it by its longest principal axis. `make art-attach` renders a tuning sheet for the offsets. A prop is never part of the unit's own model.
 - `scripts/art/render_sprites.py` (headless Blender, `make art-render UNIT=<id>`) renders each animation from 8 directions with an orthographic camera at 50°, lights riding on the camera, root motion cancelled. A clip that already plays in place (Meshy's rig walk) has its walk stride measured from the feet instead of the root. Output in `assets/units/<id>/`:
-  - one sheet per animation, one band of rows per direction, 160 px cells with a 4 px gutter, the feet 40 px up from the cell's bottom edge (by default: the recipe's `[render]` table sets a bigger cell and higher feet for a unit with a long weapon), at 52 px per metre;
+  - one sheet per animation, one band of rows per direction, 160 px cells with a 4 px gutter, the feet 40 px up from the cell's bottom edge, at 52 px per metre and 12 fps. Those are the defaults: a unit's `[render]` table (`cell_px`, a multiple of 8 from 128 to 256, and `feet_px`) gives a long weapon a bigger cell and higher feet, and a clip's `fps` (4 to 30) sets its own rate. The scale doesn't change, so a bigger cell is margin;
   - sheets wrap at 4096 px wide (Web may cap textures at 4096 px): the sidecar's `columns` and `rows_per_direction` say how, so frame `i` of direction `d` is at column `i % columns`, row `d * rows_per_direction + i // columns`;
-  - `<id>.json`, the sidecar (frame counts, fps, impact frames, stride, wrap, cell, feet, gib colour), and `.png.import` files (mipmaps, VRAM compressed).
-  - `art-src/units/<id>/review/` gets the contact sheet and per-animation GIFs for Tim's approval. A clip auditioned there but not in the game's animation set (`attack_alt`) is rendered and not built.
+  - a sheet may be at most 4096 px tall too, checked before a clip is drawn, so a clip has at most 72 frames in a 160 px cell, 42 in 184, 40 in 192 and 36 in 216. A longer clip takes a lower `fps`, a trim, or `audition = true`, which makes no sheet;
+  - `<id>.json`, the sidecar (frame counts, fps, impact frames, stride, wrap, cell, feet, `figure_height_m`, gib colour), and `.png.import` files (mipmaps, VRAM compressed).
+  - `art-src/units/<id>/review/` gets the contact sheet and per-animation GIFs for Tim's approval. A clip marked `audition = true` is drawn there and not built: no sheet, no sidecar entry. A clip the game plays can't be one. (This replaced a hard-coded `attack_alt`.)
+- **Figure height.** The renderer measures the drawn body's height above the feet in idle (worst over its frames and directions), props excluded and a hover's crest included, and writes it as the sidecar's `figure_height_m`. The builder copies it to `UnitArt.figure_height_m`, and `UnitSprite` uses it for picking and the overlays (name, notice, status tag, HP bar) in place of the type's `body_height`. Art without it (0) keeps `body_height`.
+- **Hover.** `bob_m` and `bob_hz` on an animation lift the whole figure on a sine, stretched to a whole number of cycles a clip so a loop stays seamless; a bob on too few frames is refused. A floater's walk can set `stride_m` in place of a measured one (no foot to measure; any other clip that sets it is refused): the Drifter's walk is its idle clip as a glide.
+- **Trim.** `start` and `end` (seconds from the clip's own start; either alone is allowed) draw part of a long library clip. The body is still fitted at the clip's own first frame; `frames`, `impact_frame`, the extents and the GIF go by the part drawn, so `impact` is a fraction of the trimmed part. A trim is refused on idle, walk, run and rig clips (a cut loop has no seam, and a stride is measured over a whole cycle), and a `start` or `end` past the clip's end stops the render.
+- **Guards.** ffmpeg is checked before any render, and a recipe animation whose file holds no action fails with a clear error instead of drawing one still.
 - `scripts/art/build_unit_art.gd` (headless Godot, `make art-build UNIT=<id>`) turns them into `data/art/<id>.tres` (`UnitArt`) and lists it in `data/art/catalog.tres` (`UnitArtCatalog`). Both are generated; never hand-edit them.
+- **Strike clips.** `UnitArt.validate()` requires `idle`, `walk` and at least one strike clip (`attack`, `shoot`, `throw` or `cast`), not `attack` itself, and `die` unless the art bursts. A unit with no `attack` that is told to melee (a confused Drifter) plays its other strike clip.
 - Keys live in `~/.config/ashenmarch/secrets.env` (700/600), never in the repo; gitleaks rules (`make hooks`, CI) catch a leak.
 
 ### Direction convention
@@ -2090,11 +2096,43 @@ Designed in `docs/specs/2026-10-01-art-audio-design.md`; built by `docs/plans/20
 - Each frame `UnitsView` passes the camera's horizontal forward, and each sprite shows the matching direction; a direction change mid-swing keeps the frame.
 - Each tick `UnitAnimator` (pure, tested) picks the animation from sim state: a wind-up starting (`windup_left`, `aim_left`, `act_left` rising from 0) plays the strike stretched so its impact frame lands on the blow's tick, clamped to 0.25–4×. A zero-tick shot shows its release. Walking plays at the ground speed the unit actually covered (so wading slows the legs) over the sheet's `stride_m`. Paralysis freezes. Death plays once, the body facing the blow, and the last frame is the corpse.
 - Art bodies tint through `modulate`, which can only darken, so a hit flashes the reddish `ART_HIT_TINT` instead of the placeholder's near-white. While the game is frozen (paused, or the mission decided) art bodies hold their frame instead of walking or swinging in place. A death still plays out to its corpse, as a placeholder lies down at once, so the death that decides a mission falls (the view freezes on that very tick) and a body falling when P is pressed finishes its fall.
+- **Bursting.** Art with `bursts_on_death` (the Blightbag) has no `die` and always bursts into gibs on death, whatever the overkill, so it never lies as a corpse.
 - **F12** (view-only; works paused, decided, and in the campaign) rebuilds every sprite as its placeholder or back (`UnitsView.set_art_enabled`). The dead stay dead and the gibbed stay gone; the stats line names the key.
 - Art that fails `UnitArt.validate()` is left out at startup, with a warning per reason; its unit stays a placeholder and the game starts. A missing catalog file is an empty catalog.
 
+### Roster (A3)
+All ten v1 units have art. Frame is `[render]` cell/feet in px (160/40 is the default); fps is 12 unless shown.
+
+| Unit | Candidate | Frame | Notes |
+|---|---|---|---|
+| Shieldman | 1 (A1) | 160/40 | — |
+| Reaver | 3 | 216/76 | die at 10 fps |
+| Longbow | 3 | 184/68 | shoot at 8 fps, idle at 10 |
+| Sapper | 6 | 160/40 | a dwarf (Tim's call); satchel on the right thigh (`RightUpLeg`); standing throw, crouching throw as an audition; place trimmed to 0.75–5.0 s |
+| Warden | 3 | 184/66 | idle at 10 fps; staff carried head forward |
+| Husk | 9 | 160/46 | a bog zombie |
+| Ripper | 4 | 160/48 | place trimmed to 0.5–2.25 s |
+| Blightbag | 4 | 160/40 | bursts |
+| Drifter | 3 | 160/54 | hover and glide |
+| Stormcaller | 1 | 192/59 | a cloaked skeleton (Tim's call); idle at 10 fps; die trimmed to 2.0–5.25 s |
+
+- **Credits:** 606 in all. Batch 1 (Reaver, Longbow) 134; batch 2 (Sapper, Warden) 160; batch 3 (Husk, Ripper, Blightbag) 184; batch 4 (Drifter, Stormcaller) 128.
+
+### A3 lessons
+For whoever buys the next unit.
+- **"Empty hands" isn't enough.** 3 of 4 Longbow candidates came with a bow molded into the hand. "Both hands open and empty, holding nothing" held for most candidates after that. Two still carried something (knives, a sack), so look for it at the pick.
+- **Bone words make skeletons.** The dark palette's "bone white", beside "undead", "corpse" and "bones" in a prompt, gave eight skeleton Husks over two prompts, and bare bone limbs draw 1–2 px wide. The palette now reads "ashen grey", and a "bog zombie" prompt with skin over the whole body gave flesh. The Stormcaller still came out a skeleton from "gaunt", "thin" and "cracked", and was kept: its cloak gives it mass.
+- **Watch for borrowed looks at the pick.** Three Ripper candidates (bald, huge pointed ears, big eyes) came too close to a famous film creature.
+- **Library clips run long:** a 9.5 s place, a 7.2 s pick-up, a 6.3 s electrocuted fall, a 5.9 s crouching throw. The game holds a unit until its strike clip ends, so trim to the errand. A timeline of hip and hand heights every 0.25 s shows where the action is.
+- **A weapon or a fall that outgrows the 160 px cell** often needs only higher feet in the same cell (Husk 46, Ripper 48, Drifter 54). A bigger cell holds fewer frames a clip, which costs an fps drop or a trim.
+- **Solve a prop's grip from the meshes** and measure it per clip in world space; a by-eye look at a 50° camera misleads.
+  - With Meshy's hanging-arm idle, no grip stands a staff upright. A centre grip through the palm keeps its head up through the attack and the cast.
+  - A sleeve weighted to the hand bone stretches the measured hand (the Stormcaller's: 0.44 m), so check the hand's vertex spread.
+- **A prop fixed to the pelvis tips up when the unit bends over.** The Sapper's satchel hangs from the thigh instead, and stays within 1.3 cm of the body in every clip.
+- **Robed and bloated designs rigged first time** (the Drifter, the Blightbag) when feet and limbs showed at the hem.
+- **Lite candidates are untextured,** so the build's colours can surprise. The Warden and the Ripper came out near-black.
+
 ### Not yet
-- Barks, audio and the other nine units (A2, A3). The Sapper's satchel drop has no `place` trigger yet (A3).
+- Barks and audio (A2). The Sapper's satchel drop plays no `place`: the sim drops a charge instantly (`UnitOrders.use_special`, no wind-up), so the view has no wind-up to time a clip to. `place` plays for pick-ups and plant strikes only; a drop with a clip would need a wind-up in the sim.
 - Direction hysteresis and two-elevation renders only if the in-engine check needs them; MultiMesh only if profiling does.
-- **Figure height.** Picking and the overlays (name, notice, status tag, HP bar) of an art unit still use its type's `body_height`, about 1.5× the drawn figure at the 50° camera: in a dense formation a click on a rear-rank Shieldman can select the one in front, and the labels float above the head. The fix carries the figure's height in px (spec §6.2, planned) from the renderer through the sidecar and `UnitArt` to `UnitSprite.height`. Decide it at Tim's in-engine review, before A3 at the latest.
 - **Not checked:** Windows and Web (Phase 10 does the cross-platform pass). The in-engine check ran on macOS (GL Compatibility on Metal) only; the sheet wrap and the VRAM-compressed, mipmapped sheets are the things to look at.

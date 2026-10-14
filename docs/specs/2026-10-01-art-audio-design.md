@@ -1,6 +1,6 @@
 # Art and audio track: design
 
-Status: approved. A0 and A1 implemented (2026-10-07); A2 and A3 planned. Drafted 2026-10-01 and decided with Tim in one brainstorming session, section by section.
+Status: approved. A0 and A1 implemented (2026-10-07); A3 implemented (2026-10-14); A2 planned. Drafted 2026-10-01 and decided with Tim in one brainstorming session, section by section.
 
 ## 1. Goal
 
@@ -109,7 +109,7 @@ On 2026-10-07 Tim folded A0 into the A1 PR: `feature/PHASE-A1-unit-sprites` carr
 | Husk | Shambling corpse in rotted peat-bog wrappings |
 | Ripper | Gaunt, long-clawed ghoul, hunched and fast |
 | Blightbag | Bloated corpse with swollen green gas sacs |
-| Drifter | Hooded spectre in trailing robes, bow in hand; the robes hide its legs |
+| Drifter | Hooded spectre in trailing robes, bow in hand; the robes reach the ankles and the feet show at the hem |
 | Stormcaller | Gaunt caster with a crackling, lightning-scarred staff |
 
 ## 6. Sprite pipeline (offline)
@@ -142,7 +142,7 @@ art-src/units/<id>/               downloaded GLB/FBX and candidate thumbnails (L
 - The Drifter is designed as a robed humanoid. It has no hover preset, so it gets a procedural bob in Blender, or a 10-credit text-to-motion clip.
 - The Blightbag may fail to rig because of its shape. The fallback is rigging in Mixamo (free with an Adobe ID).
 
-**Initial animation picks** (Meshy library ids, final choices made from the contact sheet):
+**Initial animation picks** (Meshy library ids, final choices made from the contact sheet; the shipped ones are in §11):
 
 | Unit | Idle | Move | Attack / ranged | Special | Die |
 |---|---|---|---|---|---|
@@ -167,7 +167,7 @@ This runs headless in Blender 5.2.2 LTS (`/Applications/Blender.app/Contents/Mac
 - **Frames:** 12 fps by default (an animation's `fps` key, 4 to 30, sets its own), 160 px cells with a 4 px transparent gap (a 168 px stride) so mipmaps don't bleed between frames. A unit whose weapon outgrows the cell sets `[render] cell_px` (a multiple of 8, 128 to 256) and `feet_px` (above 0, under half the cell); the scale stays 52 px per metre, and the sidecar's `cell`, `stride` and `feet_px` carry the frame. At 128 px with the feet 20 px up, the first Shieldman render clipped dying and attacking frames at the bottom, and props raised overhead need room too.
 - **Output:**
   - one PNG sheet per animation into `assets/units/<id>/`, one band of rows per direction. Sheets wrap at 4096 px wide, since Web (WebGL) may cap textures there: 24 columns at the default cell, so frame `i` of direction `d` sits at column `i % columns`, row `d * rows_per_direction + i // columns`;
-  - a JSON sidecar with frame counts, fps, impact frame, stride, `columns` and `rows_per_direction` per animation, figure height in px (planned: not yet written or read; see the figure-height follow-up under Unit art, Not yet, in `architecture.md`), and gib colour;
+  - a JSON sidecar with frame counts, fps, impact frame, stride, `columns` and `rows_per_direction` per animation, `figure_height_m` (the drawn body's height above the feet in idle, props excluded: the renderer writes it, `UnitArt` carries it and `UnitSprite` reads it for picking and overlays), and gib colour;
   - the **contact sheet** for Tim's approval.
 
 ### 6.2a Props: weapons and gear on bones
@@ -214,10 +214,11 @@ Run headless. It turns the sheets and sidecar into `data/art/<id>.tres` and rewr
 
 `UnitArt` (`view/units/unit_art.gd`, a Resource, view-only) holds:
 - `unit_id` (matches `UnitType.id`);
-- `frames: SpriteFrames` with animations named `<anim>_<dir>`, dir 0–7. `idle`, `walk` and `attack` are required. `die` is required unless `bursts_on_death` is set (the Blightbag, whose body becomes gibs). `shoot`, `throw`, `cast` and `place` are optional;
+- `frames: SpriteFrames` with animations named `<anim>_<dir>`, dir 0–7. `idle` and `walk` are required, and so is at least one strike clip (`attack`, `shoot`, `throw` or `cast`): a unit with no melee needs no `attack`. `die` is required unless `bursts_on_death` is set (the Blightbag, whose body becomes gibs). `place` is optional;
 - the impact frame of each attack-type animation;
 - `stride_m`, `pixels_per_meter`, `cell_px`, `feet_px` (together these give the sprite's scale and its pivot at the feet; the render's 160 px cell with the feet 40 px up is the default), `gib_color`, `die_falls_forward`;
-- `validate()`: every required animation has all 8 directions, and impact frames are in range.
+- `figure_height_m`: the drawn body's height in metres, 0 if the render didn't record it; picking and the overlays use it;
+- `validate()`: the required animations are present (idle, walk, a strike clip, and die unless the art bursts), every animation has all 8 directions, impact frames are in range, every strike or act clip has one, and `figure_height_m` is not negative.
 
 `UnitArtBuilder` (`scripts/art/unit_art_builder.gd`) reads `cell`, `feet_px`, `columns` and `rows_per_direction` from the sidecar. Frame `i` of direction `d` is at column `i % columns`, row `d * rows_per_direction + i // columns`, so long animations wrap under 4096 px (the keys default to the frame count and 1).
 
@@ -264,7 +265,7 @@ Timing is recomputed from sim numbers every time, so rebalancing wind-ups and ve
 - State-to-animation mapping, including fallbacks.
 - Impact-frame time-stretch: the impact frame lands on the blow tick for several wind-up lengths.
 - A missing catalog entry gives a placeholder body; existing placeholder tests pass unchanged.
-- `UnitArt.validate()` catches a missing direction, an out-of-range impact frame, and a missing `die` on a unit that doesn't burst.
+- `UnitArt.validate()` catches a missing direction, an out-of-range impact frame, a missing `die` on a unit that doesn't burst, an art set with no strike clip, and a strike or act clip with no impact frame.
 
 ## 8. Audio
 
@@ -476,7 +477,7 @@ Each branch gets its own implementation plan. The first plan covers A0 and A1.
 - **Strike clips.** `UnitArt` requires idle, walk, die (unless the body bursts), and at least one strike clip: `attack`, `shoot`, `throw` or `cast`. A unit with no melee (Drifter, Stormcaller, Blightbag) needs no `attack`. Every strike or act clip present (`attack`, `shoot`, `throw`, `cast`, `place`) needs an impact frame.
 - **Bursting bodies.** An art type with `bursts_on_death` always bursts into gibs on death, whatever the overkill, so it never stands as an idle "corpse".
 - **Hover.** A recipe animation can set `bob_m` and `bob_hz`. The renderer then bobs the figure up and down as a whole number of cycles per clip, so loops stay seamless; a bob on a clip with too few frames to show it is refused. A hover's crest counts toward `figure_height_m`, as a raised arm does, so picking and overlays never clip the figure at any phase. A walk or run can also set `stride_m` to replace a measured stride, for a floating unit with no foot contact; no other clip may.
-- **Frame and frame rate.** The Reaver's claymore (1.35 m) and the Longbow's bow (1.75 m) clip the 160 px cell in their death frames, so a recipe can set a bigger `[render]` frame (192 px, feet 64) and an animation its own `fps`, which keeps long clips such as the Longbow's 5 s `shoot` under the 4096 px cap. Units keep their on-screen size; the game reads the frame and each clip's fps from the sidecar.
+- **Frame and frame rate.** The Reaver's claymore (1.35 m) and the Longbow's bow (1.75 m) clip the 160 px cell in their death frames, so a recipe can set a bigger `[render]` frame (the Reaver's came to 216 px with the feet 76 px up, the Longbow's to 184 with 68) and an animation its own `fps`, which keeps long clips such as the Longbow's 5 s `shoot` under the 4096 px cap. Units keep their on-screen size; the game reads the frame and each clip's fps from the sidecar.
 - **Trim.** An animation can set `start` and `end` (seconds from the clip's own start; either alone is allowed) to draw only part of a clip, for one with a short errand inside a long clip (the Sapper's 9.5 s `place` does its work between 0.75 and 5 s, and a lower `fps` would only slow it). The body is still fitted and the props attached at the clip's own first frame; `frames`, `impact_frame`, the extents and the GIF go by the part drawn, so `impact` is a fraction of it. A `start` or `end` more than half a scene frame past the clip's length is refused, and so is a trim on a looping clip (idle, walk), a rig clip or a run, whose seam or stride a cut would break. An animation table now refuses a key it doesn't know.
 - **Audition clips.** An animation marked `audition = true` renders to `review/` only: its GIF and a contact-sheet row, with no game sheet and no sidecar entry. This replaces shipping `attack_alt.png`.
 - **Guards.**
@@ -487,19 +488,20 @@ Each branch gets its own implementation plan. The first plan covers A0 and A1.
 **Units.**
 - Every unit uses Meshy library actions; clip names come from Meshy's animation library.
 - Every one also has `idle` = 0 Idle, unless shown otherwise.
+- Frame is the `[render]` cell/feet in px; a unit with none uses the default 160/40.
 - **Props** are separate Meshy models on bones (§6.2a).
 
 | Batch | Unit | Look (§5) | Props | Clips |
 |---|---|---|---|---|
-| 1 | Reaver | Bare-chested berserker, wild mane | Claymore, both hands (on RightHand) | idle 89 Combat_Stance; walk = rig run; attack 237 Charged_Axe_Chop; audition 128 Heavy_Hammer_Swing; die 183 Shot_and_Fall_Backward |
-| 1 | Longbow | Hooded plaid, the clan's gamekeeper | Longbow (LeftHand) | walk = rig walk; shoot 224 Archery_Shot; attack 97 Left_Slash (dagger, too small to model); die 184 Shot_and_Fall_Forward (`die_falls_forward`) |
-| 2 | Sapper | Dwarf (1.35 m), satchel of bottles, singed, leather apron | Satchel (hip, on Hips) | walk = rig walk; throw 421 Over_Shoulder_Throw; place 274 Female_Crouch_Pick_Up_Place_Side; attack 97 Left_Slash; die 8 Dead |
-| 2 | Warden | Herb-wife with a staff | Staff (RightHand) | walk = rig walk; attack 219 Right_Hand_Sword_Slash; cast 129 (heal); die 189 dying_backwards |
-| 3 | Husk | Rotted peat-bog corpse | — | walk 123 Unsteady_Walk; attack 198 Punch_Combo; die 187 Knock_Down |
-| 3 | Ripper | Gaunt long-clawed ghoul | — | walk 16 RunFast; attack 192 Right_Jab_from_Guard; throw 421 Over_Shoulder_Throw; place 276 Male_Bend_Over_Pick_Up (pick-up); die 182 Shot_and_Blown_Back |
+| 1 | Reaver | Bare-chested berserker, wild mane | Claymore, both hands (on RightHand) | frame 216/76; idle 89 Combat_Stance; walk = rig run; attack 128 Heavy_Hammer_Swing; audition 237 Charged_Axe_Chop; die 183 Shot_and_Fall_Backward at 10 fps |
+| 1 | Longbow | Hooded plaid, the clan's gamekeeper | Longbow (LeftHand) | frame 184/68; idle at 10 fps; walk = rig walk; shoot 224 Archery_Shot at 8 fps; attack 97 Left_Slash (dagger, too small to model); die 184 Shot_and_Fall_Forward (`die_falls_forward`) |
+| 2 | Sapper | Dwarf (1.35 m), satchel of bottles, singed, leather apron | Satchel (right thigh, on RightUpLeg) | walk = rig walk; throw 421 Over_Shoulder_Throw; audition 239 Crouch_Pull_and_Throw; place 274 Female_Crouch_Pick_Up_Place_Side, trimmed to 0.75–5.0 s; attack 97 Left_Slash; die 8 Dead (`die_falls_forward`) |
+| 2 | Warden | Herb-wife with a staff | Staff (RightHand), carried head forward | frame 184/66; idle at 10 fps; walk = rig walk; attack 219 Right_Hand_Sword_Slash; cast 129 (heal); die 189 dying_backwards |
+| 3 | Husk | Bog zombie in rotted peat-stained sacking | — | frame 160/46; walk 123 Unsteady_Walk; attack 198 Punch_Combo; die 187 Knock_Down |
+| 3 | Ripper | Gaunt long-clawed ghoul | — | frame 160/48; walk 16 RunFast; attack 192 Right_Jab_from_Guard; throw 421 Over_Shoulder_Throw; place 276 Male_Bend_Over_Pick_Up (pick-up), trimmed to 0.5–2.25 s; die 182 Shot_and_Blown_Back |
 | 3 | Blightbag | Bloated corpse with gas sacs, but **humanoid**: clear arms and legs, sacs on the torso, so Meshy can rig it | — | walk 119 Slow_Orc_Walk; attack 255 Angry_Ground_Stomp; `bursts_on_death` (no die) |
-| 4 | Drifter | Hooded spectre; long robes hide the legs | Bow (LeftHand) | idle and walk = 0 Idle with hover bob, walk `stride_m` set; shoot 224 Archery_Shot; die 8 Dead |
-| 4 | Stormcaller | Gaunt caster, lightning-scarred | Staff (RightHand) | walk = rig walk; cast 131 (lightning); die 181 Electrocuted_Fall |
+| 4 | Drifter | Hooded spectre; long robes that reach the ankles, the feet showing at the hem | Bow (LeftHand) | frame 160/54; idle and walk = 0 Idle with hover bob (0.08 m; 0.8 Hz idle, 1.2 Hz walk), walk `stride_m` 1.2; shoot 224 Archery_Shot; die 8 Dead |
+| 4 | Stormcaller | Cloaked skeleton, lightning-scarred (Tim's call) | Staff (RightHand), carried head forward | frame 192/59; idle at 10 fps; walk = rig walk; cast 131 (lightning); die 181 Electrocuted_Fall, trimmed to 2.0–5.25 s |
 
 **Credits.**
 - **Per unit:** about 47 (candidates 20, refine 10, rig 5, about 4 actions at 3 each).
