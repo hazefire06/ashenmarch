@@ -6,9 +6,19 @@ height_m = 1.85
 prompt = "Hooded spectre in long tattered grey-black robes reaching the ankles, thin legs barely visible beneath, gaunt pale ashen face in shadow under the hood, thin pale hands, faint sickly green glow under the hood, both hands open and empty, holding nothing"
 die_falls_forward = false
 
+# Falling dead, he drops 46 px below the feet, past the default frame's 40; his shot reaches 93 px above
+# them. The default 160 px frame with the feet 54 px up fits both (spec §11).
+[render]
+cell_px = 160
+feet_px = 54
+
+# A centre grip through the palm, the string toward the archer: the bow stands upright and drawn
+# through the shot (the two grips across the knuckles hold it flat, like a crossbow).
 [[attach]]
 prop = "drifter_bow"
 bone = "LeftHand"
+offset = [0.0, -0.071, 0.0]
+rotation = [-156.9, -2.4, -91.0]
 
 [candidates]
 lite = 4

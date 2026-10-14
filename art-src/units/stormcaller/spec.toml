@@ -5,18 +5,31 @@ height_m = 1.85
 prompt = "Gaunt ghoulish sorcerer, tall and thin, cracked grey skin marked with glowing blue-white lightning scars, tattered dark hooded mantle with a high collar, rune-marked cloth wrappings, long thin grey-skinned hands, wild white hair, both hands open and empty, holding nothing"
 die_falls_forward = false
 
+# The staff, raised in the cast, reaches 129 px above the feet, and lying dead he spreads 56 px below them,
+# past the default 160 px frame: 192 px with the feet 59 px up fits both (spec §11).
+[render]
+cell_px = 192
+feet_px = 59
+
+# A centre grip through the palm, as the Warden's: the crown is carried forward and up, and stays up
+# through the cast. The palm sits 8 cm along the hand, not where the solver put it: his tattered sleeve
+# is weighted to the hand, which made the hand measure 0.44 m long.
 [[attach]]
 prop = "storm_staff"
 bone = "RightHand"
+offset = [0.0, 0.021, 0.0]
+rotation = [-169.7, 1.5, 92.7]
 
 [candidates]
 lite = 4
 full = 0
 polycount = 30000
 
+# 4 s: at 10 fps it is 40 frames, all a 192 px frame's sheet holds.
 [animations.idle]
 action = 0
 clip = "Idle"
+fps = 10
 
 [animations.walk]
 rig = "walk"
@@ -28,6 +41,10 @@ action = 131
 clip = "mage_soell_cast_2"
 impact = 0.55
 
+# The library clip runs 6.3 s: he shakes on his feet for 3 s, falls from 3 to 5 s, then lies still. The
+# end of the shaking and the fall are drawn: 2.0-5.25 s, 40 frames, all a 192 px sheet holds.
 [animations.die]
 action = 181
 clip = "Electrocuted_Fall"
+start = 2.0
+end = 5.25

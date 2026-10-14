@@ -1,0 +1,44 @@
+{
+  "tasks": [
+    {
+      "ai_model": "meshy-6-lite",
+      "created_at": 1792002882,
+      "credits": 5,
+      "files": [
+        "candidates/cand-1.glb"
+      ],
+      "finished_at": 1792002954177,
+      "kind": "preview",
+      "label": "cand-1",
+      "prompt": "Crooked staff of scorched dark wood bound with iron rings, topped with a forked iron crown holding a cracked crystal glowing blue. Palette: cold bog brown, ashen grey, sickly green glow. Stylized fantasy strategy-game prop, chunky readable shape, hand-painted textures, muted earthy palette, single object on its own, no hands or figure, centered, plain background",
+      "status": "SUCCEEDED",
+      "task_id": "01a13bb1-fcdf-7074-99d9-0c3c9d13c0eb"
+    },
+    {
+      "ai_model": "meshy-6-lite",
+      "created_at": 1792002958,
+      "credits": 5,
+      "files": [
+        "candidates/cand-2.glb"
+      ],
+      "finished_at": 1792003038976,
+      "kind": "preview",
+      "label": "cand-2",
+      "prompt": "Crooked staff of scorched dark wood bound with iron rings, topped with a forked iron crown holding a cracked crystal glowing blue. Palette: cold bog brown, ashen grey, sickly green glow. Stylized fantasy strategy-game prop, chunky readable shape, hand-painted textures, muted earthy palette, single object on its own, no hands or figure, centered, plain background",
+      "status": "SUCCEEDED",
+      "task_id": "01a13bb3-265c-76fd-8b15-2b118407a70d"
+    },
+    {
+      "created_at": 1792004636,
+      "credits": 10,
+      "files": [
+        "model/textured.glb"
+      ],
+      "finished_at": 1792004664784,
+      "kind": "refine",
+      "label": "cand-1",
+      "status": "SUCCEEDED",
+      "task_id": "01a13bcc-bfb7-77f4-a0b6-dd386d29e19d"
+    }
+  ]
+}

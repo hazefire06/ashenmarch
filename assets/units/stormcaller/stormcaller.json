@@ -1,0 +1,61 @@
+{
+  "animations": {
+    "cast": {
+      "columns": 20,
+      "fps": 12,
+      "frames": 37,
+      "impact_frame": 20,
+      "loop": false,
+      "rows_per_direction": 2,
+      "sheet": "cast.png",
+      "stride_m": 0.0
+    },
+    "die": {
+      "columns": 20,
+      "fps": 12,
+      "frames": 40,
+      "impact_frame": -1,
+      "loop": false,
+      "rows_per_direction": 2,
+      "sheet": "die.png",
+      "stride_m": 0.0
+    },
+    "idle": {
+      "columns": 20,
+      "fps": 10,
+      "frames": 40,
+      "impact_frame": -1,
+      "loop": true,
+      "rows_per_direction": 2,
+      "sheet": "idle.png",
+      "stride_m": 0.0
+    },
+    "walk": {
+      "columns": 12,
+      "fps": 12,
+      "frames": 12,
+      "impact_frame": -1,
+      "loop": true,
+      "rows_per_direction": 1,
+      "sheet": "walk.png",
+      "stride_m": 1.5382
+    }
+  },
+  "bursts_on_death": false,
+  "cell": 192,
+  "clipped": [],
+  "die_falls_forward": false,
+  "directions": 8,
+  "elevation_deg": 50.0,
+  "feet_px": 59,
+  "figure_height_m": 1.311,
+  "gib_color": [
+    0.125,
+    0.137,
+    0.145
+  ],
+  "gutter": 4,
+  "pixels_per_meter": 52.0,
+  "stride": 200,
+  "unit": "stormcaller"
+}

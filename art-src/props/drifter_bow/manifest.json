@@ -1,0 +1,44 @@
+{
+  "tasks": [
+    {
+      "ai_model": "meshy-6-lite",
+      "created_at": 1792002768,
+      "credits": 5,
+      "files": [
+        "candidates/cand-1.glb"
+      ],
+      "finished_at": 1792002824053,
+      "kind": "preview",
+      "label": "cand-1",
+      "prompt": "Dark recurve bow of warped black wood bound with pale sinew, tattered cloth wrapped at the grip, frayed bowstring. Palette: cold bog brown, ashen grey, sickly green glow. Stylized fantasy strategy-game prop, chunky readable shape, hand-painted textures, muted earthy palette, single object on its own, no hands or figure, centered, plain background",
+      "status": "SUCCEEDED",
+      "task_id": "01a13bb0-3f9d-76d6-b35a-9d0351cc30ba"
+    },
+    {
+      "ai_model": "meshy-6-lite",
+      "created_at": 1792002829,
+      "credits": 5,
+      "files": [
+        "candidates/cand-2.glb"
+      ],
+      "finished_at": 1792002881438,
+      "kind": "preview",
+      "label": "cand-2",
+      "prompt": "Dark recurve bow of warped black wood bound with pale sinew, tattered cloth wrapped at the grip, frayed bowstring. Palette: cold bog brown, ashen grey, sickly green glow. Stylized fantasy strategy-game prop, chunky readable shape, hand-painted textures, muted earthy palette, single object on its own, no hands or figure, centered, plain background",
+      "status": "SUCCEEDED",
+      "task_id": "01a13bb1-2bfc-75bd-ab4c-ad35176bd36d"
+    },
+    {
+      "created_at": 1792004598,
+      "credits": 10,
+      "files": [
+        "model/textured.glb"
+      ],
+      "finished_at": 1792004631113,
+      "kind": "refine",
+      "label": "cand-2",
+      "status": "SUCCEEDED",
+      "task_id": "01a13bcc-2ab7-7664-a00e-8123d37474f5"
+    }
+  ]
+}
