@@ -11,6 +11,7 @@ Success looks like this:
 - **Budget.** The worst-case launch (§6) uses at most 1,000 MB of browser tab memory in the Web export, measured by the budget check (§6), and passes in Chrome on this Mac.
 - **No visual loss.** Desktop looks no worse than today: trimming is lossless, and nothing changes resolution, frame rate or directions.
 - **Per roster.** A campaign mission or skirmish loads the art of the types it can bring on, and no other.
+- **Out of step.** Units that start walking or idling on the same tick no longer move their legs in unison (§13, added by Tim during spec review).
 - **Nothing else moves.** Every unit still has its art, placeholders still work, and F12 still switches. `sim/` is untouched, so the golden replays and `make verify-replays` stay identical.
 
 ### What comes after A4
@@ -168,7 +169,8 @@ The expected result is about 600 MB: a pck of about 190 MB held twice (in the JS
 4. The builder reads the packed sidecar. Repack and rebuild all ten units.
 5. Catalog paths, `MissionLaunch.unit_types()`, `UnitArtSet`, and the MainView and UnitsView changes.
 6. ETC2 import off.
-7. The budget check again on Web and desktop, then the visual check, then the docs.
+7. Out-of-step loops (§13), in a commit of their own.
+8. The budget check again on Web and desktop, then the visual check, then the docs.
 
 ## 9. Tests (GUT, run without `-d`)
 
@@ -193,6 +195,13 @@ The expected result is about 600 MB: a pck of about 190 MB held twice (in the JS
 
 **Budget check.** The scenario builds a valid all-types skirmish, and the PASS/FAIL arithmetic and the line's fields are right. The numbers themselves come from the real runs.
 
+**Out-of-step loops** (§13):
+- `UnitAnimator.loop_start_frame` is always in `0..count-1`, and is the same every time for the same id;
+- for ids 0 to 59 (a full side), consecutive ids are at least a quarter of a cycle apart;
+- two art sprites with different ids, told to walk on the same tick, show different frames, and so do two that idle;
+- a strike that ends in a walk resumes the walk on the unit's own frame;
+- a turn mid-walk still keeps the frame (the existing test), and strikes and deaths still start on the frame the animator gives.
+
 **Existing checks:**
 - the whole suite and the sim purity check;
 - `make test-art`, since the renderer's output path changes;
@@ -203,7 +212,7 @@ The expected result is about 600 MB: a pck of about 190 MB held twice (in the JS
 ## 10. Docs
 
 - This spec, and the A4 plan in `docs/plans/`.
-- `architecture.md`, "Unit art": the pack step and the grids in `art-src`; `UnitArtSet` and `unit_types()`; the budget check; the measured before and after; a rewritten "Not yet" (the Texture memory item replaced by its result).
+- `architecture.md`, "Unit art": the pack step and the grids in `art-src`; `UnitArtSet` and `unit_types()`; the budget check; the measured before and after; each unit's own loop phase under "In game"; a rewritten "Not yet" (the Texture memory item replaced by its result).
 - `2026-10-01-art-audio-design.md`: its status line, and the texture-memory row of §9 pointing here.
 - CLAUDE.md, folder layout: `art-src/` now holds the render grids too.
 
@@ -224,4 +233,22 @@ The expected result is about 600 MB: a pck of about 190 MB held twice (in the JS
 - The budget check reports **PASS** in the Web export in Chrome on this Mac, and its before and after are recorded in `architecture.md`.
 - The budget check runs in the exported macOS app.
 - `make verify-replays` is identical to `main`.
-- The Riverside captures before and after match, or Tim has seen and accepted every difference.
+- The Riverside captures before and after match, or Tim has seen and accepted every difference. The out-of-step loops are expected to change the frames shown, so the lossless comparison is taken before §13 lands; after it, Tim watches a formation move in game.
+
+## 13. Out-of-step loops (added by Tim, 2026-10-15)
+
+**The problem.** A group order starts every unit walking on the same tick. `UnitSprite._show` starts a new motion's animation at frame 0, and units in formation move at the same speed, so the whole group steps in unison. Units that spawn or stop together idle in unison too.
+
+**Not a delay.** Tim first asked for a 1 s delay between neighbors. That was dropped for two reasons:
+- A unit moves the tick the sim moves it, so a delayed walk would slide with its legs still.
+- Most walk cycles are exactly 1 s (12 frames at 12 fps for the Shieldman, Longbow, Sapper, Warden and Stormcaller), so a 1 s delay starts them back in step.
+
+**The design.** Each unit starts a looping animation at its own frame:
+- `UnitAnimator.loop_start_frame(unit_id, count) -> int` returns `floor(frac(unit_id × 0.6180339887) × count)`, a pure static. It's a golden-ratio step: ids next to each other (a formation's units are numbered together) land at least 0.38 of a cycle apart, so no neighbor search is needed. Ids a Fibonacci number apart come closer (5 apart: 0.09 of a cycle; 8 apart: 0.06), so in a box five or eight wide the unit directly behind may step nearly with the one in front. A whole rank never steps together. If that shows in game, the fallback is a hashed phase per id.
+- `UnitSprite._show` uses it when it switches into a looping animation (`SpriteFrames.get_animation_loop`; today idle and walk) from a different motion. That covers idle to walk, walk to idle, a strike ending in either, and a unit's first idle.
+- **Unchanged:**
+  - a turn mid-motion keeps the frame and progress, as now;
+  - a restart (a strike, a death) starts on the frame the animator gives;
+  - walk speed still follows the ground speed;
+  - placeholders have no animation and are untouched.
+- The phase comes from the unit's id, so the same game, and its replay, shows the same frames. It's view-only, adds no frames, and doesn't affect the budget.
