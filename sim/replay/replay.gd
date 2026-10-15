@@ -21,6 +21,26 @@ const FORMAT: int = 1
 ## minutes, a skirmish at 20. A file claiming more is refused rather than
 ## played for ever.
 const MAX_END_TICK: int = 4 * 60 * 60 * World.TICK_RATE
+## The kinds a game records besides the player's orders (CommandCodec.
+## PLAYER_KINDS): the status and weather the debug keys set, which a shipped
+## game turns off but a development launch (campaign_mode false) records. A
+## replay holding any other kind (a spawn, a deploy) didn't come from a game
+## and is refused: a flood of spawns would bury the viewer.
+const DEBUG_KINDS: Array[CommandCodec.Kind] = [CommandCodec.Kind.APPLY_STATUS, CommandCodec.Kind.SET_WEATHER]
+## The most commands one tick may hold. A player gives one or two in a tick;
+## the playtest pilot's busiest held 9.
+const MAX_COMMANDS_PER_TICK: int = 32
+## The most units one command may name. A side fields at most
+## Army.MAX_UNITS (60) and nothing in v1 converts units to it; raise this when
+## a unit can (the later roster's converter). A development launch with the
+## side switched could select more Dark units in a mission than this; that
+## recording is refused. Ordering a group costs the cube of its size
+## (SlotAssignment), so this bounds what one order costs: about 18 ms for 64
+## units in the editor, where 256 took 0.8 s.
+const MAX_ORDER_UNITS: int = 64
+## The most units one tick's commands may name between them: a tick costs at
+## most two of the largest orders.
+const MAX_UNITS_PER_TICK: int = 2 * MAX_ORDER_UNITS
 ## Where the resources a replay names may live: shipped missions and maps.
 const MISSION_DIR: String = "res://data/missions/"
 const MAP_DIR: String = "res://maps/"
@@ -113,7 +133,9 @@ func to_dict() -> Dictionary:
 ## The replay `data` describes, or null if it is malformed. A reason is
 ## appended to `problems` (if given) for the caller to report: a format this
 ## build doesn't know, a missing or wrongly typed field, a command record that
-## doesn't decode, ticks out of order. Whether the setup still builds a world
+## doesn't decode, ticks out of order, a command of a kind no game records,
+## more in one tick than playback can keep up with (MAX_COMMANDS_PER_TICK,
+## MAX_ORDER_UNITS, MAX_UNITS_PER_TICK). Whether the setup still builds a world
 ## (the mission or map exists in this build) is ReplayPlayer's to find out.
 static func from_dict(data: Variant, problems: Array[String] = []) -> Replay:
 	if not data is Dictionary:
@@ -177,13 +199,30 @@ func _check() -> String:
 		if not CommandCodec.decode(setup["deploy"]) is DeployCommand:
 			return "the mission's deploy doesn't decode"
 	var last_tick: int = 0
+	var in_tick: int = 0
+	var units_in_tick: int = 0
 	for record: Variant in commands:
 		var command: SimCommand = CommandCodec.decode(record) if record is Array else null
 		if command == null:
 			return "a command record doesn't decode"
 		if command.tick < last_tick or command.tick > end_tick:
 			return "command ticks are out of order"
+		var record_kind: int = (record as Array)[0]
+		if not CommandCodec.PLAYER_KINDS.has(record_kind) and not DEBUG_KINDS.has(record_kind):
+			return "a command is of a kind a game never records"
+		if command.tick != last_tick:
+			in_tick = 0
+			units_in_tick = 0
 		last_tick = command.tick
+		var named: int = _units_named(command)
+		if named > MAX_ORDER_UNITS:
+			return "an order names too many units"
+		in_tick += 1
+		units_in_tick += named
+		if in_tick > MAX_COMMANDS_PER_TICK:
+			return "too many commands in one tick"
+		if units_in_tick > MAX_UNITS_PER_TICK:
+			return "one tick's orders name too many units"
 	var last_checkpoint: int = 0
 	for entry: Variant in checkpoints:
 		if not entry is Array or (entry as Array).size() != 3:
@@ -195,3 +234,9 @@ func _check() -> String:
 			return "checkpoint ticks are out of order"
 		last_checkpoint = fields[0]
 	return ""
+
+
+# How many units a command names: its unit ids, or 0 for one that names none.
+static func _units_named(command: SimCommand) -> int:
+	var ids: Variant = command.get("unit_ids")
+	return (ids as PackedInt32Array).size() if ids is PackedInt32Array else 0

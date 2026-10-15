@@ -305,3 +305,64 @@ func test_a_goal_in_plain_sight_needs_no_route() -> void:
 	var p: Pathing = _walled()
 	var route: PackedInt64Array = p.find_path(5 * M, 5 * M, 50 * M, 10 * M, LIVING)
 	assert_eq(p.adapt_path(5 * M, 5 * M, 20 * M, 5 * M, 5 * M, 5 * M, route, LIVING), PackedInt64Array([20 * M, 5 * M]))
+
+
+func test_a_point_off_the_map_snaps_to_the_nearest_sample_it_may() -> void:
+	# Walls and deep water break the map up, so the nearest acceptable sample
+	# to a point off the edge is often not the one beside it: checked against
+	# every sample, from every side, near and as far as a record allows.
+	var rows: Array[String] = []
+	for j: int in 24:
+		var row: String = ""
+		for i: int in 24:
+			row += "#" if (i * 7 + j * 3) % 11 == 0 else ("3" if (i + 2 * j) % 13 == 0 else ".")
+		rows.append(row)
+	var t: Terrain = TestTerrains.from_ascii(rows)
+	var p: Pathing = Pathing.new(t)
+	var far: int = CommandCodec.MAX_MAGNITUDE - 1
+	var edge: int = t.extent_x()
+	var points: Array[Vector2i] = [
+		Vector2i(-1, 5 * M), Vector2i(-40 * M, 7 * M), Vector2i(edge + 3 * M, edge / 2),
+		Vector2i(edge / 3, -9 * M), Vector2i(edge / 2, edge + 1), Vector2i(-5 * M, -5 * M),
+		Vector2i(edge + 70 * M, edge + 2 * M), Vector2i(far, 4 * M), Vector2i(-far, edge),
+		Vector2i(far, far), Vector2i(-far, -far), Vector2i(3 * M, far),
+	]
+	var components: Array[int] = [PathLayer.NO_COMPONENT, p.component_at(0, 0, LIVING), p.component_at(edge, edge, LIVING)]
+	for component: int in components:
+		for at: Vector2i in points:
+			var snapped: Vector2i = p.snap_to_component(at.x, at.y, LIVING, component)
+			assert_eq(
+				_d2(snapped, at), _nearest_d2(p, at, component),
+				"%s to component %d" % [at, component]
+			)
+
+
+func test_snapping_a_point_far_off_the_map_is_quick() -> void:
+	# A replay may order units to any point under 2^30. The ring search used to
+	# scan the whole map for such a point: 0.3 s a unit on Riverside.
+	var started: int = Time.get_ticks_usec()
+	for k: int in 20:
+		_riverside_pathing.snap_to_component(CommandCodec.MAX_MAGNITUDE - 1, 256 * M, LIVING, PathLayer.NO_COMPONENT)
+	assert_lt(Time.get_ticks_usec() - started, 1_000_000, "twenty in well under a second")
+
+
+func _d2(a: Vector2i, b: Vector2i) -> int:
+	var dx: int = a.x - b.x
+	var dz: int = a.y - b.y
+	return dx * dx + dz * dz
+
+
+# The squared distance from `at` to the nearest sample snap_to_component may
+# land on, by trying every one.
+func _nearest_d2(p: Pathing, at: Vector2i, component: int) -> int:
+	var l: PathLayer = p.layer(LIVING)
+	var cs: int = p.terrain.cell_size
+	var best: int = -1
+	for j: int in p.terrain.size_z:
+		for i: int in p.terrain.size_x:
+			var ok: bool = l.is_passable(i, j) if component == PathLayer.NO_COMPONENT else l.component_at(i, j) == component
+			if ok:
+				var d2: int = _d2(Vector2i(i * cs, j * cs), at)
+				if best < 0 or d2 < best:
+					best = d2
+	return best

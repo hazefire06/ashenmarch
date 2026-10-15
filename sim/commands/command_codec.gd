@@ -48,7 +48,9 @@ enum Kind {
 	PATROL = 20,
 }
 
-## The kinds a player's orders produce: all lockstep may accept from a peer.
+## The kinds a player's orders produce: all lockstep may accept from a peer,
+## and with the debug keys' two (Replay.DEBUG_KINDS) all a replay may hold. A
+## new order kind goes here, or its replays are refused.
 const PLAYER_KINDS: Array[Kind] = [
 	Kind.MOVE, Kind.ATTACK_MOVE, Kind.STOP, Kind.GROUND_ATTACK, Kind.USE_SPECIAL, Kind.HEAL,
 	Kind.INTERACT, Kind.GUARD, Kind.SCATTER, Kind.RETREAT, Kind.ROUTE_POINT, Kind.PATROL,
