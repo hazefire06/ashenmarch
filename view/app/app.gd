@@ -125,6 +125,9 @@ func _ready() -> void:
 	if not verify.is_empty():
 		_run_verifier(verify)
 		return
+	if BudgetRun.requested():
+		_run_budget()
+		return
 	InputBindings.install()
 	GameSettings.apply_bindings(settings_path)
 	GameSettings.apply_audio(settings_path)
@@ -171,6 +174,21 @@ func _run_verifier(request: Dictionary) -> void:
 	)
 	add_child(verifier)
 	verifier.start(request)
+
+
+# The Web texture budget's check (BudgetRun) in place of the menus. A native
+# run quits once the line is printed; the web page stays up to show it.
+func _run_budget() -> void:
+	var run: BudgetRun = BudgetRun.new()
+	run.name = "BudgetRun"
+	run.catalog = load(CATALOG_PATH) as UnitCatalog
+	run.skirmish = load(SKIRMISH_PATH) as SkirmishCatalog
+	run.finished.connect(func(_line: String) -> void:
+		if not OS.has_feature("web"):
+			get_tree().quit(0)
+	)
+	add_child(run)
+	run.start()
 
 
 ## The screen on show: a MenuScreen, or the MainView while a mission is played.

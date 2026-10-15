@@ -20,6 +20,13 @@ const REQUIRED: Array[StringName] = [&"idle", &"walk"]
 const STRIKE_ANIMS: Array[StringName] = [&"attack", &"shoot", &"throw", &"cast"]
 ## Clips timed to land on a sim tick, so each needs its impact frame.
 const TIMED_ANIMS: Array[StringName] = [&"attack", &"shoot", &"throw", &"cast", &"place"]
+## Bytes a 4x4 block takes in each block-compressed format the importer can
+## write, by Image.Format. Any other format is counted per pixel.
+const BLOCK_BYTES: Dictionary[int, int] = {
+	Image.FORMAT_DXT1: 8, Image.FORMAT_DXT3: 16, Image.FORMAT_DXT5: 16, Image.FORMAT_BPTC_RGBA: 16,
+	Image.FORMAT_ETC: 8, Image.FORMAT_ETC2_RGB8: 8, Image.FORMAT_ETC2_RGBA8: 16, Image.FORMAT_ETC2_RGB8A1: 8,
+	Image.FORMAT_ASTC_4x4: 16,
+}
 
 @export var unit_id: StringName = &""
 @export var frames: SpriteFrames
@@ -57,6 +64,43 @@ static func direction_index(facing: Vector2, camera_forward: Vector2) -> int:
 	return posmod(roundi(angle / STEP), DIRECTIONS)
 
 
+## GPU bytes of a width x height texture in this format, with its mipmaps down
+## to 1x1 when mipmaps is set: block formats by their 4x4 blocks, others by
+## their bytes per pixel. What the budget check counts per sheet; a driver may
+## round or pad.
+static func texture_bytes(width: int, height: int, format: Image.Format, mipmaps: bool) -> int:
+	var block: int = BLOCK_BYTES.get(format, 0)
+	var per_pixel: int = 0
+	if block == 0:
+		per_pixel = Image.create_empty(1, 1, false, format).get_data().size()
+	var total: int = 0
+	var w: int = width
+	var h: int = height
+	while true:
+		total += ceili(w / 4.0) * ceili(h / 4.0) * block if block > 0 else w * h * per_pixel
+		if not mipmaps or (w == 1 and h == 1):
+			break
+		w = maxi(1, w >> 1)
+		h = maxi(1, h >> 1)
+	return total
+
+
+## GPU bytes of one sheet, from its size and format (texture_bytes). An
+## imported sheet (CompressedTexture2D) and an ImageTexture (tests, the pack
+## probe) say their format; anything else counts as RGBA8. An imported sheet
+## counts its mipmaps: every unit sheet is imported with them, and
+## CompressedTexture2D.has_mipmaps() says false in Godot 4.7 regardless.
+static func texture_bytes_of(sheet: Texture2D) -> int:
+	var format: Image.Format = Image.FORMAT_RGBA8
+	var mipmaps: bool = sheet.has_mipmaps()
+	if sheet is CompressedTexture2D:
+		format = (sheet as CompressedTexture2D).get_format()
+		mipmaps = true
+	elif sheet is ImageTexture:
+		format = (sheet as ImageTexture).get_format()
+	return texture_bytes(sheet.get_width(), sheet.get_height(), format, mipmaps)
+
+
 ## Meters per pixel for the sprite.
 func pixel_size() -> float:
 	return 1.0 / pixels_per_meter
@@ -69,6 +113,23 @@ func feet_offset() -> Vector2:
 
 func has_anim(anim: StringName) -> bool:
 	return frames != null and frames.has_animation(anim_name(anim, 0))
+
+
+## GPU bytes of every sheet this art's frames are cut from, each counted once.
+func sheet_bytes() -> int:
+	if frames == null:
+		return 0
+	var seen: Dictionary[Texture2D, bool] = {}
+	var total: int = 0
+	for name: String in frames.get_animation_names():
+		for i: int in frames.get_frame_count(name):
+			var texture: Texture2D = frames.get_frame_texture(name, i)
+			var atlas: AtlasTexture = texture as AtlasTexture
+			var sheet: Texture2D = atlas.atlas if atlas != null else texture
+			if sheet != null and not seen.has(sheet):
+				seen[sheet] = true
+				total += texture_bytes_of(sheet)
+	return total
 
 
 ## Problems that make this art unusable, or an empty array if it is fine.

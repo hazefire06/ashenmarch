@@ -183,6 +183,13 @@ func art_enabled() -> bool:
 	return _art_enabled
 
 
+## The art this view draws with, one per type.
+func loaded_arts() -> Array[UnitArt]:
+	var out: Array[UnitArt] = []
+	out.assign(_arts.arts)
+	return out
+
+
 ## Flashes a ring on the ground where an order was given: green for a move,
 ## red for an attack-move.
 func show_move_marker(point: Vector3, attack: bool = false) -> void:

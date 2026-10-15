@@ -3,7 +3,7 @@ MAC_APP := build/mac/Ashenmarch.app
 WIN_EXE := build/windows/Ashenmarch.exe
 WEB_HTML := build/web/index.html
 
-.PHONY: pad-playthrough import run demo demo-projectiles demo-abilities demo-ai test check-sim export-mac export-windows export-web export-all serve-web sfx bench profile-sim golden-replays verify-replays verify-replays-app verify-replays-x86 maps fixtures playtest skirmish-playtest capture capture-skirmish hooks check-leaks check-layout test-art art-candidates art-render art-attach art-prop-candidates art-build
+.PHONY: pad-playthrough import run demo demo-projectiles demo-abilities demo-ai test check-sim export-mac export-windows export-web export-all serve-web sfx bench profile-sim golden-replays verify-replays verify-replays-app verify-replays-x86 maps fixtures playtest skirmish-playtest capture capture-skirmish hooks check-leaks check-layout test-art art-candidates art-render art-attach art-prop-candidates art-build budget budget-app
 
 # Builds the .godot/ import and class_name cache. A fresh clone has none, and
 # GUT can't resolve class_name types without it.
@@ -88,9 +88,10 @@ skirmish-playtest: import
 	$(GODOT) --headless --path . -s scripts/skirmish_playtest.gd
 
 # Visual check, windowed: launches each mission the way the campaign does and
-# saves three screenshots of it (the opening view, the overhead map, and a
-# mid-battle frame after the competent playtest pilot has played 90 s of game
-# time, stepped as fast as the machine goes) into CAPTURE. The settings are
+# saves four screenshots of it (the opening view, the closest zoom on the squad,
+# the overhead map, and a mid-battle frame after the competent playtest pilot
+# has played 90 s of game time, stepped as fast as the machine goes) into
+# CAPTURE. The settings are
 # environment variables; see the head of scripts/capture_missions.gd:
 #   CAPTURE=<dir>   where the PNGs go (required)
 #   MISSIONS=...    which missions (default all)   TIER=2   SEED=1000
@@ -119,6 +120,17 @@ bench: import
 # max per World.step() stage and the slowest ticks. TICKS=1800 PROJECTILES=200.
 profile-sim: import
 	$(GODOT) --headless --path . -s scripts/profile_sim.gd
+
+# The Web texture budget's check (docs/specs/2026-10-15-art-a4-loading-design.md
+# §6), windowed: an AI-against-AI skirmish on Old Mill with every v1 type for
+# 60 s, then one BUDGET line. The web build runs it at
+# http://127.0.0.1:8060/?budget=1 (make export-web serve-web); budget-app runs it
+# in the exported macOS app (make export-mac first).
+budget: import
+	$(GODOT) --path . -- --budget
+
+budget-app:
+	$(MAC_APP)/Contents/MacOS/Ashenmarch -- --budget
 
 # Records the golden replays (data/replays/golden) that every build is
 # checked against: Riverside and Old Mill played by the playtest pilot, an

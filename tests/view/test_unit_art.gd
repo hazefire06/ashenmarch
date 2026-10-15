@@ -369,3 +369,34 @@ func test_the_real_shieldman_sidecar_has_a_sound_layout() -> void:
 		assert_not_null(sheet, "%s sheet loads" % key)
 		sheets[StringName(key)] = sheet
 	assert_eq(UnitArtBuilder.layout_errors(side, sheets), PackedStringArray())
+
+
+func test_texture_bytes_count_blocks_and_mipmaps() -> void:
+	assert_eq(UnitArt.texture_bytes(8, 8, Image.FORMAT_DXT5, false), 64, "four 16-byte blocks")
+	assert_eq(UnitArt.texture_bytes(8, 8, Image.FORMAT_DXT5, true), 64 + 16 + 16 + 16, "8x8, then 4x4, 2x2 and 1x1 as one block each")
+	assert_eq(UnitArt.texture_bytes(6, 2, Image.FORMAT_DXT1, false), 2 * 8, "a part block counts whole")
+	assert_eq(UnitArt.texture_bytes(4, 4, Image.FORMAT_RGBA8, false), 64)
+	assert_eq(UnitArt.texture_bytes(4, 2, Image.FORMAT_RGBA8, true), 32 + 8 + 4, "4x2, 2x1, 1x1")
+
+
+func test_sheet_bytes_count_each_sheet_once() -> void:
+	var art: UnitArt = TestArt.art()
+	var sheets: Dictionary[Texture2D, bool] = {}
+	for name: String in art.frames.get_animation_names():
+		sheets[(art.frames.get_frame_texture(name, 0) as AtlasTexture).atlas] = true
+	var expected: int = 0
+	for sheet: Texture2D in sheets:
+		expected += UnitArt.texture_bytes(sheet.get_width(), sheet.get_height(), Image.FORMAT_RGBA8, false)
+	assert_eq(sheets.size(), 4, "idle, walk, attack and die")
+	assert_eq(art.sheet_bytes(), expected)
+
+
+func test_an_imported_sheet_counts_its_mipmaps() -> void:
+	# CompressedTexture2D.has_mipmaps() says false in Godot 4.7 even for a
+	# mipmapped sheet, so this pins the count against the sheet's own data.
+	var path: String = "res://assets/units/shieldman/idle.png"
+	if not ResourceLoader.exists(path):
+		pending("%s is not built; run make art-build UNIT=shieldman" % path)
+		return
+	var sheet: CompressedTexture2D = load(path) as CompressedTexture2D
+	assert_eq(UnitArt.texture_bytes_of(sheet), sheet.get_image().get_data_size())

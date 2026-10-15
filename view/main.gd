@@ -150,6 +150,8 @@ var recording: Replay
 ## How long the last tick's World.step() took, in milliseconds (the HUD shows
 ## a smoothed average; the benchmark reads this).
 var last_step_ms: float = 0.0
+## How long loading this game's unit art took, in ms; the budget check reports it.
+var art_load_ms: int = 0
 
 var _sim_ms: float = 0.0
 var _speed: int = NORMAL_SPEED
@@ -236,7 +238,10 @@ func _ready() -> void:
 	elif not launch.is_skirmish():
 		# MissionSetup queued the roster and the herb plants and started the mission.
 		stats = MissionStats.new()
-	_units_view.setup(world, _selection.selection, _gibs, load_art())
+	var art_started_ms: int = Time.get_ticks_msec()
+	var arts: UnitArtCatalog = load_art()
+	art_load_ms = Time.get_ticks_msec() - art_started_ms
+	_units_view.setup(world, _selection.selection, _gibs, arts)
 	_projectiles_view.setup(world)
 	_explosions_view.setup(world, _terrain_view, _gibs)
 	_fire_view.setup(world)
@@ -598,6 +603,11 @@ static func load_art(path: String = UnitArtCatalog.DEFAULT_PATH) -> UnitArtCatal
 	for reason: String in arts.invalid_reasons():
 		push_warning("MainView: unit art left out: %s" % reason)
 	return arts.without_invalid()
+
+
+## The unit art this game loaded, for the budget check.
+func loaded_arts() -> Array[UnitArt]:
+	return _units_view.loaded_arts()
 
 
 func _load_catalog() -> UnitCatalog:

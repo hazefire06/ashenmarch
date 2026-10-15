@@ -3,8 +3,9 @@ extends SceneTree
 ##
 ## For each mission of the campaign, launched the way the App launches it (a
 ## CampaignState plan, MissionSetup, MissionLaunch, campaign mode), it saves
-## three screenshots of the real game window into <dir>:
+## four screenshots of the real game window into <dir>:
 ## - the opening view, 2 s of real time after the mission starts;
+## - the closest zoom on the squad (RtsCamera.MIN_DISTANCE), right after;
 ## - the overhead map (Tab);
 ## - a mid-battle frame: the competent playtest pilot (scripts/playtest/pilot.gd)
 ##   plays SECONDS of game time as fast as the machine steps, then the camera
@@ -87,6 +88,12 @@ func _capture(campaign: CampaignDef, index: int) -> void:
 	# The opening: real time, no pilot, the squad where the briefing puts it.
 	await _run_for(OPENING_SECONDS)
 	await _save(mission.id, "opening")
+	# The closest zoom, where a sheet's resolution and trimming show most.
+	var rig: RtsCamera = _main.get_node("CameraRig") as RtsCamera
+	var opening_distance: float = rig.distance
+	_look_at_the_squad(RtsCamera.MIN_DISTANCE)
+	await _save(mission.id, "close")
+	_look_at_the_squad(opening_distance)
 	var overhead: OverheadMap = _main.get_node("Hud/OverheadMap") as OverheadMap
 	overhead.toggle()
 	await _save(mission.id, "overhead")
@@ -149,8 +156,9 @@ func _think() -> void:
 
 
 # Puts the camera over the middle of the soldiers still standing, keeping its
-# angle and distance: the opening view looks where the mission starts.
-func _look_at_the_squad() -> void:
+# angle, at `distance` (its own when negative): the opening view looks where
+# the mission starts.
+func _look_at_the_squad(distance: float = -1.0) -> void:
 	var sum: Vector2 = Vector2.ZERO
 	var count: int = 0
 	for unit: Unit in _main.world.units:
@@ -160,7 +168,7 @@ func _look_at_the_squad() -> void:
 	if count == 0:
 		return
 	var rig: RtsCamera = _main.get_node("CameraRig") as RtsCamera
-	rig.set_pose(sum / count, rig.yaw, rig.distance)
+	rig.set_pose(sum / count, rig.yaw, rig.distance if distance < 0.0 else distance)
 
 
 func _unpause() -> void:
