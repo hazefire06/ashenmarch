@@ -2,7 +2,8 @@ extends GutTest
 ## Gibs: which kills burst a body (overkill of at least a quarter of max hp),
 ## and that the burst behaves: 5-7 chunks, at most MAX_LIVE_CHUNKS simulating
 ## with the oldest frozen first, and chunks that land on the terrain height
-## they were dropped over (which checks the ground collider's offset and axes).
+## they were dropped over (which checks the ground collider's offset and axes),
+## never leave the map, and never end under the ground.
 
 
 func test_should_gib_at_a_quarter_of_max_hp() -> void:
@@ -84,6 +85,40 @@ func test_chunks_land_on_the_ground_under_them_and_stay() -> void:
 			# Resting on the ground, perhaps on a neighbor: not through it, not
 			# floating. Quadrants are 2+ m apart, so a wrong plateau fails this.
 			assert_between(y, heights[k] - 0.05, heights[k] + 1.0, "quadrant %d" % k)
+
+
+func test_chunks_thrown_at_the_map_edge_stay_on_the_map() -> void:
+	# The heightmap ends at the map's edge, and nothing is past it: a chunk
+	# that crossed it would fall out of the world. A burst at each edge, thrown
+	# outward, puts nearly every chunk over the edge within a second.
+	var terrain: Terrain = TestTerrains.flat(8, 8)
+	var gibs: Gibs = _gibs_over(terrain)
+	var extent: float = terrain.extent_x() / 1000.0
+	gibs.spawn(Vector3(0.3, 1.0, 3.5), Vector3.LEFT, Color.RED)
+	gibs.spawn(Vector3(extent - 0.3, 1.0, 3.5), Vector3.RIGHT, Color.RED)
+	gibs.spawn(Vector3(3.5, 1.0, 0.3), Vector3.FORWARD, Color.RED)
+	gibs.spawn(Vector3(3.5, 1.0, extent - 0.3), Vector3.BACK, Color.RED)
+	await wait_physics_frames(60)
+	for chunk: RigidBody3D in _chunks(gibs):
+		var p: Vector3 = chunk.global_position
+		assert_between(p.x, 0.0, extent, "over the map in x: %s" % p)
+		assert_between(p.z, 0.0, extent, "over the map in z: %s" % p)
+		assert_gt(p.y, -0.05, "over the ground, not under it: %s" % p)
+
+
+func test_a_chunk_sunk_into_the_ground_is_put_back_on_top() -> void:
+	# What Godot physics can do to a chunk that lands hard: it sinks until its
+	# center is under the heightmap's surface, which has no thickness and pushes
+	# a body out of whichever side is nearer, so the bottom. Sink every chunk of
+	# a burst like that, still falling.
+	var gibs: Gibs = _gibs_over(TestTerrains.flat(8, 8))
+	gibs.spawn(Vector3(3.5, 1.0, 3.5), Vector3.ZERO, Color.RED)
+	for chunk: RigidBody3D in _chunks(gibs):
+		chunk.global_position.y = -0.05
+		chunk.linear_velocity = Vector3(0.0, -3.0, 0.0)
+	await wait_physics_frames(30)
+	for chunk: RigidBody3D in _chunks(gibs):
+		assert_gt(chunk.global_position.y, 0.0, "back on top of the ground: %s" % chunk.global_position)
 
 
 func test_update_heights_refreshes_the_whole_ground_shape() -> void:
