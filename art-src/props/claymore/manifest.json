@@ -1,0 +1,44 @@
+{
+  "tasks": [
+    {
+      "ai_model": "meshy-6-lite",
+      "created_at": 1791578973,
+      "credits": 5,
+      "files": [
+        "candidates/cand-1.glb"
+      ],
+      "finished_at": 1791579014956,
+      "kind": "preview",
+      "label": "cand-1",
+      "prompt": "Scottish two-handed claymore greatsword, long straight double-edged steel blade, cross-guard with downward-angled arms ending in quatrefoils, long leather-wrapped grip, round wheel pommel. Palette: warm tartan reds and greens, steel, woad blue. Stylized fantasy strategy-game prop, chunky readable shape, hand-painted textures, muted earthy palette, single object on its own, no hands or figure, centered, plain background",
+      "status": "SUCCEEDED",
+      "task_id": "01a1226d-a84f-75b4-b63f-9bccc346c612"
+    },
+    {
+      "ai_model": "meshy-6-lite",
+      "created_at": 1791579019,
+      "credits": 5,
+      "files": [
+        "candidates/cand-2.glb"
+      ],
+      "finished_at": 1791579042730,
+      "kind": "preview",
+      "label": "cand-2",
+      "prompt": "Scottish two-handed claymore greatsword, long straight double-edged steel blade, cross-guard with downward-angled arms ending in quatrefoils, long leather-wrapped grip, round wheel pommel. Palette: warm tartan reds and greens, steel, woad blue. Stylized fantasy strategy-game prop, chunky readable shape, hand-painted textures, muted earthy palette, single object on its own, no hands or figure, centered, plain background",
+      "status": "SUCCEEDED",
+      "task_id": "01a1226e-5958-7437-9068-18238d6d5e9d"
+    },
+    {
+      "created_at": 1791608933,
+      "credits": 10,
+      "files": [
+        "model/textured.glb"
+      ],
+      "finished_at": 1791608961586,
+      "kind": "refine",
+      "label": "cand-2",
+      "status": "SUCCEEDED",
+      "task_id": "01a12436-cc1c-7580-b3e8-e1dca798c6a5"
+    }
+  ]
+}

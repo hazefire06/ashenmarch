@@ -130,6 +130,8 @@ const CYCLE_STATUS: StringName = &"debug_cycle_status"
 const TOGGLE_AI_DEBUG: StringName = &"debug_toggle_ai"
 ## F7: shows or hides a skirmish's scoreboard (SkirmishHud).
 const TOGGLE_SCOREBOARD: StringName = &"toggle_scoreboard"
+## Debug: F12 draws every unit as its placeholder, or with its art again.
+const TOGGLE_ART: StringName = &"debug_toggle_art"
 
 ## The pad (PadController): the left stick moves the cursor; the right stick
 ## pans the camera, the triggers orbit it; A selects, X orders; LB and RB open
@@ -670,6 +672,7 @@ static func defaults() -> Dictionary[StringName, InputEvent]:
 	events[CYCLE_STATUS] = _key(KEY_F8)
 	events[TOGGLE_AI_DEBUG] = _key(KEY_F5)
 	events[TOGGLE_SCOREBOARD] = _key(KEY_F7)
+	events[TOGGLE_ART] = _key(KEY_F12)
 	for i: int in NUMBER_KEYS.size():
 		events[FORMATIONS[i]] = _key(NUMBER_KEYS[i])
 		if classic:

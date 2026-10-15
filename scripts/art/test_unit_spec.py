@@ -1,0 +1,684 @@
+"""Tests for unit_spec (recipe parsing) and clips.pick_clip."""
+from __future__ import annotations
+
+import json
+import math
+import re
+import tempfile
+import unittest
+from pathlib import Path
+
+from clips import pick_clip
+from unit_spec import DEFAULT_CELL_PX, DEFAULT_FEET_PX, DEFAULT_FPS, GAME_ANIMS, MAX_CANDIDATES, AnimEntry, AttachEntry, PropSpec, SpecError, UnitSpec, animation_file, load_prop_spec, load_spec, load_style
+
+ART_SRC = Path(__file__).resolve().parent.parent.parent / "art-src"
+# TOML values that are not a whole number of 0 or more (a count), or not a whole number from 100 to 300000 (a polycount).
+BAD_COUNTS = ("-1", "1.5", "2.0", "1e3", "true", "false", '"2"', "[1]", "{ a = 1 }", "10000", "1" + "0" * 30)
+BAD_POLYCOUNTS = ("0", "99", "300001", "-100", "1.5", "30000.0", "1e5", "true", '"30000"', "[30000]", "1" + "0" * 30)
+IDLE = '[animations.idle]\naction = 0\nclip = "Idle"\n'  # a minimal animation, for recipes that test something else
+
+
+class ShieldmanSpecTest(unittest.TestCase):
+    def test_the_committed_recipe_parses(self) -> None:
+        spec = load_spec(ART_SRC / "units" / "shieldman" / "spec.toml")
+        self.assertEqual(spec.id, "shieldman")
+        self.assertEqual(spec.action_ids(), [89, 97, 189, 219])
+        names = [a.name for a in spec.animations]
+        self.assertEqual(names, ["idle", "walk", "attack", "attack_alt", "die"])
+        walk = spec.animations[1]
+        self.assertEqual((walk.file, walk.action_id, walk.loop), ("anims/rig_walk.glb", None, True))
+        attack = spec.animations[2]
+        self.assertEqual((attack.file, attack.clip, attack.impact, attack.loop), ("anims/actions.glb", "Right_Hand_Sword_Slash", 0.45, False))
+        self.assertTrue(next(a for a in spec.animations if a.name == "attack_alt").audition)
+
+    def test_the_full_prompt_fits_meshy(self) -> None:
+        spec = load_spec(ART_SRC / "units" / "shieldman" / "spec.toml")
+        prompt = spec.full_prompt(load_style(ART_SRC / "style.toml"))
+        self.assertLessEqual(len(prompt), 800)
+        self.assertIn("warm tartan reds", prompt)
+
+    def test_the_shieldman_carries_a_sword_and_a_targe(self) -> None:
+        # Offsets and rotations are tuned by eye with `make art-attach`, so only what carries what is pinned.
+        spec = load_spec(ART_SRC / "units" / "shieldman" / "spec.toml")
+        self.assertEqual([(a.prop, a.bone) for a in spec.attach], [("broadsword", "RightHand"), ("targe", "LeftForeArm")])
+        for entry in spec.attach:
+            self.assertTrue(all(math.isfinite(v) for v in entry.offset + entry.rotation), entry)
+
+    def test_a_unit_is_previewed_in_an_a_pose(self) -> None:
+        self.assertEqual(load_spec(ART_SRC / "units" / "shieldman" / "spec.toml").pose_mode, "a-pose")
+
+
+class SpecErrorsTest(unittest.TestCase):
+    def setUp(self) -> None:
+        self._tmp = tempfile.TemporaryDirectory()
+        self.dir = Path(self._tmp.name) / "unit_x"
+        self.dir.mkdir()
+
+    def tearDown(self) -> None:
+        self._tmp.cleanup()
+
+    def spec(self, body: str) -> Path:
+        path = self.dir / "spec.toml"
+        path.write_text('id = "unit_x"\nfaction = "light"\nheight_m = 1.8\nprompt = "p"\n' + body)
+        return path
+
+    def test_an_action_needs_its_clip_name(self) -> None:
+        with self.assertRaisesRegex(SpecError, "clip name"):
+            load_spec(self.spec("[animations.attack]\naction = 4\n"))
+
+    def test_an_animation_needs_a_source(self) -> None:
+        with self.assertRaisesRegex(SpecError, "action, rig or file"):
+            load_spec(self.spec("[animations.attack]\nimpact = 0.5\n"))
+
+    def test_rig_clips_are_walk_or_run(self) -> None:
+        with self.assertRaisesRegex(SpecError, "walk or run"):
+            load_spec(self.spec('[animations.walk]\nrig = "crawl"\n'))
+
+    def test_the_id_must_match_the_folder(self) -> None:
+        path = self.dir / "spec.toml"
+        path.write_text('id = "other"\nfaction = "light"\nheight_m = 1.8\nprompt = "p"\n[animations.idle]\nfile = "a.glb"\n')
+        with self.assertRaisesRegex(SpecError, "folder"):
+            load_spec(path)
+
+    def test_the_height_must_be_a_finite_positive_number(self) -> None:
+        for value in ("nan", "inf", "-inf", "-1", "0", "0.0", "true", "false", '"tall"', "1" + "0" * 400):
+            with self.subTest(height_m=value):
+                path = self.dir / "spec.toml"
+                path.write_text(f'id = "unit_x"\nfaction = "light"\nheight_m = {value}\nprompt = "p"\n[animations.idle]\nfile = "a.glb"\n')
+                with self.assertRaisesRegex(SpecError, "height_m must be"):
+                    load_spec(path)
+
+    def test_an_animation_name_that_could_leave_the_folder_is_refused(self) -> None:
+        # Names become output paths in render_sprites (sheets, .import files, review gifs), so no path pieces.
+        for name in ("../../x", "../x", "a/b", "/abs", "Idle", "9x", "_x", "a" * 33, "x y", "", "x\n", "\x1b[31mred"):
+            with self.subTest(animation=name):
+                path = self.spec(f'[animations.{json.dumps(name)}]\nfile = "a.glb"\n')  # json's escapes are valid TOML
+                with self.assertRaisesRegex(SpecError, "animation name") as caught:
+                    load_spec(path)
+                self.assertNotIn("\x1b", str(caught.exception))
+                self.assertNotIn("\n", str(caught.exception))
+
+    def test_ordinary_animation_names_still_load(self) -> None:
+        for name in ("idle", "attack_alt", "die", "a" * 32, "cast2"):
+            with self.subTest(animation=name):
+                self.assertEqual(load_spec(self.spec(f'[animations.{name}]\nfile = "a.glb"\n')).animations[0].name, name)
+
+    def test_the_candidate_counts_are_whole_numbers_of_zero_or_more(self) -> None:
+        for key in ("lite", "full"):
+            for value in BAD_COUNTS:
+                with self.subTest(key=key, value=value):
+                    other = "full" if key == "lite" else "lite"
+                    path = self.spec(f'[candidates]\n{key} = {value}\n{other} = 1\n[animations.idle]\nfile = "a.glb"\n')
+                    with self.assertRaisesRegex(SpecError, f"candidates.{key} must be a whole number") as caught:
+                        load_spec(path)
+                    self.assertIn(str(path), str(caught.exception))
+
+    def test_a_candidates_table_needs_at_least_one_candidate(self) -> None:
+        for table in ("[candidates]\n", "[candidates]\nlite = 0\nfull = 0\n", "[candidates]\nlite = 0\npolycount = 20000\n"):
+            with self.subTest(table=table):
+                with self.assertRaisesRegex(SpecError, "at least one candidate"):
+                    load_spec(self.spec(table + '[animations.idle]\nfile = "a.glb"\n'))
+        for table in ("[candidates]\nlite = 1\n", "[candidates]\nfull = 1\n", "[candidates]\nlite = 0\nfull = 3\n"):
+            with self.subTest(table=table):
+                load_spec(self.spec(table + '[animations.idle]\nfile = "a.glb"\n'))
+
+    def test_the_polycount_is_a_whole_number_from_100_to_300000(self) -> None:
+        for value in BAD_POLYCOUNTS:
+            with self.subTest(polycount=value):
+                path = self.spec(f'[candidates]\nlite = 1\npolycount = {value}\n[animations.idle]\nfile = "a.glb"\n')
+                with self.assertRaisesRegex(SpecError, "candidates.polycount must be a whole number") as caught:
+                    load_spec(path)
+                self.assertIn(str(path), str(caught.exception))
+        for value in (100, 6000, 30000, 300000):
+            with self.subTest(polycount=value):
+                self.assertEqual(load_spec(self.spec(f'[candidates]\nlite = 1\npolycount = {value}\n[animations.idle]\nfile = "a.glb"\n')).polycount, value)
+
+    def test_candidates_must_be_a_table(self) -> None:
+        with self.assertRaisesRegex(SpecError, "candidates must be a"):
+            load_spec(self.spec('candidates = 3\n[animations.idle]\nfile = "a.glb"\n'))
+
+    def test_the_candidates_total_has_an_upper_bound_too(self) -> None:
+        # cand-10000 would be bought and then refused by model/PICK as malformed.
+        anim = '[animations.idle]\nfile = "a.glb"\n'
+        with self.assertRaisesRegex(SpecError, f"lists {MAX_CANDIDATES + 1} candidates; at most {MAX_CANDIDATES}"):
+            load_spec(self.spec(f"[candidates]\nlite = {MAX_CANDIDATES}\nfull = 1\n" + anim))
+        self.assertEqual(load_spec(self.spec(f"[candidates]\nlite = {MAX_CANDIDATES}\n" + anim)).lite, MAX_CANDIDATES)
+        with self.assertRaisesRegex(SpecError, "needs at least one candidate"):
+            load_spec(self.spec("[candidates]\n" + anim))
+
+    def test_the_animation_name_message_states_the_length_limit(self) -> None:
+        with self.assertRaisesRegex(SpecError, "at most 32 characters"):
+            load_spec(self.spec(f'[animations.{"a" * 33}]\nfile = "a.glb"\n'))
+
+    def test_an_animation_file_is_a_relative_path_without_dot_dot(self) -> None:
+        # The renderer opens unit_dir / file, so an absolute path or `..` would read any GLB on the machine.
+        for file in ("/etc/x.glb", "/abs/x.glb", "../x.glb", "anims/../../x.glb", "..", "a/../b.glb", "C:\\x.glb", "anims\\x.glb", "", "a\u0000b.glb"):
+            with self.subTest(file=file):
+                path = self.spec(f'[animations.idle]\nfile = {json.dumps(file)}\n')
+                with self.assertRaisesRegex(SpecError, "animation idle: file must be a relative path") as caught:
+                    load_spec(path)
+                self.assertNotIn("\x00", str(caught.exception))
+        for file in (3, True, ["a.glb"]):
+            with self.subTest(file=file):
+                with self.assertRaisesRegex(SpecError, "animation idle: file must be a relative path"):
+                    load_spec(self.spec(f'[animations.idle]\nfile = {json.dumps(file)}\n'))
+
+    def test_an_animation_file_inside_the_unit_folder_loads(self) -> None:
+        for file in ("anims/x.glb", "x.glb", "anims/sub/x.glb", "anims/./x.glb"):
+            with self.subTest(file=file):
+                self.assertEqual(load_spec(self.spec(f'[animations.idle]\nfile = "{file}"\n')).animations[0].file, file)
+
+    def test_a_rig_animation_may_not_name_a_file_outside_either(self) -> None:
+        with self.assertRaisesRegex(SpecError, "animation walk: file must be a relative path"):
+            load_spec(self.spec('[animations.walk]\nrig = "walk"\nfile = "../walk.glb"\n'))
+
+    def test_the_renderer_opens_an_animation_file_only_inside_the_unit_folder(self) -> None:
+        unit_dir = self.dir
+        (unit_dir / "anims").mkdir()
+        outside = Path(self._tmp.name) / "elsewhere"
+        outside.mkdir()
+        entry = AnimEntry("idle", "anims/x.glb", None, None, None, True)
+        self.assertEqual(animation_file(unit_dir, entry), unit_dir / "anims" / "x.glb")  # a file that doesn't exist yet is fine
+        (unit_dir / "linked").symlink_to(outside, target_is_directory=True)
+        with self.assertRaisesRegex(SpecError, "animation idle: file 'linked/x.glb' resolves outside unit_x/"):
+            animation_file(unit_dir, AnimEntry("idle", "linked/x.glb", None, None, None, True))
+        with self.assertRaisesRegex(SpecError, "animation idle"):
+            animation_file(unit_dir, AnimEntry("idle", "../elsewhere/x.glb", None, None, None, True))
+
+    def test_an_animation_is_a_rig_clip_or_a_library_action_not_both(self) -> None:
+        with self.assertRaisesRegex(SpecError, "animation walk: set rig or action, not both"):
+            load_spec(self.spec('[animations.walk]\nrig = "walk"\naction = 4\nclip = "Walk"\n'))
+        load_spec(self.spec('[animations.walk]\nrig = "walk"\n[animations.attack]\naction = 4\nclip = "Slash"\n'))
+
+    def test_a_recipe_that_is_not_toml_or_not_utf8_is_a_spec_error(self) -> None:
+        # tomllib's own errors, and the decoder's (whose message holds bytes), used to escape as tracebacks.
+        path = self.dir / "spec.toml"
+        for name, data in (("broken", b"id = \n"), ("not utf-8", b'id = "unit_x"\nprompt = "\xff\xfe"\n'), ("escape", b"id = \x1b\n")):
+            with self.subTest(case=name):
+                path.write_bytes(data)
+                for load in (load_spec, load_prop_spec):
+                    with self.assertRaises(SpecError) as caught:
+                        load(path)
+                    self.assertIn(str(path), str(caught.exception))
+                    self.assertNotIn("\x1b", str(caught.exception))
+                    self.assertNotIn("\xff", str(caught.exception))
+                    self.assertNotIn("\n", str(caught.exception))
+
+    def test_a_long_prompt_is_refused(self) -> None:
+        spec = load_spec(self.spec('[animations.idle]\nfile = "a.glb"\n'))
+        style = load_style(ART_SRC / "style.toml")
+        long_spec = spec.__class__(**{**spec.__dict__, "prompt": "x" * 800})
+        with self.assertRaisesRegex(SpecError, "800"):
+            long_spec.full_prompt(style)
+
+
+class AttachTest(unittest.TestCase):
+    def setUp(self) -> None:
+        self._tmp = tempfile.TemporaryDirectory()
+        self.dir = Path(self._tmp.name) / "unit_x"
+        self.dir.mkdir()
+
+    def tearDown(self) -> None:
+        self._tmp.cleanup()
+
+    def spec(self, attach: str) -> Path:
+        path = self.dir / "spec.toml"
+        path.write_text('id = "unit_x"\nfaction = "light"\nheight_m = 1.8\nprompt = "p"\n' + attach + '[animations.idle]\nfile = "a.glb"\n')
+        return path
+
+    def test_attachments_parse_in_order_and_offsets_default_to_zero(self) -> None:
+        spec = load_spec(self.spec(
+            '[[attach]]\nprop = "broadsword"\nbone = "RightHand"\n'
+            '[[attach]]\nprop = "targe"\nbone = "LeftForeArm"\noffset = [0.1, 0, -0.2]\nrotation = [90, 0.0, 180]\n'))
+        self.assertEqual(spec.attach, (
+            AttachEntry("broadsword", "RightHand", (0.0, 0.0, 0.0), (0.0, 0.0, 0.0)),
+            AttachEntry("targe", "LeftForeArm", (0.1, 0.0, -0.2), (90.0, 0.0, 180.0)),
+        ))
+
+    def test_a_unit_with_no_attachments_has_an_empty_tuple(self) -> None:
+        self.assertEqual(load_spec(self.spec("")).attach, ())
+
+    def test_a_prop_name_that_could_leave_the_folder_is_refused(self) -> None:
+        for name in ("../x", "/abs", "a/b", "Sword", "9x", "_x", "", "a" * 33, "x\n"):
+            with self.subTest(prop=name):
+                path = self.spec(f'[[attach]]\nprop = {json.dumps(name)}\nbone = "RightHand"\n')  # json's escapes are valid TOML
+                with self.assertRaisesRegex(SpecError, "attach entry 1"):
+                    load_spec(path)
+
+    def test_a_missing_prop_or_bone_is_refused(self) -> None:
+        with self.assertRaisesRegex(SpecError, "attach entry 1.*bone"):
+            load_spec(self.spec('[[attach]]\nprop = "broadsword"\n'))
+        with self.assertRaisesRegex(SpecError, "attach entry 1.*bone"):
+            load_spec(self.spec('[[attach]]\nprop = "broadsword"\nbone = ""\n'))
+        with self.assertRaisesRegex(SpecError, "attach entry 1.*prop"):
+            load_spec(self.spec('[[attach]]\nbone = "RightHand"\n'))
+
+    def test_a_huge_number_is_refused_not_an_overflow(self) -> None:
+        huge = "1" + "0" * 400
+        for key in ("offset", "rotation"):
+            with self.subTest(key=key):
+                path = self.spec(f'[[attach]]\nprop = "targe"\nbone = "LeftForeArm"\n{key} = [0, 0, {huge}]\n')
+                with self.assertRaisesRegex(SpecError, f"{key} must be exactly 3 numbers"):
+                    load_spec(path)
+
+    def test_bone_names_are_plain_names(self) -> None:
+        for bone in ("RightHand", "mixamorig:LeftForeArm", "Bone.001", "left-hand_2", "Left Hand", "a" * 63):
+            with self.subTest(good=bone):
+                self.assertEqual(load_spec(self.spec(f'[[attach]]\nprop = "targe"\nbone = "{bone}"\n')).attach[0].bone, bone)
+        for bone in ("", " ", "   ", "a" * 64, "Right/Hand", "../x", "Hand\\n", "Hand\\tTab", "Hand;rm", "H\\u00e9", "[x]"):
+            with self.subTest(bad=bone):
+                with self.assertRaisesRegex(SpecError, "attach entry 1.*bone"):
+                    load_spec(self.spec(f'[[attach]]\nprop = "targe"\nbone = "{bone}"\n'))
+
+    def test_offset_and_rotation_are_exactly_three_numbers(self) -> None:
+        for key in ("offset", "rotation"):
+            for value in ("[0.0, 0.0]", "[0, 0, 0, 0]", '[0, 0, "x"]', "[0, 0, true]", "0.5", "[0, 0, inf]", "[0, 0, nan]"):
+                with self.subTest(key=key, value=value):
+                    path = self.spec(f'[[attach]]\nprop = "targe"\nbone = "LeftForeArm"\n{key} = {value}\n')
+                    with self.assertRaisesRegex(SpecError, f"attach entry 1.*{key}"):
+                        load_spec(path)
+
+    def test_the_error_names_the_entry_that_is_wrong(self) -> None:
+        path = self.spec('[[attach]]\nprop = "broadsword"\nbone = "RightHand"\n[[attach]]\nprop = "targe"\nbone = "LeftForeArm"\noffset = [1, 2]\n')
+        with self.assertRaisesRegex(SpecError, r"attach entry 2 \('targe'\)") as caught:
+            load_spec(path)
+        self.assertIn(str(path), str(caught.exception))
+
+    def test_a_misspelt_key_is_refused_instead_of_silently_zeroed(self) -> None:
+        with self.assertRaisesRegex(SpecError, "attach entry 1.*rotaton"):
+            load_spec(self.spec('[[attach]]\nprop = "targe"\nbone = "LeftForeArm"\nrotaton = [0, 90, 0]\n'))
+
+
+class PropSpecTest(unittest.TestCase):
+    GOOD = 'id = "prop_x"\nfaction = "light"\nlength_m = 0.95\nprompt = "a sword"\n[candidates]\nlite = 2\n'
+
+    def setUp(self) -> None:
+        self._tmp = tempfile.TemporaryDirectory()
+        self.dir = Path(self._tmp.name) / "prop_x"
+        self.dir.mkdir()
+        self.style = load_style(ART_SRC / "style.toml")
+
+    def tearDown(self) -> None:
+        self._tmp.cleanup()
+
+    def prop(self, text: str) -> Path:
+        path = self.dir / "spec.toml"
+        path.write_text(text)
+        return path
+
+    def test_a_good_recipe_loads_with_the_prop_defaults(self) -> None:
+        spec = load_prop_spec(self.prop(self.GOOD))
+        self.assertEqual(spec, PropSpec(id="prop_x", faction="light", length_m=0.95, prompt="a sword", lite=2, full=0, polycount=6000))
+
+    def test_a_prop_is_previewed_without_a_pose(self) -> None:
+        self.assertIsNone(load_prop_spec(self.prop(self.GOOD)).pose_mode)
+
+    def test_the_candidates_table_is_optional(self) -> None:
+        spec = load_prop_spec(self.prop('id = "prop_x"\nfaction = "dark"\nlength_m = 1\nprompt = "p"\n'))
+        self.assertEqual((spec.lite, spec.full, spec.polycount, spec.length_m), (0, 0, 6000, 1.0))
+
+    def test_the_id_must_match_the_folder(self) -> None:
+        with self.assertRaisesRegex(SpecError, "folder"):
+            load_prop_spec(self.prop(self.GOOD.replace('"prop_x"', '"other"', 1)))
+
+    def test_the_length_must_be_positive(self) -> None:
+        for length in ("0", "-0.5"):
+            with self.subTest(length_m=length):
+                path = self.prop(self.GOOD.replace("0.95", length))
+                with self.assertRaisesRegex(SpecError, "length_m must be positive") as caught:
+                    load_prop_spec(path)
+                self.assertIn(str(path), str(caught.exception))
+
+    def test_the_length_must_be_a_finite_number_not_a_bool(self) -> None:
+        for value in ("nan", "inf", "-inf", "true", "false", '"long"', "1" + "0" * 400):
+            with self.subTest(length_m=value):
+                with self.assertRaisesRegex(SpecError, "length_m must be"):
+                    load_prop_spec(self.prop(self.GOOD.replace("0.95", value)))
+
+    def test_the_candidate_counts_are_whole_numbers_of_zero_or_more(self) -> None:
+        for key in ("lite", "full"):
+            for value in BAD_COUNTS:
+                with self.subTest(key=key, value=value):
+                    other = "full" if key == "lite" else "lite"
+                    path = self.prop(self.GOOD.split("[candidates]")[0] + f"[candidates]\n{key} = {value}\n{other} = 1\n")
+                    with self.assertRaisesRegex(SpecError, f"candidates.{key} must be a whole number") as caught:
+                        load_prop_spec(path)
+                    self.assertIn(str(path), str(caught.exception))
+
+    def test_a_candidates_table_needs_at_least_one_candidate(self) -> None:
+        head = self.GOOD.split("[candidates]")[0]
+        for table in ("[candidates]\n", "[candidates]\nlite = 0\nfull = 0\n"):
+            with self.subTest(table=table):
+                with self.assertRaisesRegex(SpecError, "at least one candidate"):
+                    load_prop_spec(self.prop(head + table))
+        self.assertEqual(load_prop_spec(self.prop(head + "[candidates]\nfull = 1\n")).full, 1)
+
+    def test_the_polycount_is_a_whole_number_from_100_to_300000(self) -> None:
+        for value in BAD_POLYCOUNTS:
+            with self.subTest(polycount=value):
+                with self.assertRaisesRegex(SpecError, "candidates.polycount must be a whole number"):
+                    load_prop_spec(self.prop(self.GOOD + f"polycount = {value}\n"))
+        for value in (100, 300000):
+            with self.subTest(polycount=value):
+                self.assertEqual(load_prop_spec(self.prop(self.GOOD + f"polycount = {value}\n")).polycount, value)
+
+    def test_the_candidates_total_has_an_upper_bound_too(self) -> None:
+        head = self.GOOD.split("[candidates]")[0]
+        with self.assertRaisesRegex(SpecError, f"lists {MAX_CANDIDATES + 1} candidates; at most {MAX_CANDIDATES}"):
+            load_prop_spec(self.prop(head + f"[candidates]\nlite = {MAX_CANDIDATES}\nfull = 1\n"))
+        self.assertEqual(load_prop_spec(self.prop(head + f"[candidates]\nfull = {MAX_CANDIDATES}\n")).full, MAX_CANDIDATES)
+
+    def test_candidates_must_be_a_table(self) -> None:
+        with self.assertRaisesRegex(SpecError, "candidates must be a"):
+            load_prop_spec(self.prop('id = "prop_x"\nfaction = "light"\nlength_m = 1\nprompt = "p"\ncandidates = [1]\n'))
+
+    def test_the_faction_is_light_or_dark(self) -> None:
+        with self.assertRaisesRegex(SpecError, "faction must be light or dark"):
+            load_prop_spec(self.prop(self.GOOD.replace('"light"', '"grey"')))
+
+    def test_a_missing_key_is_reported_like_a_units(self) -> None:
+        for key in ("id", "faction", "length_m", "prompt"):
+            with self.subTest(missing=key):
+                text = "".join(line + "\n" for line in self.GOOD.splitlines() if not line.startswith(key + " "))
+                path = self.prop(text)
+                with self.assertRaisesRegex(SpecError, f"missing '{key}'") as caught:
+                    load_prop_spec(path)
+                self.assertIn(str(path), str(caught.exception))
+
+    def test_the_full_prompt_adds_the_palette_and_the_prop_suffix(self) -> None:
+        spec = load_prop_spec(self.prop(self.GOOD))
+        text = spec.full_prompt(self.style)
+        self.assertEqual(text, f"a sword. Palette: {self.style.palettes['light']}. {self.style.prop_suffix}")
+        self.assertNotIn(self.style.suffix, text)
+
+    def test_a_long_prop_prompt_is_refused(self) -> None:
+        spec = load_prop_spec(self.prop(self.GOOD))
+        long_spec = spec.__class__(**{**spec.__dict__, "prompt": "x" * 800})
+        with self.assertRaisesRegex(SpecError, "prop_x: the prompt is .* 800"):
+            long_spec.full_prompt(self.style)
+
+    def test_the_committed_prop_recipes_parse(self) -> None:
+        sword = load_prop_spec(ART_SRC / "props" / "broadsword" / "spec.toml")
+        targe = load_prop_spec(ART_SRC / "props" / "targe" / "spec.toml")
+        self.assertEqual((sword.id, sword.faction, sword.length_m, sword.lite, sword.full, sword.polycount), ("broadsword", "light", 0.95, 2, 0, 6000))
+        self.assertEqual((targe.id, targe.faction, targe.length_m, targe.lite, targe.full, targe.polycount), ("targe", "light", 0.55, 2, 0, 6000))
+        for spec in (sword, targe):
+            self.assertLessEqual(len(spec.full_prompt(self.style)), 800)
+            self.assertIsNone(spec.pose_mode)
+
+
+class StyleTest(unittest.TestCase):
+    def test_the_committed_style_has_a_prop_suffix(self) -> None:
+        style = load_style(ART_SRC / "style.toml")
+        self.assertTrue(style.prop_suffix.startswith("Stylized fantasy strategy-game prop"))
+        self.assertIn("no hands or figure", style.prop_suffix)
+        self.assertNotIn("A-pose", style.prop_suffix)
+
+    def test_a_style_that_is_not_toml_is_a_spec_error(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "style.toml"
+            for data in (b"suffix = \n", b"\xff\xfe"):
+                path.write_bytes(data)
+                with self.assertRaises(SpecError) as caught:
+                    load_style(path)
+                self.assertIn(str(path), str(caught.exception))
+                self.assertNotIn("\n", str(caught.exception))
+
+    def test_a_style_without_a_prop_suffix_is_refused(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "style.toml"
+            path.write_text('suffix = "s"\n[palettes]\nlight = "l"\ndark = "d"\n')
+            with self.assertRaisesRegex(SpecError, "missing 'prop_suffix'"):
+                load_style(path)
+
+
+class PickClipTest(unittest.TestCase):
+    def test_exact_name_after_the_object_prefix_wins(self) -> None:
+        names = ["Armature|Left_Slash_2", "Armature|Left_Slash"]
+        self.assertEqual(pick_clip(names, "Left_Slash"), "Armature|Left_Slash")
+
+    def test_a_unique_partial_match(self) -> None:
+        self.assertEqual(pick_clip(["Armature|Animation_Combat_Stance_withSkin"], "Combat_Stance"), "Armature|Animation_Combat_Stance_withSkin")
+
+    def test_no_or_many_matches_are_errors(self) -> None:
+        with self.assertRaisesRegex(ValueError, "no clip"):
+            pick_clip(["Armature|Idle"], "Left_Slash")
+        with self.assertRaisesRegex(ValueError, "2 clips match"):
+            pick_clip(["A|Idle_02", "A|Idle_03"], "Idle")
+
+    def test_unnamed_means_the_only_clip(self) -> None:
+        self.assertEqual(pick_clip(["A|Walk"], None), "A|Walk")
+        self.assertIsNone(pick_clip([], None))
+        with self.assertRaisesRegex(ValueError, "name one"):
+            pick_clip(["A|Walk", "A|Run"], None)
+
+
+class A3RecipeFieldsTest(unittest.TestCase):
+    def _load(self, animations: str) -> UnitSpec:
+        folder = Path(self._tmp.name) / "unit_x"
+        folder.mkdir(exist_ok=True)  # the refusal test loads several recipes in one test
+        (folder / "spec.toml").write_text(
+            'id = "unit_x"\nfaction = "dark"\nheight_m = 1.8\nprompt = "x"\n' + animations, encoding="utf-8")
+        return load_spec(folder / "spec.toml")
+
+    def setUp(self) -> None:
+        self._tmp = tempfile.TemporaryDirectory()
+
+    def tearDown(self) -> None:
+        self._tmp.cleanup()
+
+    def test_new_fields_default_off(self) -> None:
+        spec = self._load('[animations.idle]\naction = 0\nclip = "Idle"\n')
+        entry = spec.animations[0]
+        self.assertEqual((entry.audition, entry.bob_m, entry.bob_hz, entry.stride_m), (False, 0.0, 0.0, None))
+
+    def test_an_audition_clip_parses(self) -> None:
+        spec = self._load('[animations.attack_alt]\naction = 128\nclip = "Heavy_Hammer_Swing"\nimpact = 0.5\naudition = true\n')
+        self.assertTrue(spec.animations[0].audition)
+
+    def test_a_game_clip_cannot_be_an_audition(self) -> None:
+        with self.assertRaises(SpecError):
+            self._load('[animations.attack]\naction = 97\nclip = "Left_Slash"\naudition = true\n')
+
+    def test_an_audition_must_be_a_real_boolean(self) -> None:
+        for bad in ("audition = 1\n", 'audition = "true"\n', "audition = 0\n"):
+            with self.subTest(bad=bad), self.assertRaisesRegex(SpecError, "true or false"):
+                self._load('[animations.attack_alt]\naction = 128\nclip = "Heavy_Hammer_Swing"\n' + bad)
+
+    def test_game_anims_match_the_builders_list(self) -> None:
+        # GAME_ANIMS is mirrored by hand from the GDScript constant, which spans several lines.
+        source = (Path(__file__).resolve().parent / "unit_art_builder.gd").read_text(encoding="utf-8")
+        block = re.search(r"const GAME_ANIMS: Array\[StringName\] = \[(.*?)\]", source, re.DOTALL)
+        self.assertIsNotNone(block, "GAME_ANIMS not found in unit_art_builder.gd")
+        self.assertEqual(set(re.findall(r'&"(\w+)"', block.group(1))), GAME_ANIMS)
+
+    def test_hover_and_stride_parse(self) -> None:
+        spec = self._load('[animations.walk]\naction = 0\nclip = "Idle"\nbob_m = 0.08\nbob_hz = 0.8\nstride_m = 1.2\n')
+        entry = spec.animations[0]
+        self.assertEqual((entry.bob_m, entry.bob_hz, entry.stride_m), (0.08, 0.8, 1.2))
+
+    def test_bad_hover_and_stride_are_refused(self) -> None:
+        for bad in ("bob_m = -0.1\nbob_hz = 1.0\n", "bob_m = 0.1\n", "bob_m = 0.1\nbob_hz = 0.0\n",
+                    "bob_m = nan\nbob_hz = 1.0\n", "stride_m = 0.0\n", "stride_m = inf\n", "bob_m = true\nbob_hz = 1.0\n",
+                    "bob_m = 0.1\nbob_hz = true\n", "stride_m = true\n"):
+            with self.subTest(bad=bad), self.assertRaises(SpecError):
+                self._load('[animations.walk]\naction = 0\nclip = "Idle"\n' + bad)
+
+    def test_stride_m_is_for_a_walk_or_a_run(self) -> None:
+        # Only those two clips carry a stride; anywhere else the renderer would ignore it and the game would
+        # play the legs at zero speed.
+        self.assertEqual(self._load('[animations.run]\nfile = "anims/run.glb"\nstride_m = 2.0\n').animations[0].stride_m, 2.0)
+        for name in ("idle", "glide", "walk_alt"):
+            with self.subTest(name=name), self.assertRaisesRegex(SpecError, "stride_m.*walk or run"):
+                self._load(f'[animations.{name}]\nfile = "anims/idle.glb"\nstride_m = 1.2\n')
+
+    def test_the_frame_defaults_to_160_px_with_the_feet_40_up(self) -> None:
+        spec = self._load(IDLE)
+        self.assertEqual((spec.cell_px, spec.feet_px), (160, 40))
+        self.assertEqual((DEFAULT_CELL_PX, DEFAULT_FEET_PX), (160, 40))
+
+    def test_a_render_table_sets_the_frame(self) -> None:
+        spec = self._load("[render]\ncell_px = 192\nfeet_px = 64\n" + IDLE)
+        self.assertEqual((spec.cell_px, spec.feet_px), (192, 64))
+        # Either key alone keeps the other's default, and an empty table is the defaults.
+        for table, want in (("cell_px = 128", (128, 40)), ("feet_px = 64", (160, 64)), ("", (160, 40))):
+            with self.subTest(table=table):
+                spec = self._load(f"[render]\n{table}\n" + IDLE)
+                self.assertEqual((spec.cell_px, spec.feet_px), want)
+
+    def test_the_frame_limits_are_inclusive_where_they_say_so(self) -> None:
+        # cell_px runs 128 to 256; the feet must stay strictly under half the cell, one pixel short of it at most.
+        for cell, feet in ((128, 63), (256, 127), (192, 1), (136, 67)):
+            with self.subTest(cell=cell, feet=feet):
+                spec = self._load(f"[render]\ncell_px = {cell}\nfeet_px = {feet}\n" + IDLE)
+                self.assertEqual((spec.cell_px, spec.feet_px), (cell, feet))
+
+    def test_bad_cell_sizes_are_refused(self) -> None:
+        # Out of range (100, 260, 0, and 120 and 264, the multiples of 8 just outside it), not a multiple of 8 (190, 129), and
+        # not a whole number.
+        for bad in ("100", "260", "0", "-192", "120", "127", "257", "264", "190", "129", "192.0", "1e2", "true", "false", '"192"', "[192]", "1" + "0" * 30):
+            with self.subTest(cell_px=bad), self.assertRaisesRegex(SpecError, "render.cell_px"):
+                self._load(f"[render]\ncell_px = {bad}\n" + IDLE)
+
+    def test_bad_feet_heights_are_refused(self) -> None:
+        # 0 and below, half the cell or more (the default cell's half is 80), and not a whole number.
+        for bad in ("0", "-4", "80", "81", "160", "40.0", "true", "false", '"40"', "[40]", "1" + "0" * 30):
+            with self.subTest(feet_px=bad), self.assertRaisesRegex(SpecError, "render.feet_px"):
+                self._load(f"[render]\nfeet_px = {bad}\n" + IDLE)
+        # Half of the cell that is set, not of the default one.
+        with self.assertRaisesRegex(SpecError, "render.feet_px"):
+            self._load("[render]\ncell_px = 192\nfeet_px = 96\n" + IDLE)
+        with self.assertRaisesRegex(SpecError, "render.feet_px"):
+            self._load("[render]\ncell_px = 128\nfeet_px = 64\n" + IDLE)
+
+    def test_an_unknown_render_key_is_refused_instead_of_silently_ignored(self) -> None:
+        for bad in ("cell = 192", "feet = 64", "stride = 200", "cell_px = 192\nfeet_pxx = 64", "pixels_per_meter = 52"):
+            with self.subTest(bad=bad), self.assertRaisesRegex(SpecError, r"\[render\].*unknown key"):
+                self._load(f"[render]\n{bad}\n" + IDLE)
+
+    def test_render_must_be_a_table(self) -> None:
+        for bad in ("render = 192\n", 'render = "192"\n', "render = [192]\n"):
+            with self.subTest(bad=bad), self.assertRaisesRegex(SpecError, r"\[render\] table"):
+                self._load(bad + IDLE)
+
+    def test_an_animations_fps_defaults_to_12_and_parses(self) -> None:
+        self.assertEqual(self._load(IDLE).animations[0].fps, DEFAULT_FPS)
+        self.assertEqual(DEFAULT_FPS, 12)
+        for fps in (4, 6, 30):
+            with self.subTest(fps=fps):
+                self.assertEqual(self._load(IDLE + f"fps = {fps}\n").animations[0].fps, fps)
+
+    def test_each_animation_has_its_own_fps(self) -> None:
+        spec = self._load(IDLE + 'fps = 6\n[animations.die]\naction = 183\nclip = "Shot_and_Fall_Backward"\n')
+        self.assertEqual([(a.name, a.fps) for a in spec.animations], [("idle", 6), ("die", 12)])
+
+    def test_bad_fps_are_refused(self) -> None:
+        for bad in ("0", "3", "31", "-12", "12.5", "12.0", "true", "false", '"12"', "[12]", "1" + "0" * 30):
+            with self.subTest(fps=bad), self.assertRaisesRegex(SpecError, "animation idle: fps must be a whole number from 4 to 30"):
+                self._load(IDLE + f"fps = {bad}\n")
+
+    def test_an_audition_may_set_an_fps_too(self) -> None:
+        spec = self._load('[animations.attack_alt]\naction = 128\nclip = "Heavy_Hammer_Swing"\naudition = true\nfps = 8\n')
+        self.assertEqual(spec.animations[0].fps, 8)
+
+    def test_a_trim_defaults_to_the_whole_clip(self) -> None:
+        for body in (IDLE, '[animations.place]\naction = 274\nclip = "Crouch_Place"\n'):
+            with self.subTest(body=body):
+                entry = self._load(body).animations[0]
+                self.assertEqual((entry.start_s, entry.end_s), (0.0, None))
+
+    def test_a_trim_parses(self) -> None:
+        place = '[animations.place]\naction = 274\nclip = "Female_Crouch_Pick_Up_Place_Side"\nimpact = 0.41\n'
+        for trim, want in (("start = 0.75\nend = 5.0\n", (0.75, 5.0)),
+                           ("start = 0.75\n", (0.75, None)),  # the head only
+                           ("end = 5.0\n", (0.0, 5.0)),  # the tail only
+                           ("start = 1\nend = 4\n", (1.0, 4.0)),  # whole seconds are TOML integers
+                           ("start = 0\nend = 0.001\n", (0.0, 0.001))):
+            with self.subTest(trim=trim):
+                entry = self._load(place + trim).animations[0]
+                self.assertEqual((entry.start_s, entry.end_s), want)
+                self.assertIsInstance(entry.start_s, float)
+                self.assertEqual(entry.impact, 0.41)
+
+    def test_a_trim_can_be_set_on_an_audition(self) -> None:
+        entry = self._load('[animations.place_alt]\naction = 274\nclip = "Crouch"\naudition = true\nend = 3.0\n').animations[0]
+        self.assertEqual((entry.start_s, entry.end_s), (0.0, 3.0))
+
+    def test_a_bad_trim_is_refused(self) -> None:
+        # Negative, not a number (bool, string, list, table), not finite. TOML `true` would otherwise pass as 1 second.
+        for key in ("start", "end"):
+            for bad in ("-0.5", "-1", "true", "false", '"1.0"', "[1.0]", "{ a = 1 }", "nan", "-nan", "inf", "-inf", "1" + "0" * 400):
+                with self.subTest(key=key, value=bad), self.assertRaisesRegex(SpecError, f"animation place: {key} must be a finite number, 0 or more"):
+                    self._load(f'[animations.place]\naction = 274\nclip = "Crouch"\n{key} = {bad}\n')
+
+    def test_the_end_must_be_above_the_start(self) -> None:
+        for trim in ("start = 2.0\nend = 2.0\n", "start = 2.0\nend = 1.0\n", "start = 1\nend = 1\n",
+                     "end = 0\n"):  # an end alone is measured from the clip's start, 0 s
+            with self.subTest(trim=trim), self.assertRaisesRegex(SpecError, "animation place: end must be above start"):
+                self._load('[animations.place]\naction = 274\nclip = "Crouch"\n' + trim)
+
+    def test_a_looping_clip_cannot_be_trimmed(self) -> None:
+        # A cut loop has no seam. idle and walk loop whatever their source, and a rig clip is a loop from the rig task.
+        for animation in ('[animations.idle]\naction = 0\nclip = "Idle"\n', '[animations.idle]\nfile = "anims/idle.glb"\n',
+                          '[animations.walk]\nrig = "walk"\n', '[animations.walk]\naction = 4\nclip = "Walk"\n',
+                          '[animations.walk]\nfile = "anims/walk.glb"\n'):
+            for trim in ("start = 0.5\n", "end = 2.0\n", "start = 0.5\nend = 2.0\n"):
+                with self.subTest(animation=animation, trim=trim), self.assertRaisesRegex(SpecError, r"animation (idle|walk): (start|end) .*loop"):
+                    self._load(animation + trim)
+
+    def test_a_rig_clip_cannot_be_trimmed_under_any_name(self) -> None:
+        for animation in ('[animations.run]\nrig = "run"\n', '[animations.sprint]\nrig = "walk"\n'):
+            for trim in ("start = 0.5\n", "end = 2.0\n"):
+                with self.subTest(animation=animation, trim=trim), self.assertRaisesRegex(SpecError, r"animation (run|sprint): (start|end) .*rig clip"):
+                    self._load(animation + trim)
+
+    def test_a_clip_with_a_stride_cannot_be_trimmed_whatever_its_source(self) -> None:
+        # A stride is metres per cycle, measured over the whole clip, so a cut run would be saved with a wrong one.
+        for animation in ('[animations.run]\naction = 5\nclip = "Run_Fast"\n', '[animations.run]\nfile = "anims/run.glb"\n'):
+            for trim in ("start = 0.5\n", "end = 2.0\n", "start = 0.5\nend = 2.0\n"):
+                with self.subTest(animation=animation, trim=trim), self.assertRaisesRegex(SpecError, r"animation run: (start|end) .*stride"):
+                    self._load(animation + trim)
+        self.assertEqual(self._load('[animations.run]\nfile = "anims/run.glb"\nstride_m = 2.0\n').animations[0].end_s, None)
+
+    def test_a_trim_is_not_checked_on_a_clip_that_does_not_set_one(self) -> None:
+        # The loop and rig refusals are about the keys, so the same clips load without them.
+        spec = self._load(IDLE + '[animations.walk]\nrig = "walk"\n[animations.run]\nrig = "run"\n')
+        self.assertEqual([(a.start_s, a.end_s) for a in spec.animations], [(0.0, None)] * 3)
+
+    def test_an_unknown_animation_key_is_refused_instead_of_silently_ignored(self) -> None:
+        # A misspelt `ned = 5.0` would otherwise draw the whole clip.
+        for bad in ("ned = 5.0", "strt = 0.5", "Start = 1", "frames = 40", "fpss = 8", "impact_frame = 3", "loop = true", "stride = 1.2"):
+            key = bad.split(" ")[0]
+            with self.subTest(bad=bad), self.assertRaisesRegex(SpecError, rf"animation place: unknown key '{key}'") as caught:
+                self._load(f'[animations.place]\naction = 274\nclip = "Crouch"\nimpact = 0.4\n{bad}\n')
+            self.assertIn("takes action, clip, rig, file, impact, audition, bob_m, bob_hz, stride_m, fps, start and end", str(caught.exception))
+
+    def test_every_documented_animation_key_is_accepted(self) -> None:
+        spec = self._load('[animations.walk]\nrig = "walk"\nfile = "anims/rig_walk.glb"\nimpact = 0.5\nbob_m = 0.1\nbob_hz = 1.0\n'
+                          'stride_m = 1.0\nfps = 8\n[animations.alt]\naction = 1\nclip = "X"\naudition = true\nstart = 0.5\nend = 2.0\n')
+        self.assertEqual([a.name for a in spec.animations], ["walk", "alt"])
+
+
+class CommittedRecipesTest(unittest.TestCase):
+    """Every recipe in art-src loads, so a stricter parser (an unknown key, a range) can't quietly strand a unit. Only the
+    spec.toml files are read: a recipe whose art isn't bought or committed yet still loads."""
+
+    def test_every_committed_unit_recipe_loads(self) -> None:
+        paths = sorted((ART_SRC / "units").glob("*/spec.toml"))
+        self.assertGreaterEqual(len(paths), 5, "the units' recipes were not found")
+        for path in paths:
+            with self.subTest(unit=path.parent.name):
+                spec = load_spec(path)
+                self.assertEqual(spec.id, path.parent.name)
+                self.assertTrue(spec.animations)
+
+    def test_every_committed_prop_recipe_loads(self) -> None:
+        paths = sorted((ART_SRC / "props").glob("*/spec.toml"))
+        self.assertGreaterEqual(len(paths), 6, "the props' recipes were not found")
+        for path in paths:
+            with self.subTest(prop=path.parent.name):
+                self.assertEqual(load_prop_spec(path).id, path.parent.name)
+
+
+if __name__ == "__main__":
+    unittest.main()

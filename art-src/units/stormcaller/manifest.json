@@ -1,0 +1,103 @@
+{
+  "tasks": [
+    {
+      "ai_model": "meshy-6-lite",
+      "created_at": 1792002502,
+      "credits": 5,
+      "files": [
+        "candidates/cand-1.glb"
+      ],
+      "finished_at": 1792002558128,
+      "kind": "preview",
+      "label": "cand-1",
+      "prompt": "Gaunt ghoulish sorcerer, tall and thin, cracked grey skin marked with glowing blue-white lightning scars, tattered dark hooded mantle with a high collar, rune-marked cloth wrappings, long thin grey-skinned hands, wild white hair, both hands open and empty, holding nothing. Palette: cold bog brown, ashen grey, sickly green glow. Stylized fantasy strategy-game character, chunky heroic proportions, hand-painted textures, strong readable silhouette, muted earthy palette, full body, standing in A-pose, centered, plain background",
+      "status": "SUCCEEDED",
+      "task_id": "01a13bac-305c-71d6-8bc5-d74fffa680a3"
+    },
+    {
+      "ai_model": "meshy-6-lite",
+      "created_at": 1792002563,
+      "credits": 5,
+      "files": [
+        "candidates/cand-2.glb"
+      ],
+      "finished_at": 1792002634239,
+      "kind": "preview",
+      "label": "cand-2",
+      "prompt": "Gaunt ghoulish sorcerer, tall and thin, cracked grey skin marked with glowing blue-white lightning scars, tattered dark hooded mantle with a high collar, rune-marked cloth wrappings, long thin grey-skinned hands, wild white hair, both hands open and empty, holding nothing. Palette: cold bog brown, ashen grey, sickly green glow. Stylized fantasy strategy-game character, chunky heroic proportions, hand-painted textures, strong readable silhouette, muted earthy palette, full body, standing in A-pose, centered, plain background",
+      "status": "SUCCEEDED",
+      "task_id": "01a13bad-1e69-7774-8f3d-729e50702d8d"
+    },
+    {
+      "ai_model": "meshy-6-lite",
+      "created_at": 1792002638,
+      "credits": 5,
+      "files": [
+        "candidates/cand-3.glb"
+      ],
+      "finished_at": 1792002687135,
+      "kind": "preview",
+      "label": "cand-3",
+      "prompt": "Gaunt ghoulish sorcerer, tall and thin, cracked grey skin marked with glowing blue-white lightning scars, tattered dark hooded mantle with a high collar, rune-marked cloth wrappings, long thin grey-skinned hands, wild white hair, both hands open and empty, holding nothing. Palette: cold bog brown, ashen grey, sickly green glow. Stylized fantasy strategy-game character, chunky heroic proportions, hand-painted textures, strong readable silhouette, muted earthy palette, full body, standing in A-pose, centered, plain background",
+      "status": "SUCCEEDED",
+      "task_id": "01a13bae-43a9-75df-b4d0-c542e3d59297"
+    },
+    {
+      "ai_model": "meshy-6-lite",
+      "created_at": 1792002692,
+      "credits": 5,
+      "files": [
+        "candidates/cand-4.glb"
+      ],
+      "finished_at": 1792002765367,
+      "kind": "preview",
+      "label": "cand-4",
+      "prompt": "Gaunt ghoulish sorcerer, tall and thin, cracked grey skin marked with glowing blue-white lightning scars, tattered dark hooded mantle with a high collar, rune-marked cloth wrappings, long thin grey-skinned hands, wild white hair, both hands open and empty, holding nothing. Palette: cold bog brown, ashen grey, sickly green glow. Stylized fantasy strategy-game character, chunky heroic proportions, hand-painted textures, strong readable silhouette, muted earthy palette, full body, standing in A-pose, centered, plain background",
+      "status": "SUCCEEDED",
+      "task_id": "01a13baf-1677-7577-860e-a33f5c2745d0"
+    },
+    {
+      "created_at": 1792004511,
+      "credits": 10,
+      "files": [
+        "model/textured.glb"
+      ],
+      "finished_at": 1792004558223,
+      "kind": "refine",
+      "label": "cand-1",
+      "status": "SUCCEEDED",
+      "task_id": "01a13bca-d9e1-76be-83e0-1a0946b1a211"
+    },
+    {
+      "created_at": 1792004560,
+      "credits": 5,
+      "files": [
+        "anims/rig_run.glb",
+        "anims/rig_walk.glb",
+        "model/rigged.glb"
+      ],
+      "finished_at": 1792004574940,
+      "kind": "rig",
+      "label": "cand-1",
+      "status": "SUCCEEDED",
+      "task_id": "01a13bcb-981b-706a-a35b-79919d23c4bf"
+    },
+    {
+      "action_ids": [
+        0,
+        131,
+        181
+      ],
+      "created_at": 1792004581,
+      "credits": 9,
+      "files": [
+        "anims/actions.glb"
+      ],
+      "finished_at": 1792004592859,
+      "kind": "animate",
+      "label": "cand-1:0,131,181",
+      "status": "SUCCEEDED",
+      "task_id": "01a13bcb-e810-7761-a3a2-dab57aa72693"
+    }
+  ]
+}

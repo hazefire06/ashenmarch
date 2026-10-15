@@ -1,0 +1,104 @@
+{
+  "tasks": [
+    {
+      "ai_model": "meshy-6-lite",
+      "created_at": 1791578818,
+      "credits": 5,
+      "files": [
+        "candidates/cand-1.glb"
+      ],
+      "finished_at": 1791578856983,
+      "kind": "preview",
+      "label": "cand-1",
+      "prompt": "Scottish highland archer and gamekeeper, hooded cloak in muted green and brown hunting tartan, leather jerkin over a linen shirt, kilt, quiver of arrows on the back, hunting knife at the belt, short beard, weathered calm face, soft leather boots, empty hands. Palette: warm tartan reds and greens, steel, woad blue. Stylized fantasy strategy-game character, chunky heroic proportions, hand-painted textures, strong readable silhouette, muted earthy palette, full body, standing in A-pose, centered, plain background",
+      "status": "SUCCEEDED",
+      "task_id": "01a1226b-481d-718a-8a48-100f4eda4f87"
+    },
+    {
+      "ai_model": "meshy-6-lite",
+      "created_at": 1791578858,
+      "credits": 5,
+      "files": [
+        "candidates/cand-2.glb"
+      ],
+      "finished_at": 1791578893499,
+      "kind": "preview",
+      "label": "cand-2",
+      "prompt": "Scottish highland archer and gamekeeper, hooded cloak in muted green and brown hunting tartan, leather jerkin over a linen shirt, kilt, quiver of arrows on the back, hunting knife at the belt, short beard, weathered calm face, soft leather boots, empty hands. Palette: warm tartan reds and greens, steel, woad blue. Stylized fantasy strategy-game character, chunky heroic proportions, hand-painted textures, strong readable silhouette, muted earthy palette, full body, standing in A-pose, centered, plain background",
+      "status": "SUCCEEDED",
+      "task_id": "01a1226b-e52f-7034-a988-a30a75676aec"
+    },
+    {
+      "ai_model": "meshy-6-lite",
+      "created_at": 1791578896,
+      "credits": 5,
+      "files": [
+        "candidates/cand-3.glb"
+      ],
+      "finished_at": 1791578931956,
+      "kind": "preview",
+      "label": "cand-3",
+      "prompt": "Scottish highland archer and gamekeeper, hooded cloak in muted green and brown hunting tartan, leather jerkin over a linen shirt, kilt, quiver of arrows on the back, hunting knife at the belt, short beard, weathered calm face, soft leather boots, empty hands. Palette: warm tartan reds and greens, steel, woad blue. Stylized fantasy strategy-game character, chunky heroic proportions, hand-painted textures, strong readable silhouette, muted earthy palette, full body, standing in A-pose, centered, plain background",
+      "status": "SUCCEEDED",
+      "task_id": "01a1226c-7983-75dc-b7b9-90bb89fe4dd9"
+    },
+    {
+      "ai_model": "meshy-6-lite",
+      "created_at": 1791578935,
+      "credits": 5,
+      "files": [
+        "candidates/cand-4.glb"
+      ],
+      "finished_at": 1791578970653,
+      "kind": "preview",
+      "label": "cand-4",
+      "prompt": "Scottish highland archer and gamekeeper, hooded cloak in muted green and brown hunting tartan, leather jerkin over a linen shirt, kilt, quiver of arrows on the back, hunting knife at the belt, short beard, weathered calm face, soft leather boots, empty hands. Palette: warm tartan reds and greens, steel, woad blue. Stylized fantasy strategy-game character, chunky heroic proportions, hand-painted textures, strong readable silhouette, muted earthy palette, full body, standing in A-pose, centered, plain background",
+      "status": "SUCCEEDED",
+      "task_id": "01a1226d-1064-752e-942e-86df60f8d124"
+    },
+    {
+      "created_at": 1791608836,
+      "credits": 10,
+      "files": [
+        "model/textured.glb"
+      ],
+      "finished_at": 1791608894088,
+      "kind": "refine",
+      "label": "cand-3",
+      "status": "SUCCEEDED",
+      "task_id": "01a12435-5181-7134-b056-f3e144f5c9d6"
+    },
+    {
+      "created_at": 1791608895,
+      "credits": 5,
+      "files": [
+        "anims/rig_run.glb",
+        "anims/rig_walk.glb",
+        "model/rigged.glb"
+      ],
+      "finished_at": 1791608909769,
+      "kind": "rig",
+      "label": "cand-3",
+      "status": "SUCCEEDED",
+      "task_id": "01a12436-395e-750e-ac8e-2836631b9262"
+    },
+    {
+      "action_ids": [
+        0,
+        97,
+        184,
+        224
+      ],
+      "created_at": 1791608915,
+      "credits": 12,
+      "files": [
+        "anims/actions.glb"
+      ],
+      "finished_at": 1791608929978,
+      "kind": "animate",
+      "label": "cand-3:0,97,184,224",
+      "status": "SUCCEEDED",
+      "task_id": "01a12436-88f5-73ba-8fc0-07d271fcef48"
+    }
+  ]
+}

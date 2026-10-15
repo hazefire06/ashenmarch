@@ -1,0 +1,103 @@
+{
+  "tasks": [
+    {
+      "ai_model": "meshy-6-lite",
+      "created_at": 1792002322,
+      "credits": 5,
+      "files": [
+        "candidates/cand-1.glb"
+      ],
+      "finished_at": 1792002369038,
+      "kind": "preview",
+      "label": "cand-1",
+      "prompt": "Hooded spectre in long tattered grey-black robes reaching the ankles, thin legs barely visible beneath, gaunt pale ashen face in shadow under the hood, thin pale hands, faint sickly green glow under the hood, both hands open and empty, holding nothing. Palette: cold bog brown, ashen grey, sickly green glow. Stylized fantasy strategy-game character, chunky heroic proportions, hand-painted textures, strong readable silhouette, muted earthy palette, full body, standing in A-pose, centered, plain background",
+      "status": "SUCCEEDED",
+      "task_id": "01a13ba9-72bc-73a1-bda5-8897fafd429d"
+    },
+    {
+      "ai_model": "meshy-6-lite",
+      "created_at": 1792002373,
+      "credits": 5,
+      "files": [
+        "candidates/cand-2.glb"
+      ],
+      "finished_at": 1792002406035,
+      "kind": "preview",
+      "label": "cand-2",
+      "prompt": "Hooded spectre in long tattered grey-black robes reaching the ankles, thin legs barely visible beneath, gaunt pale ashen face in shadow under the hood, thin pale hands, faint sickly green glow under the hood, both hands open and empty, holding nothing. Palette: cold bog brown, ashen grey, sickly green glow. Stylized fantasy strategy-game character, chunky heroic proportions, hand-painted textures, strong readable silhouette, muted earthy palette, full body, standing in A-pose, centered, plain background",
+      "status": "SUCCEEDED",
+      "task_id": "01a13baa-37a1-7456-934c-cb3fe33d3a1a"
+    },
+    {
+      "ai_model": "meshy-6-lite",
+      "created_at": 1792002410,
+      "credits": 5,
+      "files": [
+        "candidates/cand-3.glb"
+      ],
+      "finished_at": 1792002454448,
+      "kind": "preview",
+      "label": "cand-3",
+      "prompt": "Hooded spectre in long tattered grey-black robes reaching the ankles, thin legs barely visible beneath, gaunt pale ashen face in shadow under the hood, thin pale hands, faint sickly green glow under the hood, both hands open and empty, holding nothing. Palette: cold bog brown, ashen grey, sickly green glow. Stylized fantasy strategy-game character, chunky heroic proportions, hand-painted textures, strong readable silhouette, muted earthy palette, full body, standing in A-pose, centered, plain background",
+      "status": "SUCCEEDED",
+      "task_id": "01a13baa-cad1-75c5-a620-20162758a103"
+    },
+    {
+      "ai_model": "meshy-6-lite",
+      "created_at": 1792002459,
+      "credits": 5,
+      "files": [
+        "candidates/cand-4.glb"
+      ],
+      "finished_at": 1792002500362,
+      "kind": "preview",
+      "label": "cand-4",
+      "prompt": "Hooded spectre in long tattered grey-black robes reaching the ankles, thin legs barely visible beneath, gaunt pale ashen face in shadow under the hood, thin pale hands, faint sickly green glow under the hood, both hands open and empty, holding nothing. Palette: cold bog brown, ashen grey, sickly green glow. Stylized fantasy strategy-game character, chunky heroic proportions, hand-painted textures, strong readable silhouette, muted earthy palette, full body, standing in A-pose, centered, plain background",
+      "status": "SUCCEEDED",
+      "task_id": "01a13bab-8890-748f-a458-053401e8aa97"
+    },
+    {
+      "created_at": 1792004424,
+      "credits": 10,
+      "files": [
+        "model/textured.glb"
+      ],
+      "finished_at": 1792004474360,
+      "kind": "refine",
+      "label": "cand-3",
+      "status": "SUCCEEDED",
+      "task_id": "01a13bc9-855c-7345-a799-da7d559d91e8"
+    },
+    {
+      "created_at": 1792004478,
+      "credits": 5,
+      "files": [
+        "anims/rig_run.glb",
+        "anims/rig_walk.glb",
+        "model/rigged.glb"
+      ],
+      "finished_at": 1792004493886,
+      "kind": "rig",
+      "label": "cand-3",
+      "status": "SUCCEEDED",
+      "task_id": "01a13bca-58ac-7252-bd94-7dbdb8a21a19"
+    },
+    {
+      "action_ids": [
+        0,
+        8,
+        224
+      ],
+      "created_at": 1792004500,
+      "credits": 9,
+      "files": [
+        "anims/actions.glb"
+      ],
+      "finished_at": 1792004511174,
+      "kind": "animate",
+      "label": "cand-3:0,8,224",
+      "status": "SUCCEEDED",
+      "task_id": "01a13bca-ac09-75e6-ac96-2701a3b162da"
+    }
+  ]
+}

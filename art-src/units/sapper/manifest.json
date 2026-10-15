@@ -1,0 +1,162 @@
+{
+  "tasks": [
+    {
+      "ai_model": "meshy-6-lite",
+      "created_at": 1791838206,
+      "credits": 5,
+      "files": [
+        "candidates/cand-1.glb"
+      ],
+      "finished_at": 1791838248531,
+      "kind": "preview",
+      "label": "cand-1",
+      "prompt": "Scottish highland tinkerer and grenadier, stocky, singed eyebrows and soot-smudged face, bushy sideburns, leather apron over a rolled-sleeve shirt, kilt, thick leather gloves, brass goggles pushed up on a woollen cap, bandolier of corked glass bottles across the chest, sturdy boots, both hands open and empty, holding nothing. Palette: warm tartan reds and greens, steel, woad blue. Stylized fantasy strategy-game character, chunky heroic proportions, hand-painted textures, strong readable silhouette, muted earthy palette, full body, standing in A-pose, centered, plain background",
+      "status": "SUCCEEDED",
+      "task_id": "01a131e1-3c58-7727-a3fe-c51227ed9b34"
+    },
+    {
+      "ai_model": "meshy-6-lite",
+      "created_at": 1791838251,
+      "credits": 5,
+      "files": [
+        "candidates/cand-2.glb"
+      ],
+      "finished_at": 1791838294326,
+      "kind": "preview",
+      "label": "cand-2",
+      "prompt": "Scottish highland tinkerer and grenadier, stocky, singed eyebrows and soot-smudged face, bushy sideburns, leather apron over a rolled-sleeve shirt, kilt, thick leather gloves, brass goggles pushed up on a woollen cap, bandolier of corked glass bottles across the chest, sturdy boots, both hands open and empty, holding nothing. Palette: warm tartan reds and greens, steel, woad blue. Stylized fantasy strategy-game character, chunky heroic proportions, hand-painted textures, strong readable silhouette, muted earthy palette, full body, standing in A-pose, centered, plain background",
+      "status": "SUCCEEDED",
+      "task_id": "01a131e1-e922-756d-81be-dd09b0d53e85"
+    },
+    {
+      "ai_model": "meshy-6-lite",
+      "created_at": 1791838299,
+      "credits": 5,
+      "files": [
+        "candidates/cand-3.glb"
+      ],
+      "finished_at": 1791838333911,
+      "kind": "preview",
+      "label": "cand-3",
+      "prompt": "Scottish highland tinkerer and grenadier, stocky, singed eyebrows and soot-smudged face, bushy sideburns, leather apron over a rolled-sleeve shirt, kilt, thick leather gloves, brass goggles pushed up on a woollen cap, bandolier of corked glass bottles across the chest, sturdy boots, both hands open and empty, holding nothing. Palette: warm tartan reds and greens, steel, woad blue. Stylized fantasy strategy-game character, chunky heroic proportions, hand-painted textures, strong readable silhouette, muted earthy palette, full body, standing in A-pose, centered, plain background",
+      "status": "SUCCEEDED",
+      "task_id": "01a131e2-a433-7392-8ec5-85c218dc03e9"
+    },
+    {
+      "ai_model": "meshy-6-lite",
+      "created_at": 1791838336,
+      "credits": 5,
+      "files": [
+        "candidates/cand-4.glb"
+      ],
+      "finished_at": 1791838390366,
+      "kind": "preview",
+      "label": "cand-4",
+      "prompt": "Scottish highland tinkerer and grenadier, stocky, singed eyebrows and soot-smudged face, bushy sideburns, leather apron over a rolled-sleeve shirt, kilt, thick leather gloves, brass goggles pushed up on a woollen cap, bandolier of corked glass bottles across the chest, sturdy boots, both hands open and empty, holding nothing. Palette: warm tartan reds and greens, steel, woad blue. Stylized fantasy strategy-game character, chunky heroic proportions, hand-painted textures, strong readable silhouette, muted earthy palette, full body, standing in A-pose, centered, plain background",
+      "status": "SUCCEEDED",
+      "task_id": "01a131e3-357d-71ca-a80b-363c96712031"
+    },
+    {
+      "ai_model": "meshy-6-lite",
+      "created_at": 1791847768,
+      "credits": 5,
+      "files": [
+        "candidates/cand-5.glb"
+      ],
+      "finished_at": 1791847798853,
+      "kind": "preview",
+      "label": "cand-5",
+      "prompt": "Highland dwarf tinkerer and grenadier, short and very stocky, broad shoulders, barrel chest, thick short braided beard, singed eyebrows and soot-smudged face, leather apron over a rolled-sleeve shirt, kilt, thick leather gloves, brass goggles pushed up on a woollen cap, bandolier of corked glass bottles across the chest, sturdy boots, both hands open and empty, holding nothing. Palette: warm tartan reds and greens, steel, woad blue. Stylized fantasy strategy-game character, chunky heroic proportions, hand-painted textures, strong readable silhouette, muted earthy palette, full body, standing in A-pose, centered, plain background",
+      "status": "SUCCEEDED",
+      "task_id": "01a13273-21af-71ab-aa2c-a57253777bd7"
+    },
+    {
+      "ai_model": "meshy-6-lite",
+      "created_at": 1791847801,
+      "credits": 5,
+      "files": [
+        "candidates/cand-6.glb"
+      ],
+      "finished_at": 1791847839645,
+      "kind": "preview",
+      "label": "cand-6",
+      "prompt": "Highland dwarf tinkerer and grenadier, short and very stocky, broad shoulders, barrel chest, thick short braided beard, singed eyebrows and soot-smudged face, leather apron over a rolled-sleeve shirt, kilt, thick leather gloves, brass goggles pushed up on a woollen cap, bandolier of corked glass bottles across the chest, sturdy boots, both hands open and empty, holding nothing. Palette: warm tartan reds and greens, steel, woad blue. Stylized fantasy strategy-game character, chunky heroic proportions, hand-painted textures, strong readable silhouette, muted earthy palette, full body, standing in A-pose, centered, plain background",
+      "status": "SUCCEEDED",
+      "task_id": "01a13273-a534-764b-a2d7-13bfed7eae60"
+    },
+    {
+      "ai_model": "meshy-6-lite",
+      "created_at": 1791847844,
+      "credits": 5,
+      "files": [
+        "candidates/cand-7.glb"
+      ],
+      "finished_at": 1791847876656,
+      "kind": "preview",
+      "label": "cand-7",
+      "prompt": "Highland dwarf tinkerer and grenadier, short and very stocky, broad shoulders, barrel chest, thick short braided beard, singed eyebrows and soot-smudged face, leather apron over a rolled-sleeve shirt, kilt, thick leather gloves, brass goggles pushed up on a woollen cap, bandolier of corked glass bottles across the chest, sturdy boots, both hands open and empty, holding nothing. Palette: warm tartan reds and greens, steel, woad blue. Stylized fantasy strategy-game character, chunky heroic proportions, hand-painted textures, strong readable silhouette, muted earthy palette, full body, standing in A-pose, centered, plain background",
+      "status": "SUCCEEDED",
+      "task_id": "01a13274-4aa5-701a-9965-4cfd9b6c31f2"
+    },
+    {
+      "ai_model": "meshy-6-lite",
+      "created_at": 1791847881,
+      "credits": 5,
+      "files": [
+        "candidates/cand-8.glb"
+      ],
+      "finished_at": 1791847923572,
+      "kind": "preview",
+      "label": "cand-8",
+      "prompt": "Highland dwarf tinkerer and grenadier, short and very stocky, broad shoulders, barrel chest, thick short braided beard, singed eyebrows and soot-smudged face, leather apron over a rolled-sleeve shirt, kilt, thick leather gloves, brass goggles pushed up on a woollen cap, bandolier of corked glass bottles across the chest, sturdy boots, both hands open and empty, holding nothing. Palette: warm tartan reds and greens, steel, woad blue. Stylized fantasy strategy-game character, chunky heroic proportions, hand-painted textures, strong readable silhouette, muted earthy palette, full body, standing in A-pose, centered, plain background",
+      "status": "SUCCEEDED",
+      "task_id": "01a13274-dc24-71d5-8c08-4c4f062e6b8d"
+    },
+    {
+      "created_at": 1791848672,
+      "credits": 10,
+      "files": [
+        "model/textured.glb"
+      ],
+      "finished_at": 1791848710053,
+      "kind": "refine",
+      "label": "cand-6",
+      "status": "SUCCEEDED",
+      "task_id": "01a13280-eca3-74a5-88c8-d7a188ceab05"
+    },
+    {
+      "created_at": 1791848714,
+      "credits": 5,
+      "files": [
+        "anims/rig_run.glb",
+        "anims/rig_walk.glb",
+        "model/rigged.glb"
+      ],
+      "finished_at": 1791848728937,
+      "kind": "rig",
+      "label": "cand-6",
+      "status": "SUCCEEDED",
+      "task_id": "01a13281-927b-71e8-b67d-e3c1308bc093"
+    },
+    {
+      "action_ids": [
+        0,
+        8,
+        97,
+        239,
+        274,
+        421
+      ],
+      "created_at": 1791848734,
+      "credits": 18,
+      "files": [
+        "anims/actions.glb"
+      ],
+      "finished_at": 1791848759424,
+      "kind": "animate",
+      "label": "cand-6:0,8,97,239,274,421",
+      "status": "SUCCEEDED",
+      "task_id": "01a13281-e04a-77ca-9f1e-e8659279b204"
+    }
+  ]
+}

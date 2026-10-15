@@ -1,0 +1,44 @@
+{
+  "tasks": [
+    {
+      "ai_model": "meshy-6-lite",
+      "created_at": 1791383410,
+      "credits": 5,
+      "files": [
+        "candidates/cand-1.glb"
+      ],
+      "finished_at": 1791383445844,
+      "kind": "preview",
+      "label": "cand-1",
+      "prompt": "Round Highland targe shield seen from the front, wooden face covered in tooled brown leather, ring of brass studs, central iron boss with a short spike, leather arm straps on the back. Palette: warm tartan reds and greens, steel, woad blue. Stylized fantasy strategy-game prop, chunky readable shape, hand-painted textures, muted earthy palette, single object on its own, no hands or figure, centered, plain background",
+      "status": "SUCCEEDED",
+      "task_id": "01a116c5-9739-7085-883d-2d9978f8bd93"
+    },
+    {
+      "ai_model": "meshy-6-lite",
+      "created_at": 1791383450,
+      "credits": 5,
+      "files": [
+        "candidates/cand-2.glb"
+      ],
+      "finished_at": 1791383484778,
+      "kind": "preview",
+      "label": "cand-2",
+      "prompt": "Round Highland targe shield seen from the front, wooden face covered in tooled brown leather, ring of brass studs, central iron boss with a short spike, leather arm straps on the back. Palette: warm tartan reds and greens, steel, woad blue. Stylized fantasy strategy-game prop, chunky readable shape, hand-painted textures, muted earthy palette, single object on its own, no hands or figure, centered, plain background",
+      "status": "SUCCEEDED",
+      "task_id": "01a116c6-33d9-7480-9ac9-9e169d09d093"
+    },
+    {
+      "created_at": 1791404722,
+      "credits": 10,
+      "files": [
+        "model/textured.glb"
+      ],
+      "finished_at": 1791404759739,
+      "kind": "refine",
+      "label": "cand-1",
+      "status": "SUCCEEDED",
+      "task_id": "01a1180a-c84c-771d-81a4-75edcb0e4d5c"
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+# Leak rules for this public repo: gitleaks' defaults plus the API keys this
+# project uses (the defaults miss Meshy's). scripts/check_leak_rules.sh proves
+# each rule fires.
+title = "ashenmarch"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "meshy-api-key"
+description = "Meshy API key"
+regex = '''\bmsy_[A-Za-z0-9_-]{20,}'''
+keywords = ["msy_"]
+
+[[rules]]
+id = "elevenlabs-api-key"
+description = "ElevenLabs API key"
+regex = '''\bsk_[A-Za-z0-9]{32,}'''
+keywords = ["sk_"]

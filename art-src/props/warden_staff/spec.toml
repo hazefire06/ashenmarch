@@ -1,0 +1,10 @@
+# The Warden's staff (spec §6.2a, §11).
+id = "warden_staff"
+faction = "light"
+length_m = 1.7
+prompt = "Gnarled wooden walking staff of rowan wood, knotted head wrapped in leather and tied with sprigs of heather, iron ferrule at the foot"
+
+[candidates]
+lite = 2
+full = 0
+polycount = 6000

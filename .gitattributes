@@ -1,0 +1,14 @@
+# Binary art and audio go through Git LFS. Scoped to these trees on purpose:
+# maps/*.png stay plain git, because the sim decodes them itself and a clone
+# without LFS would break the tests.
+assets/**/*.png filter=lfs diff=lfs merge=lfs -text
+assets/**/*.wav filter=lfs diff=lfs merge=lfs -text
+assets/**/*.ogg filter=lfs diff=lfs merge=lfs -text
+art-src/**/*.glb filter=lfs diff=lfs merge=lfs -text
+art-src/**/*.fbx filter=lfs diff=lfs merge=lfs -text
+art-src/**/*.blend filter=lfs diff=lfs merge=lfs -text
+art-src/**/*.png filter=lfs diff=lfs merge=lfs -text
+art-src/**/*.gif filter=lfs diff=lfs merge=lfs -text
+audio-src/**/*.mp3 filter=lfs diff=lfs merge=lfs -text
+audio-src/**/*.wav filter=lfs diff=lfs merge=lfs -text
+audio-src/**/*.ogg filter=lfs diff=lfs merge=lfs -text

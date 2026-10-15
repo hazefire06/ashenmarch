@@ -1,0 +1,59 @@
+# The Longbow's art recipe (spec §5, §11). Archer; the dagger in melee is too small to model.
+id = "longbow"
+faction = "light"
+height_m = 1.78
+prompt = "Scottish highland archer and gamekeeper, hooded cloak in muted green and brown hunting tartan, leather jerkin over a linen shirt, kilt, quiver of arrows on the back, hunting knife at the belt, short beard, weathered calm face, soft leather boots, empty hands"
+die_falls_forward = true
+
+# The bow reaches 63 px below the feet, 113 px above and 86 px to the side in the death
+# fall, past the default 160 px frame: 184 px with the feet 68 px up fits it (spec §11).
+[render]
+cell_px = 184
+feet_px = 68
+
+# Solved from the meshes (stave through the palm, string toward the archer, upright at
+# the release), picked by eye on 2026-10-10.
+[[attach]]
+prop = "longbow_bow"
+bone = "LeftHand"
+offset = [0.0, -0.072, 0.0]
+rotation = [-82.1, 0.3, -92.0]
+
+[candidates]
+lite = 4
+full = 0
+polycount = 30000
+
+# 4 s: at 10 fps it is 40 frames, under the 42 a 184 px frame's sheet holds.
+[animations.idle]
+action = 0
+clip = "Idle"
+fps = 10
+
+[animations.walk]
+rig = "walk"
+
+# The library clip runs 5 s: he stands with the bow down until 1.5 s, raises and draws it, looses at 2.75 s, holds the aim to
+# 4 s and lowers the bow. Only the raise, draw and release are drawn: 1.6-3.75 s, 27 frames, under the 42 a 184 px frame's sheet
+# holds even at 12 fps, the release its impact. The head is cut because the sim's 12-tick (0.4 s) draw can't play the whole
+# run-up inside the animator's 4x limit (the arrow left 0.3 s before the release); the tail so the strike holds the body less.
+[animations.shoot]
+action = 224
+clip = "Archery_Shot"
+start = 1.6
+end = 3.75
+impact = 0.54
+
+# The library clip runs 3.2 s: he winds up and swings, the cut landing at 1.4 s, then settles back into a crouch. Only the swing
+# is drawn: 0.85-2.4 s, 20 frames, the cut its impact. The head is cut because the sim's 6-tick (0.2 s) swing can't play the
+# whole wind-up inside the animator's 4x limit; the tail so the strike holds the body less.
+[animations.attack]
+action = 97
+clip = "Left_Slash"
+start = 0.85
+end = 2.4
+impact = 0.37
+
+[animations.die]
+action = 184
+clip = "Shot_and_Fall_Forward"

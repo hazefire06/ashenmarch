@@ -1,0 +1,59 @@
+# The Ripper's art recipe (spec §5, §11). Fast raider that picks up and throws.
+id = "ripper"
+faction = "dark"
+height_m = 1.8
+prompt = "Gaunt hunched ghoul, emaciated grey-green skin stretched over ribs, long thin limbs, elongated clawed fingers, lank black hair, torn loincloth, bare feet, feral stance, both hands open and empty, holding nothing"
+die_falls_forward = false
+
+# Blown back in the death, he lands 42 px below the feet, past the default frame's 40; his throw reaches
+# 103 px above them. The default 160 px frame with the feet 48 px up fits both (spec §11).
+[render]
+cell_px = 160
+feet_px = 48
+
+[candidates]
+lite = 4
+full = 0
+polycount = 30000
+
+[animations.idle]
+action = 0
+clip = "Idle"
+
+[animations.walk]
+action = 16
+clip = "RunFast"
+
+# The library clip runs 2.0 s: he raises a fist from his guard, jabs at 0.8 s and drops back into it. Only the jab is drawn:
+# 0.35-1.75 s, 18 frames, the jab its impact. The head is cut because the sim's 5-tick (0.17 s) swing can't play the whole
+# raise inside the animator's 4x limit; the tail so the strike holds the body less.
+[animations.attack]
+action = 192
+clip = "Right_Jab_from_Guard"
+start = 0.35
+end = 1.75
+impact = 0.35
+
+# The library clip runs 4.3 s: he hunches and shifts until 1.25 s, winds up and throws at 2.4 s, then straightens and stands.
+# Only the wind-up and the throw are drawn: 1.25-3.4 s, 27 frames, the release its impact. The head is cut because the sim's
+# 12-tick (0.4 s) wind-up can't play the whole run-up inside the animator's 4x limit; the tail so the strike holds the body less.
+[animations.throw]
+action = 421
+clip = "Over_Shoulder_Throw"
+start = 1.25
+end = 3.4
+impact = 0.54
+
+# The pick-up of a charge or object, played as the act clip. The library clip runs 7.2 s: he bends, his hand
+# touches the ground at 1.5 s and is back near its rest by 2.25 s; then he lifts the thing overhead, holds it
+# and lowers it. Only the grab is drawn: 1.75 s, 22 frames, the touch its impact.
+[animations.place]
+action = 276
+clip = "Male_Bend_Over_Pick_Up"
+start = 0.5
+end = 2.25
+impact = 0.57
+
+[animations.die]
+action = 182
+clip = "Shot_and_Blown_Back"

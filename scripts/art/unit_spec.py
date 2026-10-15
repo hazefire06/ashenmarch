@@ -1,0 +1,448 @@
+"""A unit's art recipe: art-src/units/<id>/spec.toml plus art-src/style.toml.
+
+meshy.py reads it to know what to buy, and render_sprites.py (inside Blender)
+to know what to render. Each animation comes from one of:
+- a Meshy library action (`action` id plus its library `clip` name),
+- the free walk or run clip from the rig task (`rig`),
+- a local GLB (`file`; used by the Blender test fixture).
+
+An animation can also set:
+- `audition = true`: a clip rendered for review only (its GIF and contact-sheet row), never shipped.
+  A clip the game plays (GAME_ANIMS) can't be one.
+- `bob_m` and `bob_hz`: a hover, the figure bobbing up and down by bob_m metres at bob_hz cycles a second.
+  Both are 0 (off) by default; a bob needs a rate.
+- `stride_m`: a stride length in metres that replaces the measured one, for a floating unit with no foot contact.
+  Only a walk or run has a stride, so any other clip that sets it is refused.
+- `fps`: the clip's frame rate, 4 to 30 (12 by default). A lower rate stretches a long clip over fewer frames, to keep its sheet
+  under the 4096 px cap.
+- `start` and `end`: the part of the clip to draw, in seconds from the clip's own start (the whole clip by default; `start` alone
+  trims the head, `end` alone the tail). A long clip with a short errand in the middle (a 9.5 s place that reaches, touches
+  the ground at 2.5 s and then stands still) cuts to the errand instead of filling the sheet or holding the unit. `impact` is a
+  fraction of the trimmed clip, the part drawn, not of the whole one. A looping clip (idle, walk) or a rig clip can't be
+  trimmed, because a cut loop has no seam; nor can a run, because a stride is measured over a whole cycle.
+
+A unit can also set a `[render]` table, `cell_px` and `feet_px`: the frame its sprites are drawn in, 160 px with the feet 40 px up
+by default. A unit whose weapon outgrows the cell (a claymore, a longbow) asks for a bigger one; its on-screen size doesn't change,
+but fewer frames fit under the sheet cap, which is what `fps` is for.
+
+Held gear is a separate recipe (spec §6.2a): a prop, art-src/props/<id>/spec.toml,
+bought as its own textured, unrigged model. A unit lists what it carries as
+`[[attach]]` tables (prop, bone, offset, rotation); the renderer fixes each
+prop to that bone of the unit's rig. Both recipe kinds expose `pose_mode`,
+which is what the Meshy preview is asked for: a unit's A-pose, or nothing for
+a prop (an A-pose is meaningless for a sword). Standard library only, because
+Blender's Python imports this file too.
+
+A recipe is checked as it loads, because its values buy things or name files:
+candidate counts and the polycount are whole numbers in range, animation names
+are plain names, and an animation takes its clip from the rig or a library
+action, never both. An audition is never a clip the game plays, a bob has a
+rate, a stride is above zero, the frame and the fps are whole numbers in range, and a trim is a range above zero with its end
+above its start. An animation table, like [render] and [[attach]], refuses a key it doesn't know. A recipe with no [candidates] table loads
+(the renderer needs no candidates) but buys nothing; one that has the table
+lists at least one candidate.
+"""
+from __future__ import annotations
+
+import math
+import re
+import tomllib
+from dataclasses import dataclass
+from pathlib import Path, PurePosixPath, PureWindowsPath
+from typing import Any
+
+PREVIEW_MODELS: dict[str, str] = {"lite": "meshy-6-lite", "full": "meshy-7.1"}
+MAX_PROMPT = 800
+MAX_CANDIDATES = 9999  # candidates are labelled cand-1 to cand-9999, the widest a model/PICK marker may hold
+POLYCOUNT_RANGE = (100, 300000)  # what Meshy's target_polycount accepts
+LOOPING = frozenset({"idle", "walk"})
+# Mirrors UnitArtBuilder.GAME_ANIMS: the clips the game plays. Anything else is an audition.
+GAME_ANIMS: frozenset[str] = frozenset({"idle", "walk", "attack", "die", "shoot", "throw", "cast", "place"})
+RIG_CLIPS = frozenset({"walk", "run"})
+STRIDE_ANIMS = frozenset({"walk", "run"})  # the clips that carry a stride_m, which the game plays the legs by
+# The sprite frame a unit renders in unless its [render] table says otherwise (render_sprites.py's CELL and FEET_PX are these).
+DEFAULT_CELL_PX = 160
+DEFAULT_FEET_PX = 40
+CELL_PX_RANGE = (128, 256)  # a bigger cell holds a longer weapon, but fits fewer frames under the 4096 px sheet cap
+CELL_PX_STEP = 8
+DEFAULT_FPS = 12
+FPS_RANGE = (4, 30)
+# What an [animations.<name>] table may set, in the order its error message lists them.
+ANIM_KEYS = ("action", "clip", "rig", "file", "impact", "audition", "bob_m", "bob_hz", "stride_m", "fps", "start", "end")
+# Unit and prop names become folder names under art-src, so they must not hold path pieces.
+NAME = re.compile(r"[a-z][a-z0-9_]{0,31}")
+FACTIONS = ("light", "dark")
+# A bone name from a rig (Blender's own, or a Mixamo-style "mixamorig:LeftForeArm"): plain characters only.
+BONE = re.compile(r"[A-Za-z0-9_.:\- ]{1,63}")
+
+
+class SpecError(Exception):
+    """A recipe is missing something or asks for something impossible."""
+
+
+@dataclass(frozen=True)
+class Style:
+    suffix: str
+    prop_suffix: str
+    palettes: dict[str, str]
+
+
+@dataclass(frozen=True)
+class AnimEntry:
+    name: str
+    file: str
+    clip: str | None
+    action_id: int | None
+    impact: float | None
+    loop: bool
+    audition: bool = False  # rendered for review only: no game sheet, no sidecar entry
+    bob_m: float = 0.0  # hover: how far the figure rises and falls (m); 0 is no bob
+    bob_hz: float = 0.0  # hover: cycles a second; above 0 whenever bob_m is
+    stride_m: float | None = None  # replaces the measured stride (m) when no foot touches the ground
+    fps: int = DEFAULT_FPS  # frames a second; the sheet holds this many per second of the clip
+    start_s: float = 0.0  # seconds from the clip's own start where the drawn part begins
+    end_s: float | None = None  # seconds from the clip's own start where it ends; None is the clip's own end
+
+
+@dataclass(frozen=True)
+class AttachEntry:
+    """One prop a unit carries: fixed to `bone` of the unit's rig, nudged by offset (m) and rotation (degrees, XYZ Euler), both in the bone's space."""
+    prop: str
+    bone: str
+    offset: tuple[float, float, float]
+    rotation: tuple[float, float, float]
+
+
+@dataclass(frozen=True)
+class UnitSpec:
+    id: str
+    faction: str
+    height_m: float
+    prompt: str
+    lite: int
+    full: int
+    polycount: int
+    die_falls_forward: bool
+    bursts_on_death: bool
+    animations: tuple[AnimEntry, ...]
+    attach: tuple[AttachEntry, ...] = ()
+    cell_px: int = DEFAULT_CELL_PX  # the side of one sprite cell
+    feet_px: int = DEFAULT_FEET_PX  # how far above the cell's bottom edge the unit's feet stand
+
+    @property
+    def pose_mode(self) -> str | None:
+        """The pose Meshy builds the preview in: an A-pose keeps the arms clear of the body for rigging."""
+        return "a-pose"
+
+    def action_ids(self) -> list[int]:
+        return sorted({a.action_id for a in self.animations if a.action_id is not None})
+
+    def full_prompt(self, style: Style) -> str:
+        return _full_prompt(self.id, self.prompt, style.palettes[self.faction], style.suffix)
+
+
+@dataclass(frozen=True)
+class PropSpec:
+    """A weapon or piece of gear bought as its own model (spec §6.2a). length_m is its length along its longest principal axis."""
+    id: str
+    faction: str
+    length_m: float
+    prompt: str
+    lite: int
+    full: int
+    polycount: int
+
+    @property
+    def pose_mode(self) -> str | None:
+        """None: a prop is previewed with no pose setting at all."""
+        return None
+
+    def full_prompt(self, style: Style) -> str:
+        return _full_prompt(self.id, self.prompt, style.palettes[self.faction], style.prop_suffix)
+
+
+def _full_prompt(recipe_id: str, prompt: str, palette: str, suffix: str) -> str:
+    text = f"{prompt}. Palette: {palette}. {suffix}"
+    if len(text) > MAX_PROMPT:
+        raise SpecError(f"{recipe_id}: the prompt is {len(text)} characters; Meshy allows {MAX_PROMPT}")
+    return text
+
+
+def load_style(path: Path) -> Style:
+    data = _read_toml(path)
+    try:
+        return Style(
+            suffix=str(data["suffix"]),
+            prop_suffix=str(data["prop_suffix"]),
+            palettes={k: str(v) for k, v in data["palettes"].items()},
+        )
+    except KeyError as missing:
+        raise SpecError(f"{path}: missing {missing}") from None
+
+
+def load_spec(path: Path) -> UnitSpec:
+    data = _read_toml(path)
+    try:
+        lite, full, polycount = _candidates(path, data, default_polycount=30000)
+        cell_px, feet_px = _frame(path, data)
+        spec = UnitSpec(
+            id=str(data["id"]),
+            faction=str(data["faction"]),
+            height_m=_length(path, "height_m", data["height_m"]),
+            prompt=str(data["prompt"]),
+            lite=lite,
+            full=full,
+            polycount=polycount,
+            die_falls_forward=bool(data.get("die_falls_forward", False)),
+            bursts_on_death=bool(data.get("bursts_on_death", False)),
+            animations=tuple(_anim(name, entry) for name, entry in data["animations"].items()),
+            attach=_attachments(path, data.get("attach", [])),
+            cell_px=cell_px,
+            feet_px=feet_px,
+        )
+    except KeyError as missing:
+        raise SpecError(f"{path}: missing {missing}") from None
+    if spec.id != path.parent.name:
+        raise SpecError(f"{path}: id {spec.id!r} does not match its folder {path.parent.name!r}")
+    if spec.faction not in FACTIONS:
+        raise SpecError(f"{path}: faction must be light or dark")
+    return spec
+
+
+def load_prop_spec(path: Path) -> PropSpec:
+    data = _read_toml(path)
+    try:
+        lite, full, polycount = _candidates(path, data, default_polycount=6000)
+        spec = PropSpec(
+            id=str(data["id"]),
+            faction=str(data["faction"]),
+            length_m=_length(path, "length_m", data["length_m"]),
+            prompt=str(data["prompt"]),
+            lite=lite,
+            full=full,
+            polycount=polycount,
+        )
+    except KeyError as missing:
+        raise SpecError(f"{path}: missing {missing}") from None
+    if spec.id != path.parent.name:
+        raise SpecError(f"{path}: id {spec.id!r} does not match its folder {path.parent.name!r}")
+    if spec.faction not in FACTIONS:
+        raise SpecError(f"{path}: faction must be light or dark")
+    return spec
+
+
+def _read_toml(path: Path) -> dict[str, Any]:
+    """The parsed file, with a bad one turned into a SpecError. tomllib's message is a position or a repr'd character, so it
+    is safe to show; the decoder's holds the offending bytes, so it is not."""
+    try:
+        return tomllib.loads(path.read_text(encoding="utf-8"))
+    except tomllib.TOMLDecodeError as error:
+        raise SpecError(f"{path}: {error}") from None
+    except UnicodeDecodeError:
+        raise SpecError(f"{path}: isn't UTF-8 text") from None
+
+
+def _candidates(path: Path, data: dict[str, Any], default_polycount: int) -> tuple[int, int, int]:
+    """lite, full and polycount from the optional [candidates] table. They decide what is bought and at what size, so they
+    are checked here. No table means nothing to buy, which the renderer's recipes rely on; a table must list a candidate."""
+    table = data.get("candidates", {})
+    if not isinstance(table, dict):
+        raise SpecError(f"{path}: candidates must be a [candidates] table")
+    lite = _whole(path, "candidates.lite", table.get("lite", 0), 0, MAX_CANDIDATES)
+    full = _whole(path, "candidates.full", table.get("full", 0), 0, MAX_CANDIDATES)
+    polycount = _whole(path, "candidates.polycount", table.get("polycount", default_polycount), *POLYCOUNT_RANGE)
+    if "candidates" in data:
+        if lite + full < 1:
+            raise SpecError(f"{path}: [candidates] needs at least one candidate (lite plus full)")
+        if lite + full > MAX_CANDIDATES:  # cand-10000 would be bought and then refused as malformed by model/PICK
+            raise SpecError(f"{path}: [candidates] lists {lite + full} candidates; at most {MAX_CANDIDATES}")
+    return lite, full, polycount
+
+
+def _frame(path: Path, data: dict[str, Any]) -> tuple[int, int]:
+    """cell_px and feet_px from the optional [render] table. They size every sheet and place the feet, so they are checked here.
+    The cell is a multiple of 8 from 128 to 256, and the feet stand in its lower half (above the bottom edge, under the middle),
+    so the figure has most of the cell above it. An unknown key is refused: a misspelt `feet_pxx` would otherwise keep the default."""
+    table = data.get("render", {})
+    if not isinstance(table, dict):
+        raise SpecError(f"{path}: render must be a [render] table")
+    unknown = sorted(set(table) - {"cell_px", "feet_px"})
+    if unknown:
+        raise SpecError(f"{path}: [render] has an unknown key {unknown[0]!r}; it takes cell_px and feet_px")
+    cell = _whole(path, "render.cell_px", table.get("cell_px", DEFAULT_CELL_PX), *CELL_PX_RANGE)
+    if cell % CELL_PX_STEP:
+        raise SpecError(f"{path}: render.cell_px must be a multiple of {CELL_PX_STEP}, not {cell}")
+    feet = _whole(path, "render.feet_px", table.get("feet_px", DEFAULT_FEET_PX), 1, cell // 2 - 1)  # under half the cell: cell is even
+    return cell, feet
+
+
+def _whole(path: Path, key: str, value: Any, low: int, high: int) -> int:
+    """A whole number from low to high. TOML `true` would pass as 1, and `2.0` or "2" would be quietly truncated or converted."""
+    if isinstance(value, bool) or not isinstance(value, int) or not low <= value <= high:
+        raise SpecError(f"{path}: {key} must be a whole number from {low} to {high}, not {str(value)[:40]!r}")
+    return value
+
+
+def _length(path: Path, key: str, value: Any) -> float:
+    """A size in metres: a finite number above zero. TOML `true` would otherwise pass as 1.0, and `nan` or `inf` would pass every comparison."""
+    try:
+        number = float(value) if not isinstance(value, bool) else None
+    except (TypeError, ValueError, OverflowError):  # OverflowError: an integer too big for a float
+        number = None
+    if number is None or not math.isfinite(number) or number <= 0:
+        raise SpecError(f"{path}: {key} must be positive and finite, not {str(value)[:40]!r}")
+    return number
+
+
+def _attachments(path: Path, entries: Any) -> tuple[AttachEntry, ...]:
+    if not isinstance(entries, list):
+        raise SpecError(f"{path}: attach must be a list of [[attach]] tables")
+    return tuple(_attach(path, number, entry) for number, entry in enumerate(entries, start=1))
+
+
+def _attach(path: Path, number: int, entry: Any) -> AttachEntry:
+    # Errors name the entry by position and prop, since a unit can carry several.
+    if not isinstance(entry, dict):
+        raise SpecError(f"{path}: attach entry {number} must be a table with prop and bone")
+    named = f" ({entry['prop']!r})" if isinstance(entry.get("prop"), str) else ""
+    where = f"{path}: attach entry {number}{named}"
+    unknown = sorted(set(entry) - {"prop", "bone", "offset", "rotation"})
+    if unknown:  # a misspelt `rotaton` would otherwise silently stay at zero
+        raise SpecError(f"{where}: unknown key {unknown[0]!r}")
+    prop, bone = entry.get("prop"), entry.get("bone")
+    if not isinstance(prop, str) or NAME.fullmatch(prop) is None:  # it becomes art-src/props/<prop>, so no path pieces
+        raise SpecError(f"{where}: prop must be lowercase letters, digits and _ (it names a folder), not {prop!r}")
+    if not isinstance(bone, str) or BONE.fullmatch(bone) is None or not bone.strip():
+        raise SpecError(f"{where}: bone must be a bone name from the unit's rig: letters, digits and _ . : - space, up to 63 characters")
+    return AttachEntry(prop=prop, bone=bone, offset=_triple(where, "offset", entry), rotation=_triple(where, "rotation", entry))
+
+
+def _triple(where: str, key: str, entry: dict[str, Any]) -> tuple[float, float, float]:
+    value = entry.get(key, [0.0, 0.0, 0.0])
+    if not isinstance(value, list) or len(value) != 3 or not all(_is_number(v) for v in value):
+        raise SpecError(f"{where}: {key} must be exactly 3 numbers")
+    return (float(value[0]), float(value[1]), float(value[2]))
+
+
+def _is_number(value: Any) -> bool:
+    """A finite int or float. isfinite() raises OverflowError for an integer too big for a float, which is just as unusable."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return False
+    try:
+        return math.isfinite(value)
+    except OverflowError:
+        return False
+
+
+def _relative_file(name: str, file: Any) -> str:
+    """An animation's GLB, relative to the unit's folder. The renderer opens unit_dir / file, so an absolute path or a `..`
+    would let a recipe read any file on the machine."""
+    ok = isinstance(file, str) and bool(file) and "\0" not in file and "\\" not in file
+    if ok:
+        posix, windows = PurePosixPath(file), PureWindowsPath(file)
+        ok = not posix.is_absolute() and ".." not in posix.parts and not windows.drive
+    if not ok:
+        raise SpecError(f"animation {name}: file must be a relative path inside the unit's folder, with no '..', not {str(file)[:40]!r}")
+    return file
+
+
+def animation_file(unit_dir: Path, entry: AnimEntry) -> Path:
+    """Where an animation's GLB is. The recipe's path is relative (checked on load), but a symlink inside the folder could
+    still lead out of it, so the renderer opens only what resolves inside unit_dir."""
+    path = unit_dir / entry.file
+    if not path.resolve().is_relative_to(unit_dir.resolve()):
+        raise SpecError(f"animation {entry.name}: file {entry.file[:40]!r} resolves outside {unit_dir.name}/ (a symlink?)")
+    return path
+
+
+def _anim(name: str, entry: dict[str, Any]) -> AnimEntry:
+    # The name becomes output paths in render_sprites (a sheet, its .import and a review gif), so no path pieces.
+    if NAME.fullmatch(name) is None:
+        raise SpecError(f"animation name {name[:40]!r} must be lowercase letters, digits and _ (it names output files), "
+                        "starting with a letter, at most 32 characters")
+    unknown = sorted(set(entry) - set(ANIM_KEYS))
+    if unknown:  # a misspelt `ned = 5.0` would otherwise draw the whole clip
+        raise SpecError(f"animation {name}: unknown key {unknown[0]!r}; an animation takes {', '.join(ANIM_KEYS[:-1])} and {ANIM_KEYS[-1]}")
+    rig = entry.get("rig")
+    action = entry.get("action")
+    file = entry.get("file")
+    if file is not None:
+        file = _relative_file(name, file)
+    if rig is not None and action is not None:  # action_id would be bought for a clip no file uses
+        raise SpecError(f"animation {name}: set rig or action, not both")
+    if rig is not None:
+        if rig not in RIG_CLIPS:
+            raise SpecError(f"animation {name}: rig must be walk or run, not {rig!r}")
+        file = file or f"anims/rig_{rig}.glb"
+    elif action is not None:
+        file = file or "anims/actions.glb"
+        if not entry.get("clip"):
+            raise SpecError(f"animation {name}: an action needs its clip name (the Meshy library name)")
+    elif file is None:
+        raise SpecError(f"animation {name}: needs action, rig or file")
+    impact = entry.get("impact")
+    if impact is not None and not 0.0 <= float(impact) <= 1.0:
+        raise SpecError(f"animation {name}: impact is a fraction of the clip, 0..1")
+    audition = entry.get("audition", False)
+    if not isinstance(audition, bool):
+        raise SpecError(f"animation {name}: audition is true or false")
+    if audition and name in GAME_ANIMS:
+        raise SpecError(f"animation {name}: a clip the game plays can't be an audition")
+    bob_m = _non_negative(name, "bob_m", entry.get("bob_m", 0.0))
+    bob_hz = _non_negative(name, "bob_hz", entry.get("bob_hz", 0.0))
+    if bob_m > 0 and bob_hz <= 0:
+        raise SpecError(f"animation {name}: a bob needs bob_hz > 0")
+    stride_m = entry.get("stride_m")
+    if stride_m is not None:
+        if not _is_number(stride_m) or stride_m <= 0:
+            raise SpecError(f"animation {name}: stride_m must be a finite number above 0, not {str(stride_m)[:40]!r}")
+        stride_m = float(stride_m)
+        if name not in STRIDE_ANIMS:  # the renderer would ignore it and the game would play the legs at zero speed
+            raise SpecError(f"animation {name}: stride_m belongs to a walk or run clip; {name} has no stride to replace")
+    fps = entry.get("fps", DEFAULT_FPS)
+    if isinstance(fps, bool) or not isinstance(fps, int) or not FPS_RANGE[0] <= fps <= FPS_RANGE[1]:
+        raise SpecError(f"animation {name}: fps must be a whole number from {FPS_RANGE[0]} to {FPS_RANGE[1]}, not {str(fps)[:40]!r}")
+    start_s, end_s = _trim(name, entry, is_rig=rig is not None)
+    return AnimEntry(
+        name=name,
+        file=str(file),
+        clip=entry.get("clip"),
+        action_id=int(action) if action is not None else None,
+        impact=float(impact) if impact is not None else None,
+        loop=name in LOOPING,
+        audition=audition,
+        bob_m=bob_m,
+        bob_hz=bob_hz,
+        stride_m=stride_m,
+        fps=fps,
+        start_s=start_s,
+        end_s=end_s,
+    )
+
+
+def _trim(name: str, entry: dict[str, Any], is_rig: bool) -> tuple[float, float | None]:
+    """(start_s, end_s) from an animation's optional start and end: seconds from the clip's own start, 0 or more, with the end
+    above the start (an end alone is measured from 0, so it is above 0 too). Whether they reach past the clip's length is
+    the renderer's to say, since only it has the clip. A looping or rig clip takes neither (cutting a loop breaks its seam), nor
+    does a clip with a stride (walk, run), because a stride is measured over a whole cycle."""
+    start = _non_negative(name, "start", entry["start"]) if "start" in entry else None
+    end = _non_negative(name, "end", entry["end"]) if "end" in entry else None
+    if start is None and end is None:
+        return 0.0, None
+    key = "start" if start is not None else "end"
+    if is_rig:
+        raise SpecError(f"animation {name}: {key} cuts a clip, and a rig clip is a loop; a cut loop has no seam")
+    if name in LOOPING:
+        raise SpecError(f"animation {name}: {key} cuts a clip, and {name} loops; a cut loop has no seam")
+    if name in STRIDE_ANIMS:  # walk is caught above; this is a run from an action or a file
+        raise SpecError(f"animation {name}: {key} cuts a clip, but {name} has a stride, which is measured over a whole cycle")
+    if end is not None and end <= (start or 0.0):
+        raise SpecError(f"animation {name}: end must be above start ({start or 0.0:g} s), not {end:g} s")
+    return start or 0.0, end
+
+
+def _non_negative(name: str, key: str, value: Any) -> float:
+    """A finite number of 0 or more. TOML `true` would pass as 1, and `nan` would pass every comparison."""
+    if not _is_number(value) or value < 0:
+        raise SpecError(f"animation {name}: {key} must be a finite number, 0 or more, not {str(value)[:40]!r}")
+    return float(value)

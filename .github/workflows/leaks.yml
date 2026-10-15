@@ -1,0 +1,25 @@
+# The same leak scan as scripts/hooks/pre-commit, on every push and PR, so a
+# commit made with --no-verify is still caught. gitleaks is pinned and its
+# checksum verified.
+name: leaks
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  gitleaks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install gitleaks 8.30.1
+        run: |
+          base=https://github.com/gitleaks/gitleaks/releases/download/v8.30.1
+          curl -sSfLO "$base/gitleaks_8.30.1_linux_x64.tar.gz"
+          curl -sSfLO "$base/gitleaks_8.30.1_checksums.txt"
+          sha256sum --check --ignore-missing gitleaks_8.30.1_checksums.txt
+          tar -xzf gitleaks_8.30.1_linux_x64.tar.gz gitleaks
+      - name: Scan history
+        run: ./gitleaks git . --config .gitleaks.toml --redact --no-banner -v

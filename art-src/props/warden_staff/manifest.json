@@ -1,0 +1,44 @@
+{
+  "tasks": [
+    {
+      "ai_model": "meshy-6-lite",
+      "created_at": 1791838618,
+      "credits": 5,
+      "files": [
+        "candidates/cand-1.glb"
+      ],
+      "finished_at": 1791838643695,
+      "kind": "preview",
+      "label": "cand-1",
+      "prompt": "Gnarled wooden walking staff of rowan wood, knotted head wrapped in leather and tied with sprigs of heather, iron ferrule at the foot. Palette: warm tartan reds and greens, steel, woad blue. Stylized fantasy strategy-game prop, chunky readable shape, hand-painted textures, muted earthy palette, single object on its own, no hands or figure, centered, plain background",
+      "status": "SUCCEEDED",
+      "task_id": "01a131e7-825a-728d-aad8-9a82aa8a6f58"
+    },
+    {
+      "ai_model": "meshy-6-lite",
+      "created_at": 1791838646,
+      "credits": 5,
+      "files": [
+        "candidates/cand-2.glb"
+      ],
+      "finished_at": 1791838665285,
+      "kind": "preview",
+      "label": "cand-2",
+      "prompt": "Gnarled wooden walking staff of rowan wood, knotted head wrapped in leather and tied with sprigs of heather, iron ferrule at the foot. Palette: warm tartan reds and greens, steel, woad blue. Stylized fantasy strategy-game prop, chunky readable shape, hand-painted textures, muted earthy palette, single object on its own, no hands or figure, centered, plain background",
+      "status": "SUCCEEDED",
+      "task_id": "01a131e7-f0d7-77bf-a8a4-b399ec08c6d7"
+    },
+    {
+      "created_at": 1791848083,
+      "credits": 10,
+      "files": [
+        "model/textured.glb"
+      ],
+      "finished_at": 1791848126518,
+      "kind": "refine",
+      "label": "cand-2",
+      "status": "SUCCEEDED",
+      "task_id": "01a13277-f1a8-7472-8107-e2b290dfb6e0"
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+# The Drifter's bow (spec §6.2a, §11).
+id = "drifter_bow"
+faction = "dark"
+length_m = 1.3
+prompt = "Dark recurve bow of warped black wood bound with pale sinew, tattered cloth wrapped at the grip, frayed bowstring"
+
+[candidates]
+lite = 2
+full = 0
+polycount = 6000

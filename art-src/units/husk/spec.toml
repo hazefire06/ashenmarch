@@ -1,0 +1,38 @@
+# The Husk's art recipe (spec §5, §11). Base undead melee.
+id = "husk"
+faction = "dark"
+height_m = 1.75
+# Eight candidates came out as bare skeletons, whose bone limbs draw 1-2 px wide: first with skin "shrunken over bones",
+# then as a "mummified" "undead corpse", both with "bone white" in the dark palette. This asks for a zombie's flesh.
+prompt = "Shambling bog zombie with leathery dark brown bog-tanned skin covering a whole fleshy body, gaunt but muscled arms and legs, hollow cheeks, matted hair, wrapped in rotted peat-stained cloth and sacking, torn rags, bare feet, clawed hands open and empty, holding nothing"
+die_falls_forward = false
+
+# Knocked down, he drops 41 px below the feet and flings 110 px above them, past the default frame. The
+# default 160 px frame with the feet 46 px up fits both; a bigger frame would cut his 48-frame idle (spec §11).
+[render]
+cell_px = 160
+feet_px = 46
+
+# cand-1 to cand-8 were skeletons from the first two prompts (2026-10-12); cand-9 to cand-12 are the zombie.
+# The manifest keeps each one's prompt.
+[candidates]
+lite = 12
+full = 0
+polycount = 30000
+
+[animations.idle]
+action = 0
+clip = "Idle"
+
+[animations.walk]
+action = 123
+clip = "Unsteady_Walk"
+
+[animations.attack]
+action = 198
+clip = "Punch_Combo"
+impact = 0.4
+
+[animations.die]
+action = 187
+clip = "Knock_Down"

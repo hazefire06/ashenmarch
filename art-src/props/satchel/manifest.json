@@ -1,0 +1,44 @@
+{
+  "tasks": [
+    {
+      "ai_model": "meshy-6-lite",
+      "created_at": 1791838557,
+      "credits": 5,
+      "files": [
+        "candidates/cand-1.glb"
+      ],
+      "finished_at": 1791838586605,
+      "kind": "preview",
+      "label": "cand-1",
+      "prompt": "Leather satchel bag bulging with corked glass bottles, brass buckle, short shoulder strap, worn and singed leather. Palette: warm tartan reds and greens, steel, woad blue. Stylized fantasy strategy-game prop, chunky readable shape, hand-painted textures, muted earthy palette, single object on its own, no hands or figure, centered, plain background",
+      "status": "SUCCEEDED",
+      "task_id": "01a131e6-9450-73a4-9242-18d98c477a5c"
+    },
+    {
+      "ai_model": "meshy-6-lite",
+      "created_at": 1791838590,
+      "credits": 5,
+      "files": [
+        "candidates/cand-2.glb"
+      ],
+      "finished_at": 1791838615531,
+      "kind": "preview",
+      "label": "cand-2",
+      "prompt": "Leather satchel bag bulging with corked glass bottles, brass buckle, short shoulder strap, worn and singed leather. Palette: warm tartan reds and greens, steel, woad blue. Stylized fantasy strategy-game prop, chunky readable shape, hand-painted textures, muted earthy palette, single object on its own, no hands or figure, centered, plain background",
+      "status": "SUCCEEDED",
+      "task_id": "01a131e7-18bc-777f-8ae7-9db482678ba3"
+    },
+    {
+      "created_at": 1791848046,
+      "credits": 10,
+      "files": [
+        "model/textured.glb"
+      ],
+      "finished_at": 1791848082436,
+      "kind": "refine",
+      "label": "cand-2",
+      "status": "SUCCEEDED",
+      "task_id": "01a13277-5fee-73f6-9009-0c3d691484f3"
+    }
+  ]
+}

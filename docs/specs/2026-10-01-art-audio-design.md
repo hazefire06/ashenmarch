@@ -1,0 +1,512 @@
+# Art and audio track: design
+
+Status: approved. A0 and A1 implemented (2026-10-07); A3 implemented (2026-10-14); A2 planned. Drafted 2026-10-01 and decided with Tim in one brainstorming session, section by section.
+
+## 1. Goal
+
+Replace the placeholder quads with pre-rendered 8-direction animated sprites. Add sound effects for every action, voiced barks for the player's units, ambience, and music. Run this as a parallel track that never blocks or conflicts with the numbered phases (Phase 7 AI is in progress).
+
+Success looks like this:
+
+- Every v1 unit is drawn from art: walking, attacking, and dying in 8 directions, correct under the orbiting camera at every zoom.
+- A unit with no art still works and looks exactly as it does today. The placeholder pipeline stays.
+- Every combat, projectile, and UI event has a sound. The light side talks, and the battlefield has weather, fire, and music.
+- `sim/` is untouched. Determinism, the sim purity check, and every existing test are unaffected.
+
+### Non-goals (deferred)
+
+| Item | Waits for |
+|---|---|
+| Map and environment art: terrain textures, village, mill, gate, props | Phase 8, when The Ford and Old Mill exist |
+| Music per mission, chosen by mission data | Phase 8 mission format |
+| Volume sliders | Phase 10 settings |
+| Checking Web audio and export size | Phase 10 |
+| Roster expansion units | After v1 |
+
+## 2. Decisions
+
+| Decision | Why |
+|---|---|
+| **Pre-rendered 3D sprites, not pixel art** | The camera zooms freely and pitches 35°–65°, so pixel art shimmers at non-integer scales. Pre-rendered sprites scale cleanly with mipmaps, and any unit can be re-rendered (new angle, resolution, lighting) by rerunning a script. |
+| **Hybrid generation**: scripted APIs, with Tim choosing by eye | Volume work is scripted and reproducible. The judgment calls (which model, which take) stay human. |
+| **Meshy API** for models, rigging and animation; **Blender** (headless) for rendering | Meshy's API covers generation, auto-rigging, and an animation library of 697 presets. Blender guarantees that all 8 directions match, because they are one model rotated. |
+| **ElevenLabs API** for SFX and voices. **Music is auditioned on Suno and ElevenLabs Music**, and Tim picks by ear. | ElevenLabs covers SFX and voices from one account (90k credits). Suno is well suited to full songs; it has no official public API, so Tim uses it by hand on suno.com. Udio is out: its downloads have been disabled since 2025-10-29. |
+| **The whole light side is one Scots clan** (working name *Clan Cairnbrae*) | Tim's call: a brawling, boastful clan with funny war cries. All names and lines are original, with no Discworld names, lines, or characters (see §8.4). |
+| **Art data lives apart from `UnitType`** (`data/art/`, `data/audio/`) | Phase 7 is editing `unit_type.gd` and `data/units/`. Keeping art out of them means no conflicts and no sim changes. |
+| **Only owned or CC0 sources** | The repo is public. Sonniss is out: its license v2.0 (2026-08-27) bans supplying its sounds "as sound effects to any other person… modified or re-designed". Paid Meshy output is "customer owned". |
+
+## 3. Structure and isolation
+
+**Worktree.** The track lives in `../ashenmarch-art`, a git worktree beside the main checkout. Run `godot --headless --import` once in it before testing (see the fresh-clone note in `architecture.md`).
+
+**Branches.** These follow the phase rules: plan, GUT tests, PR, squash-merge.
+
+| Branch | Contents | Gate before merge |
+|---|---|---|
+| `feature/PHASE-A0-art-audio-design` | This spec. The A-track in `docs/prompts.md`. Replace CLAUDE.md's "Do not spend time on art until told to" with a pointer to this spec. `.gitattributes` (LFS), `assets/LICENSES.md`, `.gitignore` additions, gitleaks hook and workflow. | Tim approves this spec |
+| `feature/PHASE-A1-unit-sprites` | Meshy script, Blender render script, `UnitArt`, sprite integration. Shieldman only. | **Tim approves the Shieldman contact sheet before any Godot code is written**, then reviews in-engine |
+| `feature/PHASE-A2-audio` | Generation and processing scripts, sound bank, `AudioDirector`, ambience, barks, the Shieldman's voice, one music loop | Tim listens to a test build |
+| `feature/PHASE-A3-roster` | The other 9 units' art (voices moved to A2 on 2026-10-08), plus the small pipeline changes the roster needs (§11). | A contact sheet per unit |
+
+On 2026-10-07 Tim folded A0 into the A1 PR: `feature/PHASE-A1-unit-sprites` carries both, and A0's own PR (#10) closes in its favour.
+
+**What the track may touch:**
+- `view/units/unit_sprite.gd` and `view/units/units_view.gd`
+- new files under `view/units/` and `view/audio/`
+- one line in `view/main.gd` to add the audio node
+- `view/units/selection_controller.gd`, for an order-given signal for barks
+- `data/art/` and `data/audio/`
+- `assets/units/` and `assets/audio/`
+- `art-src/` and `audio-src/`
+- `scripts/art/` and `scripts/audio/`
+- `tests/view/`
+- docs
+
+**Never touched:** `sim/`, `data/units/`, `sim/units/unit_type.gd`. The unused `UnitType.sprite` field stays until both tracks have merged; removing it touches sim code. Conflicts expected with Phase 7: `view/main.gd` at most. Whichever branch merges second rebases.
+
+## 4. Repository hygiene and secrets
+
+- **LFS covers `assets/` and `art-src/` and `audio-src/` only.** `maps/*.png` stays plain git: the sim decodes those PNGs itself, and a clone without LFS would break the tests. Since A1 the tests need LFS anyway: `data/art/shieldman.tres` loads the Shieldman's sheets from `assets/`, so without LFS `make test` fails in `test_main_view` and the art tests, and the game draws placeholders. Install git-lfs before cloning, or run `git lfs install && git lfs pull`. GitHub Free includes 10 GiB of LFS storage and 10 GiB of bandwidth per month. Note that LFS downloads by forks of a public repo count against the owner's bandwidth.
+- **`art-src/` and `audio-src/` each get a `.gdignore`.** Without one, Godot would try to import the FBX, GLB, .blend, and raw audio files in them.
+- **`assets/LICENSES.md`** lists every shipped asset: file, source (Meshy, ElevenLabs, Kenney CC0, self-made), date, and the prompt file or task id that made it.
+- **Keys** live in `~/.config/ashenmarch/secrets.env` (folder 700, file 600, outside every repo), as `MESHY_API_KEY` and `ELEVENLABS_API_KEY`.
+  - Scripts read the file themselves and refuse to run if its permissions are wider than 600. There is no fallback.
+  - Claude is denied reading that folder by user-level rules `Read(~/.config/ashenmarch/**)` and `Bash(*.config/ashenmarch*)`. These were added 2026-10-01 and the Bash rule was verified to block.
+- **The real limit on spending is on each vendor's side, as a dedicated `ashenmarch` key per vendor:**
+  - Meshy: a monthly credit limit, 150 during the Shieldman test and about 700 for the roster.
+  - ElevenLabs: a credit quota, and the key restricted to the sound-effects, music, text-to-speech, and voice-design endpoints.
+  - Local guards (`plan` dry runs, `--max-credits`, resumable manifests) prevent mistakes. They are not a security control, because Claude writes and runs these scripts.
+- **Tim runs every paid command** in Terminal.app. Claude runs the free steps: dry runs, Blender, ffmpeg, Godot builders, tests.
+- **Scripts use the Python standard library only** (`urllib.request`). No third-party packages.
+- **Manifests keep allowlisted fields only:** task id, prompt, status, credits, timestamps, local paths. Raw API responses and signed URLs (including tokens in URL paths) are never written.
+- **Leak backstops:**
+  - a gitleaks pre-commit hook with custom rules for `msy_…` and ElevenLabs keys;
+  - a gitleaks GitHub Action, since `--no-verify` skips local hooks;
+  - GitHub secret scanning and push protection, turned on by Tim (free for public repos).
+- **`.gitignore` adds** `.env`, `.env.*`, and `.claude/`.
+
+## 5. Art direction
+
+**Look.**
+- Stylized, chunky proportions with hand-painted textures and strong silhouettes that read at about 100 px tall.
+- Muted, earthy palette. The light side is warm: tartan reds and greens, steel, woad blue. The dark side is cold: bog brown, ashen grey, a sickly green glow. (It said bone at first; with undead prompts that pulled Meshy to bare skeletons.)
+- One shared style prompt in `art-src/style.toml` is appended to every unit's prompt, so all ten look like one game.
+
+**Light side: Clan Cairnbrae** (working name, easy to change):
+
+| Unit | Look | Voice and personality |
+|---|---|---|
+| Shieldman | Kilt, round targe, basket-hilted broadsword, blue woad, wild ginger beard, bonnet | Boastful brawler. Gruff and loud; two voices, older and younger |
+| Reaver | Bare-chested berserker with a two-handed claymore and a wild mane (a nod to the Border reivers) | Few words, lots of roaring, manic glee |
+| Longbow | Hooded plaid, longbow, quiver; the clan's gamekeeper and poacher | Dry, laconic, deadpan |
+| Sapper | A dwarf, a head shorter than the humans: satchel of clinking bottles, singed eyebrows, short braided beard, leather apron; the clan's tinkerer | Excitable, proud of his "brews" and bangs. Slow, like the unit |
+| Warden | Herb-wife with a staff and herb pouch | Stern, motherly, scolds the lads. A woman's voice |
+
+**Dark side** (original designs, no voices; non-verbal sounds only):
+
+| Unit | Look |
+|---|---|
+| Husk | Shambling corpse in rotted peat-bog wrappings |
+| Ripper | Gaunt, long-clawed ghoul, hunched and fast |
+| Blightbag | Bloated corpse with swollen green gas sacs |
+| Drifter | Hooded spectre in trailing robes, bow in hand; the robes reach the ankles and the feet show at the hem |
+| Stormcaller | Gaunt caster with a crackling, lightning-scarred staff |
+
+## 6. Sprite pipeline (offline)
+
+### 6.1 Meshy: `scripts/art/meshy.py`
+
+```
+art-src/style.toml                shared style prompt and palette notes
+art-src/units/<id>/spec.toml      prompt, height_m, candidate count and tier, animation ids
+art-src/units/<id>/manifest.json  allowlisted fields only; reruns check existing tasks, never re-buy
+art-src/units/<id>/               downloaded GLB/FBX and candidate thumbnails (LFS)
+```
+
+| Command | Paid | What it does |
+|---|---|---|
+| `plan <id>` | no | Prints the tasks it would run and their credit cost |
+| `candidates <id>` | yes | Text-to-3D previews: mesh only, A-pose, remeshed to about 20–30k triangles. Downloads each candidate's mesh; `make art-candidates` (free, Blender) renders them from the back, left, front and right, at the game camera's angle and true scale, into a candidate sheet. |
+| `build <id> --pick N` | yes | Texture (2K), rig (`height_meters` from the unit's height), animate (one request, up to 10 actions). Downloads everything at once, because Meshy links expire after about 3 days. |
+
+**Guards** (hardened 2026-10-08, before the A3 buys). Every command refuses a symlink anywhere under the unit's or prop's folder, or at `art-src` and `style.toml`, before it reads the recipe or manifest. `build` refuses a recipe with more than 10 animation actions before it buys anything. A recipe is validated as it loads: candidate counts, polycount range, animation names, and rig or action but not both. `plan` and `prop-plan` print a `pending:` line for each task that was created but never finished; one that can never finish needs a check on meshy.ai and a deleted manifest entry.
+
+**Credits, from Meshy's API pricing:**
+- Preview: 20 on `meshy-7.1`, 5 on `meshy-6-lite`.
+- Texture: 10. Rig: 5, including basic walk and run. Animation: 3 per action. Custom text-to-motion: 10.
+- The Shieldman test (2 lite and 2 `meshy-7.1` candidates) costs about 77. A full roster on lite costs about 600.
+- Tim has 1,000 API credits.
+
+**Rigging constraints** (from Meshy's docs):
+- Only textured humanoids with clearly defined limbs can be rigged. The model must face +Z and have at most 300k faces.
+- The Drifter is designed as a robed humanoid. It has no hover preset, so it gets a procedural bob in Blender, or a 10-credit text-to-motion clip.
+- The Blightbag may fail to rig because of its shape. The fallback is rigging in Mixamo (free with an Adobe ID).
+
+**Initial animation picks** (Meshy library ids, final choices made from the contact sheet; the shipped ones are in §11):
+
+| Unit | Idle | Move | Attack / ranged | Special | Die |
+|---|---|---|---|---|---|
+| Shieldman | 89 Combat_Stance | rig walk | 219 Right_Hand_Sword_Slash (alt 97) | — | 189 dying_backwards |
+| Reaver | 89 | rig run | 237 Charged_Axe_Chop (alt 128) | — | 183 Shot_and_Fall_Backward |
+| Longbow | 0 Idle | rig walk | 224 Archery_Shot; melee 97 Left_Slash | fire arrow reuses 224 | 184 Shot_and_Fall_Forward |
+| Sapper | 0 | rig walk, slowed | 421 Over_Shoulder_Throw (alt 239) | place satchel: 274 | 8 Dead |
+| Warden | 0 | rig walk | 219 | heal: 129 mage spell cast | 189 |
+| Husk | 0 | 123 Unsteady_Walk (alt 119) | 198 Punch_Combo | idle variant: 386 Zombie_Scream | 187 Knock_Down |
+| Ripper | 0 | 16 RunFast | 192 jab | pick up 276, throw 421 | 182 Shot_and_Blown_Back |
+| Blightbag | 0 | 119 Slow_Orc_Walk | wind-up: 255 Angry_Ground_Stomp | — | none: it bursts into gibs |
+| Drifter | 0 plus bob | bob, legs hidden | 224 | — | 8 |
+| Stormcaller | 0 | rig walk | 131 mage spell cast | — | 181 Electrocuted_Fall |
+
+### 6.2 Blender: `scripts/art/render_sprites.py`
+
+This runs headless in Blender 5.2.2 LTS (`/Applications/Blender.app/Contents/MacOS/Blender`, overridable with `$BLENDER`). It is free, and Claude runs it.
+
+- **Camera:** orthographic at a fixed 50° elevation (the middle of the in-game 35–65°), 8 yaw angles 45° apart, feet pinned to a fixed pivot, 40 px above the cell's bottom edge by default (see Frames), 52 px per metre.
+- **Lighting is fixed relative to the camera,** so every direction reads the same.
+- **Root motion is stripped** so characters animate in place. Walk stride (metres per cycle) is measured and saved. A clip that already plays in place (its root travels under 5 cm, like Meshy's rig walk) is measured from the feet instead: the planted foot slides backward at ground speed.
+- **Frames:** 12 fps by default (an animation's `fps` key, 4 to 30, sets its own), 160 px cells with a 4 px transparent gap (a 168 px stride) so mipmaps don't bleed between frames. A unit whose weapon outgrows the cell sets `[render] cell_px` (a multiple of 8, 128 to 256) and `feet_px` (above 0, under half the cell); the scale stays 52 px per metre, and the sidecar's `cell`, `stride` and `feet_px` carry the frame. At 128 px with the feet 20 px up, the first Shieldman render clipped dying and attacking frames at the bottom, and props raised overhead need room too.
+- **Output:**
+  - one PNG sheet per animation into `assets/units/<id>/`, one band of rows per direction. Sheets wrap at 4096 px wide, since Web (WebGL) may cap textures there: 24 columns at the default cell, so frame `i` of direction `d` sits at column `i % columns`, row `d * rows_per_direction + i // columns`;
+  - a JSON sidecar with frame counts, fps, impact frame, stride, `columns` and `rows_per_direction` per animation, `figure_height_m` (the drawn body's height above the feet in idle, props excluded: the renderer writes it, `UnitArt` carries it and `UnitSprite` reads it for picking and overlays), and gib colour;
+  - the **contact sheet** for Tim's approval.
+
+### 6.2a Props: weapons and gear on bones
+
+Added 2026-10-06 after the Shieldman candidates. All four came back empty-handed: an A-pose leaves nothing in the hands. Held gear is therefore separate. Each prop is its own Meshy model, textured but not rigged, fixed rigidly to one bone of the unit's rig when the sprites are rendered. A prop that bends with the hand would look wrong anyway, and other units reuse the same props mechanism (Reaver's claymore, Longbow's bow, Warden's staff, Stormcaller's staff).
+
+```
+art-src/props/<id>/spec.toml      prompt, length_m (length along its longest principal axis), candidate count and tier, polycount
+art-src/props/<id>/manifest.json  same rules as a unit manifest
+art-src/props/<id>/candidates/    cand-N.glb (LFS)
+art-src/props/<id>/model/         textured.glb (LFS)
+```
+
+| Command | Paid | What it does |
+|---|---|---|
+| `prop-candidates <id>` | yes | Text-to-3D previews with no pose setting, mesh only. `make art-prop-candidates PROP=<id>` (free) renders them side by side. |
+| `prop-build <id> --pick N` | yes | Texture (2K) only, no rig. 10 credits. |
+
+A unit's `spec.toml` lists what it carries:
+
+```toml
+[[attach]]
+prop = "broadsword"
+bone = "<bone name from the unit's rigged.glb>"
+offset = [0.0, 0.0, 0.0]     # metres, in the bone's space
+rotation = [0.0, 0.0, 0.0]   # degrees, XYZ Euler, in the bone's space
+```
+
+- **Blender:** imports each prop's `textured.glb`, scales it so its length along its longest principal axis is `length_m` (a model can come out lying diagonally in its own frame, where its bounding box is shorter than it is), and centres it on its bounding box. It then parents the prop to the bone, applies `offset` and `rotation`, and renders it with the body in every animation and direction.
+- **Tuning:** `make art-attach UNIT=<id>` (free, `render_sprites.py <id> --attach`) writes `art-src/units/<id>/review/attach.png`: directions 0, 2, 4 and 6 across; idle, then each attack at its impact frame, down; twice the game cell's pixels per metre. It prints the rig's bone names. Offsets start from the bone's head, in the bone's axes, so Claude tunes them by eye on this sheet before the full render.
+- **Shieldman:**
+  - broadsword in the right hand;
+  - targe strapped to the left forearm;
+  - bonnet on the head, optional.
+- **Credits:** two lite candidates plus one texture pass is 20 per prop. Sword and targe come to 40, which puts the Shieldman at about 117 in total, or 132 with a single-candidate bonnet. That's under the key's 150-a-month cap.
+
+### 6.3 Godot builder: `scripts/art/build_unit_art.gd`
+
+Run headless. It turns the sheets and sidecar into `data/art/<id>.tres` and rewrites `data/art/catalog.tres`. The catalog is an explicit list, like the unit catalog. These files are generated and never edited by hand.
+
+## 7. Sprites in game
+
+### 7.1 Data
+
+`UnitArt` (`view/units/unit_art.gd`, a Resource, view-only) holds:
+- `unit_id` (matches `UnitType.id`);
+- `frames: SpriteFrames` with animations named `<anim>_<dir>`, dir 0–7. `idle` and `walk` are required, and so is at least one strike clip (`attack`, `shoot`, `throw` or `cast`): a unit with no melee needs no `attack`. `die` is required unless `bursts_on_death` is set (the Blightbag, whose body becomes gibs). `place` is optional;
+- the impact frame of each attack-type animation;
+- `stride_m`, `pixels_per_meter`, `cell_px`, `feet_px` (together these give the sprite's scale and its pivot at the feet; the render's 160 px cell with the feet 40 px up is the default), `gib_color`, `die_falls_forward`;
+- `figure_height_m`: the drawn body's height in metres, 0 if the render didn't record it; picking and the overlays use it;
+- `validate()`: the required animations are present (idle, walk, a strike clip, and die unless the art bursts), every animation has all 8 directions, impact frames are in range, every strike or act clip has one, and `figure_height_m` is not negative.
+
+`UnitArtBuilder` (`scripts/art/unit_art_builder.gd`) reads `cell`, `feet_px`, `columns` and `rows_per_direction` from the sidecar. Frame `i` of direction `d` is at column `i % columns`, row `d * rows_per_direction + i // columns`, so long animations wrap under 4096 px (the keys default to the frame count and 1).
+
+### 7.2 Body
+
+`UnitSprite` keeps every overlay as it is: ring, name label, HP bar, status tag, notices. Only the body changes.
+
+- **Choosing the body:** at setup, the unit's id is looked up in the art catalog. If it's found, the body is an `AnimatedSprite3D` billboard. If not, it's today's placeholder quad, with that code unchanged.
+- **Fallbacks:** a missing optional animation falls back to `attack`, then `idle`.
+- **Debug key:** one key forces every unit back to placeholders.
+- **Facing tick:** art units hide the tick on the ground, because the art shows facing.
+- **Rendering:**
+  - alpha-cutout edges, so overlapping sprites sort correctly;
+  - linear filtering with mipmaps;
+  - one draw call per unit, enough for Phase 10's 100-unit target. Batching with MultiMesh only if profiling says so.
+
+### 7.3 Direction
+
+Every frame: `posmod(round((facing_angle − camera_yaw) / 45°), 8)`, as a pure static function. The camera orbits continuously, so this runs in `_process`. Hysteresis gets added only if the Shieldman test shows flicker.
+
+### 7.4 Animation from sim state
+
+The view reads the sim after every tick and never writes to it.
+
+| Sim | Animation |
+|---|---|
+| `MOVING` | `walk`, speed scale = interpolated ground speed × walk cycle seconds ÷ `stride_m`, so wading and slopes slow the legs |
+| `IDLE`, or cooldown between blows | `idle` |
+| `windup_left` 0 → N (melee, with the `SWING` event) | `attack`, time-stretched so the impact frame lands on the tick the blow lands |
+| `aim_left` 0 → N (ranged) | `shoot` / `throw` / `cast`; the release frame lands on the `LAUNCH` tick |
+| `act_left` 0 → N (heal, pick up, strike) | `cast` / `place` |
+| paralyzed | the current frame freezes (`speed_scale = 0`) |
+| `DEAD` | `die` once, facing the source of the killing blow so the body falls away from it; the last frame stays as the corpse |
+
+Timing is recomputed from sim numbers every time, so rebalancing wind-ups and veterancy attack-rate bonuses never desync it.
+
+- **Flashes and status tints** use the sprite's `modulate`. Modulate only darkens, so an art body flashes `ART_HIT_TINT` (a red that cuts green and blue) for a hit instead of today's near-white, and dims to `ART_DEAD_TINT` when dead. Block, heal and status tints keep today's colours.
+- **Gibs** use `gib_color`.
+- **Corpses:** an art corpse stays a billboard, not a quad laid flat. Picking a corpse uses its footprint on the ground.
+
+### 7.5 Tests (GUT, `tests/view/`)
+
+- Direction picking: all 8 sectors, camera yaw offsets, wrap-around.
+- State-to-animation mapping, including fallbacks.
+- Impact-frame time-stretch: the impact frame lands on the blow tick for several wind-up lengths.
+- A missing catalog entry gives a placeholder body; existing placeholder tests pass unchanged.
+- `UnitArt.validate()` catches a missing direction, an out-of-range impact frame, a missing `die` on a unit that doesn't burst, an art set with no strike clip, and a strike or act clip with no impact frame.
+
+## 8. Audio
+
+### 8.1 Offline pipeline
+
+```
+audio-src/cues.toml            every sound: id, prompt, duration_s, loop, variants (default 3), bus, max_voices, category
+audio-src/voices/<unit>.toml   bark lines by trigger, plus the voice description for Voice Design
+audio-src/manifest.json        allowlisted fields only; reruns never re-buy
+audio-src/raw/                 downloaded originals (LFS)
+audio-src/music/inbox/         music Tim downloads from Suno (LFS)
+scripts/audio/generate.py      plan (free) | sfx | voices | music   (paid; Tim runs these in Terminal.app)
+scripts/audio/process.py       ffmpeg (free; Claude runs it)
+assets/audio/                  game-ready: short SFX as mono WAV; loops and music as OGG with loop points
+```
+
+**`process.py`:**
+- trims silence;
+- level-matches within each category, peak-normalising short SFX rather than LUFS-normalising them;
+- converts the files;
+- writes Godot import settings with loop points.
+
+ElevenLabs returns looping SFX as MP3 only, so loops are converted to OGG.
+
+**Credit budget** (90,000 ElevenLabs credits):
+
+| Item | Estimate |
+|---|---|
+| SFX, durations set explicitly at 40 credits/s instead of 200 per automatic-length generation | about 20k |
+| Voices: 6 designed voices with several takes per line, from text-to-speech at $0.022 per 1,000 characters on v4 at pay-as-you-go rates (credits per character unverified) | about 30k |
+| Music auditions on ElevenLabs Music, at 900 credits/min | about 10k |
+| Reserve | about 30k |
+
+`plan` prints the estimate before any paid run.
+
+**Music** comes from **Suno** (manual) and ElevenLabs Music, picked by ear:
+- **Plan:** Suno Pro is $10/month ($8 billed yearly), with 20 downloads a month and commercial rights on paid downloads. Use Pro, not the free tier: the free tier is non-commercial and capped at 7 downloads in total, and the repo is public.
+- **Saving downloads:** audition in the browser and download only the keepers, so the cap isn't spent on rejects. About 10 tracks are needed: a calm and a combat track for each of the 3 maps, a menu theme, and victory and defeat stingers.
+- **Instrumental mode.** For a combat version, use Suno's remix tools on the calm track if the plan has them, for a shared theme. Otherwise reuse the same style prompt. Use stems for layering only if Pro can download them; that's unverified.
+- **Getting files in:** Tim saves downloads to `audio-src/music/inbox/`. `process.py` makes each track loop seamlessly by crossfading its tail into its head, then converts it to OGG with loop points. Each track gets a row in `LICENSES.md`.
+
+### 8.2 What makes sound
+
+**Melee** (`CombatEvent`):
+- `SWING`: a whoosh by weapon class.
+- `HIT`: flesh, or a dry undead hit.
+- `BLOCK`: shield clang.
+- `MISS`: whoosh only.
+- `KILL`: a death cry per unit type.
+- `HEAL`: herb rustle and chime.
+
+**Projectiles** (`ProjectileEvent`):
+- `LAUNCH` per projectile type: bow release, bottle throw, lightning charge.
+- `STICK`: thunk, or a splash when `depth > 0`.
+- `HIT`: arrow into flesh.
+- `BOUNCE`: glass clink, louder with speed.
+- `EXPLODE`: small or large by radius, and a separate cue in water.
+- `FIZZLE`: hiss. `DROP`: satchel thud. `IGNITE`: whoomp. `PICK_UP`: grab.
+- `BOLT`: thunder crack. `CANT_REACH`: UI "no".
+
+**Derived in the view:**
+- **Barks** (§8.4) and occasional undead groans, using a view-only RNG.
+- **Marching:** a loop that scales with how many units are moving near the camera, switched by ground type (grass, sand, rock, shallow water). It replaces per-unit footsteps.
+- **Ambience loops:**
+  - rain and snow, crossfading with `Weather` intensity;
+  - fire crackle, by burning cells near the camera focus;
+  - water near the camera, gas-cloud hiss, and an outdoor background bed.
+- **UI:** clicks, selection, formation change, group recall, invalid order.
+
+### 8.3 In game
+
+- **Sound bank:** `data/audio/sound_bank.tres` is generated from `cues.toml`. Each cue is an `AudioStreamRandomizer` (its variants plus pitch and volume jitter), a bus, `max_voices`, and a range.
+  - Per-unit-type cues (death cry, barks, weapon class) fall back to generic ones.
+  - A missing cue is silent and warns once. That keeps the placeholder pipeline for audio.
+- **`AudioDirector`** (`view/audio/audio_director.gd`): `MainView` calls its `after_step()` after every `World.step()`, as it does for `UnitsView`. It turns that tick's events into cues.
+- **Voice pool:** a fixed set of about 32 `AudioStreamPlayer3D`.
+  - Each cue has a voice cap, so a chain of 5 satchels doesn't stack 5 full-volume blasts.
+  - When the pool is full, the oldest or quietest voice is cut first.
+  - Sounds beyond range are skipped.
+- **The listener** (`AudioListener3D`) sits at the camera's ground focus, not at the camera.
+- **No leaks through sound:** a cue that a unit makes plays only if `Visibility.seen_by(world, unit, viewer)` is true, so a Husk in deep water stays silent. Explosions and lightning are always heard.
+- **Determinism:** audio never reads or writes `world.rng` and never writes to the sim.
+- **Music:**
+  - one `AudioStreamInteractive` per map, with a calm clip and a combat clip and crossfades between them;
+  - "combat" is triggered by the number of visible units in `ATTACKING`/`SHOOTING`, smoothed with hysteresis;
+  - Riverside gets a default track now; choosing music per mission waits for Phase 8.
+- **Buses:** Master → Music, SFX, Ambience, Voice, UI, in `default_bus_layout.tres`. **No bus effects**, because Web's default Sample playback doesn't support them.
+- **Web:**
+  - SFX use Sample playback; music players are set to Stream.
+  - Audio starts on the first input (browser autoplay rules).
+  - Godot documents positional audio as "may not always work correctly" in Sample mode. That's checked in Phase 10, with a fallback of non-positional players panned by screen position.
+
+### 8.4 Barks (light side)
+
+**Triggers and the code that fires them:**
+
+| Trigger | Fired by |
+|---|---|
+| select | selection changed |
+| move / attack-move / ground attack | `SelectionController` emits an order-given signal |
+| formation change | formation key or bar button |
+| kill | `KILL` with a viewer-side attacker |
+| hurt | HP first drops below 35% |
+| death | `KILL` on a viewer-side target |
+| clicked too often | the same unit selected 4 or more times within 3 s |
+| status | burning, paralyzed or confused begins |
+| victory | stub until Phase 8 |
+
+**Rules:**
+- One speaker per command: the selected unit nearest the screen centre.
+- Lines are a shuffle bag, with no repeats until all have played.
+- Each trigger has a cooldown. Kill and hurt barks are limited to about one every 4 s across the whole side.
+- **Barks also show as floating text** over the speaker, using the notice label in a bark colour. Barks then work before any audio exists, which is the placeholder pipeline for voice.
+
+**Voices:** ElevenLabs Voice Design creates one designed voice per unit type (two for the Shieldman), described in `audio-src/voices/<unit>.toml`, and that voice is used for every line so it stays consistent.
+
+**Originality rule:**
+- The clan is inspired by the "tiny furious Scots clan" archetype and uses real Scots dialect (aye, cannae, skelp, stramash, gie it laldy, crivens).
+- No Discworld names, catchphrases, or characters: no "Feegle", "Nac Mac", "Nae king! Nae quin!…", "Wee Free Men", "kelda" or "hag".
+- "Crivens" is allowed. It is a Scots exclamation, a corruption of "Christ" (OED), first recorded in print in 1894 (Dictionary of the Scots Language), so it is not Pratchett's coinage.
+- Every line is original.
+
+**Clan-wide random line:**
+- `audio-src/voices/_clan.toml` holds lines any clan unit may say on any trigger, in its own voice. It starts with **"Crivens!"**.
+- About 1 bark in 10 is replaced by a clan-wide line.
+- A clan-wide line never plays twice in a row across the whole side, so it stays a surprise.
+
+**Shieldman lines (draft, 35 lines):**
+
+| Trigger | Lines |
+|---|---|
+| select | "Aye? Whit is it?" · "Point me at somethin' ugly." · "Shield's up, heid's doon. Whit's the plan?" · "Somebody need a wallop?" · "Ah'm listenin'. Make it quick, there's fightin' tae dae." |
+| move | "Right ye are!" · "Quick march, ya numpties!" · "Marchin'. Grumblin'. Same thing." · "If it's a trap, ah'm blamin' you." · "Onward! Mind the puddles." |
+| attack | "Get intae them!" · "Gie it laldy, lads!" · "Time fer a stramash!" · "Ah'll skelp ye intae next week!" · "Charge! Ach, wait, ah'm already chargin'!" |
+| kill | "An' STAY doon!" · "Ye were deid already, ye just didnae ken." · "Is that it? Ah've had fiercer porridge." · "That's one fer the sang!" · "Next!" |
+| hurt | "It's just a scratch! A big scratch!" · "Ah've had worse frae ma granny!" · "Warden! Ah need a wee herb!" · "Ah'm fine! Ah'm fine! Ah'm no' fine." |
+| death | "Tell ma mither… ah wis braw…" · "Avenge me… or don't, ah'm no' fussy…" · "Ach… no' like this…" |
+| clicked too often | "Poke me again an' see whit happens." · "Ah've got a shield, no' a lot o' patience." · "Ye know ah can see ye, aye?" |
+| status | burning: "Whit's that smell? Ach, it's me, ah'm on fire!" · paralyzed: "Cannae… move… ma… legs…" · confused: "Which side am ah on again?" |
+| formation | rabble: "Rabble? Finally, somethin' we're good at." · wedge: "Pointy end first!" |
+
+**Starting lines for the rest of the clan** (full sets are drafted in A3 and reviewed by Tim):
+
+| Unit | Starting lines |
+|---|---|
+| Reaver | "Ah've no' had a guid fight since Tuesday!" · "Who wants tae be first?" · "Ah'll split ye like kindlin'!" · lots of roaring |
+| Longbow | "Ah see it. It'll no' see me." · "One arrow, one less problem." · fire arrow: "Wan fire arrow. Better be worth it." |
+| Sapper | "Mind yer heids, this one's a bit lively!" · "Stand back! Further! Further than that!" · satchel: "Leavin' a wee present." · fizzle: "Ach. Damp." |
+| Warden | "Haud still, ya big wean, it's only a herb." · healing undead: "Here's a tonic fer ye. Ye'll no' like it." · "Ah didnae pick herbs all mornin' fer ye tae get stabbed again." |
+
+### 8.5 Tests (GUT, `tests/view/`, headless with a dummy audio driver)
+
+- Event-to-cue mapping, including per-unit-type fallback.
+- The voice pool: caps and which voice gets cut first.
+- Hidden units stay silent; explosions are always heard.
+- The combat-music trigger's hysteresis.
+- Weather intensity to ambience loop volumes.
+- Bark rules: shuffle bag, cooldowns, choosing the speaker, the clicked-too-often counter, about a 1-in-10 clan-wide line that never repeats back to back.
+- Bank validation: every referenced cue exists and has at least one variant; every unit's voice file covers the required triggers.
+
+## 9. Risks and unverified items
+
+| Item | Mitigation |
+|---|---|
+| One 50° render may look wrong at the 35° and 65° pitch extremes | Contact sheet plus in-engine check on the Shieldman. Fallback: two render elevations blended by pitch, added only if needed. |
+| Alpha cutout with mipmaps on the Compatibility renderer | Checked in the Shieldman test |
+| Meshy rigging may fail on the Blightbag or Drifter | Design as humanoids; Mixamo fallback |
+| Whether credits bought for Meshy's API carry the web plan's "customer owned" license | Low risk for a personal project; recorded in `LICENSES.md` |
+| Whether ElevenLabs API calls draw from the 90k account credits; credits per character for speech; pay-as-you-go commercial terms | First cheap call shows it on the usage page; the key's quota caps spend |
+| Music quality for orchestral dark fantasy | Audition Suno and ElevenLabs Music side by side; A2 listening gate |
+| Suno's monthly download cap (20 on Pro); whether Pro can download stems; whether remixing can make a combat version on a shared theme | Audition in the browser and download only keepers; fall back to the same style prompt; upgrade to Premier (60 downloads a month) only if needed |
+| Positional audio on Web in Sample mode | Phase 10 check; screen-pan fallback |
+| `AnimatedSprite3D` performance at 300 units on Compatibility | Profile in Phase 10; MultiMesh path if needed |
+| Unit sheet texture memory: the 45 A3 sheets import to about 554 MB per texture format (S3TC and ETC2 both), all loaded at startup (about 30 MB after A1); Web would download about 0.55 GB. Measured from the `.ctex` files, not in a build | Load art per mission roster; tighter cells (a 1.4 m figure uses about 73 px of a 160–216 px cell); measure `RENDER_TEXTURE_MEM_USED` and the export sizes in the Phase 10 cross-platform pass |
+
+## 10. Done criteria
+
+- **A0:**
+  - this spec approved;
+  - prompts.md and CLAUDE.md updated;
+  - LFS, `.gdignore`, `LICENSES.md`, `.gitignore`, and gitleaks hook plus workflow in place;
+  - PR opened.
+- **A1:**
+  - Shieldman contact sheet approved;
+  - Shieldman renders from art in all states in-engine;
+  - placeholders still work for the other 9 units;
+  - new GUT tests pass, and the full suite and sim purity check pass;
+  - runs on the macOS export.
+- **A2:**
+  - every event in §8.2 has a cue;
+  - Shieldman barks are voiced; ambience and the Riverside music loop play;
+  - GUT tests pass;
+  - Tim approves a listening build.
+- **A3:** every v1 unit has art, each with an approved contact sheet. (Light-side barks moved to A2.)
+
+Each branch gets its own implementation plan. The first plan covers A0 and A1.
+
+## 11. A3: the rest of the roster (decided 2026-10-08)
+
+**Scope.**
+- Art only, for the nine other v1 units. Voices and barks move to A2, which is re-planned around Phase 10's audio system first.
+- A3 runs while Phase 11 (controls) is in progress elsewhere, so it touches no input, selection or `main.gd` code.
+
+**Order.** Four batches, light side first. In each batch, Tim picks candidates and approves contact sheets for all the batch's units together.
+
+**Candidates.** 4 Lite candidates per unit (20 credits). Lite picks have been good enough (the Shieldman is one), and the saving funds the roster.
+
+**Pipeline changes first** (free, before any credits are spent):
+- **Figure height.** The renderer records the drawn body's height above the feet, from idle, props excluded, as `figure_height_m` in the sidecar. `UnitArt` carries it, and `UnitSprite.height` uses it for an art body, so picking and overlays match the figure (about 1.4 m drawn for the Shieldman, where the placeholder is 1.8 m). Without it, a click on a rear-rank unit selects the one in front.
+- **Strike clips.** `UnitArt` requires idle, walk, die (unless the body bursts), and at least one strike clip: `attack`, `shoot`, `throw` or `cast`. A unit with no melee (Drifter, Stormcaller) needs no `attack`; the Blightbag has one, its stomp. Every strike or act clip present (`attack`, `shoot`, `throw`, `cast`, `place`) needs an impact frame.
+- **Bursting bodies.** An art type with `bursts_on_death` always bursts into gibs on death, whatever the overkill, so it never stands as an idle "corpse".
+- **Hover.** A recipe animation can set `bob_m` and `bob_hz`. The renderer then bobs the figure up and down as a whole number of cycles per clip, so loops stay seamless; a bob on a clip with too few frames to show it is refused. A hover's crest counts toward `figure_height_m`, as a raised arm does, so picking and overlays never clip the figure at any phase. A walk or run can also set `stride_m` to replace a measured stride, for a floating unit with no foot contact; no other clip may.
+- **Frame and frame rate.** The Reaver's claymore (1.35 m) and the Longbow's bow (1.75 m) clip the 160 px cell in their death frames, so a recipe can set a bigger `[render]` frame (the Reaver's came to 216 px with the feet 76 px up, the Longbow's to 184 with 68) and an animation its own `fps`, which keeps long clips such as the Longbow's 4 s `idle` under the 4096 px cap. Units keep their on-screen size; the game reads the frame and each clip's fps from the sidecar.
+- **Trim.** An animation can set `start` and `end` (seconds from the clip's own start; either alone is allowed) to draw only part of a clip, for one with a short errand inside a long clip (the Sapper's 9.5 s `place` does its work between 1.7 and 3.5 s, and a lower `fps` would only slow it). The head is cut as well as the tail, because the animator speeds a strike by at most 4× to land its impact on the sim's blow: a clip's impact comes at most about 3× the wind-up from its start. The body is still fitted and the props attached at the clip's own first frame; `frames`, `impact_frame`, the extents and the GIF go by the part drawn, so `impact` is a fraction of it. A `start` or `end` more than half a scene frame past the clip's length is refused, and so is a trim on a looping clip (idle, walk), a rig clip or a run, whose seam or stride a cut would break. An animation table now refuses a key it doesn't know.
+- **Audition clips.** An animation marked `audition = true` renders to `review/` only: its GIF and a contact-sheet row, with no game sheet and no sidecar entry. This replaces shipping `attack_alt.png`.
+- **Guards.**
+  - A sheet taller than 4096 px is refused, which means more than 72 frames in the default 160 px cell (40 in a 192 px one); a lower `fps` fits a longer clip.
+  - A clip whose file has no animation is an error, not a one-frame sheet.
+  - ffmpeg is checked before rendering starts.
+
+**Units.**
+- Every unit uses Meshy library actions; clip names come from Meshy's animation library.
+- Every one also has `idle` = 0 Idle, unless shown otherwise.
+- Frame is the `[render]` cell/feet in px; a unit with none uses the default 160/40.
+- **Props** are separate Meshy models on bones (§6.2a).
+
+| Batch | Unit | Look (§5) | Props | Clips |
+|---|---|---|---|---|
+| 1 | Reaver | Bare-chested berserker, wild mane | Claymore, both hands (on RightHand) | frame 216/76; idle 89 Combat_Stance; walk = rig run; attack 128 Heavy_Hammer_Swing; audition 237 Charged_Axe_Chop; die 183 Shot_and_Fall_Backward at 10 fps |
+| 1 | Longbow | Hooded plaid, the clan's gamekeeper | Longbow (LeftHand) | frame 184/68; idle at 10 fps; walk = rig walk; shoot 224 Archery_Shot, trimmed to 1.6–3.75 s; attack 97 Left_Slash, trimmed to 0.85–2.4 s (dagger, too small to model); die 184 Shot_and_Fall_Forward (`die_falls_forward`) |
+| 2 | Sapper | Dwarf (1.35 m), satchel of bottles, singed, leather apron | Satchel (right thigh, on RightUpLeg) | walk = rig walk; throw 421 Over_Shoulder_Throw; audition 239 Crouch_Pull_and_Throw; place 274 Female_Crouch_Pick_Up_Place_Side, trimmed to 1.7–3.5 s; attack 97 Left_Slash, trimmed to 0.65–2.4 s; die 8 Dead (`die_falls_forward`) |
+| 2 | Warden | Herb-wife with a staff | Staff (RightHand), carried head forward | frame 184/66; idle at 10 fps; walk = rig walk; attack 219 Right_Hand_Sword_Slash; cast 129 (heal); die 189 dying_backwards |
+| 3 | Husk | Bog zombie in rotted peat-stained sacking | — | frame 160/46; walk 123 Unsteady_Walk; attack 198 Punch_Combo; die 187 Knock_Down |
+| 3 | Ripper | Gaunt long-clawed ghoul | — | frame 160/48; walk 16 RunFast; attack 192 Right_Jab_from_Guard, trimmed to 0.35–1.75 s; throw 421 Over_Shoulder_Throw, trimmed to 1.25–3.4 s; place 276 Male_Bend_Over_Pick_Up (pick-up), trimmed to 0.5–2.25 s; die 182 Shot_and_Blown_Back |
+| 3 | Blightbag | Bloated corpse with gas sacs, but **humanoid**: clear arms and legs, sacs on the torso, so Meshy can rig it | — | walk 119 Slow_Orc_Walk; attack 255 Angry_Ground_Stomp; `bursts_on_death` (no die) |
+| 4 | Drifter | Hooded spectre; long robes that reach the ankles, the feet showing at the hem | Bow (LeftHand) | frame 160/54; idle and walk = 0 Idle with hover bob (0.08 m; 0.8 Hz idle, 1.2 Hz walk), walk `stride_m` 8.8 (2.2 m/s over the 4 s clip, so the walk plays at 1×); shoot 224 Archery_Shot, trimmed to 1.25–3.75 s; die 8 Dead |
+| 4 | Stormcaller | Cloaked skeleton, lightning-scarred (Tim's call) | Staff (RightHand), carried head forward | frame 192/59; idle at 10 fps; walk = rig walk; cast 131 (lightning); die 181 Electrocuted_Fall, trimmed to 2.0–5.25 s |
+
+**Credits.**
+- **Per unit:** about 47 (candidates 20, refine 10, rig 5, about 4 actions at 3 each).
+- **Per prop:** about 20.
+- **Per batch:** about 135–150. **Total:** about 560, or about 650 with retries.
+- **Monthly cap:** the key's 150-credit monthly cap fits one batch a month; about 300 a month allows two.
+- **Unverified:** the Meshy library spells 129 and 131 "mage_soell_cast" and "mage_soell_cast_2". The spelling was not confirmed word for word. A wrong name fails at the free render step, never at purchase.

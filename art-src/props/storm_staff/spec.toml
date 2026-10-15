@@ -1,0 +1,10 @@
+# The Stormcaller's staff (spec §6.2a, §11).
+id = "storm_staff"
+faction = "dark"
+length_m = 1.9
+prompt = "Crooked staff of scorched dark wood bound with iron rings, topped with a forked iron crown holding a cracked crystal glowing blue"
+
+[candidates]
+lite = 2
+full = 0
+polycount = 6000

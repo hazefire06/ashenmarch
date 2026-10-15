@@ -1,0 +1,25 @@
+# The Blightbag's art recipe (spec §5, §11). Walking bomb; bursts into gibs, so it has
+# no death clip. Designed humanoid (clear limbs) so Meshy can rig it (Tim, 2026-10-08).
+id = "blightbag"
+faction = "dark"
+height_m = 1.8
+prompt = "Bloated undead corpse standing upright, swollen pale green-grey body with large translucent gas sacs bulging from the torso and back, clearly separate arms and legs, ragged burial cloth, faint sickly glow inside the sacs, both hands open and empty, holding nothing"
+bursts_on_death = true
+
+[candidates]
+lite = 4
+full = 0
+polycount = 30000
+
+[animations.idle]
+action = 0
+clip = "Idle"
+
+[animations.walk]
+action = 119
+clip = "Slow_Orc_Walk"
+
+[animations.attack]
+action = 255
+clip = "Angry_Ground_Stomp"
+impact = 0.6

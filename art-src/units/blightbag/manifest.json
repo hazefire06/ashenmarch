@@ -1,0 +1,103 @@
+{
+  "tasks": [
+    {
+      "ai_model": "meshy-6-lite",
+      "created_at": 1791858583,
+      "credits": 5,
+      "files": [
+        "candidates/cand-1.glb"
+      ],
+      "finished_at": 1791858617505,
+      "kind": "preview",
+      "label": "cand-1",
+      "prompt": "Bloated undead corpse standing upright, swollen pale green-grey body with large translucent gas sacs bulging from the torso and back, clearly separate arms and legs, ragged burial cloth, faint sickly glow inside the sacs, both hands open and empty, holding nothing. Palette: cold bog brown, bone white, sickly green glow. Stylized fantasy strategy-game character, chunky heroic proportions, hand-painted textures, strong readable silhouette, muted earthy palette, full body, standing in A-pose, centered, plain background",
+      "status": "SUCCEEDED",
+      "task_id": "01a13318-2691-7413-901a-2c75141979c0"
+    },
+    {
+      "ai_model": "meshy-6-lite",
+      "created_at": 1791858621,
+      "credits": 5,
+      "files": [
+        "candidates/cand-2.glb"
+      ],
+      "finished_at": 1791858651963,
+      "kind": "preview",
+      "label": "cand-2",
+      "prompt": "Bloated undead corpse standing upright, swollen pale green-grey body with large translucent gas sacs bulging from the torso and back, clearly separate arms and legs, ragged burial cloth, faint sickly glow inside the sacs, both hands open and empty, holding nothing. Palette: cold bog brown, bone white, sickly green glow. Stylized fantasy strategy-game character, chunky heroic proportions, hand-painted textures, strong readable silhouette, muted earthy palette, full body, standing in A-pose, centered, plain background",
+      "status": "SUCCEEDED",
+      "task_id": "01a13318-bca5-7401-a7ca-be4fb006b1da"
+    },
+    {
+      "ai_model": "meshy-6-lite",
+      "created_at": 1791858653,
+      "credits": 5,
+      "files": [
+        "candidates/cand-3.glb"
+      ],
+      "finished_at": 1791858679953,
+      "kind": "preview",
+      "label": "cand-3",
+      "prompt": "Bloated undead corpse standing upright, swollen pale green-grey body with large translucent gas sacs bulging from the torso and back, clearly separate arms and legs, ragged burial cloth, faint sickly glow inside the sacs, both hands open and empty, holding nothing. Palette: cold bog brown, bone white, sickly green glow. Stylized fantasy strategy-game character, chunky heroic proportions, hand-painted textures, strong readable silhouette, muted earthy palette, full body, standing in A-pose, centered, plain background",
+      "status": "SUCCEEDED",
+      "task_id": "01a13319-397f-713b-a042-cb6c6dbf7db3"
+    },
+    {
+      "ai_model": "meshy-6-lite",
+      "created_at": 1791858685,
+      "credits": 5,
+      "files": [
+        "candidates/cand-4.glb"
+      ],
+      "finished_at": 1791858715760,
+      "kind": "preview",
+      "label": "cand-4",
+      "prompt": "Bloated undead corpse standing upright, swollen pale green-grey body with large translucent gas sacs bulging from the torso and back, clearly separate arms and legs, ragged burial cloth, faint sickly glow inside the sacs, both hands open and empty, holding nothing. Palette: cold bog brown, bone white, sickly green glow. Stylized fantasy strategy-game character, chunky heroic proportions, hand-painted textures, strong readable silhouette, muted earthy palette, full body, standing in A-pose, centered, plain background",
+      "status": "SUCCEEDED",
+      "task_id": "01a13319-b5f0-740d-b94c-5378739e3e75"
+    },
+    {
+      "created_at": 1791859463,
+      "credits": 10,
+      "files": [
+        "model/textured.glb"
+      ],
+      "finished_at": 1791859518033,
+      "kind": "refine",
+      "label": "cand-4",
+      "status": "SUCCEEDED",
+      "task_id": "01a13325-96a9-7078-9d58-5ab9483f4c64"
+    },
+    {
+      "created_at": 1791859521,
+      "credits": 5,
+      "files": [
+        "anims/rig_run.glb",
+        "anims/rig_walk.glb",
+        "model/rigged.glb"
+      ],
+      "finished_at": 1791859534933,
+      "kind": "rig",
+      "label": "cand-4",
+      "status": "SUCCEEDED",
+      "task_id": "01a13326-7937-72da-8e65-ed63b78929d6"
+    },
+    {
+      "action_ids": [
+        0,
+        119,
+        255
+      ],
+      "created_at": 1791859536,
+      "credits": 9,
+      "files": [
+        "anims/actions.glb"
+      ],
+      "finished_at": 1791859552799,
+      "kind": "animate",
+      "label": "cand-4:0,119,255",
+      "status": "SUCCEEDED",
+      "task_id": "01a13326-b225-745c-b2b9-e888d7a17710"
+    }
+  ]
+}

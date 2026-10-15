@@ -1,0 +1,104 @@
+{
+  "tasks": [
+    {
+      "ai_model": "meshy-6-lite",
+      "created_at": 1791578648,
+      "credits": 5,
+      "files": [
+        "candidates/cand-1.glb"
+      ],
+      "finished_at": 1791578690805,
+      "kind": "preview",
+      "label": "cand-1",
+      "prompt": "Scottish highland berserker, bare-chested and heavily muscled, blue woad swirl tattoos across chest and arms, wild mane of copper-red hair and a braided beard, kilt in dark red and green tartan held by a wide studded leather belt, leather bracers, fur-trimmed leather boots, battle scars, empty hands. Palette: warm tartan reds and greens, steel, woad blue. Stylized fantasy strategy-game character, chunky heroic proportions, hand-painted textures, strong readable silhouette, muted earthy palette, full body, standing in A-pose, centered, plain background",
+      "status": "SUCCEEDED",
+      "task_id": "01a12268-b299-7518-9707-d03dae4e9abd"
+    },
+    {
+      "ai_model": "meshy-6-lite",
+      "created_at": 1791578695,
+      "credits": 5,
+      "files": [
+        "candidates/cand-2.glb"
+      ],
+      "finished_at": 1791578744896,
+      "kind": "preview",
+      "label": "cand-2",
+      "prompt": "Scottish highland berserker, bare-chested and heavily muscled, blue woad swirl tattoos across chest and arms, wild mane of copper-red hair and a braided beard, kilt in dark red and green tartan held by a wide studded leather belt, leather bracers, fur-trimmed leather boots, battle scars, empty hands. Palette: warm tartan reds and greens, steel, woad blue. Stylized fantasy strategy-game character, chunky heroic proportions, hand-painted textures, strong readable silhouette, muted earthy palette, full body, standing in A-pose, centered, plain background",
+      "status": "SUCCEEDED",
+      "task_id": "01a12269-67d9-77e7-b318-4de1239acf60"
+    },
+    {
+      "ai_model": "meshy-6-lite",
+      "created_at": 1791578745,
+      "credits": 5,
+      "files": [
+        "candidates/cand-3.glb"
+      ],
+      "finished_at": 1791578780405,
+      "kind": "preview",
+      "label": "cand-3",
+      "prompt": "Scottish highland berserker, bare-chested and heavily muscled, blue woad swirl tattoos across chest and arms, wild mane of copper-red hair and a braided beard, kilt in dark red and green tartan held by a wide studded leather belt, leather bracers, fur-trimmed leather boots, battle scars, empty hands. Palette: warm tartan reds and greens, steel, woad blue. Stylized fantasy strategy-game character, chunky heroic proportions, hand-painted textures, strong readable silhouette, muted earthy palette, full body, standing in A-pose, centered, plain background",
+      "status": "SUCCEEDED",
+      "task_id": "01a1226a-2cde-7532-bef3-79c3e73667b4"
+    },
+    {
+      "ai_model": "meshy-6-lite",
+      "created_at": 1791578785,
+      "credits": 5,
+      "files": [
+        "candidates/cand-4.glb"
+      ],
+      "finished_at": 1791578813515,
+      "kind": "preview",
+      "label": "cand-4",
+      "prompt": "Scottish highland berserker, bare-chested and heavily muscled, blue woad swirl tattoos across chest and arms, wild mane of copper-red hair and a braided beard, kilt in dark red and green tartan held by a wide studded leather belt, leather bracers, fur-trimmed leather boots, battle scars, empty hands. Palette: warm tartan reds and greens, steel, woad blue. Stylized fantasy strategy-game character, chunky heroic proportions, hand-painted textures, strong readable silhouette, muted earthy palette, full body, standing in A-pose, centered, plain background",
+      "status": "SUCCEEDED",
+      "task_id": "01a1226a-c5cd-758b-8033-3dbf277a9536"
+    },
+    {
+      "created_at": 1791608754,
+      "credits": 10,
+      "files": [
+        "model/textured.glb"
+      ],
+      "finished_at": 1791608787135,
+      "kind": "refine",
+      "label": "cand-3",
+      "status": "SUCCEEDED",
+      "task_id": "01a12434-127c-76e2-bb0a-1936b1e6d487"
+    },
+    {
+      "created_at": 1791608792,
+      "credits": 5,
+      "files": [
+        "anims/rig_run.glb",
+        "anims/rig_walk.glb",
+        "model/rigged.glb"
+      ],
+      "finished_at": 1791608807396,
+      "kind": "rig",
+      "label": "cand-3",
+      "status": "SUCCEEDED",
+      "task_id": "01a12434-a76e-727c-b928-81b44def75b0"
+    },
+    {
+      "action_ids": [
+        89,
+        128,
+        183,
+        237
+      ],
+      "created_at": 1791608813,
+      "credits": 12,
+      "files": [
+        "anims/actions.glb"
+      ],
+      "finished_at": 1791608830337,
+      "kind": "animate",
+      "label": "cand-3:89,128,183,237",
+      "status": "SUCCEEDED",
+      "task_id": "01a12434-f899-72d9-b603-bd639e8c910f"
+    }
+  ]
+}

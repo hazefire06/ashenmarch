@@ -1,0 +1,69 @@
+# The Sapper's art recipe (spec §5, §11). Grenadier: bottles thrown, satchels placed.
+# A dwarf, the clan's tinkerer: a head shorter than the humans, so he reads apart from them.
+# The beard stays short, since a long one is skinned to the chest and stretches when he bends.
+id = "sapper"
+faction = "light"
+height_m = 1.35
+prompt = "Highland dwarf tinkerer and grenadier, short and very stocky, broad shoulders, barrel chest, thick short braided beard, singed eyebrows and soot-smudged face, leather apron over a rolled-sleeve shirt, kilt, thick leather gloves, brass goggles pushed up on a woollen cap, bandolier of corked glass bottles across the chest, sturdy boots, both hands open and empty, holding nothing"
+die_falls_forward = true
+
+# The satchel hangs from the top of the right thigh, so it stays down when he bends over (fixed to the
+# pelvis, it tipped up onto his back; Tim moved it at batch 2's review). It is turned 35 degrees toward
+# the back so the hanging arm swings in front of it: its back flat against the outer thigh (arms left
+# out of the measure), upright, 8 cm below the hip joint.
+[[attach]]
+prop = "satchel"
+bone = "RightUpLeg"
+offset = [-0.222, 0.122, 0.148]
+rotation = [73.3, 113.6, -29.7]
+
+# cand-1 to cand-4 were the human Sapper this recipe first asked for (2026-10-12); the dwarf
+# candidates are cand-5 to cand-8. The manifest keeps each one's prompt.
+[candidates]
+lite = 8
+full = 0
+polycount = 30000
+
+[animations.idle]
+action = 0
+clip = "Idle"
+
+[animations.walk]
+rig = "walk"
+
+# Tim chose the standing throw at batch 2's review; the crouching one stays as the comparison.
+[animations.throw]
+action = 421
+clip = "Over_Shoulder_Throw"
+impact = 0.55
+
+[animations.throw_alt]
+action = 239
+clip = "Crouch_Pull_and_Throw"
+impact = 0.6
+audition = true
+
+# The library clip runs 9.5 s: he bends from 0.75 s, touches the ground at 2.5 s, straightens by 5.0 s, then
+# lifts something and stands still. Only the reach is drawn: 1.7-3.5 s, 23 frames, the touch its impact. The head is cut
+# because the whole bend can't play inside his errand's wind-up (the 8-tick melee wind-up: he plays it only when he
+# strikes a herb plant, since he picks nothing up) within the animator's 4x limit; the tail so the errand holds the body less.
+[animations.place]
+action = 274
+clip = "Female_Crouch_Pick_Up_Place_Side"
+start = 1.7
+end = 3.5
+impact = 0.45
+
+# The library clip runs 3.2 s: he winds up and swings, the cut landing at 1.4 s, then settles back into a crouch. Only the swing
+# is drawn: 0.65-2.4 s, 22 frames, the cut its impact. The head is cut because the sim's 8-tick (0.27 s) swing can't play the
+# whole wind-up inside the animator's 4x limit; the tail so the strike holds the body less.
+[animations.attack]
+action = 97
+clip = "Left_Slash"
+start = 0.65
+end = 2.4
+impact = 0.43
+
+[animations.die]
+action = 8
+clip = "Dead"

@@ -1,0 +1,56 @@
+# The Drifter's art recipe (spec §5, §11). Floating undead archer: long robes, a hover bob,
+# and a glide that reuses the idle clip with a fixed stride (no foot contact to measure).
+id = "drifter"
+faction = "dark"
+height_m = 1.85
+prompt = "Hooded spectre in long tattered grey-black robes reaching the ankles, thin legs barely visible beneath, gaunt pale ashen face in shadow under the hood, thin pale hands, faint sickly green glow under the hood, both hands open and empty, holding nothing"
+die_falls_forward = false
+
+# Falling dead, he drops 46 px below the feet, past the default frame's 40; his shot reaches 93 px above
+# them. The default 160 px frame with the feet 54 px up fits both (spec §11).
+[render]
+cell_px = 160
+feet_px = 54
+
+# A centre grip through the palm, the string toward the archer: the bow stands upright and drawn
+# through the shot (the two grips across the knuckles hold it flat, like a crossbow).
+[[attach]]
+prop = "drifter_bow"
+bone = "LeftHand"
+offset = [0.0, -0.071, 0.0]
+rotation = [-156.9, -2.4, -91.0]
+
+[candidates]
+lite = 4
+full = 0
+polycount = 30000
+
+[animations.idle]
+action = 0
+clip = "Idle"
+bob_m = 0.08
+bob_hz = 0.8
+
+# One glide cycle covers what he floats in the clip's 4 s at his full speed of 2.2 m/s (8.8 m), so the walk plays at 1x
+# with the 1.2 Hz bob, not clamped at 4x (a 1.2 m stride made it 7.3x).
+[animations.walk]
+action = 0
+clip = "Idle"
+bob_m = 0.08
+bob_hz = 1.2
+stride_m = 8.8
+
+# The library clip runs 5 s: he lifts a hand and turns until 1.25 s, draws from 2.25 s and looses at 2.75 s, holds the aim to 4 s
+# and lowers the bow. 1.25-3.75 s is drawn, 31 frames: the end of the turn, the draw and the release, the loosing its impact. The head is cut
+# because the sim's 15-tick (0.5 s) draw can't play the whole run-up inside the animator's 4x limit; the tail so the strike
+# holds the body less.
+[animations.shoot]
+action = 224
+clip = "Archery_Shot"
+start = 1.25
+end = 3.75
+impact = 0.6
+
+[animations.die]
+action = 8
+clip = "Dead"
