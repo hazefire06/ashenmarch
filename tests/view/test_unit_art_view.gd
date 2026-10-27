@@ -492,6 +492,20 @@ func test_units_that_stand_together_idle_out_of_step() -> void:
 	assert_ne(_art_body(_sprite_in(view, a)).frame, _art_body(_sprite_in(view, b)).frame)
 
 
+func test_a_first_idle_that_is_the_arts_first_animation_still_plays() -> void:
+	# Setting sprite_frames puts the body on the frames' first animation,
+	# idle_0 here, which is the very idle a unit facing north wants.
+	var world: World = World.new(1, TestTerrains.flat(60, 60), _catalog)
+	var unit: Unit = world.spawn_unit(_catalog.index_of(&"shieldman"), LIGHT, 30 * M, 30 * M, 0, -1)
+	var view: UnitsView = _art_view(world, _looping_art(), UnitSelection.new())
+	view.after_step()
+	view._process(0.0)
+	var body: AnimatedSprite3D = _art_body(_sprite_in(view, unit))
+	assert_eq(body.animation, &"idle_0")
+	assert_true(body.is_playing(), "the first idle plays")
+	assert_eq(body.frame, UnitAnimator.loop_start_frame(unit.id, 12))
+
+
 func test_a_strike_that_ends_in_a_walk_resumes_on_the_units_own_frame() -> void:
 	_shieldman.windup_left = 8
 	_view.after_step()

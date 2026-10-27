@@ -103,11 +103,18 @@ func _grid_folder(unit: String) -> String:
 
 
 func _probe_unit(unit: String) -> void:
+	if not UnitArtPacker.is_unit_name(unit):
+		print("PROBE %s SKIPPED not a unit name" % unit.c_escape())
+		return
 	var folder: String = _grid_folder(unit)
 	if folder.is_empty():
 		print("PROBE %s SKIPPED no grid render" % unit)
 		return
 	var sidecar: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(folder + unit + ".json"))
+	var bad: PackedStringArray = UnitArtPacker.sidecar_errors(sidecar)
+	if not bad.is_empty():
+		print("PROBE %s SKIPPED its sidecar is unsound: %s" % [unit, "; ".join(bad)])
+		return
 	var grids: Dictionary = {}
 	for key: String in sidecar["animations"]:
 		if StringName(key) in UnitArtBuilder.GAME_ANIMS:

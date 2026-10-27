@@ -68,6 +68,28 @@ func test_an_unread_page_is_unknown_not_a_pass() -> void:
 	assert_string_contains(BudgetRun.web_line(f), "tab=-1 limit=1000 UNKNOWN js_wasm=-1 (unknown)")
 
 
+func test_a_fallback_count_is_unknown_not_a_pass() -> void:
+	# Chrome's JS heap alone leaves out the wasm memory and the resident pck,
+	# so it would pass a tab well over the limit.
+	var f: Dictionary = _fields()
+	f["how"] = "fallback"
+	assert_string_contains(BudgetRun.web_line(f), "tab=600 limit=1000 UNKNOWN js_wasm=400 (fallback)")
+
+
+func test_the_page_fields_read_only_what_the_page_should_send() -> void:
+	assert_eq(
+		BudgetRun.page_fields("{\"how\":\"measured\",\"bytes\":183e6,\"pck\":142e6,\"wire\":42e6,\"s3tc\":true}"),
+		{"js_bytes": 183e6, "how": "measured", "pck": 142e6, "wire": 42e6, "s3tc": true},
+	)
+	var unread: Dictionary = {"js_bytes": -1.0, "how": "unknown", "pck": -1.0, "wire": -1.0, "s3tc": false}
+	assert_eq(BudgetRun.page_fields(""), unread)
+	assert_eq(BudgetRun.page_fields("[1, 2]"), unread)
+	assert_eq(
+		BudgetRun.page_fields("{\"how\":\"PASS\",\"bytes\":[1],\"pck\":{},\"wire\":\"9\",\"s3tc\":\"yes\"}"),
+		unread, "a value of the wrong type reads as unknown",
+	)
+
+
 func test_the_desktop_line_has_no_verdict() -> void:
 	var line: String = BudgetRun.desktop_line(_fields())
 	assert_string_starts_with(line, "BUDGET video=200 textures=190 static=50 art=188 types=10 art_load=850 ticks=1800 seconds=61 on=")

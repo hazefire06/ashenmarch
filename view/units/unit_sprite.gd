@@ -506,7 +506,9 @@ func _build_art_body() -> void:
 # (hold).
 func _show(restart: bool, start_frame: int) -> void:
 	var wanted: StringName = UnitArt.anim_name(_anim, _dir)
-	if not restart and _art_body.animation == wanted:
+	# Only once shown: setting sprite_frames puts the body, unplayed, on the
+	# frames' first animation, which may be the very one wanted first.
+	if not restart and _shown == _anim and _art_body.animation == wanted:
 		return
 	var same_motion: bool = not restart and _shown == _anim
 	var frame: int = _art_body.frame

@@ -15,8 +15,10 @@ extends Node
 ##            ticks=<n> seconds=<s> on=<os>
 ## tab is js_wasm plus video. js_wasm is measureUserAgentSpecificMemory when
 ## the page is cross-origin isolated ("measured"), else Chrome's JS heap alone
-## ("fallback"), else unknown (-1, and the verdict is UNKNOWN). art is the
-## loaded unit sheets' bytes, computed from their sizes and formats
+## ("fallback"), else unknown (-1). Only a measured tab gets PASS or FAIL: the
+## JS heap leaves out the wasm memory and the pck the page holds, so a
+## fallback line shows its count but says UNKNOWN, as an unknown one does.
+## art is the loaded unit sheets' bytes, computed from their sizes and formats
 ## (UnitArt.sheet_bytes): Godot 4.7 doesn't give scripts the driver's own
 ## count per texture. Desktop has no budget, so its line has no verdict. The
 ## page sets window.__amBudgetLine to the line, for a script to read.
@@ -33,6 +35,8 @@ const MINUTES: int = 10
 const JS_WAIT_FRAMES: int = 1800
 const MAIN_SCENE: String = "res://view/main.tscn"
 const MB: float = 1_000_000.0
+## How the page can say it read its memory.
+const HOWS: Array[String] = ["measured", "fallback", "unknown"]
 ## Starts the page's measurement; window.__amBudget gets its JSON.
 const JS_MEASURE: String = """
 window.__amBudget = null;
@@ -116,11 +120,12 @@ static func verdict(tab_mb: float) -> String:
 static func web_line(f: Dictionary) -> String:
 	var js: float = float(f["js_bytes"])
 	var tab: float = js + float(f["video"]) if js >= 0.0 else -1.0
+	var judged: float = tab / MB if tab >= 0.0 and f["how"] == "measured" else -1.0
 	return (
 		"BUDGET tab=%d limit=%d %s js_wasm=%d (%s) video=%d textures=%d art=%d types=%d art_load=%d"
 		+ " pck=%d wire=%d s3tc=%s ticks=%d seconds=%d on=web"
 	) % [
-		_mb(tab), LIMIT_MB, verdict(tab / MB if tab >= 0.0 else -1.0), _mb(js), f["how"], _mb(f["video"]),
+		_mb(tab), LIMIT_MB, verdict(judged), _mb(js), f["how"], _mb(f["video"]),
 		_mb(f["textures"]), _mb(f["art"]), f["types"], f["art_load_ms"], _mb(f["pck"]), _mb(f["wire"]),
 		"yes" if f["s3tc"] else "no", f["ticks"], f["seconds"],
 	]
@@ -132,6 +137,30 @@ static func desktop_line(f: Dictionary) -> String:
 		_mb(f["video"]), _mb(f["textures"]), _mb(f["static"]), _mb(f["art"]), f["types"], f["art_load_ms"],
 		f["ticks"], f["seconds"], OS.get_name().to_lower(),
 	]
+
+
+## The page's measurement (JS_MEASURE's JSON) as web_line's fields: js_bytes,
+## how, pck, wire and s3tc. Any script on the page can set window.__amBudget,
+## so a value that is missing or of the wrong type reads as unknown (-1,
+## "unknown", false), never as a count.
+static func page_fields(raw: String) -> Dictionary:
+	var parsed: Variant = JSON.parse_string(raw) if not raw.is_empty() else null
+	var page: Dictionary = parsed if parsed is Dictionary else {}
+	var how: Variant = page.get("how")
+	return {
+		"js_bytes": _count(page.get("bytes")),
+		"how": how if how is String and how in HOWS else "unknown",
+		"pck": _count(page.get("pck")),
+		"wire": _count(page.get("wire")),
+		"s3tc": page.get("s3tc") is bool and page["s3tc"],
+	}
+
+
+# A byte count from the page, or -1 when it isn't a number of at least 0.
+static func _count(value: Variant) -> float:
+	if not (value is float or value is int):
+		return -1.0
+	return float(value) if float(value) >= 0.0 else -1.0
 
 
 # Whole MB, or -1 for a count that couldn't be read.
@@ -200,13 +229,7 @@ func _poll_page() -> void:
 		if _js_frames < JS_WAIT_FRAMES:
 			return
 		raw = "{}"
-	var parsed: Variant = JSON.parse_string(raw)
-	var page: Dictionary = parsed if parsed is Dictionary else {}
-	_fields["js_bytes"] = float(page.get("bytes", -1))
-	_fields["how"] = str(page.get("how", "unknown"))
-	_fields["pck"] = float(page.get("pck", -1))
-	_fields["wire"] = float(page.get("wire", -1))
-	_fields["s3tc"] = bool(page.get("s3tc", false))
+	_fields.merge(page_fields(raw), true)
 	_finish(web_line(_fields))
 
 

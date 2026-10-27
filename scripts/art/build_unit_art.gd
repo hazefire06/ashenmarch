@@ -4,10 +4,11 @@ extends SceneTree
 ## generated; never edit them by hand. Run `make art-build UNIT=shieldman`,
 ## which packs the render and imports the packed sheets first, so they are
 ## textures Godot can load (with the mipmapped, VRAM-compressed settings the
-## packer wrote beside them).
+## packer wrote beside them). Nothing is read or written through a symlink.
 
 const SOURCE: String = "res://assets/units/%s/"
 const OUTPUT: String = "res://data/art/%s.tres"
+const OUTPUT_FOLDER: String = "res://data/art/"
 
 
 func _init() -> void:
@@ -23,7 +24,16 @@ func _init() -> void:
 ## returns its type's default, so _build returns bool: false is the failure
 ## value, and an unforeseen error exits non-zero instead of looking like success.
 func _build(unit: String) -> bool:
+	if not UnitArtPacker.is_unit_name(unit):
+		printerr("build_unit_art: %s is not a unit name (a lowercase letter, then up to 31 lowercase letters, digits and _)" % unit.c_escape())
+		return false
 	var folder: String = SOURCE % unit
+	# The art and the catalog are written into OUTPUT_FOLDER, as the packer
+	# writes into folder: a planted link there would put them elsewhere.
+	var links: PackedStringArray = UnitArtPacker.planted_links(PackedStringArray([folder, OUTPUT_FOLDER]))
+	if not links.is_empty():
+		printerr("build_unit_art: refusing to read or write through a symlink: %s" % ", ".join(links))
+		return false
 	var sidecar_path: String = folder + unit + ".json"
 	var sidecar: Variant = null
 	if FileAccess.file_exists(sidecar_path):
@@ -58,7 +68,7 @@ func _build(unit: String) -> bool:
 	if not errors.is_empty():
 		printerr("build_unit_art: %s" % "\n".join(errors))
 		return false
-	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("res://data/art"))
+	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(OUTPUT_FOLDER))
 	var out: String = OUTPUT % unit
 	if ResourceSaver.save(art, out) != OK:
 		printerr("build_unit_art: could not save %s" % out)

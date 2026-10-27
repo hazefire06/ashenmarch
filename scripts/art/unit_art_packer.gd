@@ -29,12 +29,34 @@ const GRID_ANIMATION_KEYS: Array[String] = ["columns", "rows_per_direction"]
 ## What pack() and layout_errors() read from a grid sidecar without a default.
 const GRID_SIDECAR_KEYS: Array[String] = ["unit", "cell", "stride", "gutter", "feet_px", "pixels_per_meter", "animations"]
 const GRID_ANIMATION_REQUIRED: Array[String] = ["sheet", "frames", "fps", "loop"]
+## A unit's name, as render_sprites.py's NAME takes it. It becomes a folder
+## under art-src, assets and data/art, so it holds no path pieces.
+const UNIT_NAME: String = "^[a-z][a-z0-9_]{0,31}$"
+
+
+## True when name is a unit's name (UNIT_NAME), all of it: "$" alone would
+## also let a trailing newline through.
+static func is_unit_name(name: String) -> bool:
+	var found: RegExMatch = RegEx.create_from_string(UNIT_NAME).search(name)
+	return found != null and found.get_string() == name
+
+
+## Why an animation's sheet isn't the file the renderer names it,
+## <animation>.png, or "" if it is. The packer and the builder read and write
+## <folder> + sheet, so anything else (a "../", a sub folder) would reach past
+## the folders planted_links checked. anim is one of the game's animations.
+static func sheet_error(anim: String, sheet: Variant) -> String:
+	var own: String = anim + ".png"
+	if sheet is String and sheet == own:
+		return ""
+	return "%s: the sheet must be \"%s\", not %s" % [anim, own, JSON.stringify(sheet)]
 
 
 ## Which keys the grid sidecar lacks, or an empty array if it has all that
 ## pack() and layout_errors() need. Run before them: a missing key would be a
 ## script error deep inside them, far from its cause. Only the animations the
-## game plays are checked.
+## game plays are checked, and each one's sheet must be its own file
+## (sheet_error).
 static func sidecar_errors(sidecar: Dictionary) -> PackedStringArray:
 	var errors: PackedStringArray = PackedStringArray()
 	for key: String in GRID_SIDECAR_KEYS:
@@ -54,6 +76,10 @@ static func sidecar_errors(sidecar: Dictionary) -> PackedStringArray:
 		for needed: String in GRID_ANIMATION_REQUIRED:
 			if not (anims[key] as Dictionary).has(needed):
 				errors.append("%s: no \"%s\"" % [key, needed])
+		if (anims[key] as Dictionary).has("sheet"):
+			var bad_sheet: String = sheet_error(key, anims[key]["sheet"])
+			if not bad_sheet.is_empty():
+				errors.append(bad_sheet)
 	return errors
 
 

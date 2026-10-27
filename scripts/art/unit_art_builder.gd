@@ -19,8 +19,9 @@ const ANIMATION_KEYS: Array[String] = ["sheet", "frames", "fps", "loop", "rects"
 ## Which keys the packed sidecar lacks, or an empty array if it has all that
 ## build() and layout_errors() need. Run before them: a missing key would be a
 ## script error deep inside them, far from its cause. Only the animations the
-## game plays are checked. A grid sidecar, straight from the renderer, has no
-## "layout": make art-build packs it first.
+## game plays are checked, and each one's sheet must be its own file
+## (UnitArtPacker.sheet_error). A grid sidecar, straight from the renderer, has
+## no "layout": make art-build packs it first.
 static func sidecar_errors(sidecar: Dictionary) -> PackedStringArray:
 	var errors: PackedStringArray = PackedStringArray()
 	for key: String in SIDECAR_KEYS:
@@ -42,6 +43,10 @@ static func sidecar_errors(sidecar: Dictionary) -> PackedStringArray:
 		for needed: String in ANIMATION_KEYS:
 			if not (anims[key] as Dictionary).has(needed):
 				errors.append("%s: no \"%s\"" % [key, needed])
+		if (anims[key] as Dictionary).has("sheet"):
+			var bad_sheet: String = UnitArtPacker.sheet_error(key, anims[key]["sheet"])
+			if not bad_sheet.is_empty():
+				errors.append(bad_sheet)
 	return errors
 
 

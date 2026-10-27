@@ -158,6 +158,13 @@ func test_a_grid_sidecar_is_refused_by_the_builder() -> void:
 	assert_string_contains(errors, "walk: no \"rects\"")
 
 
+func test_the_builder_refuses_a_sheet_that_is_not_its_animations_own_file() -> void:
+	var packed: Dictionary = TestArt.pack(TestArt.sidecar(&"x"))
+	var side: Dictionary = packed["sidecar"]
+	side["animations"]["die"]["sheet"] = "../../../victim.png"
+	assert_string_contains(" ".join(UnitArtBuilder.sidecar_errors(side)), "die: the sheet must be \"die.png\"")
+
+
 func test_layout_rejects_a_stale_packed_sheet() -> void:
 	var packed: Dictionary = TestArt.pack(TestArt.sidecar(&"x"))
 	var stale: Image = Image.create_empty(4, 4, false, Image.FORMAT_RGBA8)

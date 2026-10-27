@@ -339,6 +339,22 @@ func test_sidecar_errors_ignore_animations_the_game_does_not_play() -> void:
 	assert_eq(UnitArtPacker.sidecar_errors(side), PackedStringArray())
 
 
+func test_sidecar_errors_refuse_a_sheet_that_is_not_its_animations_own_file() -> void:
+	# The packer reads and writes <folder> + sheet, so a path in it would reach
+	# past the folders planted_links checked.
+	for bad: Variant in ["../../../../victim.png", "sub/walk.png", "/tmp/walk.png", "idle.png", "walk.PNG", "", 7]:
+		var side: Dictionary = TestArt.sidecar(&"x")
+		side["animations"]["walk"]["sheet"] = bad
+		assert_string_contains(" ".join(UnitArtPacker.sidecar_errors(side)), "walk: the sheet must be \"walk.png\"", str(bad))
+
+
+func test_a_unit_name_is_one_the_renderer_accepts() -> void:
+	for good: String in ["shieldman", "a", "x_2", "a" + "b".repeat(31)]:
+		assert_true(UnitArtPacker.is_unit_name(good), good)
+	for bad: String in ["", "2x", "_x", "Shieldman", "a/b", "..", "x\n", "x.y", "a" + "b".repeat(32)]:
+		assert_false(UnitArtPacker.is_unit_name(bad), bad.c_escape())
+
+
 # A blank grid Image of exactly this size.
 func _blank_sheet(width: int, height: int) -> Image:
 	return Image.create_empty(width, height, false, Image.FORMAT_RGBA8)

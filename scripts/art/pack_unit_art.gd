@@ -41,8 +41,8 @@ func _init() -> void:
 ## value, so an unforeseen script error exits non-zero instead of looking like
 ## success.
 func _pack(unit: String) -> bool:
-	if RegEx.create_from_string("^[a-z0-9_]+$").search(unit) == null:
-		printerr("pack_unit_art: %s is not a unit name (lowercase letters, digits and _)" % unit)
+	if not UnitArtPacker.is_unit_name(unit):
+		printerr("pack_unit_art: %s is not a unit name (a lowercase letter, then up to 31 lowercase letters, digits and _)" % unit.c_escape())
 		return false
 	var source: String = SOURCE % unit
 	var output: String = OUTPUT % unit

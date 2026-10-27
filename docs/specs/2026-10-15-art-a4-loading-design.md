@@ -146,7 +146,7 @@ The expected result is about 600 MB: a pck of about 190 MB held twice (in the JS
   - the art load time;
   - the pck's decoded and transferred size (Web, from the page's resource timing);
   - `RENDER_TEXTURE_MEM_USED` and `OS.get_static_memory_usage()`.
-- `measureUserAgentSpecificMemory` needs cross-origin isolation, which `serve_web.py` provides. On a host without it, the check falls back to Chrome's `performance.memory` plus the wasm memory's size, and labels the line as a fallback.
+- `measureUserAgentSpecificMemory` needs cross-origin isolation, which `serve_web.py` provides. On a host without it, the check shows Chrome's `performance.memory` JS heap, labeled as a fallback, and says UNKNOWN. (Changed in review: the wasm memory's size isn't reachable from the page, and the JS heap alone leaves out the wasm memory and the resident pck, so a fallback verdict could pass a tab over the limit.)
 - Desktop prints the same line and exits 0. Desktop has no budget, but the numbers go into the docs.
 - Make targets: `make budget` (the editor, windowed) and `make budget-app` (the exported macOS app). On Web: `make export-web serve-web`, then `http://127.0.0.1:8060/?budget=1`.
 
