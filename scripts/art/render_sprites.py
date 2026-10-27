@@ -34,13 +34,14 @@ worst over idle's frames and directions, props excluded (a raised sword doesn't
 count).
 
 Sheets wrap at MAX_SHEET_PX wide, however many cells of the unit's frame that
-holds. Sheets, import settings and a JSON sidecar go to assets/units/<unit>/
-only once every clip has drawn, the sidecar last, so a render that stops early
-leaves the last good set untouched. The contact sheet, per-animation GIFs and
-the attach preview go to art-src/units/<unit>/review/; a prop's candidate sheet
-to art-src/props/<prop>/review/. An audition clip (`audition = true`) is for
-review only: its GIF and contact-sheet row, but no sheet, import settings or
-sidecar entry. Nothing is written, or read, through a symlink.
+holds. Grid sheets and a JSON sidecar go to art-src/units/<unit>/sheets/, where
+make art-build packs them into assets/units/<unit>/, only once every clip has
+drawn, the sidecar last, so a render that stops early leaves the last good set
+untouched. The contact sheet, per-animation GIFs and the attach preview go to
+art-src/units/<unit>/review/; a prop's candidate sheet to
+art-src/props/<prop>/review/. An audition clip (`audition = true`) is for
+review only: its GIF and contact-sheet row, but no sheet or sidecar entry.
+Nothing is written, or read, through a symlink.
 
 Four guards stop a render before the work is wasted: ffmpeg must be on the
 PATH before anything loads; a clip's file must hold an animation (one with
@@ -100,6 +101,8 @@ ATTACH_VIEWS = (0, 2, 4, 6)
 # A walk or run whose root travels less than this over the clip plays in place; its stride comes from the feet.
 IN_PLACE_M = 0.05
 PROP_CELL = 256
+# A unit's grid sheets and sidecar go to this folder under its own, for make art-build to pack.
+SHEETS_DIR = "sheets"
 # (label, camera azimuth from the prop's front in degrees, elevation in degrees); a Meshy model faces -Y, like a unit.
 PROP_VIEWS = (("front", 0.0, 0.0), ("side", 90.0, 0.0), ("back", 180.0, 0.0), ("three-quarter", 45.0, 35.0))
 PROP_BACKDROP = (0.9, 0.9, 0.88)
@@ -109,22 +112,6 @@ GAME_ENGINES = {
     "WORKBENCH": ("BLENDER_WORKBENCH",),
     "CYCLES": ("CYCLES",),
 }
-IMPORT_SETTINGS = """[remap]
-
-importer="texture"
-type="CompressedTexture2D"
-
-[params]
-
-compress/mode=2
-compress/high_quality=false
-compress/lossy_quality=0.7
-mipmaps/generate=true
-mipmaps/limit=-1
-process/fix_alpha_border=true
-process/premult_alpha=false
-detect_3d/compress_to=0
-"""
 
 
 @dataclass(frozen=True)
@@ -678,13 +665,6 @@ def gif(frames_dir: Path, frames: int, dest: Path, fps: int) -> None:
            "-frames:v", str(frames), "-loop", "0", str(dest))
 
 
-def write_import_settings(sheet: Path) -> None:
-    """Mipmapped, VRAM-compressed sprite sheets. Godot fills in the rest on import."""
-    settings = sheet.with_name(sheet.name + ".import")
-    if not settings.exists():
-        settings.write_text(IMPORT_SETTINGS, encoding="utf-8")
-
-
 # --- rendering --------------------------------------------------------------
 
 def stage_animation(spec: UnitSpec, glb: Path, entry: AnimEntry, props: list[Prop], engine: str,
@@ -835,7 +815,7 @@ def key_frame(name: str, info: dict[str, Any]) -> int:
 def render_unit(unit: str, src_root: Path, out_root: Path, engine: str = "EEVEE", repo: Path | None = None) -> dict[str, Any]:
     require_ffmpeg()
     unit_dir = src_root / "units" / unit
-    out_dir = out_root / unit
+    out_dir = out_root / unit / SHEETS_DIR
     review = unit_dir / "review"
     repo = repo_root(src_root, repo)
     refuse_planted_links(repo, [unit_dir, review, out_dir])
@@ -864,7 +844,7 @@ def render_unit(unit: str, src_root: Path, out_root: Path, engine: str = "EEVEE"
             if figure_px is not None:
                 sidecar["figure_height_m"] = round(figure_px / PIXELS_PER_METER, 3)
                 print(f"figure height: {sidecar['figure_height_m']:.3f} m ({figure_px:.1f} px above the feet, props excluded)")
-            if not entry.audition:  # an audition is for review only: no sheet, no import settings, no sidecar entry
+            if not entry.audition:  # an audition is for review only: no sheet, no sidecar entry
                 tile(sheet_cells(frames_dir, info["frames"], frame), info["columns"], DIRECTIONS * info["rows_per_direction"],
                      staging / info["sheet"], frame.cell)
                 sidecar["animations"][entry.name] = info
@@ -876,11 +856,10 @@ def render_unit(unit: str, src_root: Path, out_root: Path, engine: str = "EEVEE"
         sidecar["gib_color"] = opaque_mean_color(frames_root / first / "d4" / "f000.png")
         # Every clip drew: only now do the sheets replace the last render's, and the sidecar goes last. A render
         # that stops early (a guard, a clip-name typo, a crash) never leaves new sheets beside an old sidecar,
-        # which the builder would cut with the old layout. Copied, not moved: the temp folder may be another volume.
+        # which the packer would cut with the old layout. Copied, not moved: the temp folder may be another volume.
         out_dir.mkdir(parents=True, exist_ok=True)
         for sheet in [clip["sheet"] for clip in sidecar["animations"].values()]:
             shutil.copyfile(staging / sheet, out_dir / sheet)
-            write_import_settings(out_dir / sheet)
     finally:
         shutil.rmtree(work, ignore_errors=True)
     (out_dir / f"{unit}.json").write_text(json.dumps(sidecar, indent=2, sort_keys=True) + "\n", encoding="utf-8")
@@ -1039,8 +1018,8 @@ def main(argv: list[str]) -> int:
     elif parsed.attach:
         render_attach(parsed.name, REPO / "art-src", parsed.engine, REPO)
     else:
-        sidecar = render_unit(parsed.name, REPO / "art-src", REPO / "assets" / "units", parsed.engine, REPO)
-        print(f"rendered {parsed.name}: {sorted(sidecar['animations'])} -> assets/units/{parsed.name}/")
+        sidecar = render_unit(parsed.name, REPO / "art-src", REPO / "art-src" / "units", parsed.engine, REPO)
+        print(f"rendered {parsed.name}: {sorted(sidecar['animations'])} -> art-src/units/{parsed.name}/{SHEETS_DIR}/ (make art-build packs them)")
     return 0
 
 

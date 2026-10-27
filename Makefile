@@ -251,7 +251,8 @@ test-art:
 art-candidates:
 	$(BLENDER_RUN) --python scripts/art/render_sprites.py -- $(UNIT) --candidates
 
-# Renders UNIT's animations into assets/units/UNIT/ plus its review sheets (free).
+# Renders UNIT's animations into art-src/units/UNIT/sheets/ (grids; make art-build
+# packs them) plus its review sheets (free).
 art-render:
 	$(BLENDER_RUN) --python scripts/art/render_sprites.py -- $(UNIT)
 
