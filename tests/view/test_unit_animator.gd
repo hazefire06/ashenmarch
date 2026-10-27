@@ -224,3 +224,20 @@ func test_paralysis_pauses_a_swing_instead_of_running_it_out() -> void:
 		assert_eq(play.anim, &"attack", "tick %d after the paralysis" % (i + 1))
 		assert_almost_eq(play.speed_scale, 1.25, 0.0001)
 	assert_eq(_tick().anim, &"idle")
+
+
+func test_a_loop_starts_on_the_units_own_frame() -> void:
+	for id: int in 200:
+		var frame: int = UnitAnimator.loop_start_frame(id, 12)
+		assert_between(frame, 0, 11)
+		assert_eq(UnitAnimator.loop_start_frame(id, 12), frame, "the same every time, so a replay matches")
+	assert_eq(UnitAnimator.loop_start_frame(5, 1), 0, "a one-frame loop has one frame")
+	assert_eq(UnitAnimator.loop_start_frame(5, 0), 0)
+
+
+func test_neighbours_in_a_side_start_a_quarter_cycle_apart() -> void:
+	for id: int in Army.MAX_UNITS - 1:
+		var a: float = fposmod(id * UnitAnimator.LOOP_PHASE_STEP, 1.0)
+		var b: float = fposmod((id + 1) * UnitAnimator.LOOP_PHASE_STEP, 1.0)
+		var apart: float = absf(a - b)
+		assert_gte(minf(apart, 1.0 - apart), 0.25, "ids %d and %d" % [id, id + 1])

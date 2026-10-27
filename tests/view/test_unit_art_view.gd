@@ -456,3 +456,51 @@ func test_a_corpse_rebuilt_while_frozen_shows_its_last_frame() -> void:
 	assert_eq(body.frame, 3)
 	await wait_seconds(0.2)
 	assert_eq(body.frame, 3, "it stays the corpse")
+
+
+# TestArt with a 12-frame idle, so two idles can be out of step.
+func _looping_art() -> UnitArt:
+	return TestArt.art(&"shieldman", {
+		"idle": [12, 12, true, -1], "walk": [12, 12, true, -1],
+		"attack": [6, 12, false, 3], "die": [4, 12, false, -1],
+	})
+
+
+func test_units_that_set_off_together_walk_out_of_step() -> void:
+	var second: Unit = _world.spawn_unit(_catalog.index_of(&"shieldman"), LIGHT, 32 * M, 30 * M, 0, 1)
+	_view.after_step()
+	for unit: Unit in [_shieldman, second]:
+		unit.transition_to(Unit.State.MOVING)
+		unit.x += 100
+	_view.after_step()
+	_view._process(0.0)
+	var first_frame: int = _art_body(_sprite(_shieldman)).frame
+	var second_frame: int = _art_body(_sprite(second)).frame
+	assert_eq(first_frame, UnitAnimator.loop_start_frame(_shieldman.id, 12))
+	assert_eq(second_frame, UnitAnimator.loop_start_frame(second.id, 12))
+	assert_ne(first_frame, second_frame, "two ids, two steps")
+
+
+func test_units_that_stand_together_idle_out_of_step() -> void:
+	var world: World = World.new(1, TestTerrains.flat(60, 60), _catalog)
+	var a: Unit = world.spawn_unit(_catalog.index_of(&"shieldman"), LIGHT, 30 * M, 30 * M, 0, 1)
+	var b: Unit = world.spawn_unit(_catalog.index_of(&"shieldman"), LIGHT, 32 * M, 30 * M, 0, 1)
+	var view: UnitsView = _art_view(world, _looping_art(), UnitSelection.new())
+	view.after_step()
+	view._process(0.0)
+	assert_eq(_art_body(_sprite_in(view, a)).animation, &"idle_4")
+	assert_ne(_art_body(_sprite_in(view, a)).frame, _art_body(_sprite_in(view, b)).frame)
+
+
+func test_a_strike_that_ends_in_a_walk_resumes_on_the_units_own_frame() -> void:
+	_shieldman.windup_left = 8
+	_view.after_step()
+	_shieldman.windup_left = 0
+	_shieldman.transition_to(Unit.State.MOVING)
+	# Long enough for TestArt's 6-frame swing at 12 fps (15 ticks) to play out.
+	for _tick: int in 40:
+		_shieldman.x += 100
+		_view.after_step()
+	_view._process(0.0)
+	assert_eq(_sprite(_shieldman).shown_animation(), &"walk_4")
+	assert_eq(_art_body(_sprite(_shieldman)).frame, UnitAnimator.loop_start_frame(_shieldman.id, 12))
