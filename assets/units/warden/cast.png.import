@@ -4,16 +4,15 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://cgygi1oj26k5c"
 path.s3tc="res://.godot/imported/cast.png-3ad340792af4af85965cd32b2aac234c.s3tc.ctex"
-path.etc2="res://.godot/imported/cast.png-3ad340792af4af85965cd32b2aac234c.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"imported_formats": ["s3tc_bptc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/units/warden/cast.png"
-dest_files=["res://.godot/imported/cast.png-3ad340792af4af85965cd32b2aac234c.s3tc.ctex", "res://.godot/imported/cast.png-3ad340792af4af85965cd32b2aac234c.etc2.ctex"]
+dest_files=["res://.godot/imported/cast.png-3ad340792af4af85965cd32b2aac234c.s3tc.ctex"]
 
 [params]
 

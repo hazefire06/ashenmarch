@@ -4,16 +4,15 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://7d5g5suvv85l"
 path.s3tc="res://.godot/imported/place.png-e0090d26459589f318db7167b4b39ad2.s3tc.ctex"
-path.etc2="res://.godot/imported/place.png-e0090d26459589f318db7167b4b39ad2.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"imported_formats": ["s3tc_bptc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/units/ripper/place.png"
-dest_files=["res://.godot/imported/place.png-e0090d26459589f318db7167b4b39ad2.s3tc.ctex", "res://.godot/imported/place.png-e0090d26459589f318db7167b4b39ad2.etc2.ctex"]
+dest_files=["res://.godot/imported/place.png-e0090d26459589f318db7167b4b39ad2.s3tc.ctex"]
 
 [params]
 

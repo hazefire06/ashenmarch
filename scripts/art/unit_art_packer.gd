@@ -26,6 +26,124 @@ const LAYOUT: String = "packed"
 ## Grid-only keys a packed sidecar drops.
 const GRID_KEYS: Array[String] = ["stride", "gutter"]
 const GRID_ANIMATION_KEYS: Array[String] = ["columns", "rows_per_direction"]
+## What pack() and layout_errors() read from a grid sidecar without a default.
+const GRID_SIDECAR_KEYS: Array[String] = ["unit", "cell", "stride", "gutter", "feet_px", "pixels_per_meter", "animations"]
+const GRID_ANIMATION_REQUIRED: Array[String] = ["sheet", "frames", "fps", "loop"]
+
+
+## Which keys the grid sidecar lacks, or an empty array if it has all that
+## pack() and layout_errors() need. Run before them: a missing key would be a
+## script error deep inside them, far from its cause. Only the animations the
+## game plays are checked.
+static func sidecar_errors(sidecar: Dictionary) -> PackedStringArray:
+	var errors: PackedStringArray = PackedStringArray()
+	for key: String in GRID_SIDECAR_KEYS:
+		if not sidecar.has(key):
+			errors.append("no \"%s\"" % key)
+	if not sidecar.get("animations") is Dictionary:
+		if sidecar.has("animations"):
+			errors.append("\"animations\" is not an object")
+		return errors
+	var anims: Dictionary = sidecar["animations"]
+	for key: String in anims:
+		if StringName(key) not in UnitArtBuilder.GAME_ANIMS:
+			continue
+		if not anims[key] is Dictionary:
+			errors.append("%s: not an object" % key)
+			continue
+		for needed: String in GRID_ANIMATION_REQUIRED:
+			if not (anims[key] as Dictionary).has(needed):
+				errors.append("%s: no \"%s\"" % [key, needed])
+	return errors
+
+
+## Why the grid sidecar's layout doesn't fit its sheets, or an empty array if
+## it does. Only the animations the game plays are checked. A sheet must be
+## exactly columns * stride wide and 8 * rows_per_direction * stride tall:
+## too small and a frame is cut off, too large and it is a stale sheet whose
+## cells would be cut from the wrong places without a word. Run before
+## pack(): a sidecar that disagrees with its sheets would otherwise cut cells
+## from past an image's edge (or divide by zero) and fail far from the cause.
+## grids maps each animation name (StringName) to its grid Image.
+static func layout_errors(sidecar: Dictionary, grids: Dictionary) -> PackedStringArray:
+	var errors: PackedStringArray = PackedStringArray()
+	var cell: int = int(sidecar["cell"])
+	var stride: int = int(sidecar["stride"])
+	var gutter: int = int(sidecar["gutter"])
+	var anims: Dictionary = sidecar["animations"]
+	for key: String in anims:
+		var anim: StringName = StringName(key)
+		if anim not in UnitArtBuilder.GAME_ANIMS:
+			continue
+		var info: Dictionary = anims[key]
+		var count: int = int(info["frames"])
+		var columns: int = int(info.get("columns", count))
+		var rows_per_direction: int = int(info.get("rows_per_direction", 1))
+		if columns <= 0:
+			errors.append("%s: columns must be positive, not %d" % [key, columns])
+		if rows_per_direction <= 0:
+			errors.append("%s: rows_per_direction must be positive, not %d" % [key, rows_per_direction])
+		if columns <= 0 or rows_per_direction <= 0:
+			continue
+		if columns * rows_per_direction < count:
+			errors.append("%s: %d columns x %d rows hold %d frames, not %d" % [key, columns, rows_per_direction, columns * rows_per_direction, count])
+			continue
+		var sheet: Image = grids.get(anim) as Image
+		if sheet == null:
+			errors.append("%s: no sheet" % key)
+			continue
+		# The far corner of the last frame of the last direction.
+		@warning_ignore("integer_division") # Floor on purpose: the wrapped row.
+		var last_row: int = (UnitArt.DIRECTIONS - 1) * rows_per_direction + (count - 1) / columns
+		var right: int = (mini(count, columns) - 1) * stride + gutter + cell
+		var bottom: int = last_row * stride + gutter + cell
+		var size: Vector2i = sheet.get_size()
+		if right > size.x or bottom > size.y:
+			errors.append("%s: frames reach outside the %dx%d sheet, which would need %dx%d" % [key, size.x, size.y, right, bottom])
+			continue
+		# Exactly the stride grid, not just big enough: a larger sheet is a stale
+		# one (from a longer clip), and pack() would cut the wrong cells from it.
+		var wide: int = columns * stride
+		var tall: int = UnitArt.DIRECTIONS * rows_per_direction * stride
+		if size.x != wide or size.y != tall:
+			errors.append("%s: the sheet is %dx%d, but the sidecar's layout makes it %dx%d" % [key, size.x, size.y, wide, tall])
+	return errors
+
+
+## Symlinks at or on the way to these folders (res:// or user:// paths), or
+## inside them. The repo is public, so a PR could plant a symlinked sheet or
+## folder and have a pack written over a file elsewhere; render_sprites.py
+## refuses the same. A folder that doesn't exist yet passes.
+static func planted_links(folders: PackedStringArray) -> PackedStringArray:
+	var found: PackedStringArray = PackedStringArray()
+	for folder: String in folders:
+		var scheme_end: int = folder.find("://") + 3
+		var walked: String = folder.substr(0, scheme_end)
+		var whole: bool = true
+		for part: String in folder.substr(scheme_end).split("/", false):
+			var parent: DirAccess = DirAccess.open(walked)
+			if parent == null:
+				whole = false
+				break
+			if parent.is_link(part):
+				found.append(walked.path_join(part))
+				whole = false
+				break
+			walked = walked.path_join(part)
+		if not whole:
+			continue
+		var inside: DirAccess = DirAccess.open(folder)
+		if inside == null:
+			continue
+		inside.include_hidden = true
+		inside.list_dir_begin()
+		var name: String = inside.get_next()
+		while not name.is_empty():
+			if inside.is_link(name):
+				found.append(folder.path_join(name))
+			name = inside.get_next()
+		inside.list_dir_end()
+	return found
 
 
 ## The part of a cell a packed frame keeps, in cell coordinates. used is the

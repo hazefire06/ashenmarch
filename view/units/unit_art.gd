@@ -156,6 +156,12 @@ func validate() -> PackedStringArray:
 			var name: StringName = anim_name(anim, dir)
 			if not frames.has_animation(name) or frames.get_frame_count(name) == 0:
 				errors.append("%s: %s has no frames for direction %d" % [who, anim, dir])
+				continue
+			for i: int in frames.get_frame_count(name):
+				var frame: Texture2D = frames.get_frame_texture(name, i)
+				if frame == null or frame.get_width() != cell_px or frame.get_height() != cell_px:
+					errors.append("%s: %s frame %d of direction %d is not a whole %d px cell" % [who, anim, i, dir, cell_px])
+					break
 	for anim: StringName in impact_frames:
 		var count: int = frames.get_frame_count(anim_name(anim, 0)) if has_anim(anim) else 0
 		var impact: int = impact_frames[anim]

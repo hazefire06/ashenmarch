@@ -4,16 +4,15 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://cmljrnqekia52"
 path.s3tc="res://.godot/imported/idle.png-948fac9eca5d7bd4838b3d0b88ab48dd.s3tc.ctex"
-path.etc2="res://.godot/imported/idle.png-948fac9eca5d7bd4838b3d0b88ab48dd.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"imported_formats": ["s3tc_bptc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/units/stormcaller/idle.png"
-dest_files=["res://.godot/imported/idle.png-948fac9eca5d7bd4838b3d0b88ab48dd.s3tc.ctex", "res://.godot/imported/idle.png-948fac9eca5d7bd4838b3d0b88ab48dd.etc2.ctex"]
+dest_files=["res://.godot/imported/idle.png-948fac9eca5d7bd4838b3d0b88ab48dd.s3tc.ctex"]
 
 [params]
 

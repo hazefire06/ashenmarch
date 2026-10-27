@@ -270,6 +270,10 @@ art-probe: import
 art-prop-candidates:
 	$(BLENDER_RUN) --python scripts/art/render_sprites.py -- $(PROP) --prop-candidates
 
-# Builds data/art/UNIT.tres from the render and lists it in data/art/catalog.tres.
+# Packs UNIT's grid render (art-src/units/UNIT/sheets/) into trimmed sheets in
+# assets/units/UNIT/, imports them, then builds data/art/UNIT.tres and lists it
+# in data/art/catalog.tres (scripts/art/pack_unit_art.gd, build_unit_art.gd).
 art-build: import
+	$(GODOT) --headless --path . -s scripts/art/pack_unit_art.gd -- $(UNIT)
+	$(GODOT) --headless --path . --import
 	$(GODOT) --headless --path . -s scripts/art/build_unit_art.gd -- $(UNIT)

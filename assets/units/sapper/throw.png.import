@@ -4,16 +4,15 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://dfxf2uieecped"
 path.s3tc="res://.godot/imported/throw.png-fe844730bb7c3b0a52e361ceeeddc5e9.s3tc.ctex"
-path.etc2="res://.godot/imported/throw.png-fe844730bb7c3b0a52e361ceeeddc5e9.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"imported_formats": ["s3tc_bptc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/units/sapper/throw.png"
-dest_files=["res://.godot/imported/throw.png-fe844730bb7c3b0a52e361ceeeddc5e9.s3tc.ctex", "res://.godot/imported/throw.png-fe844730bb7c3b0a52e361ceeeddc5e9.etc2.ctex"]
+dest_files=["res://.godot/imported/throw.png-fe844730bb7c3b0a52e361ceeeddc5e9.s3tc.ctex"]
 
 [params]
 

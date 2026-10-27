@@ -4,16 +4,15 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://bwwmj4yiggffm"
 path.s3tc="res://.godot/imported/attack.png-2659f089ff9a30824cbc84e723409684.s3tc.ctex"
-path.etc2="res://.godot/imported/attack.png-2659f089ff9a30824cbc84e723409684.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"imported_formats": ["s3tc_bptc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/units/longbow/attack.png"
-dest_files=["res://.godot/imported/attack.png-2659f089ff9a30824cbc84e723409684.s3tc.ctex", "res://.godot/imported/attack.png-2659f089ff9a30824cbc84e723409684.etc2.ctex"]
+dest_files=["res://.godot/imported/attack.png-2659f089ff9a30824cbc84e723409684.s3tc.ctex"]
 
 [params]
 

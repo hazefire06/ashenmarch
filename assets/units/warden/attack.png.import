@@ -4,16 +4,15 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://tugmlqvowe5m"
 path.s3tc="res://.godot/imported/attack.png-9341fbe6e5fd88b6e038d135c4d104b0.s3tc.ctex"
-path.etc2="res://.godot/imported/attack.png-9341fbe6e5fd88b6e038d135c4d104b0.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"imported_formats": ["s3tc_bptc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/units/warden/attack.png"
-dest_files=["res://.godot/imported/attack.png-9341fbe6e5fd88b6e038d135c4d104b0.s3tc.ctex", "res://.godot/imported/attack.png-9341fbe6e5fd88b6e038d135c4d104b0.etc2.ctex"]
+dest_files=["res://.godot/imported/attack.png-9341fbe6e5fd88b6e038d135c4d104b0.s3tc.ctex"]
 
 [params]
 

@@ -14,6 +14,9 @@ expect_ignored() { if git check-ignore -q "$1"; then echo "ok: $1 ignored"; else
 expect_file() { if [[ -f "$1" ]]; then echo "ok: $1"; else echo "FAIL: $1 missing"; fail=1; fi; }
 
 expect_lfs assets/units/shieldman/walk.png
+expect_lfs art-src/units/shieldman/sheets/walk.png
+expect_plain art-src/units/shieldman/sheets/shieldman.json
+expect_plain assets/units/shieldman/shieldman.json
 expect_lfs assets/audio/sfx/hit_1.wav
 expect_lfs assets/audio/music/riverside_calm.ogg
 expect_lfs art-src/units/shieldman/model/rigged.glb

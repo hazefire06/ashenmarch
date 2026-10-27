@@ -1,9 +1,10 @@
 extends SceneTree
-## Builds data/art/<unit>.tres from the Blender render in assets/units/<unit>/
-## and lists it in data/art/catalog.tres. Both are generated; never edit them
-## by hand. Run `make art-build UNIT=shieldman`, which imports first so the
-## sheets are textures Godot can load (with the mipmapped, VRAM-compressed
-## settings render_sprites.py wrote beside them).
+## Builds data/art/<unit>.tres from the packed sheets in assets/units/<unit>/
+## (pack_unit_art.gd), and lists it in data/art/catalog.tres. Both are
+## generated; never edit them by hand. Run `make art-build UNIT=shieldman`,
+## which packs the render and imports the packed sheets first, so they are
+## textures Godot can load (with the mipmapped, VRAM-compressed settings the
+## packer wrote beside them).
 
 const SOURCE: String = "res://assets/units/%s/"
 const OUTPUT: String = "res://data/art/%s.tres"
@@ -28,11 +29,11 @@ func _build(unit: String) -> bool:
 	if FileAccess.file_exists(sidecar_path):
 		sidecar = JSON.parse_string(FileAccess.get_file_as_string(sidecar_path))
 	if not sidecar is Dictionary:
-		printerr("build_unit_art: %s is missing or not JSON; run make art-render UNIT=%s" % [sidecar_path, unit])
+		printerr("build_unit_art: %s is missing or not JSON; run make art-build UNIT=%s" % [sidecar_path, unit])
 		return false
 	var missing: PackedStringArray = UnitArtBuilder.sidecar_errors(sidecar)
 	if not missing.is_empty():
-		printerr("build_unit_art: %s is incomplete; run make art-render UNIT=%s\n%s" % [sidecar_path, unit, "\n".join(missing)])
+		printerr("build_unit_art: %s is not a packed sidecar; run make art-build UNIT=%s, which packs first\n%s" % [sidecar_path, unit, "\n".join(missing)])
 		return false
 	if String(sidecar["unit"]) != unit:
 		printerr("build_unit_art: %s is for unit \"%s\", not \"%s\"" % [sidecar_path, sidecar["unit"], unit])

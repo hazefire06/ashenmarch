@@ -1,32 +1,33 @@
 class_name UnitArtBuilder
 extends RefCounted
-## Turns the Blender render's sidecar (assets/units/<id>/<id>.json) and sprite
-## sheets into a UnitArt. A sheet has rows_per_direction rows for each of the
-## 8 directions and `columns` columns; frame i of direction d sits at column
-## i % columns and row d * rows_per_direction + i / columns (a long animation
-## wraps, to keep the sheet under the 4096 px texture limit). A cell sits a
-## gutter inside its stride, so mipmaps don't bleed between frames. Only the
-## animations the game plays are kept: an alternate auditioned on the contact
-## sheet stays out.
+## Turns a packed sidecar (assets/units/<id>/<id>.json, written by
+## scripts/art/pack_unit_art.gd) and its sheets into a UnitArt. Each frame is
+## an AtlasTexture whose region is the frame's packed rect and whose margin
+## puts back the rest of its cell, so every frame is `cell` px square again
+## (UnitArtPacker says how a grid render is packed). Only the animations the
+## game plays are kept: an alternate auditioned on the contact sheet stays out.
 
 const GAME_ANIMS: Array[StringName] = [
 	&"idle", &"walk", &"attack", &"die", &"shoot", &"throw", &"cast", &"place",
 ]
 
-## What build() and layout_errors() read from the sidecar without a default.
-const SIDECAR_KEYS: Array[String] = ["unit", "cell", "stride", "gutter", "feet_px", "pixels_per_meter", "animations"]
-const ANIMATION_KEYS: Array[String] = ["sheet", "frames", "fps", "loop"]
+## What build() and layout_errors() read from a packed sidecar without a default.
+const SIDECAR_KEYS: Array[String] = ["unit", "cell", "feet_px", "pixels_per_meter", "animations", "layout"]
+const ANIMATION_KEYS: Array[String] = ["sheet", "frames", "fps", "loop", "rects", "sheet_size"]
 
 
-## Which keys the sidecar lacks, or an empty array if it has all that build()
-## and layout_errors() need. Run before them: a missing key would be a script
-## error deep inside them, far from its cause. Only the animations the game
-## plays are checked.
+## Which keys the packed sidecar lacks, or an empty array if it has all that
+## build() and layout_errors() need. Run before them: a missing key would be a
+## script error deep inside them, far from its cause. Only the animations the
+## game plays are checked. A grid sidecar, straight from the renderer, has no
+## "layout": make art-build packs it first.
 static func sidecar_errors(sidecar: Dictionary) -> PackedStringArray:
 	var errors: PackedStringArray = PackedStringArray()
 	for key: String in SIDECAR_KEYS:
 		if not sidecar.has(key):
 			errors.append("no \"%s\"" % key)
+	if sidecar.has("layout") and sidecar["layout"] != UnitArtPacker.LAYOUT:
+		errors.append("layout is \"%s\", not \"%s\"" % [sidecar["layout"], UnitArtPacker.LAYOUT])
 	if not sidecar.get("animations") is Dictionary:
 		if sidecar.has("animations"):
 			errors.append("\"animations\" is not an object")
@@ -44,19 +45,15 @@ static func sidecar_errors(sidecar: Dictionary) -> PackedStringArray:
 	return errors
 
 
-## Why the sidecar's layout doesn't fit its sheets, or an empty array if it
+## Why the packed sidecar doesn't fit its sheets, or an empty array if it
 ## does. Only the animations the game plays are checked. A sheet must be
-## exactly columns * stride wide and 8 * rows_per_direction * stride tall:
-## too small and a frame is cut off, too large and it is a stale sheet whose
-## cells would be cut from the wrong places without a word. Run before
-## build(): a sidecar that disagrees with its sheets would otherwise cut cells
-## from past a texture's edge (or divide by zero) and fail far from the cause.
-## sheets is as for build().
+## exactly the size the pack made it (sheet_size): a stale sheet beside a newer
+## sidecar would be cut in the wrong places without a word. Every rect must be
+## [x, y, w, h, cell_x, cell_y], lie inside its sheet and inside the cell, and
+## there must be one per frame per direction. sheets is as for build().
 static func layout_errors(sidecar: Dictionary, sheets: Dictionary) -> PackedStringArray:
 	var errors: PackedStringArray = PackedStringArray()
 	var cell: int = int(sidecar["cell"])
-	var stride: int = int(sidecar["stride"])
-	var gutter: int = int(sidecar["gutter"])
 	var anims: Dictionary = sidecar["animations"]
 	for key: String in anims:
 		var anim: StringName = StringName(key)
@@ -64,36 +61,34 @@ static func layout_errors(sidecar: Dictionary, sheets: Dictionary) -> PackedStri
 			continue
 		var info: Dictionary = anims[key]
 		var count: int = int(info["frames"])
-		var columns: int = int(info.get("columns", count))
-		var rows_per_direction: int = int(info.get("rows_per_direction", 1))
-		if columns <= 0:
-			errors.append("%s: columns must be positive, not %d" % [key, columns])
-		if rows_per_direction <= 0:
-			errors.append("%s: rows_per_direction must be positive, not %d" % [key, rows_per_direction])
-		if columns <= 0 or rows_per_direction <= 0:
-			continue
-		if columns * rows_per_direction < count:
-			errors.append("%s: %d columns x %d rows hold %d frames, not %d" % [key, columns, rows_per_direction, columns * rows_per_direction, count])
-			continue
 		var sheet: Texture2D = sheets.get(anim) as Texture2D
 		if sheet == null:
 			errors.append("%s: no sheet" % key)
 			continue
-		# The far corner of the last frame of the last direction.
-		@warning_ignore("integer_division") # Floor on purpose: the wrapped row.
-		var last_row: int = (UnitArt.DIRECTIONS - 1) * rows_per_direction + (count - 1) / columns
-		var right: int = (mini(count, columns) - 1) * stride + gutter + cell
-		var bottom: int = last_row * stride + gutter + cell
-		var size: Vector2 = sheet.get_size()
-		if right > size.x or bottom > size.y:
-			errors.append("%s: frames reach outside the %dx%d sheet, which would need %dx%d" % [key, int(size.x), int(size.y), right, bottom])
+		var size: Vector2i = Vector2i(sheet.get_size())
+		var packed_size: Array = info["sheet_size"]
+		if packed_size.size() != 2 or size != Vector2i(int(packed_size[0]), int(packed_size[1])):
+			errors.append("%s: the sheet is %dx%d, but the sidecar packed it %s" % [key, size.x, size.y, packed_size])
 			continue
-		# Exactly the stride grid, not just big enough: a larger sheet is a stale
-		# one (from a longer clip), and build() would cut the wrong cells from it.
-		var wide: int = columns * stride
-		var tall: int = UnitArt.DIRECTIONS * rows_per_direction * stride
-		if int(size.x) != wide or int(size.y) != tall:
-			errors.append("%s: the sheet is %dx%d, but the sidecar's layout makes it %dx%d" % [key, int(size.x), int(size.y), wide, tall])
+		var rects: Array = info["rects"]
+		if rects.size() != UnitArt.DIRECTIONS * count:
+			errors.append("%s: %d rects for %d frames in %d directions" % [key, rects.size(), count, UnitArt.DIRECTIONS])
+			continue
+		for k: int in rects.size():
+			var r: Variant = rects[k]
+			if not r is Array or (r as Array).size() != 6:
+				errors.append("%s: rect %d is not [x, y, w, h, cell_x, cell_y]" % [key, k])
+				break
+			var x: int = int(r[0])
+			var y: int = int(r[1])
+			var w: int = int(r[2])
+			var h: int = int(r[3])
+			if w <= 0 or h <= 0 or x < 0 or y < 0 or x + w > size.x or y + h > size.y:
+				errors.append("%s: rect %d (%d, %d, %d, %d) is not inside the %dx%d sheet" % [key, k, x, y, w, h, size.x, size.y])
+				break
+			if int(r[4]) < 0 or int(r[5]) < 0 or int(r[4]) + w > cell or int(r[5]) + h > cell:
+				errors.append("%s: rect %d sits outside the %d px cell" % [key, k, cell])
+				break
 	return errors
 
 
@@ -109,8 +104,6 @@ static func build(sidecar: Dictionary, sheets: Dictionary) -> UnitArt:
 	art.die_falls_forward = bool(sidecar.get("die_falls_forward", false))
 	var gib: Array = sidecar.get("gib_color", [0.5, 0.5, 0.5])
 	art.gib_color = Color(float(gib[0]), float(gib[1]), float(gib[2]))
-	var stride: int = int(sidecar["stride"])
-	var gutter: int = int(sidecar["gutter"])
 	var frames: SpriteFrames = SpriteFrames.new()
 	frames.remove_animation(&"default")
 	var anims: Dictionary = sidecar["animations"]
@@ -121,22 +114,20 @@ static func build(sidecar: Dictionary, sheets: Dictionary) -> UnitArt:
 		var info: Dictionary = anims[key]
 		var sheet: Texture2D = sheets[anim]
 		var count: int = int(info["frames"])
-		# Without the keys, the old layout: one row per direction.
-		var columns: int = int(info.get("columns", count))
-		var rows_per_direction: int = int(info.get("rows_per_direction", 1))
+		var rects: Array = info["rects"]
 		for dir: int in UnitArt.DIRECTIONS:
 			var name: StringName = UnitArt.anim_name(anim, dir)
 			frames.add_animation(name)
 			frames.set_animation_speed(name, float(info["fps"]))
 			frames.set_animation_loop(name, bool(info["loop"]))
 			for i: int in count:
-				var col: int = i % columns
-				@warning_ignore("integer_division") # Floor on purpose: the wrapped row.
-				var row: int = dir * rows_per_direction + i / columns
-				var cell: AtlasTexture = AtlasTexture.new()
-				cell.atlas = sheet
-				cell.region = Rect2(col * stride + gutter, row * stride + gutter, art.cell_px, art.cell_px)
-				frames.add_frame(name, cell)
+				var r: Array = rects[dir * count + i]
+				var frame: AtlasTexture = AtlasTexture.new()
+				frame.atlas = sheet
+				frame.region = Rect2(r[0], r[1], r[2], r[3])
+				# What the trim took, put back: every frame is the whole cell again.
+				frame.margin = Rect2(r[4], r[5], art.cell_px - int(r[2]), art.cell_px - int(r[3]))
+				frames.add_frame(name, frame)
 		var impact: int = int(info.get("impact_frame", -1))
 		if impact >= 0:
 			art.impact_frames[anim] = impact

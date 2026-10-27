@@ -1,8 +1,9 @@
 class_name TestArt
 extends RefCounted
-## A small UnitArt for view tests, built the way the real one is
-## (UnitArtBuilder, from a render sidecar) but from blank sheets, so a test
-## pins exactly the frame counts, rates and impact frames it depends on.
+## A small UnitArt for view tests, built the way the real one is (a grid
+## render's sidecar packed by UnitArtPacker, then built by UnitArtBuilder) but
+## from blank grids, so a test pins exactly the frame counts, rates and impact
+## frames it depends on.
 
 const CELL: int = 8
 const GUTTER: int = 1
@@ -14,8 +15,19 @@ const STRIDE_M: float = 1.2
 ## gives idle (1 frame), walk (12), attack (6, impact 3) and die (4), all at
 ## 12 fps. bursts drops the corpse, like a Blightbag.
 static func art(unit_id: StringName = &"shieldman", anims: Dictionary = {}, bursts: bool = false) -> UnitArt:
-	var side: Dictionary = sidecar(unit_id, anims, bursts)
-	return UnitArtBuilder.build(side, sheets(side))
+	var packed: Dictionary = pack(sidecar(unit_id, anims, bursts))
+	return UnitArtBuilder.build(packed["sidecar"], packed["textures"])
+
+
+## The grid sidecar packed as make art-build packs a render: UnitArtPacker.pack's
+## {"sidecar", "sheets", "errors"} plus "textures", an ImageTexture of each sheet.
+static func pack(side: Dictionary) -> Dictionary:
+	var packed: Dictionary = UnitArtPacker.pack(side, grids(side))
+	var textures: Dictionary = {}
+	for anim: StringName in packed["sheets"]:
+		textures[anim] = ImageTexture.create_from_image(packed["sheets"][anim])
+	packed["textures"] = textures
+	return packed
 
 
 ## The sidecar for those animations. Each sheet is one row per direction,
@@ -53,13 +65,4 @@ static func grids(side: Dictionary) -> Dictionary:
 		var columns: int = int(info.get("columns", info["frames"]))
 		var rows: int = int(info.get("rows_per_direction", 1))
 		out[StringName(anim)] = Image.create_empty(columns * STRIDE, UnitArt.DIRECTIONS * rows * STRIDE, false, Image.FORMAT_RGBA8)
-	return out
-
-
-## The same as textures, for the builder while it still cuts grids.
-static func sheets(side: Dictionary) -> Dictionary:
-	var out: Dictionary = {}
-	var images: Dictionary = grids(side)
-	for anim: StringName in images:
-		out[anim] = ImageTexture.create_from_image(images[anim])
 	return out

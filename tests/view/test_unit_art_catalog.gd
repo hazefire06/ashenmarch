@@ -64,9 +64,10 @@ func test_the_committed_shieldman_art_is_valid_and_laid_out_like_the_render() ->
 	assert_eq(art.unit_id, &"shieldman")
 	assert_eq(art.frames.get_animation_names().size(), 32, "idle, walk, attack and die in 8 directions; attack_alt is left out")
 	assert_eq(art.frames.get_frame_count(&"die_0"), 27)
-	# die wraps to 2 rows per direction of 24 columns, so frame 25 is column 1 of the second row.
+	# A frame from die's wrapped second row: packed, it is still its whole cell, cut from inside its sheet.
 	var wrapped: AtlasTexture = art.frames.get_frame_texture(&"die_3", 25) as AtlasTexture
-	assert_eq(wrapped.region, Rect2(1 * 168 + 4, (3 * 2 + 1) * 168 + 4, 160, 160))
+	assert_eq(Vector2i(wrapped.get_width(), wrapped.get_height()), Vector2i(160, 160), "a packed frame is its whole cell")
+	assert_true(Rect2(Vector2.ZERO, wrapped.atlas.get_size()).encloses(wrapped.region), "cut from inside its sheet")
 	assert_almost_eq(art.stride_m, 1.49, 0.01)
 	assert_eq(art.cell_px, 160)
 	assert_eq(art.feet_px, 40)

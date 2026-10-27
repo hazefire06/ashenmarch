@@ -4,16 +4,15 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://c5x3m7w3ppri1"
 path.s3tc="res://.godot/imported/die.png-046b9d0e390e57d4377e40fdd0524c3f.s3tc.ctex"
-path.etc2="res://.godot/imported/die.png-046b9d0e390e57d4377e40fdd0524c3f.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"imported_formats": ["s3tc_bptc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/units/warden/die.png"
-dest_files=["res://.godot/imported/die.png-046b9d0e390e57d4377e40fdd0524c3f.s3tc.ctex", "res://.godot/imported/die.png-046b9d0e390e57d4377e40fdd0524c3f.etc2.ctex"]
+dest_files=["res://.godot/imported/die.png-046b9d0e390e57d4377e40fdd0524c3f.s3tc.ctex"]
 
 [params]
 

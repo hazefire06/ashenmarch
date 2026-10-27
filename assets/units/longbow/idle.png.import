@@ -4,16 +4,15 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://o7cefiddhxjl"
 path.s3tc="res://.godot/imported/idle.png-9f7518822fa0f99a7892c3a291d39f69.s3tc.ctex"
-path.etc2="res://.godot/imported/idle.png-9f7518822fa0f99a7892c3a291d39f69.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"imported_formats": ["s3tc_bptc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/units/longbow/idle.png"
-dest_files=["res://.godot/imported/idle.png-9f7518822fa0f99a7892c3a291d39f69.s3tc.ctex", "res://.godot/imported/idle.png-9f7518822fa0f99a7892c3a291d39f69.etc2.ctex"]
+dest_files=["res://.godot/imported/idle.png-9f7518822fa0f99a7892c3a291d39f69.s3tc.ctex"]
 
 [params]
 
