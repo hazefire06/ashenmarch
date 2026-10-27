@@ -43,15 +43,23 @@ static func sidecar(unit_id: StringName, anims: Dictionary = {}, bursts: bool = 
 	}
 
 
-## Blank sheets the size the sidecar implies: columns wide (the frame count
-## when the sidecar gives none) and rows_per_direction rows (1) for each of the
-## directions.
-static func sheets(side: Dictionary) -> Dictionary:
+## Blank grid Images the size the sidecar implies: columns wide (the frame
+## count when the sidecar gives none) and rows_per_direction rows (1) for each
+## of the directions.
+static func grids(side: Dictionary) -> Dictionary:
 	var out: Dictionary = {}
 	for anim: String in side["animations"]:
 		var info: Dictionary = side["animations"][anim]
 		var columns: int = int(info.get("columns", info["frames"]))
 		var rows: int = int(info.get("rows_per_direction", 1))
-		var image: Image = Image.create_empty(columns * STRIDE, UnitArt.DIRECTIONS * rows * STRIDE, false, Image.FORMAT_RGBA8)
-		out[StringName(anim)] = ImageTexture.create_from_image(image)
+		out[StringName(anim)] = Image.create_empty(columns * STRIDE, UnitArt.DIRECTIONS * rows * STRIDE, false, Image.FORMAT_RGBA8)
+	return out
+
+
+## The same as textures, for the builder while it still cuts grids.
+static func sheets(side: Dictionary) -> Dictionary:
+	var out: Dictionary = {}
+	var images: Dictionary = grids(side)
+	for anim: StringName in images:
+		out[anim] = ImageTexture.create_from_image(images[anim])
 	return out
