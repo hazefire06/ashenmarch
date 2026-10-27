@@ -110,6 +110,10 @@ func _probe_unit(unit: String) -> void:
 	if folder.is_empty():
 		print("PROBE %s SKIPPED no grid render" % unit)
 		return
+	var links: PackedStringArray = UnitArtPacker.planted_links(PackedStringArray([folder]))
+	if not links.is_empty():
+		print("PROBE %s SKIPPED a symlink: %s" % [unit, ", ".join(links)])
+		return
 	var sidecar: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(folder + unit + ".json"))
 	var bad: PackedStringArray = UnitArtPacker.sidecar_errors(sidecar)
 	if not bad.is_empty():
