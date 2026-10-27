@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://vfsro64hehnj"
 path.s3tc="res://.godot/imported/idle.png-27e1df4f62732896e1fcdfbf54472fd9.s3tc.ctex"
+path.etc2="res://.godot/imported/idle.png-27e1df4f62732896e1fcdfbf54472fd9.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/units/ripper/idle.png"
-dest_files=["res://.godot/imported/idle.png-27e1df4f62732896e1fcdfbf54472fd9.s3tc.ctex"]
+dest_files=["res://.godot/imported/idle.png-27e1df4f62732896e1fcdfbf54472fd9.s3tc.ctex", "res://.godot/imported/idle.png-27e1df4f62732896e1fcdfbf54472fd9.etc2.ctex"]
 
 [params]
 

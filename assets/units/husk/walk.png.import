@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://c14awjwd0etna"
 path.s3tc="res://.godot/imported/walk.png-0a9614253ea7469cf3281602f8568f03.s3tc.ctex"
+path.etc2="res://.godot/imported/walk.png-0a9614253ea7469cf3281602f8568f03.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/units/husk/walk.png"
-dest_files=["res://.godot/imported/walk.png-0a9614253ea7469cf3281602f8568f03.s3tc.ctex"]
+dest_files=["res://.godot/imported/walk.png-0a9614253ea7469cf3281602f8568f03.s3tc.ctex", "res://.godot/imported/walk.png-0a9614253ea7469cf3281602f8568f03.etc2.ctex"]
 
 [params]
 

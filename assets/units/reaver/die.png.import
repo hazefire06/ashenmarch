@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://6y2u3sldkd42"
 path.s3tc="res://.godot/imported/die.png-2ee3b0780554567974c4e78c7b438f2b.s3tc.ctex"
+path.etc2="res://.godot/imported/die.png-2ee3b0780554567974c4e78c7b438f2b.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/units/reaver/die.png"
-dest_files=["res://.godot/imported/die.png-2ee3b0780554567974c4e78c7b438f2b.s3tc.ctex"]
+dest_files=["res://.godot/imported/die.png-2ee3b0780554567974c4e78c7b438f2b.s3tc.ctex", "res://.godot/imported/die.png-2ee3b0780554567974c4e78c7b438f2b.etc2.ctex"]
 
 [params]
 

@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://csh701udsywmf"
 path.s3tc="res://.godot/imported/die.png-1d4c34fbd585b40b35c6f9b9d5f50889.s3tc.ctex"
+path.etc2="res://.godot/imported/die.png-1d4c34fbd585b40b35c6f9b9d5f50889.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/units/stormcaller/die.png"
-dest_files=["res://.godot/imported/die.png-1d4c34fbd585b40b35c6f9b9d5f50889.s3tc.ctex"]
+dest_files=["res://.godot/imported/die.png-1d4c34fbd585b40b35c6f9b9d5f50889.s3tc.ctex", "res://.godot/imported/die.png-1d4c34fbd585b40b35c6f9b9d5f50889.etc2.ctex"]
 
 [params]
 

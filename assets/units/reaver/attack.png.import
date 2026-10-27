@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://880te3v2e70w"
 path.s3tc="res://.godot/imported/attack.png-a1d4442816deae735c2e6e26bd17f68e.s3tc.ctex"
+path.etc2="res://.godot/imported/attack.png-a1d4442816deae735c2e6e26bd17f68e.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/units/reaver/attack.png"
-dest_files=["res://.godot/imported/attack.png-a1d4442816deae735c2e6e26bd17f68e.s3tc.ctex"]
+dest_files=["res://.godot/imported/attack.png-a1d4442816deae735c2e6e26bd17f68e.s3tc.ctex", "res://.godot/imported/attack.png-a1d4442816deae735c2e6e26bd17f68e.etc2.ctex"]
 
 [params]
 
