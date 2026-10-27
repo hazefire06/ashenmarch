@@ -19,10 +19,21 @@ func before_each() -> void:
 # False, with the test marked pending, when no art is built (a fresh clone
 # without it, as the other art tests do).
 func _have_art() -> bool:
-	if _arts.arts.is_empty():
+	if _arts.ids().is_empty():
 		pending("data/art/catalog.tres lists no art; run make art-build UNIT=<id>")
 		return false
 	return true
+
+
+# Every unit's committed art, loaded.
+func _all_art() -> Array[UnitArt]:
+	var out: Array[UnitArt] = []
+	for id: StringName in _arts.ids():
+		var art: UnitArt = _arts.load_art(id)
+		assert_not_null(art, "%s's art loads" % id)
+		if art != null:
+			out.append(art)
+	return out
 
 
 func _type_of(art: UnitArt) -> UnitType:
@@ -74,7 +85,7 @@ func _anim_input(counter: String, ticks: int) -> UnitAnimator.AnimInput:
 func test_every_walk_plays_inside_the_animators_clamp_at_full_speed() -> void:
 	if not _have_art():
 		return
-	for art: UnitArt in _arts.arts:
+	for art: UnitArt in _all_art():
 		var type: UnitType = _type_of(art)
 		if type == null:
 			continue
@@ -89,7 +100,7 @@ func test_every_strike_can_land_its_impact_on_the_tick_the_sim_does() -> void:
 	if not _have_art():
 		return
 	var checked: int = 0
-	for art: UnitArt in _arts.arts:
+	for art: UnitArt in _all_art():
 		var type: UnitType = _type_of(art)
 		if type == null:
 			continue

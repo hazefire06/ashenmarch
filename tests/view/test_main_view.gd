@@ -715,12 +715,12 @@ func test_units_are_drawn_from_the_committed_art_and_the_rest_as_placeholders() 
 		return
 	var main: MainView = _sandbox()
 	_step(main)
-	var arts: UnitArtCatalog = MainView.load_art()
+	var arts: UnitArtCatalog = UnitArtCatalog.load_or_new()
 	var shieldmen: int = 0
 	var drawn: Dictionary[UnitSprite, Unit] = _drawn(main)
 	for sprite: UnitSprite in drawn:
 		var id: StringName = drawn[sprite].type.id
-		assert_eq(sprite.has_art(), arts.find(id) != null, "%s" % id)
+		assert_eq(sprite.has_art(), arts.has(id), "%s" % id)
 		if id == &"shieldman" and sprite.has_art():
 			shieldmen += 1
 	assert_eq(shieldmen, MainView.TEST_SQUAD_SIZE, "the test squad's Shieldmen")
@@ -753,10 +753,10 @@ func test_f12_switches_every_unit_to_its_placeholder_and_back() -> void:
 		assert_false(sprite.has_art())
 	_push(_key(KEY_F12))
 	assert_true(view.art_enabled())
-	var arts: UnitArtCatalog = MainView.load_art()
+	var arts: UnitArtCatalog = UnitArtCatalog.load_or_new()
 	for sprite: UnitSprite in _drawn(main):
 		var id: StringName = main.world.get_unit(sprite.unit_id).type.id
-		assert_eq(sprite.has_art(), arts.find(id) != null, "%s" % id)
+		assert_eq(sprite.has_art(), arts.has(id), "%s" % id)
 
 
 func test_f12_leaves_corpses_as_corpses() -> void:
@@ -828,40 +828,6 @@ func test_the_stats_line_names_f12_in_a_campaign_and_in_the_sandbox() -> void:
 	assert_true(label.text.contains("(F5 AI overlay, F6 weather, F12 art)"), label.text)
 
 
-func test_load_art_gives_the_committed_shieldman_art() -> void:
-	if _skip_unless_art_is_built():
-		return
-	var arts: UnitArtCatalog = MainView.load_art()
-	assert_not_null(arts.find(&"shieldman"))
-	assert_null(arts.find(&"no_such_unit"))
-
-
-func test_load_art_is_empty_without_a_catalog() -> void:
-	var arts: UnitArtCatalog = MainView.load_art("res://data/art/no_such_catalog.tres")
-	assert_eq(arts.arts.size(), 0, "every unit is then a placeholder")
-
-
-func test_load_art_leaves_out_art_that_fails_validation_and_keeps_the_rest() -> void:
-	DirAccess.make_dir_recursive_absolute(ART_DIR)
-	var catalog: UnitArtCatalog = UnitArtCatalog.new()
-	catalog.put(TestArt.art(&"shieldman"))
-	var broken: UnitArt = TestArt.art(&"reaver")
-	broken.frames.remove_animation(&"idle_5")
-	catalog.put(broken)
-	var path: String = ART_DIR + "/catalog.tres"
-	assert_eq(ResourceSaver.save(catalog, path), OK)
-	var usable: UnitArtCatalog = MainView.load_art(path)
-	# One warning per reason, naming the unit and what is wrong with its art. The
-	# text goes first: the count consumes the warnings it counts.
-	assert_push_warning("MainView: unit art left out: reaver: idle has no frames for direction 5")
-	assert_push_warning_count(1)
-	assert_not_null(usable.find(&"shieldman"))
-	assert_null(usable.find(&"reaver"), "the broken one is a placeholder, and the game starts")
-	assert_eq(usable.arts.size(), 1)
-	DirAccess.remove_absolute(path)
-	DirAccess.remove_absolute(ART_DIR)
-
-
 # --- one more helper, below its users -----------------------------------------
 
 
@@ -915,3 +881,44 @@ func test_leaving_puts_the_physics_rate_back() -> void:
 	remove_child(main)
 	assert_eq(Engine.physics_ticks_per_second, before)
 	main.free()
+
+
+func test_a_campaign_game_loads_the_art_of_its_launch_and_no_more() -> void:
+	if _skip_unless_art_is_built():
+		return
+	var main: MainView = _view()
+	var catalog: UnitArtCatalog = UnitArtCatalog.load_or_new()
+	var wanted: Array[StringName] = []
+	for type_id: StringName in main.launch.unit_types():
+		if catalog.has(type_id):
+			wanted.append(type_id)
+	var loaded: Array[StringName] = []
+	for art: UnitArt in main.loaded_arts():
+		loaded.append(art.unit_id)
+	assert_eq(loaded, wanted)
+	assert_lt(loaded.size(), catalog.ids().size(), "fewer than every type")
+
+
+func test_the_sandbox_loads_every_type() -> void:
+	if _skip_unless_art_is_built():
+		return
+	var main: MainView = _sandbox()
+	assert_eq(main.loaded_arts().size(), UnitArtCatalog.load_or_new().ids().size())
+
+
+func test_leaving_a_game_frees_its_unit_art() -> void:
+	DirAccess.make_dir_recursive_absolute(ART_DIR)
+	var art_path: String = ART_DIR + "/leaving_shieldman.tres"
+	assert_eq(ResourceSaver.save(TestArt.art(&"shieldman"), art_path), OK)
+	var catalog: UnitArtCatalog = UnitArtCatalog.new()
+	catalog.put(&"shieldman", art_path)
+	var catalog_path: String = ART_DIR + "/leaving_catalog.tres"
+	assert_eq(ResourceSaver.save(catalog, catalog_path), OK)
+	var main: MainView = (load("res://view/main.tscn") as PackedScene).instantiate() as MainView
+	main.launch = ViewFixtures.launch()
+	main.art_catalog_path = catalog_path
+	add_child(main)
+	_step(main)
+	assert_true(ResourceLoader.has_cached(art_path), "the roster's Shieldman art is loaded")
+	main.free()
+	assert_false(ResourceLoader.has_cached(art_path), "and freed with the game")

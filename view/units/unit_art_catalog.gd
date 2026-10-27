@@ -1,51 +1,50 @@
 class_name UnitArtCatalog
 extends Resource
-## Every unit type that has art, as data/art/catalog.tres, rewritten by
-## scripts/art/build_unit_art.gd. A type missing here, or whose art fails
-## validation, keeps its placeholder quad, so new units work before their
-## art exists.
+## Where each unit type's art is: its id to its data/art/<id>.tres, as
+## data/art/catalog.tres, rewritten by scripts/art/build_unit_art.gd. It holds
+## paths, not the art, so loading it loads no sheets: a game loads only the
+## types it can show (UnitArtSet). A type missing here keeps its placeholder
+## quad, so new units work before their art exists.
 
 const DEFAULT_PATH: String = "res://data/art/catalog.tres"
 
-@export var arts: Array[UnitArt] = []
+@export var paths: Dictionary[StringName, String] = {}
 
 
-func find(unit_id: StringName) -> UnitArt:
-	for art: UnitArt in arts:
-		if art != null and art.unit_id == unit_id:
-			return art
-	return null
+func has(unit_id: StringName) -> bool:
+	return paths.has(unit_id)
 
 
-## Adds art, replacing any for the same unit. Kept sorted by unit id.
-func put(art: UnitArt) -> void:
-	var kept: Array[UnitArt] = []
-	for existing: UnitArt in arts:
-		if existing != null and existing.unit_id != art.unit_id:
-			kept.append(existing)
-	kept.append(art)
-	kept.sort_custom(func(a: UnitArt, b: UnitArt) -> bool: return String(a.unit_id) < String(b.unit_id))
-	arts = kept
+## The unit's art file, or "" when it has none.
+func path_of(unit_id: StringName) -> String:
+	return paths.get(unit_id, "")
 
 
-## Why each unusable entry is unusable, for the caller to report.
-func invalid_reasons() -> PackedStringArray:
-	var reasons: PackedStringArray = PackedStringArray()
-	for art: UnitArt in arts:
-		if art == null:
-			reasons.append("an empty entry")
-		else:
-			reasons.append_array(art.validate())
-	return reasons
+## Every unit listed, sorted by id.
+func ids() -> Array[StringName]:
+	var out: Array[StringName] = []
+	out.assign(paths.keys())
+	out.sort_custom(func(a: StringName, b: StringName) -> bool: return String(a) < String(b))
+	return out
 
 
-## The entries that pass validation.
-func without_invalid() -> UnitArtCatalog:
-	var usable: UnitArtCatalog = UnitArtCatalog.new()
-	for art: UnitArt in arts:
-		if art != null and art.validate().is_empty():
-			usable.arts.append(art)
-	return usable
+## Lists unit_id's art at path, replacing any. Kept sorted by id, so the file
+## diffs cleanly.
+func put(unit_id: StringName, path: String) -> void:
+	paths[unit_id] = path
+	var sorted: Dictionary[StringName, String] = {}
+	for id: StringName in ids():
+		sorted[id] = paths[id]
+	paths = sorted
+
+
+## The unit's art, loaded now, or null when it isn't listed or its file isn't
+## a UnitArt. The caller validates it.
+func load_art(unit_id: StringName) -> UnitArt:
+	var path: String = path_of(unit_id)
+	if path.is_empty() or not ResourceLoader.exists(path):
+		return null
+	return load(path) as UnitArt
 
 
 ## The catalog at path, or an empty one when there is none yet or the file

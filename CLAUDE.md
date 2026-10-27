@@ -38,7 +38,7 @@ view/           # Godot scenes: camera, sprites, HUD, overhead map, effects
 data/           # unit .tres files, formation definitions, map data
 maps/           # heightmaps, passability masks, spawn/trigger layouts, skirmish spawns and flags
 assets/         # game-ready art and audio (LFS; owned or CC0 only, see assets/LICENSES.md)
-art-src/        # art recipes, Meshy models, render review sheets (LFS; Godot skips it)
+art-src/        # art recipes, Meshy models, render grids and review sheets (LFS; Godot skips it)
 audio-src/      # sound prompts and raw downloads (LFS; Godot skips it)
 tests/          # GUT tests for sim/
 docs/           # design notes, prompts.md

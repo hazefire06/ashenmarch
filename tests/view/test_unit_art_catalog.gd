@@ -1,9 +1,11 @@
 extends GutTest
-## UnitArtCatalog: art per unit id. Broken art is left out (its unit keeps the
-## placeholder) and a missing catalog is an empty one, so the game starts
-## either way. Also pins the committed, generated Shieldman art.
+## UnitArtCatalog: where each unit's art is, unit id to UnitArt path. Loading
+## it loads no art (a game loads only its own types: UnitArtSet), and a missing
+## catalog is an empty one, so the game starts either way. Also pins the
+## committed, generated Shieldman art.
 
 const SHIELDMAN_PATH: String = "res://data/art/shieldman.tres"
+const TEST_DIR: String = "user://test_unit_art_catalog"
 ## The ten unit types of the v1 roster (the villager is not one: it is not drawn with art).
 const V1_UNITS: Array[StringName] = [
 	&"shieldman", &"reaver", &"longbow", &"sapper", &"warden",
@@ -11,35 +13,37 @@ const V1_UNITS: Array[StringName] = [
 ]
 
 
-func test_find_and_put_replace_and_keep_order() -> void:
+func test_put_lists_a_path_per_unit_sorted() -> void:
 	var catalog: UnitArtCatalog = UnitArtCatalog.new()
-	catalog.put(TestArt.art(&"shieldman"))
-	catalog.put(TestArt.art(&"reaver"))
-	var newer: UnitArt = TestArt.art(&"shieldman")
-	catalog.put(newer)
-	assert_eq(catalog.arts.size(), 2)
-	assert_same(catalog.find(&"shieldman"), newer)
-	assert_null(catalog.find(&"husk"))
-	assert_eq(catalog.arts[0].unit_id, &"reaver", "sorted by id, so the file diffs cleanly")
+	catalog.put(&"shieldman", "res://a.tres")
+	catalog.put(&"reaver", "res://b.tres")
+	catalog.put(&"shieldman", "res://c.tres")
+	assert_eq(Array(catalog.ids()), [&"reaver", &"shieldman"])
+	assert_eq(catalog.path_of(&"shieldman"), "res://c.tres")
+	assert_eq(catalog.paths.keys()[0], &"reaver", "sorted in the file too, so it diffs cleanly")
+	assert_eq(catalog.path_of(&"husk"), "")
+	assert_false(catalog.has(&"husk"))
 
 
-func test_invalid_art_is_left_out() -> void:
+func test_loading_the_catalog_loads_no_art() -> void:
+	DirAccess.make_dir_recursive_absolute(TEST_DIR)
+	var art_path: String = TEST_DIR + "/shieldman.tres"
+	assert_eq(ResourceSaver.save(TestArt.art(&"shieldman"), art_path), OK)
 	var catalog: UnitArtCatalog = UnitArtCatalog.new()
-	catalog.put(TestArt.art(&"shieldman"))
-	var broken: UnitArt = TestArt.art(&"reaver")
-	broken.frames.remove_animation(&"idle_5")
-	catalog.put(broken)
-	assert_eq(catalog.invalid_reasons().size(), 1)
-	assert_string_contains(catalog.invalid_reasons()[0], "reaver")
-	var usable: UnitArtCatalog = catalog.without_invalid()
-	assert_not_null(usable.find(&"shieldman"))
-	assert_null(usable.find(&"reaver"))
+	catalog.put(&"shieldman", art_path)
+	var catalog_path: String = TEST_DIR + "/catalog.tres"
+	assert_eq(ResourceSaver.save(catalog, catalog_path), OK)
+	var loaded: UnitArtCatalog = UnitArtCatalog.load_or_new(catalog_path)
+	assert_true(loaded.has(&"shieldman"))
+	assert_false(ResourceLoader.has_cached(art_path), "a path, not the art")
+	assert_not_null(loaded.load_art(&"shieldman"))
+	assert_null(loaded.load_art(&"husk"))
 
 
 func test_a_missing_catalog_is_empty() -> void:
 	var catalog: UnitArtCatalog = UnitArtCatalog.load_or_new("res://data/art/no_such_catalog.tres")
 	assert_not_null(catalog)
-	assert_eq(catalog.arts.size(), 0)
+	assert_eq(catalog.ids().size(), 0)
 
 
 func test_a_file_that_is_not_a_catalog_is_empty() -> void:
@@ -51,7 +55,7 @@ func test_a_file_that_is_not_a_catalog_is_empty() -> void:
 		return
 	var catalog: UnitArtCatalog = UnitArtCatalog.load_or_new(SHIELDMAN_PATH)
 	assert_not_null(catalog)
-	assert_eq(catalog.arts.size(), 0)
+	assert_eq(catalog.ids().size(), 0)
 
 
 func test_the_committed_shieldman_art_is_valid_and_laid_out_like_the_render() -> void:
@@ -64,9 +68,10 @@ func test_the_committed_shieldman_art_is_valid_and_laid_out_like_the_render() ->
 	assert_eq(art.unit_id, &"shieldman")
 	assert_eq(art.frames.get_animation_names().size(), 32, "idle, walk, attack and die in 8 directions; attack_alt is left out")
 	assert_eq(art.frames.get_frame_count(&"die_0"), 27)
-	# die wraps to 2 rows per direction of 24 columns, so frame 25 is column 1 of the second row.
+	# A frame from die's wrapped second row: packed, it is still its whole cell, cut from inside its sheet.
 	var wrapped: AtlasTexture = art.frames.get_frame_texture(&"die_3", 25) as AtlasTexture
-	assert_eq(wrapped.region, Rect2(1 * 168 + 4, (3 * 2 + 1) * 168 + 4, 160, 160))
+	assert_eq(Vector2i(wrapped.get_width(), wrapped.get_height()), Vector2i(160, 160), "a packed frame is its whole cell")
+	assert_true(Rect2(Vector2.ZERO, wrapped.atlas.get_size()).encloses(wrapped.region), "cut from inside its sheet")
 	assert_almost_eq(art.stride_m, 1.49, 0.01)
 	assert_eq(art.cell_px, 160)
 	assert_eq(art.feet_px, 40)
@@ -82,28 +87,24 @@ func test_the_committed_catalog_lists_the_shieldman_by_reference() -> void:
 		pending("%s is not built; run make art-build UNIT=shieldman" % SHIELDMAN_PATH)
 		return
 	var catalog: UnitArtCatalog = UnitArtCatalog.load_or_new()
-	var listed: UnitArt = catalog.find(&"shieldman")
-	assert_not_null(listed, "data/art/catalog.tres lists the Shieldman")
-	if listed != null:
-		assert_eq(listed.resource_path, SHIELDMAN_PATH, "by reference to its own file, not an embedded copy")
-	assert_eq(catalog.invalid_reasons(), PackedStringArray())
-	assert_eq(catalog.without_invalid().arts.size(), catalog.arts.size())
+	assert_eq(catalog.path_of(&"shieldman"), SHIELDMAN_PATH, "by its path, not the art itself")
+	assert_eq(catalog.load_art(&"shieldman").resource_path, SHIELDMAN_PATH)
 
 
 func test_every_v1_unit_has_valid_committed_art() -> void:
 	# A3's deliverable. The catalog tests above validate whatever it lists, so a rebuild that dropped
 	# an entry would pass and that unit would quietly become a placeholder.
 	var catalog: UnitArtCatalog = UnitArtCatalog.load_or_new()
-	if catalog.arts.is_empty():
+	if catalog.ids().is_empty():
 		pending("%s lists no art; run make art-build UNIT=<id>" % UnitArtCatalog.DEFAULT_PATH)
 		return
 	var units: UnitCatalog = TestTerrains.catalog()
 	for id: StringName in V1_UNITS:
 		assert_not_null(units.find(id), "%s is a unit type in data/units" % id)
-		var art: UnitArt = catalog.find(id)
+		var art: UnitArt = catalog.load_art(id)
 		assert_not_null(art, "%s has art in the catalog" % id)
 		if art != null:
 			assert_eq(art.validate(), PackedStringArray(), "%s's art is valid" % id)
-	var shieldman: UnitArt = catalog.find(&"shieldman")
+	var shieldman: UnitArt = catalog.load_art(&"shieldman")
 	if shieldman != null:
 		assert_almost_eq(shieldman.figure_height_m, 1.406, 0.001, "the figure height the renderer measured")

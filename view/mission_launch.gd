@@ -93,3 +93,32 @@ func is_skirmish() -> bool:
 ## The side the player commands: the skirmish's choice, Light in the campaign.
 func player_faction() -> UnitType.Faction:
 	return skirmish.player_faction() if skirmish != null else UnitType.Faction.LIGHT
+
+
+## Every unit type this launch can bring onto the field, sorted, each once.
+## A mission: its roster, its deploy (the carryover) and every group its
+## script can spawn, Old Mill's undrawn waves included. A skirmish: both
+## armies. A replay is one of those once for_replay has resolved it.
+## MainView loads unit art for these before the first frame; A2 can load
+## voices by the same list.
+func unit_types() -> Array[StringName]:
+	var found: Dictionary[StringName, bool] = {}
+	if skirmish != null:
+		for army: Army in skirmish.armies:
+			if army != null:
+				for type_id: StringName in army.counts:
+					found[type_id] = true
+	if mission != null:
+		for entry: RosterEntry in mission.roster:
+			found[entry.type_id] = true
+		if mission.rules != null:
+			for group: AiGroupSpec in mission.rules.groups:
+				for unit_entry: AiUnitEntry in group.units:
+					found[unit_entry.type_id] = true
+	if deploy != null:
+		for type_id: StringName in deploy.type_ids:
+			found[type_id] = true
+	var out: Array[StringName] = []
+	out.assign(found.keys())
+	out.sort_custom(func(a: StringName, b: StringName) -> bool: return String(a) < String(b))
+	return out

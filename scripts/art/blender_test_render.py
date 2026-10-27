@@ -358,7 +358,7 @@ def render(root: Path) -> tuple[Path, dict, str]:
     with contextlib.redirect_stdout(printed):
         sidecar = rs.render_unit("fixture", root / "art-src", root / "assets" / "units", engine="WORKBENCH")
     print(printed.getvalue(), end="")
-    return root / "assets" / "units" / "fixture", sidecar, printed.getvalue()
+    return root / "assets" / "units" / "fixture" / rs.SHEETS_DIR, sidecar, printed.getvalue()
 
 
 def render_fixture(root: Path, parented: bool = False) -> tuple[Path, dict, str]:
@@ -583,12 +583,11 @@ class RenderSpritesTest(unittest.TestCase):
     def test_cell_pivot_and_stride(self) -> None:
         self.assertEqual((self.sidecar["cell"], self.sidecar["feet_px"], self.sidecar["stride"]), (160, 40, 168))
 
-    def test_sheet_layout_and_import_settings(self) -> None:
+    def test_sheet_layout_and_no_import_settings(self) -> None:
         walk = self.sidecar["animations"]["walk"]
         self.assertEqual((walk["columns"], walk["rows_per_direction"]), (12, 1))
         self.assertEqual(self.walk.shape[:2], (8 * rs.STRIDE, 12 * rs.STRIDE))
-        settings = (self.out / "walk.png.import").read_text(encoding="utf-8")
-        self.assertIn("mipmaps/generate=true", settings)
+        self.assertFalse((self.out / "walk.png.import").exists(), "a grid is packed before Godot sees it")
 
     def test_a_long_animation_wraps_at_4096_px(self) -> None:
         rise = self.sidecar["animations"]["rise"]
@@ -689,7 +688,6 @@ class RenderSpritesTest(unittest.TestCase):
         sidecar, assets, review = render_fixture_with_audition(self.root)
         self.assertNotIn("idle_alt", sidecar["animations"])
         self.assertFalse((assets / "idle_alt.png").exists())
-        self.assertFalse((assets / "idle_alt.png.import").exists())
         self.assertTrue((review / "idle_alt.gif").exists())
         self.assertEqual(rs.read_rgba(review / "contact.png").shape[0], 2 * rs.STRIDE, "a contact-sheet row each: idle, idle_alt")
         self.assertIn("idle", sidecar["animations"], "the game's clips still ship")
@@ -1544,12 +1542,17 @@ class PlantedSymlinkTest(unittest.TestCase):
         self.assertIn("symlink", self.refused(self.render_unit))
 
     def test_symlinked_file_in_the_output_folder_is_refused(self) -> None:
-        out = self.root / "assets" / "units" / "fixture"
+        out = self.root / "assets" / "units" / "fixture" / rs.SHEETS_DIR
         out.mkdir(parents=True)
-        (out / "idle.png.import").symlink_to(self.elsewhere / "victim")
-        self.assertIn("idle.png.import", self.refused(self.render_unit))
+        (out / "idle.png").symlink_to(self.elsewhere / "victim")
+        self.assertIn("idle.png", self.refused(self.render_unit))
 
     def test_symlinked_output_folder_is_refused(self) -> None:
+        (self.root / "assets" / "units" / "fixture").mkdir(parents=True)
+        (self.root / "assets" / "units" / "fixture" / rs.SHEETS_DIR).symlink_to(self.elsewhere, target_is_directory=True)
+        self.assertIn("symlink", self.refused(self.render_unit))
+
+    def test_symlinked_unit_folder_on_the_way_to_the_output_is_refused(self) -> None:
         (self.root / "assets" / "units").mkdir(parents=True)
         (self.root / "assets" / "units" / "fixture").symlink_to(self.elsewhere, target_is_directory=True)
         self.assertIn("symlink", self.refused(self.render_unit))

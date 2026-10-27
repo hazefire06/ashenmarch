@@ -1,0 +1,61 @@
+{
+  "animations": {
+    "die": {
+      "columns": 24,
+      "fps": 12,
+      "frames": 37,
+      "impact_frame": -1,
+      "loop": false,
+      "rows_per_direction": 2,
+      "sheet": "die.png",
+      "stride_m": 0.0
+    },
+    "idle": {
+      "columns": 24,
+      "fps": 12,
+      "frames": 48,
+      "impact_frame": -1,
+      "loop": true,
+      "rows_per_direction": 2,
+      "sheet": "idle.png",
+      "stride_m": 0.0
+    },
+    "shoot": {
+      "columns": 24,
+      "fps": 12,
+      "frames": 31,
+      "impact_frame": 18,
+      "loop": false,
+      "rows_per_direction": 2,
+      "sheet": "shoot.png",
+      "stride_m": 0.0
+    },
+    "walk": {
+      "columns": 24,
+      "fps": 12,
+      "frames": 48,
+      "impact_frame": -1,
+      "loop": true,
+      "rows_per_direction": 2,
+      "sheet": "walk.png",
+      "stride_m": 8.8
+    }
+  },
+  "bursts_on_death": false,
+  "cell": 160,
+  "clipped": [],
+  "die_falls_forward": false,
+  "directions": 8,
+  "elevation_deg": 50.0,
+  "feet_px": 54,
+  "figure_height_m": 1.368,
+  "gib_color": [
+    0.103,
+    0.109,
+    0.112
+  ],
+  "gutter": 4,
+  "pixels_per_meter": 52.0,
+  "stride": 168,
+  "unit": "drifter"
+}

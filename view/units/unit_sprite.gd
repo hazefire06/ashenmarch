@@ -171,7 +171,8 @@ func setup(unit: Unit, art: UnitArt = null) -> void:
 	set_facing(unit.facing_x, unit.facing_z)
 	if _art_body != null:
 		_dir = UnitArt.direction_index(_facing, Vector2(0.0, -1.0))
-		_show(true, 0)
+		# The first idle, like any new loop, starts on the unit's own frame.
+		_show(false, 0)
 
 	_hp = unit.hp
 	_max_hp = maxi(t.max_hp, 1)
@@ -499,12 +500,15 @@ func _build_art_body() -> void:
 
 # Plays _anim for _dir. A restart starts at start_frame. Otherwise a change
 # of direction mid-animation keeps its frame and progress, so turning
-# doesn't restart a swing; a change of animation starts it from the top. A
-# held body takes the new frames but stays on its frame, unless it is dead
+# doesn't restart a swing; a new strike or death starts from its top, and a
+# new loop (idle, walk) on the unit's own frame (UnitAnimator.loop_start_frame).
+# A held body takes the new frames but stays on its frame, unless it is dead
 # (hold).
 func _show(restart: bool, start_frame: int) -> void:
 	var wanted: StringName = UnitArt.anim_name(_anim, _dir)
-	if not restart and _art_body.animation == wanted:
+	# Only once shown: setting sprite_frames puts the body, unplayed, on the
+	# frames' first animation, which may be the very one wanted first.
+	if not restart and _shown == _anim and _art_body.animation == wanted:
 		return
 	var same_motion: bool = not restart and _shown == _anim
 	var frame: int = _art_body.frame
@@ -514,6 +518,10 @@ func _show(restart: bool, start_frame: int) -> void:
 		_art_body.set_frame_and_progress(start_frame, 0.0)
 	elif same_motion:
 		_art_body.set_frame_and_progress(mini(frame, _art.frames.get_frame_count(wanted) - 1), progress)
+	elif _art.frames.get_animation_loop(wanted):
+		# A new loop starts on the unit's own frame, so a group that sets off,
+		# stops or spawns together doesn't move in unison.
+		_art_body.set_frame_and_progress(UnitAnimator.loop_start_frame(unit_id, _art.frames.get_frame_count(wanted)), 0.0)
 	_shown = _anim
 	if _held and not _dead:
 		_art_body.pause()

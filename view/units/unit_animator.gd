@@ -23,6 +23,10 @@ const MIN_WALK_SPEED: float = 0.05
 ## of preference: a unit's art has one of them.
 const RANGED_ANIMS: Array[StringName] = [&"shoot", &"throw", &"cast"]
 const ACT_ANIMS: Array[StringName] = [&"cast", &"place"]
+## The golden ratio's fractional part. Consecutive unit ids start a loop this
+## far apart in its cycle, at least 0.38 of it, so units ordered together don't
+## step in unison (docs/specs/2026-10-15-art-a4-loading-design.md §13).
+const LOOP_PHASE_STEP: float = 0.6180339887
 
 
 ## What the sim says about the unit this tick. Not called Input: GDScript
@@ -106,6 +110,14 @@ func after_tick(input: AnimInput) -> Play:
 ## die again.
 func mark_dead() -> void:
 	_dead = true
+
+
+## The frame a unit starts a looping animation of `count` frames on: its own,
+## from its id alone, so the same game and its replay show the same frames.
+static func loop_start_frame(unit_id: int, count: int) -> int:
+	if count <= 0:
+		return 0
+	return clampi(floori(fposmod(unit_id * LOOP_PHASE_STEP, 1.0) * count), 0, count - 1)
 
 
 func _strike_started(input: AnimInput) -> Play:

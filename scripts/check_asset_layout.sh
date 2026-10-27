@@ -14,6 +14,9 @@ expect_ignored() { if git check-ignore -q "$1"; then echo "ok: $1 ignored"; else
 expect_file() { if [[ -f "$1" ]]; then echo "ok: $1"; else echo "FAIL: $1 missing"; fail=1; fi; }
 
 expect_lfs assets/units/shieldman/walk.png
+expect_lfs art-src/units/shieldman/sheets/walk.png
+expect_plain art-src/units/shieldman/sheets/shieldman.json
+expect_plain assets/units/shieldman/shieldman.json
 expect_lfs assets/audio/sfx/hit_1.wav
 expect_lfs assets/audio/music/riverside_calm.ogg
 expect_lfs art-src/units/shieldman/model/rigged.glb
@@ -30,4 +33,12 @@ expect_file assets/LICENSES.md
 expect_ignored .env
 expect_ignored .env.local
 expect_ignored .claude/settings.local.json
+
+# The repo is public, so a PR could commit a symlink for a tool to write
+# through (the renderer, packer and builder refuse them only on their own
+# paths), or files into .godot/, the import cache Godot writes.
+links="$(git ls-files -s | awk '$1 == "120000"')"
+if [[ -z "$links" ]]; then echo "ok: no symlinks in git"; else echo "FAIL: symlinks in git:"; echo "$links"; fail=1; fi
+cached="$(git ls-files -- .godot)"
+if [[ -z "$cached" ]]; then echo "ok: nothing in git under .godot/"; else echo "FAIL: in git under .godot/:"; echo "$cached"; fail=1; fi
 exit $fail

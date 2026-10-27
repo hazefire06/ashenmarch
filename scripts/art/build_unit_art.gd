@@ -1,12 +1,14 @@
 extends SceneTree
-## Builds data/art/<unit>.tres from the Blender render in assets/units/<unit>/
-## and lists it in data/art/catalog.tres. Both are generated; never edit them
-## by hand. Run `make art-build UNIT=shieldman`, which imports first so the
-## sheets are textures Godot can load (with the mipmapped, VRAM-compressed
-## settings render_sprites.py wrote beside them).
+## Builds data/art/<unit>.tres from the packed sheets in assets/units/<unit>/
+## (pack_unit_art.gd), and lists it in data/art/catalog.tres. Both are
+## generated; never edit them by hand. Run `make art-build UNIT=shieldman`,
+## which packs the render and imports the packed sheets first, so they are
+## textures Godot can load (with the mipmapped, VRAM-compressed settings the
+## packer wrote beside them). Nothing is read or written through a symlink.
 
 const SOURCE: String = "res://assets/units/%s/"
 const OUTPUT: String = "res://data/art/%s.tres"
+const OUTPUT_FOLDER: String = "res://data/art/"
 
 
 func _init() -> void:
@@ -22,17 +24,26 @@ func _init() -> void:
 ## returns its type's default, so _build returns bool: false is the failure
 ## value, and an unforeseen error exits non-zero instead of looking like success.
 func _build(unit: String) -> bool:
+	if not UnitArtPacker.is_unit_name(unit):
+		printerr("build_unit_art: %s is not a unit name (a lowercase letter, then up to 31 lowercase letters, digits and _)" % unit.c_escape())
+		return false
 	var folder: String = SOURCE % unit
+	# The art and the catalog are written into OUTPUT_FOLDER, as the packer
+	# writes into folder: a planted link there would put them elsewhere.
+	var links: PackedStringArray = UnitArtPacker.planted_links(PackedStringArray([folder, OUTPUT_FOLDER]))
+	if not links.is_empty():
+		printerr("build_unit_art: refusing to read or write through a symlink: %s" % ", ".join(links))
+		return false
 	var sidecar_path: String = folder + unit + ".json"
 	var sidecar: Variant = null
 	if FileAccess.file_exists(sidecar_path):
 		sidecar = JSON.parse_string(FileAccess.get_file_as_string(sidecar_path))
 	if not sidecar is Dictionary:
-		printerr("build_unit_art: %s is missing or not JSON; run make art-render UNIT=%s" % [sidecar_path, unit])
+		printerr("build_unit_art: %s is missing or not JSON; run make art-build UNIT=%s" % [sidecar_path, unit])
 		return false
 	var missing: PackedStringArray = UnitArtBuilder.sidecar_errors(sidecar)
 	if not missing.is_empty():
-		printerr("build_unit_art: %s is incomplete; run make art-render UNIT=%s\n%s" % [sidecar_path, unit, "\n".join(missing)])
+		printerr("build_unit_art: %s is not a packed sidecar; run make art-build UNIT=%s, which packs first\n%s" % [sidecar_path, unit, "\n".join(missing)])
 		return false
 	if String(sidecar["unit"]) != unit:
 		printerr("build_unit_art: %s is for unit \"%s\", not \"%s\"" % [sidecar_path, sidecar["unit"], unit])
@@ -57,20 +68,19 @@ func _build(unit: String) -> bool:
 	if not errors.is_empty():
 		printerr("build_unit_art: %s" % "\n".join(errors))
 		return false
-	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("res://data/art"))
+	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(OUTPUT_FOLDER))
 	var out: String = OUTPUT % unit
 	if ResourceSaver.save(art, out) != OK:
 		printerr("build_unit_art: could not save %s" % out)
 		return false
 	var catalog: UnitArtCatalog = UnitArtCatalog.load_or_new()
-	# Read the saved file back: it must load as a UnitArt, and the catalog then
-	# holds the file-backed resource, so it saves a reference to the file
-	# instead of embedding a copy of the art.
+	# Read the saved file back: it must load as a UnitArt, since the catalog
+	# lists the art by its path and a game loads it from there.
 	var saved: UnitArt = ResourceLoader.load(out, "", ResourceLoader.CACHE_MODE_REPLACE) as UnitArt
 	if saved == null:
 		printerr("build_unit_art: %s did not load back as a UnitArt" % out)
 		return false
-	catalog.put(saved)
+	catalog.put(saved.unit_id, out)
 	if ResourceSaver.save(catalog, UnitArtCatalog.DEFAULT_PATH) != OK:
 		printerr("build_unit_art: could not save %s" % UnitArtCatalog.DEFAULT_PATH)
 		return false
