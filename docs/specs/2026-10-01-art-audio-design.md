@@ -1,6 +1,6 @@
 # Art and audio track: design
 
-Status: approved. A0 and A1 implemented (2026-10-07); A3 implemented (2026-10-14); A2 planned. Drafted 2026-10-01 and decided with Tim in one brainstorming session, section by section.
+Status: approved. A0 and A1 implemented (2026-10-07); A3 implemented (2026-10-14); A4 (art per roster, Web budget; `2026-10-15-art-a4-loading-design.md`) implemented (2026-10-27); A2 planned. Drafted 2026-10-01 and decided with Tim in one brainstorming session, section by section.
 
 ## 1. Goal
 
@@ -439,7 +439,7 @@ ElevenLabs returns looping SFX as MP3 only, so loops are converted to OGG.
 | Suno's monthly download cap (20 on Pro); whether Pro can download stems; whether remixing can make a combat version on a shared theme | Audition in the browser and download only keepers; fall back to the same style prompt; upgrade to Premier (60 downloads a month) only if needed |
 | Positional audio on Web in Sample mode | Phase 10 check; screen-pan fallback |
 | `AnimatedSprite3D` performance at 300 units on Compatibility | Profile in Phase 10; MultiMesh path if needed |
-| Unit sheet texture memory: the 45 A3 sheets import to about 554 MB per texture format (S3TC and ETC2 both), all loaded at startup (about 30 MB after A1); Web would download about 0.55 GB. Measured from the `.ctex` files, not in a build | Load art per mission roster; tighter cells (a 1.4 m figure uses about 73 px of a 160–216 px cell); measure `RENDER_TEXTURE_MEM_USED` and the export sizes in the Phase 10 cross-platform pass |
+| Unit sheet texture memory: the 45 A3 sheets import to about 554 MB per texture format (S3TC and ETC2 both), all loaded at startup (about 30 MB after A1); Web would download about 0.55 GB. Measured from the `.ctex` files, not in a build | Done in A4 (`2026-10-15-art-a4-loading-design.md`): packed sheets (138 MB for all ten), art per roster, and a measured Web budget (374 MB of tab memory against 1,000) |
 
 ## 10. Done criteria
 

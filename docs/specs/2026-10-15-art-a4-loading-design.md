@@ -1,6 +1,6 @@
 # Art track A4: unit art per roster, and a Web texture budget
 
-Status: draft for Tim's review. Brainstormed with Tim on 2026-10-15, section by section. Branch `feature/PHASE-A4-art-loading`, worktree `~/Projects/ashenmarch-a4`, from `main` at 46ab149.
+Status: approved by Tim on 2026-10-15 and implemented by `docs/plans/2026-10-15-art-a4-loading.md`; the plan's ledger rulings and §7 below record where implementation changed it. Brainstormed with Tim on 2026-10-15, section by section. Branch `feature/PHASE-A4-art-loading`, worktree `~/Projects/ashenmarch-a4`, from `main` at 46ab149.
 
 ## 1. Goal
 
@@ -156,7 +156,7 @@ The expected result is about 600 MB: a pck of about 190 MB held twice (in the JS
 
 ## 7. Formats and exports
 
-- `rendering/textures/vram_compression/import_etc2_astc=false`. The reimport rewrites the other textures' `.import` files once (terrain, UI), and they are committed with this change.
+- ~~`rendering/textures/vram_compression/import_etc2_astc=false`.~~ Withdrawn in implementation: Godot 4.7 refuses a universal or arm64 macOS export without the ETC2/ASTC import, although the pck carries S3TC only. The setting stays on, pinned by a test, and the import cache keeps both formats.
 - `make run` and the exported macOS app must still draw every texture.
 - The Web preset stays as it is: S3TC for desktop, nothing for mobile.
 - The pcks' file lists are checked: no `art-src` grid, no sidecar JSON, no `etc2` file. The Windows export is built to confirm S3TC only, but not run.
