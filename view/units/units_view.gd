@@ -16,7 +16,7 @@ extends Node3D
 ## until one of the viewer's units comes close or it surfaces. The viewer is
 ## the side the mouse commands (set_viewer, which F9 switches).
 ##
-## Types with art (setup's UnitArtCatalog) are drawn with it: each tick the
+## Types with art (setup's UnitArtSet, loaded for the launch's types) are drawn with it: each tick the
 ## sprite's UnitAnimator gets the unit's state, and each frame the sprite
 ## shows the direction it faces relative to the camera. set_art_enabled
 ## (F12) rebuilds every sprite as a placeholder or back, keeping the dead
@@ -50,7 +50,7 @@ var _marker_material: StandardMaterial3D
 var _marker_color: Color = MARKER_COLOR
 var _marker_age: float = MARKER_LIFETIME
 var _viewer: UnitType.Faction = UnitType.Faction.LIGHT
-var _arts: UnitArtCatalog = UnitArtCatalog.new()
+var _arts: UnitArtSet = UnitArtSet.new()
 var _art_enabled: bool = true
 ## The camera's horizontal forward (ground x, z), kept from the last frame
 ## that had one.
@@ -79,7 +79,7 @@ var show_all_health: bool = false:
 
 ## gibs may be null, in which case bodies are never destroyed. arts may be
 ## null, in which case every unit is a placeholder.
-func setup(world: World, selection: UnitSelection, gibs: Gibs, arts: UnitArtCatalog = null) -> void:
+func setup(world: World, selection: UnitSelection, gibs: Gibs, arts: UnitArtSet = null) -> void:
 	_world = world
 	_selection = selection
 	_gibs = gibs
@@ -185,9 +185,7 @@ func art_enabled() -> bool:
 
 ## The art this view draws with, one per type.
 func loaded_arts() -> Array[UnitArt]:
-	var out: Array[UnitArt] = []
-	out.assign(_arts.arts)
-	return out
+	return _arts.arts()
 
 
 ## Flashes a ring on the ground where an order was given: green for a move,

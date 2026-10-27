@@ -64,14 +64,13 @@ func _build(unit: String) -> bool:
 		printerr("build_unit_art: could not save %s" % out)
 		return false
 	var catalog: UnitArtCatalog = UnitArtCatalog.load_or_new()
-	# Read the saved file back: it must load as a UnitArt, and the catalog then
-	# holds the file-backed resource, so it saves a reference to the file
-	# instead of embedding a copy of the art.
+	# Read the saved file back: it must load as a UnitArt, since the catalog
+	# lists the art by its path and a game loads it from there.
 	var saved: UnitArt = ResourceLoader.load(out, "", ResourceLoader.CACHE_MODE_REPLACE) as UnitArt
 	if saved == null:
 		printerr("build_unit_art: %s did not load back as a UnitArt" % out)
 		return false
-	catalog.put(saved)
+	catalog.put(saved.unit_id, out)
 	if ResourceSaver.save(catalog, UnitArtCatalog.DEFAULT_PATH) != OK:
 		printerr("build_unit_art: could not save %s" % UnitArtCatalog.DEFAULT_PATH)
 		return false

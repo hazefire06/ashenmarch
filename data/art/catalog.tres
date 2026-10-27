@@ -1,18 +1,18 @@
 [gd_resource type="Resource" script_class="UnitArtCatalog" format=3]
 
-[ext_resource type="Script" path="res://view/units/unit_art.gd" id="1_2vs60"]
-[ext_resource type="Resource" path="res://data/art/shieldman.tres" id="2_agbh4"]
-[ext_resource type="Resource" path="res://data/art/longbow.tres" id="2_ee2ei"]
-[ext_resource type="Resource" path="res://data/art/blightbag.tres" id="2_vt0nh"]
-[ext_resource type="Resource" path="res://data/art/reaver.tres" id="2_wyav6"]
-[ext_resource type="Resource" path="res://data/art/husk.tres" id="3_7yvxs"]
-[ext_resource type="Resource" path="res://data/art/drifter.tres" id="3_jit8e"]
-[ext_resource type="Script" path="res://view/units/unit_art_catalog.gd" id="3_wyav6"]
-[ext_resource type="Resource" path="res://data/art/sapper.tres" id="4_k5inp"]
-[ext_resource type="Resource" path="res://data/art/warden.tres" id="5_ee2ei"]
-[ext_resource type="Resource" path="res://data/art/ripper.tres" id="5_q2ylv"]
-[ext_resource type="Resource" path="res://data/art/stormcaller.tres" id="10_ando7"]
+[ext_resource type="Script" path="res://view/units/unit_art_catalog.gd" id="1_2ehei"]
 
 [resource]
-script = ExtResource("3_wyav6")
-arts = Array[ExtResource("1_2vs60")]([ExtResource("2_vt0nh"), ExtResource("3_jit8e"), ExtResource("3_7yvxs"), ExtResource("2_ee2ei"), ExtResource("2_wyav6"), ExtResource("5_q2ylv"), ExtResource("4_k5inp"), ExtResource("2_agbh4"), ExtResource("10_ando7"), ExtResource("5_ee2ei")])
+script = ExtResource("1_2ehei")
+paths = Dictionary[StringName, String]({
+&"blightbag": "res://data/art/blightbag.tres",
+&"drifter": "res://data/art/drifter.tres",
+&"husk": "res://data/art/husk.tres",
+&"longbow": "res://data/art/longbow.tres",
+&"reaver": "res://data/art/reaver.tres",
+&"ripper": "res://data/art/ripper.tres",
+&"sapper": "res://data/art/sapper.tres",
+&"shieldman": "res://data/art/shieldman.tres",
+&"stormcaller": "res://data/art/stormcaller.tres",
+&"warden": "res://data/art/warden.tres"
+})

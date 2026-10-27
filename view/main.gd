@@ -5,8 +5,8 @@ extends Node3D
 ## unit, projectile, explosion, fire, and weather views read the World; only
 ## commands change it. The gas cloud and herb plant views read it too, and so
 ## do the mission HUD, the objective panel, and the F5 AI overlay. Units whose
-## type has art are drawn with it (load_art), and F12 switches every unit to its
-## placeholder and back.
+## type has art are drawn with it (only the types its launch can bring on; see
+## UnitArtSet), and F12 switches every unit to its placeholder and back.
 ## Everything that draws the ground is built from the World's own terrain,
 ## not the one loaded from the map: explosions scar the World's copy.
 ##
@@ -152,6 +152,8 @@ var recording: Replay
 var last_step_ms: float = 0.0
 ## How long loading this game's unit art took, in ms; the budget check reports it.
 var art_load_ms: int = 0
+## Where the unit art catalog is read from. Tests point it at their own.
+var art_catalog_path: String = UnitArtCatalog.DEFAULT_PATH
 
 var _sim_ms: float = 0.0
 var _speed: int = NORMAL_SPEED
@@ -238,9 +240,13 @@ func _ready() -> void:
 	elif not launch.is_skirmish():
 		# MissionSetup queued the roster and the herb plants and started the mission.
 		stats = MissionStats.new()
-	var art_started_ms: int = Time.get_ticks_msec()
-	var arts: UnitArtCatalog = load_art()
-	art_load_ms = Time.get_ticks_msec() - art_started_ms
+	var art_catalog: UnitArtCatalog = UnitArtCatalog.load_or_new(art_catalog_path)
+	# Only what this game can bring on (MissionLaunch.unit_types). The sandbox
+	# and the demos have no launch, and load every type.
+	var art_types: Array[StringName] = launch.unit_types() if launch != null else art_catalog.ids()
+	var arts: UnitArtSet = UnitArtSet.for_types(art_types, art_catalog)
+	art_load_ms = arts.load_ms
+	print("unit art: %d types, %.1f MB of sheets, loaded in %d ms" % [arts.loaded_ids().size(), arts.sheet_bytes() / 1e6, arts.load_ms])
 	_units_view.setup(world, _selection.selection, _gibs, arts)
 	_projectiles_view.setup(world)
 	_explosions_view.setup(world, _terrain_view, _gibs)
@@ -592,17 +598,6 @@ func _create_world() -> World:
 		push_error("MainView: could not load %s" % MAP_PATH)
 		return null
 	return World.new(WORLD_SEED, map_terrain, _load_catalog())
-
-
-## The unit art catalog the units are drawn with: the entries that pass
-## validation. Each one that fails is reported once (a warning naming why), and
-## its unit stays a placeholder, so a broken art file never stops the game. No
-## catalog file at all is an empty catalog.
-static func load_art(path: String = UnitArtCatalog.DEFAULT_PATH) -> UnitArtCatalog:
-	var arts: UnitArtCatalog = UnitArtCatalog.load_or_new(path)
-	for reason: String in arts.invalid_reasons():
-		push_warning("MainView: unit art left out: %s" % reason)
-	return arts.without_invalid()
 
 
 ## The unit art this game loaded, for the budget check.

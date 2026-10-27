@@ -31,13 +31,11 @@ func before_each() -> void:
 	_view = _art_view(_world, TestArt.art(&"shieldman"), _selection, _gibs)
 
 
-# A UnitsView of world that draws the Shieldman with art.
+# A UnitsView of world that draws art's type with it.
 func _art_view(world: World, art: UnitArt, selection: UnitSelection, gibs: Gibs = null) -> UnitsView:
-	var arts: UnitArtCatalog = UnitArtCatalog.new()
-	arts.put(art)
 	var view: UnitsView = UnitsView.new()
 	add_child_autofree(view)
-	view.setup(world, selection, gibs, arts)
+	view.setup(world, selection, gibs, UnitArtSet.of([art]))
 	return view
 
 
