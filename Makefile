@@ -3,7 +3,7 @@ MAC_APP := build/mac/Ashenmarch.app
 WIN_EXE := build/windows/Ashenmarch.exe
 WEB_HTML := build/web/index.html
 
-.PHONY: pad-playthrough import run demo demo-projectiles demo-abilities demo-ai test check-sim export-mac export-windows export-web export-all serve-web sfx bench profile-sim golden-replays verify-replays verify-replays-app verify-replays-x86 maps fixtures playtest skirmish-playtest capture capture-skirmish hooks check-leaks check-layout test-art art-candidates art-render art-attach art-prop-candidates art-build budget budget-app
+.PHONY: pad-playthrough import run demo demo-projectiles demo-abilities demo-ai test check-sim export-mac export-windows export-web export-all serve-web sfx bench profile-sim golden-replays verify-replays verify-replays-app verify-replays-x86 maps fixtures playtest skirmish-playtest capture capture-skirmish hooks check-leaks check-layout test-art art-candidates art-render art-attach art-prop-candidates art-build art-probe budget budget-app
 
 # Builds the .godot/ import and class_name cache. A fresh clone has none, and
 # GUT can't resolve class_name types without it.
@@ -259,6 +259,11 @@ art-render:
 # for tuning the [[attach]] offsets and rotations by eye (free).
 art-attach:
 	$(BLENDER_RUN) --python scripts/art/render_sprites.py -- $(UNIT) --attach
+
+# Proves packed frames draw like the grid ones (windowed; see the head of
+# scripts/art/pack_probe.gd). UNITS=a,b limits it; OUT=<dir> saves pairs.
+art-probe: import
+	UNITS=$(UNITS) OUT=$(OUT) $(GODOT) --path . -s scripts/art/pack_probe.gd
 
 # Renders PROP's Meshy candidates into art-src/props/PROP/review/candidates.png (free).
 art-prop-candidates:
