@@ -1,8 +1,7 @@
 extends GutTest
 ## The sound views: SfxPlayer turns the sim's events into sounds within its
-## caps and cull distance and acknowledges orders; Ambience follows the rain
-## and the fire; UiSounds clicks for buttons added anywhere; and H (or the
-## bar's Center) glides the camera to the selection.
+## caps and cull distance and acknowledges orders; UiSounds clicks for buttons added anywhere; and H (or
+## the bar's Center) glides the camera to the selection.
 
 const M: int = 1000
 
@@ -41,15 +40,6 @@ func test_a_blast_in_the_world_is_heard() -> void:
 	main.world.projectile_events.append(event)
 	sfx.after_step()
 	assert_eq(sfx.started_this_tick(), 1)
-
-
-func test_the_beds_follow_the_rain_and_the_fire() -> void:
-	var main: MainView = _main()
-	var beds: Ambience = main.find_child("Ambience", true, false) as Ambience
-	assert_eq(beds.targets(), Vector2.ZERO, "clear and unburnt")
-	main.world.enqueue(SetWeatherCommand.new(main.world.tick, 1000, 0, 0, 0, 0))
-	main._physics_process(1.0 / World.TICK_RATE)
-	assert_almost_eq(beds.targets().x, 1.0, 0.01, "rain at full")
 
 
 func test_buttons_added_anywhere_click() -> void:

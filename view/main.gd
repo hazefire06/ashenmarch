@@ -261,7 +261,7 @@ func _ready() -> void:
 	_ambience = Ambience.new()
 	_ambience.name = "Ambience"
 	add_child(_ambience)
-	_ambience.setup(world)
+	_ambience.setup(world, _camera)
 	if launch != null:
 		# After the views it grades exist: the terrain's material and the ash layer.
 		var look: Atmosphere = (
@@ -278,11 +278,13 @@ func _ready() -> void:
 	)
 	_selection.side_changed.connect(_units_view.set_viewer)
 	_selection.side_changed.connect(_sfx.set_viewer)
+	_selection.side_changed.connect(_ambience.set_viewer)
 	if launch != null and launch.is_skirmish():
 		# The player may be Dark: they select, and see, from their own side.
 		_selection.side = launch.player_faction()
 		_units_view.set_viewer(launch.player_faction())
 		_sfx.set_viewer(launch.player_faction())
+		_ambience.set_viewer(launch.player_faction())
 	_control_bar.setup(_selection, world)
 	if launch != null and launch.is_skirmish():
 		_control_bar.set_skirmish(launch.player_faction())
