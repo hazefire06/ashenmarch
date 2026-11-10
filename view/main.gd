@@ -312,7 +312,7 @@ func _ready() -> void:
 		_pause_menu.set_scoreboard_visible(true)
 		_pause_menu.scoreboard_requested.connect(_skirmish_hud.toggle_scoreboard)
 	_overhead_map.set_orders(_selection)
-	_selection.order_given.connect(_sfx.acknowledge)
+	_sfx.connect_selection(_selection)
 	_pause_menu.opened.connect(_on_pause_menu_opened)
 	_pause_menu.closed.connect(_on_pause_menu_closed)
 	_pause_menu.resume_requested.connect(_on_resume_requested)

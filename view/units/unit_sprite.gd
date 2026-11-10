@@ -231,17 +231,18 @@ func flash(kind: CombatEvent.Kind) -> void:
 	set_process(true)
 
 
-## Floats text over the unit for NOTICE_TIME seconds, replacing any notice
+## Floats text over the unit for `seconds`, in `color`, replacing any notice
 ## already showing.
-func show_notice(text: String) -> void:
+func show_notice(text: String, color: Color = NOTICE_COLOR, seconds: float = NOTICE_TIME) -> void:
 	if _notice == null:
 		_notice = _make_label(text, NOTICE_COLOR)
 		# Above the name label.
 		_notice.position = Vector3(0.0, height + 0.7, 0.0)
 		add_child(_notice)
 	_notice.text = text
+	_notice.modulate = color
 	_notice.visible = not _dead
-	_notice_left = NOTICE_TIME
+	_notice_left = seconds
 	set_process(true)
 
 

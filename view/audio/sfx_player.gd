@@ -56,13 +56,16 @@ const THUNDER: StringName = &"thunder"
 const UI_DENY: StringName = &"ui_deny"
 const GAS_RELEASE: StringName = &"gas_release"
 const ORDER_ACK: StringName = &"order_ack"
+const UI_SELECT: StringName = &"ui_select"
+const UI_FORMATION: StringName = &"ui_formation"
+const UI_GROUP: StringName = &"ui_group"
 ## The projectile whose burst is a gas cloud, not a blast.
 const BLIGHT_BURST: StringName = &"blight_burst"
 ## Every fixed cue above, for the test that checks the bank declares them.
 const NAMED_CUES: Array[StringName] = [
 	BLOCK_SHIELD, HEAL, HEAL_SEAR, ARROW_SPLASH, EXPLOSION_SMALL, EXPLOSION_LARGE,
 	EXPLOSION_WATER, GAS_BURST, FIZZLE_HISS, FIZZLE_WATER, SATCHEL_THUD, FIRE_WHOOMP,
-	GRAB, THUNDER, UI_DENY, GAS_RELEASE, ORDER_ACK,
+	GRAB, THUNDER, UI_DENY, GAS_RELEASE, ORDER_ACK, UI_SELECT, UI_FORMATION, UI_GROUP,
 ]
 
 ## Plays nothing while false (the audio budget's audio=0).
@@ -157,9 +160,19 @@ func after_step() -> void:
 	_groan()
 
 
-## The player's order was sent.
-func acknowledge() -> void:
+## The player's order was sent (the ids and kind are for the barks).
+func acknowledge(_ids: PackedInt32Array = PackedInt32Array(), _kind: int = 0) -> void:
 	play_ui(ORDER_ACK)
+
+
+## Tones for what the player does: orders, picks, formations and groups.
+func connect_selection(controller: SelectionController) -> void:
+	controller.order_given.connect(acknowledge)
+	controller.player_selected.connect(func(_ids: PackedInt32Array) -> void: play_ui(UI_SELECT))
+	controller.formation_changed.connect(func(_kind: Formations.Kind) -> void: play_ui(UI_FORMATION))
+	controller.group_changed.connect(func(slot: int) -> void:
+		if slot >= 0:
+			play_ui(UI_GROUP))
 
 
 ## How many sounds this tick has started; for tests.

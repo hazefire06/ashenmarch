@@ -98,9 +98,10 @@ func test_moving_the_camera_by_hand_stops_a_glide() -> void:
 
 func test_an_order_is_acknowledged() -> void:
 	var main: MainView = _main()
-	assert_true(main._selection.order_given.is_connected(
-		(main.find_child("Sfx", true, false) as SfxPlayer).acknowledge
-	))
+	var sfx: SfxPlayer = main.find_child("Sfx", true, false) as SfxPlayer
+	sfx.after_step()
+	main._selection.order_given.emit(PackedInt32Array([1]), SelectionController.OrderKind.MOVE)
+	assert_eq(sfx.played_this_tick()[0]["cue"], &"order_ack")
 
 
 func test_the_viewer_follows_side_changed() -> void:
