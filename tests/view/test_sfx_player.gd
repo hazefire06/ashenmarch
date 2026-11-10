@@ -44,20 +44,17 @@ func _player(world: World, bank: SoundBank = null) -> SfxPlayer:
 	var sfx: SfxPlayer = SfxPlayer.new()
 	add_child_autofree(sfx)
 	sfx.setup(world, camera, bank if bank != null else _full_bank(), SoundMap.shared())
+	# Groans are chance; only the groan tests turn them on.
+	sfx.groan_chance = 0.0
+	sfx.seed_rng(1)
 	return sfx
 
 
-# The tick's cues, without groans (a seen undead may groan any tick, by chance).
 func _cues(sfx: SfxPlayer) -> Array[StringName]:
 	var out: Array[StringName] = []
 	for played: Dictionary in sfx.played_this_tick():
-		if not String(played["cue"]).begins_with("groan_"):
-			out.append(played["cue"])
+		out.append(played["cue"])
 	return out
-
-
-func _groans(sfx: SfxPlayer) -> int:
-	return sfx.played_this_tick().size() - _cues(sfx).size()
 
 
 # A tick of the sim with the events its own units made dropped, so a test hears
@@ -250,6 +247,29 @@ func test_a_submerged_husk_is_silent_until_seen() -> void:
 	assert_eq(_cues(sfx), [&"swing_claw"] as Array[StringName])
 
 
+func test_what_a_hidden_unit_does_and_suffers_is_silent_until_seen() -> void:
+	var world: World = _world()
+	var sfx: SfxPlayer = _player(world)
+	var husk: Unit = _submerged_husk(world)
+	# Dark units beside it: the Husk is out of any Light unit's sight.
+	var other: Unit = _spawn(world, &"ripper", DARK, 12.5, 9.5)
+	_combat(world, sfx, CombatEvent.Kind.HIT, other, husk)
+	assert_eq(_cues(sfx), [] as Array[StringName], "a hit on it")
+	_combat(world, sfx, CombatEvent.Kind.KILL, other, husk)
+	assert_eq(_cues(sfx), [] as Array[StringName], "neither the hit nor the death")
+	var launch: ProjectileEvent = _projectile(ProjectileEvent.Kind.LAUNCH, 12.5, 12.5, &"arrow")
+	launch.unit_id = husk.id
+	_shot(world, sfx, launch)
+	assert_eq(_cues(sfx), [] as Array[StringName], "a launch by it")
+	sfx.set_viewer(DARK)
+	_combat(world, sfx, CombatEvent.Kind.HIT, other, husk)
+	assert_eq(_cues(sfx), [&"hit_flesh"] as Array[StringName], "the hit, once seen")
+	_combat(world, sfx, CombatEvent.Kind.KILL, other, husk)
+	assert_eq(_cues(sfx), [&"hit_flesh", &"death_husk"] as Array[StringName], "the hit and the death")
+	_shot(world, sfx, launch)
+	assert_eq(_cues(sfx), [&"bow_release"] as Array[StringName], "the launch")
+
+
 func test_blasts_bolts_fire_and_gas_are_always_heard() -> void:
 	var world: World = _world()
 	var sfx: SfxPlayer = _player(world)
@@ -335,33 +355,39 @@ func test_a_full_pool_cuts_the_oldest_voice() -> void:
 	assert_eq(sfx._voice_cue[0], &"cue_24", "the 25th took voice 0")
 
 
+func _variant_run(sfx: SfxPlayer, seed_value: int) -> Array[int]:
+	sfx.seed_rng(seed_value)
+	var run: Array[int] = []
+	var near: Vector3 = Vector3(15, 0, 15)
+	var bank: SoundBank = sfx.bank
+	for i: int in 20:
+		sfx.after_step()
+		assert_true(sfx.play_at(&"hit_flesh", near))
+		run.append(bank.cue(&"hit_flesh").streams.find(sfx._voices[(sfx._next_voice + SfxPlayer.VOICES - 1) % SfxPlayer.VOICES].stream))
+	return run
+
+
 func test_the_same_seed_picks_the_same_variants() -> void:
 	var world: World = _world()
-	var bank: SoundBank = AudioFixtures.bank({&"hit_flesh": 4}, 99, 5.0)
-	var sfx: SfxPlayer = _player(world, bank)
-	var near: Vector3 = Vector3(15, 0, 15)
-	var picks: Array = []
-	for round: int in 2:
-		sfx.seed(42)
-		sfx.after_step()
-		var seen: Array[AudioStream] = []
-		for i: int in 3:
-			sfx.play_at(&"hit_flesh", near)
-			seen.append(sfx._voices[(round * 3 + i) % SfxPlayer.VOICES].stream)
-		picks.append(seen)
-	assert_eq(picks[0], picks[1])
+	var sfx: SfxPlayer = _player(world, AudioFixtures.bank({&"hit_flesh": 8}, 99, 5.0))
+	var first: Array[int] = _variant_run(sfx, 42)
+	assert_eq(_variant_run(sfx, 42), first, "same seed, same picks")
+	assert_ne(_variant_run(sfx, 43), first, "another seed, other picks")
+	assert_gt(first.count(first[0]), 0)
+	assert_lt(first.count(first[0]), 20, "and the picks vary")
 
 
 func test_seen_undead_near_the_focus_groan_now_and_then() -> void:
 	var world: World = _world()
 	var sfx: SfxPlayer = _player(world)
-	sfx.seed(3)
+	sfx.groan_chance = SfxPlayer.GROAN_CHANCE
+	sfx.seed_rng(3)
 	_spawn(world, &"husk", DARK, 25, 15)
 	var groans: int = 0
 	for i: int in 600:
-		world.step()
+		_quiet_step(world)
 		sfx.after_step()
-		groans += _groans(sfx)
+		groans += _cues(sfx).count(&"groan_husk")
 	assert_gte(groans, 1)
 	assert_lte(groans, 600 / SfxPlayer.GROAN_GAP_TICKS + 1)
 
@@ -369,14 +395,18 @@ func test_seen_undead_near_the_focus_groan_now_and_then() -> void:
 func test_a_submerged_husk_never_groans() -> void:
 	var world: World = _world()
 	var sfx: SfxPlayer = _player(world)
-	sfx.seed(3)
+	sfx.groan_chance = 1.0
 	_submerged_husk(world)
 	var groans: int = 0
-	for i: int in 600:
-		world.step()
+	for i: int in 300:
+		_quiet_step(world)
 		sfx.after_step()
-		groans += _groans(sfx)
-	assert_eq(groans, 0)
+		groans += _cues(sfx).count(&"groan_husk")
+	assert_eq(groans, 0, "even at a certain roll")
+	sfx.set_viewer(DARK)
+	_quiet_step(world)
+	sfx.after_step()
+	assert_eq(_cues(sfx), [&"groan_husk"] as Array[StringName], "its own side hears it")
 
 
 func test_cant_reach_denies_only_for_the_viewers_units() -> void:

@@ -67,6 +67,8 @@ const NAMED_CUES: Array[StringName] = [
 
 ## Plays nothing while false (the audio budget's audio=0).
 var enabled: bool = true
+## Each tick's chance of a groan once the gap has passed (tests set it).
+var groan_chance: float = GROAN_CHANCE
 ## The view's own RNG for variants, pitch and groans; never the sim's.
 var rng: RandomNumberGenerator = RandomNumberGenerator.new()
 ## The bank every sound comes from, and who makes which.
@@ -135,7 +137,7 @@ func viewer() -> UnitType.Faction:
 
 
 ## Restarts the view RNG, so tests (and replays of the view) pick the same variants.
-func seed(value: int) -> void:
+func seed_rng(value: int) -> void:
 	rng.seed = value
 
 
@@ -304,22 +306,26 @@ func _play_hit(target: Unit, at: Vector3) -> void:
 func _groan() -> void:
 	if _camera == null or _world.tick - _last_groan < GROAN_GAP_TICKS:
 		return
-	if rng.randf() >= GROAN_CHANCE:
+	if rng.randf() >= groan_chance:
 		return
 	var focus: Vector3 = _camera.focus
 	var groaners: Array[Unit] = []
+	var cues: Array[StringName] = []
 	for unit: Unit in _world.units:
 		if not unit.is_alive() or unit.type.nature != UnitType.Nature.UNDEAD:
 			continue
 		var at: Vector3 = _meters(unit.x, unit.y, unit.z)
 		if Vector2(at.x - focus.x, at.z - focus.z).length() > GROAN_RADIUS:
 			continue
-		if _heard(unit) and map.groan_cue(unit.type, bank) != &"":
+		var cue: StringName = map.groan_cue(unit.type, bank)
+		if cue != &"" and _heard(unit):
 			groaners.append(unit)
+			cues.append(cue)
 	if groaners.is_empty():
 		return
-	var chosen: Unit = groaners[rng.randi_range(0, groaners.size() - 1)]
-	if play_at(map.groan_cue(chosen.type, bank), _meters(chosen.x, chosen.y, chosen.z)):
+	var pick: int = rng.randi_range(0, groaners.size() - 1)
+	var chosen: Unit = groaners[pick]
+	if play_at(cues[pick], _meters(chosen.x, chosen.y, chosen.z)):
 		_last_groan = _world.tick
 
 
