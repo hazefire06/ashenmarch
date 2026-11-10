@@ -184,6 +184,7 @@ var _replay_speed: int = 1
 ## The battle's sounds and its rain and fire beds.
 var _sfx: SfxPlayer
 var _ambience: Ambience
+var _music: Music
 
 @onready var _terrain_view: TerrainView = $TerrainView
 @onready var _units_view: UnitsView = $Units
@@ -262,6 +263,10 @@ func _ready() -> void:
 	_ambience.name = "Ambience"
 	add_child(_ambience)
 	_ambience.setup(world, _camera)
+	_music = Music.new()
+	_music.name = "Music"
+	add_child(_music)
+	_music.setup(world, SoundMap.shared().music_for(_map_id()))
 	if launch != null:
 		# After the views it grades exist: the terrain's material and the ash layer.
 		var look: Atmosphere = (
@@ -279,12 +284,14 @@ func _ready() -> void:
 	_selection.side_changed.connect(_units_view.set_viewer)
 	_selection.side_changed.connect(_sfx.set_viewer)
 	_selection.side_changed.connect(_ambience.set_viewer)
+	_selection.side_changed.connect(_music.set_viewer)
 	if launch != null and launch.is_skirmish():
 		# The player may be Dark: they select, and see, from their own side.
 		_selection.side = launch.player_faction()
 		_units_view.set_viewer(launch.player_faction())
 		_sfx.set_viewer(launch.player_faction())
 		_ambience.set_viewer(launch.player_faction())
+		_music.set_viewer(launch.player_faction())
 	_control_bar.setup(_selection, world)
 	if launch != null and launch.is_skirmish():
 		_control_bar.set_skirmish(launch.player_faction())
@@ -398,6 +405,7 @@ func _advance() -> void:
 	_ai_debug.after_step()
 	_sfx.after_step()
 	_ambience.after_step()
+	_music.after_step()
 	if _replay_player == null:
 		rumble.after_step(world, _camera.focus, _selection.side)
 	_mission_hud.show_world(world)
@@ -581,6 +589,13 @@ func _process(delta: float) -> void:
 		world.fire.burn_end.size(),
 		hints,
 	]
+
+
+# The id of the map this launch plays, for the music; empty in the sandbox.
+func _map_id() -> StringName:
+	if launch == null:
+		return &""
+	return launch.skirmish.map.id if launch.is_skirmish() else launch.mission.id
 
 
 # The world to play: the launch's mission, set up by MissionSetup, or the
