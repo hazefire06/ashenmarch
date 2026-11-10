@@ -152,6 +152,13 @@ var recording: Replay
 var last_step_ms: float = 0.0
 ## How long loading this game's unit art took, in ms; the budget check reports it.
 var art_load_ms: int = 0
+## Set before the node enters the tree (the budget run's ?audio=0): false plays
+## and registers no one-shot sounds.
+var audio_enabled: bool = true
+## Set before the node enters the tree; Task 12 (bark stand-ins) reads it.
+var audio_stand_ins: bool = false
+## What SoundRegistry.load_for reported at load (see there).
+var audio_report: Dictionary = {}
 ## Where the unit art catalog is read from. Tests point it at their own.
 var art_catalog_path: String = UnitArtCatalog.DEFAULT_PATH
 
@@ -259,6 +266,12 @@ func _ready() -> void:
 	_sfx.name = "Sfx"
 	add_child(_sfx)
 	_sfx.setup(world, _camera)
+	_sfx.enabled = audio_enabled
+	var audio_catalog: UnitCatalog = load(CATALOG_PATH) as UnitCatalog
+	var audio_types: Array[StringName] = launch.unit_types() if launch != null else art_types
+	audio_report = SoundRegistry.load_for(
+		audio_types, audio_catalog, SoundBank.shared(), SoundMap.shared(), [], 0, OS.has_feature("web"), audio_enabled
+	)
 	_ambience = Ambience.new()
 	_ambience.name = "Ambience"
 	add_child(_ambience)
