@@ -1,0 +1,243 @@
+"""Tests for cuebook.py: the committed book against the spec, and every refusal."""
+from __future__ import annotations
+
+import json
+import tempfile
+import unittest
+from pathlib import Path
+
+import cuebook
+from cuebook import CueError
+
+ROOT: Path = Path(__file__).resolve().parents[2]
+
+SPEC_CUES: frozenset[str] = frozenset(
+    # melee (10)
+    "swing_blade swing_heavy swing_staff swing_claw swing_stomp hit_flesh hit_dry block_shield heal heal_sear "
+    # projectile (22)
+    "bow_release bow_release_fire throw_bottle throw_herb throw_heavy lightning_charge arrow_thunk arrow_splash "
+    "arrow_flesh thud_flesh bottle_clink explosion_small explosion_large explosion_water gas_burst fizzle_hiss "
+    "fizzle_water satchel_thud fire_whoomp grab thunder gas_release "
+    # death (11)
+    "death_shieldman death_reaver death_longbow death_sapper death_warden death_villager death_husk death_ripper "
+    "death_blightbag death_drifter death_stormcaller "
+    # groan (5)
+    "groan_husk groan_ripper groan_blightbag groan_drifter groan_stormcaller "
+    # ui (6)
+    "ui_click ui_select ui_formation ui_group ui_deny order_ack "
+    # march (4 loops) and bed (6 loops)
+    "march_grass march_sand march_rock march_water "
+    "bed_outdoor bed_rain bed_snow bed_fire bed_water bed_gas".split()
+)
+
+HEAD: str = """
+[style]
+suffix = "realistic close foley"
+
+[defaults]
+variants = 3
+takes = 6
+bus = "Effects"
+level_db = 0.0
+max_voices = 3
+pitch_spread = 0.06
+model = "eleven_text_to_sound_v2"
+prompt_influence = 0.5
+
+[playback]
+melee = "sample"
+projectile = "sample"
+death = "sample"
+groan = "sample"
+ui = "sample"
+march = "stream"
+bed = "stream"
+music = "stream"
+"""
+
+GOOD_CUE: str = """
+[cue.swing_blade]
+category = "melee"
+prompt = "a steel blade cuts the air"
+duration_s = 1.0
+"""
+
+
+def book_from(text: str):
+    with tempfile.TemporaryDirectory() as tmp:
+        path = Path(tmp) / "cues.toml"
+        path.write_text(text, encoding="utf-8")
+        return cuebook.load_cues(path)
+
+
+def layers_from(text: str):
+    with tempfile.TemporaryDirectory() as tmp:
+        path = Path(tmp) / "prompts.toml"
+        path.write_text(text, encoding="utf-8")
+        return cuebook.load_layers(path)
+
+
+def cue_with(extra: str, name: str = "swing_blade") -> str:
+    return HEAD + f'\n[cue.{name}]\ncategory = "melee"\nprompt = "a blade"\nduration_s = 1.0\n{extra}\n'
+
+
+class CommittedBookTest(unittest.TestCase):
+    def test_the_committed_book_has_every_cue_in_the_spec(self) -> None:
+        book = cuebook.load_cues(ROOT / "audio-src" / "cues.toml")
+        self.assertEqual(set(book.cues.keys()), set(SPEC_CUES))
+        self.assertEqual(len(SPEC_CUES), 64)
+        self.assertEqual(sum(1 for c in book.cues.values() if not c.loop), 54)
+        self.assertEqual(sum(1 for c in book.cues.values() if c.loop), 10)
+
+    def test_loop_categories_stream_and_one_shots_sample(self) -> None:
+        book = cuebook.load_cues(ROOT / "audio-src" / "cues.toml")
+        for category in cuebook.CATEGORIES:
+            want = "stream" if category in cuebook.LOOP_CATEGORIES else "sample"
+            self.assertEqual(book.playback[category], want, category)
+        for cue in book.cues.values():
+            self.assertEqual(cue.loop, cue.category in cuebook.LOOP_CATEGORIES, cue.id)
+
+    def test_every_committed_placeholder_file_exists(self) -> None:
+        book = cuebook.load_cues(ROOT / "audio-src" / "cues.toml")
+        for cue in book.cues.values():
+            if cue.placeholder is not None:
+                rel = cue.placeholder.removeprefix("res://")
+                self.assertTrue((ROOT / rel).is_file(), cue.id)
+
+    def test_the_committed_layers_share_a_key_and_tempo_line(self) -> None:
+        layers = cuebook.load_layers(ROOT / "audio-src" / "music" / "prompts.toml")
+        self.assertEqual(set(layers), {"riverside_calm", "riverside_combat"})
+        last = {layer.prompt.strip().splitlines()[-1] for layer in layers.values()}
+        self.assertEqual(len(last), 1)
+        for layer in layers.values():
+            self.assertEqual((layer.length_s, layer.model, layer.takes), (110.0, "music_v2", 3))
+
+
+class RefusalTest(unittest.TestCase):
+    def test_ids_that_are_not_safe_file_names_are_refused(self) -> None:
+        for bad in ("../x", "Hit", "a b", "x/y", "", "a\n"):
+            with self.subTest(bad=bad):
+                with self.assertRaises(CueError):
+                    cuebook.check_id(bad, "id")
+                quoted = json.dumps(bad)  # a JSON string is a valid TOML basic string
+                with self.assertRaises(CueError):
+                    book_from(HEAD + f'\n[cue.{quoted}]\ncategory = "melee"\nprompt = "p"\nduration_s = 1.0\n')
+                with self.assertRaises(CueError):
+                    layers_from(f'[layer.{quoted}]\nprompt = "p"\nlength_s = 110\nmodel = "music_v2"\ntakes = 3\npicks = []\n')
+        for not_a_string in (None, 3, ["a"]):
+            with self.assertRaises(CueError):
+                cuebook.check_id(not_a_string, "id")
+
+    def test_a_pick_is_a_number_not_a_name(self) -> None:
+        for bad in ('"../x"', '"a"', "true", "1.5"):
+            with self.subTest(bad=bad):
+                with self.assertRaises(CueError):
+                    book_from(cue_with(f"picks = [{bad}]"))
+
+    def test_an_error_never_echoes_more_than_40_characters(self) -> None:
+        long = "A" * 200
+        with self.assertRaises(CueError) as ctx:
+            cuebook.check_id(long, "cue id")
+        self.assertNotIn("A" * 41, str(ctx.exception))
+        self.assertIn("cue id", str(ctx.exception))
+        with self.assertRaises(CueError) as ctx:
+            book_from(cue_with(f'{"B" * 200} = 1'))
+        self.assertNotIn("B" * 41, str(ctx.exception))
+
+    def test_unknown_keys_and_categories_are_refused(self) -> None:
+        with self.assertRaises(CueError):
+            book_from(HEAD + '\n[cue.swing_blade]\ncategory = "melee"\npromt = "x"\nduration_s = 1.0\n')
+        with self.assertRaises(CueError):
+            book_from(HEAD + '\n[cue.swing_blade]\ncategory = "boom"\nprompt = "x"\nduration_s = 1.0\n')
+        with self.assertRaises(CueError):
+            book_from(HEAD + GOOD_CUE + '\n[extra]\nx = 1\n')
+        with self.assertRaises(CueError):
+            book_from(HEAD.replace("level_db = 0.0", "level = 0.0") + GOOD_CUE)
+        with self.assertRaises(CueError):
+            book_from(HEAD.replace('music = "stream"', 'music = "stream"\nboom = "sample"') + GOOD_CUE)
+
+    def test_a_missing_required_key_is_refused(self) -> None:
+        with self.assertRaises(CueError):
+            book_from(HEAD + '\n[cue.swing_blade]\ncategory = "melee"\nduration_s = 1.0\n')
+
+    def test_a_duration_outside_half_a_second_to_thirty_is_refused(self) -> None:
+        for bad in ("0.4", "30.5", "-1", "true"):
+            with self.subTest(bad=bad):
+                with self.assertRaises(CueError):
+                    book_from(HEAD + f'\n[cue.swing_blade]\ncategory = "melee"\nprompt = "x"\nduration_s = {bad}\n')
+        book_from(HEAD + '\n[cue.swing_blade]\ncategory = "melee"\nprompt = "x"\nduration_s = 0.5\n')
+        book_from(HEAD + '\n[cue.swing_blade]\ncategory = "melee"\nprompt = "x"\nduration_s = 30\n')
+
+    def test_a_pick_outside_the_takes_is_refused(self) -> None:
+        for bad in ("[7]", "[0]", "[1, 1]", "[-1]"):
+            with self.subTest(bad=bad):
+                with self.assertRaises(CueError):
+                    book_from(cue_with(f"picks = {bad}"))
+        self.assertEqual(book_from(cue_with("picks = [1, 6]")).cues["swing_blade"].picks, (1, 6))
+
+    def test_a_placeholder_must_be_an_old_sfx_file(self) -> None:
+        for bad in ("res://data/x.tres", "res://assets/audio/sfx/../x.wav", "res://assets/audio/sfx/X.wav",
+                    "res://assets/audio/sfx/a/b.wav", "assets/audio/sfx/x.wav", "res://assets/audio/sfx/x.ogg"):
+            with self.subTest(bad=bad):
+                with self.assertRaises(CueError):
+                    book_from(cue_with(f'placeholder = "{bad}"'))
+        got = book_from(cue_with('placeholder = "res://assets/audio/sfx/sword_hit.wav"'))
+        self.assertEqual(got.cues["swing_blade"].placeholder, "res://assets/audio/sfx/sword_hit.wav")
+
+    def test_loop_and_category_must_agree(self) -> None:
+        with self.assertRaises(CueError):
+            book_from(cue_with("loop = true"))
+        with self.assertRaises(CueError):
+            book_from(HEAD + '\n[cue.march_x]\ncategory = "march"\nprompt = "x"\nduration_s = 12\n')
+
+    def test_bad_values_are_refused(self) -> None:
+        for extra in ("variants = 0", "takes = 0", 'bus = "Nope"', "max_voices = 0", "pitch_spread = -0.1",
+                      "prompt_influence = 1.5", 'model = ""', "variants = true"):
+            with self.subTest(extra=extra):
+                with self.assertRaises(CueError):
+                    book_from(cue_with(extra))
+
+    def test_a_missing_or_unreadable_file_is_a_cue_error(self) -> None:
+        with self.assertRaises(CueError):
+            cuebook.load_cues(Path("/nonexistent/cues.toml"))
+        with self.assertRaises(CueError):
+            book_from("[style\n")
+
+    def test_a_missing_playback_category_is_refused(self) -> None:
+        with self.assertRaises(CueError):
+            book_from(HEAD.replace('music = "stream"\n', "") + GOOD_CUE)
+        with self.assertRaises(CueError):
+            book_from(HEAD.replace('music = "stream"', 'music = "loud"') + GOOD_CUE)
+
+
+class DefaultsTest(unittest.TestCase):
+    def test_defaults_fill_what_a_cue_leaves_out(self) -> None:
+        cue = book_from(HEAD + GOOD_CUE).cues["swing_blade"]
+        self.assertEqual((cue.variants, cue.takes, cue.bus), (3, 6, "Effects"))
+        self.assertEqual((cue.level_db, cue.max_voices, cue.pitch_spread), (0.0, 3, 0.06))
+        self.assertEqual((cue.model, cue.prompt_influence), ("eleven_text_to_sound_v2", 0.5))
+        self.assertEqual((cue.loop, cue.placeholder, cue.picks), (False, None, ()))
+
+    def test_a_cue_overrides_a_default(self) -> None:
+        cue = book_from(cue_with("takes = 4\nlevel_db = -6")).cues["swing_blade"]
+        self.assertEqual((cue.takes, cue.level_db), (4, -6.0))
+
+
+class LayersTest(unittest.TestCase):
+    GOOD = '[layer.a]\nprompt = "p"\nlength_s = 110\nmodel = "music_v2"\ntakes = 3\npicks = [2]\n'
+
+    def test_a_good_layer_loads(self) -> None:
+        layer = layers_from(self.GOOD)["a"]
+        self.assertEqual((layer.length_s, layer.takes, layer.picks), (110.0, 3, (2,)))
+
+    def test_bad_layers_are_refused(self) -> None:
+        for bad in (self.GOOD.replace("110", "2"), self.GOOD.replace("110", "601"),
+                    self.GOOD.replace("[2]", "[4]"), self.GOOD.replace("prompt", "promt"),
+                    self.GOOD + "[other]\nx = 1\n", ""):
+            with self.subTest(bad=bad):
+                with self.assertRaises(CueError):
+                    layers_from(bad)
+
+
+if __name__ == "__main__":
+    unittest.main()

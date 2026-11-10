@@ -1,0 +1,20 @@
+# Riverside's two music layers (spec section 3). Same key and tempo so they cross-fade cleanly.
+# scripts/audio/cuebook.py checks this file. Each prompt ends with the shared KEY_TEMPO line.
+
+[layer.riverside_calm]
+prompt = """
+Sparse, brooding instrumental music for a quiet ruined village by a creek at dusk. A low sustained drone of cellos and a deep bowed bass, a slow soft frame drum pulse, and a single lone fiddle or highland pipes playing a thin mournful melody with long silences between phrases. Cold, patient and uneasy. Acoustic and raw, no electronics, no choir, no full orchestra.
+Key of D minor, 84 beats per minute, 4/4, steady tempo throughout."""
+length_s = 110
+model = "music_v2"
+takes = 3
+picks = []
+
+[layer.riverside_combat]
+prompt = """
+Tense, urgent instrumental music for a skirmish against the walking dead. The same low drone and bowed bass now driving, heavy frame drums and a deep war drum hitting hard on the beat, rough sawing fiddle and skirling highland pipes playing a harsher, faster version of a mournful melody. Gritty, pressing and physical. Acoustic and raw, no Hollywood orchestra, no choir, no electronics.
+Key of D minor, 84 beats per minute, 4/4, steady tempo throughout."""
+length_s = 110
+model = "music_v2"
+takes = 3
+picks = []

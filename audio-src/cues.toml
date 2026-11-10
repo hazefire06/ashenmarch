@@ -1,0 +1,548 @@
+# The cue book: every sound the game makes, with its generation prompt and settings.
+# Schema and rules: docs/specs/2026-11-09-art-a2-audio-design.md section 9.2. scripts/audio/cuebook.py checks it.
+# Ids become file names, so they match [a-z0-9_]+. level_db carries the old placeholder level where one exists.
+
+[style]
+suffix = "realistic close foley, grounded and gritty, no music, no voices"
+
+[defaults]
+variants = 3
+takes = 6
+bus = "Effects"
+level_db = 0.0
+max_voices = 3
+pitch_spread = 0.06
+model = "eleven_text_to_sound_v2"
+prompt_influence = 0.5
+
+[playback]
+melee = "sample"
+projectile = "sample"
+death = "sample"
+groan = "sample"
+ui = "sample"
+march = "stream"
+bed = "stream"
+music = "stream"
+
+[cue.swing_blade]
+category = "melee"
+prompt = "A one-handed steel sword cut through the air, a quick thin whoosh with a faint ring of the edge, no impact."
+duration_s = 0.6
+picks = []
+
+[cue.swing_heavy]
+category = "melee"
+prompt = "A heavy two-handed blade swung hard in a wide arc, a deep low whoosh with a rough drag of air and a creak of leather grip, no impact."
+duration_s = 0.9
+picks = []
+
+[cue.swing_staff]
+category = "melee"
+prompt = "A long wooden staff swung round, a soft hollow whoosh with a dry creak of timber, no impact."
+duration_s = 0.7
+picks = []
+
+[cue.swing_claw]
+category = "melee"
+prompt = "A bony clawed hand raking the air, a short dry scratchy swish with a rasp of brittle nails, no impact."
+duration_s = 0.5
+picks = []
+
+[cue.swing_stomp]
+category = "melee"
+prompt = "A huge boot lifted and driven down, a heavy rush of air then a dull ground thump, no flesh."
+duration_s = 0.8
+picks = []
+
+[cue.hit_flesh]
+category = "melee"
+prompt = "A sword blow landing on a living body, a wet meaty chop with a muffled thud and a hard breath of air forced out of the body."
+duration_s = 0.7
+level_db = -9.0
+placeholder = "res://assets/audio/sfx/sword_hit.wav"
+picks = []
+
+[cue.hit_dry]
+category = "melee"
+prompt = "A blow landing on a long dead body, a dry papery crunch of old bone and leathery hide, no wetness, no cry."
+duration_s = 0.7
+level_db = -9.0
+placeholder = "res://assets/audio/sfx/sword_hit.wav"
+picks = []
+
+[cue.block_shield]
+category = "melee"
+prompt = "A sword edge striking a wooden shield with an iron rim, a hard clack, a dull wooden knock and a brief ring of metal."
+duration_s = 0.8
+level_db = -9.0
+placeholder = "res://assets/audio/sfx/shield_block.wav"
+picks = []
+
+[cue.heal]
+category = "melee"
+prompt = "Crushed herbs pressed to a wound, a soft green rustle, a gentle wet squeeze and a low warm breath, calm and quiet."
+duration_s = 1.5
+level_db = -6.0
+placeholder = "res://assets/audio/sfx/heal.wav"
+picks = []
+
+[cue.heal_sear]
+category = "melee"
+prompt = "Healing herbs burning dead flesh, a harsh sizzling hiss and crackle like water on a hot pan, with a dry rattling gasp."
+duration_s = 1.5
+level_db = -6.0
+placeholder = "res://assets/audio/sfx/heal.wav"
+picks = []
+
+[cue.bow_release]
+category = "projectile"
+prompt = "A longbow string released, a sharp twang of the string, a creak of bent yew and the quick hiss of an arrow leaving."
+duration_s = 0.8
+level_db = -10.0
+placeholder = "res://assets/audio/sfx/bow_release.wav"
+picks = []
+
+[cue.bow_release_fire]
+category = "projectile"
+prompt = "A longbow string released with a burning arrow, a sharp twang followed by a fluttering whoosh of flame trailing away."
+duration_s = 1.0
+level_db = -10.0
+placeholder = "res://assets/audio/sfx/bow_release.wav"
+picks = []
+
+[cue.throw_bottle]
+category = "projectile"
+prompt = "A glass bottle lobbed underhand, a short whoosh of an arm and a faint slosh of liquid inside."
+duration_s = 0.7
+level_db = -10.0
+placeholder = "res://assets/audio/sfx/grenade_bounce.wav"
+picks = []
+
+[cue.throw_herb]
+category = "projectile"
+prompt = "A pouch of herbs tossed gently, a soft cloth flap and a light rustle of dry leaves in the air."
+duration_s = 0.6
+picks = []
+
+[cue.throw_heavy]
+category = "projectile"
+prompt = "A heavy lump of meat and bone hurled with both arms, a heavy low whoosh and the wet flap of loose flesh."
+duration_s = 0.9
+level_db = -10.0
+placeholder = "res://assets/audio/sfx/grenade_bounce.wav"
+picks = []
+
+[cue.lightning_charge]
+category = "projectile"
+prompt = "Electricity gathering in a cupped hand, a rising crackling whine and a dry snapping of sparks building to a sharp edge."
+duration_s = 1.8
+picks = []
+
+[cue.arrow_thunk]
+category = "projectile"
+prompt = "An arrow striking packed earth and sticking, a short dull thunk and a quick fading wobble of the shaft."
+duration_s = 0.6
+level_db = -12.0
+placeholder = "res://assets/audio/sfx/arrow_impact.wav"
+picks = []
+
+[cue.arrow_splash]
+category = "projectile"
+prompt = "An arrow dropping into shallow water, a small sharp splash and a soft plop with trickling droplets after."
+duration_s = 0.8
+level_db = -12.0
+placeholder = "res://assets/audio/sfx/arrow_impact.wav"
+picks = []
+
+[cue.arrow_flesh]
+category = "projectile"
+prompt = "An arrow striking a living body, a short wet thud of a point sinking into flesh."
+duration_s = 0.6
+level_db = -12.0
+placeholder = "res://assets/audio/sfx/arrow_impact.wav"
+picks = []
+
+[cue.thud_flesh]
+category = "projectile"
+prompt = "A heavy lump of flesh hitting the ground, a dull wet slap and a soft slump with no bounce."
+duration_s = 0.7
+level_db = -10.0
+placeholder = "res://assets/audio/sfx/grenade_bounce.wav"
+picks = []
+
+[cue.bottle_clink]
+category = "projectile"
+prompt = "A thick glass bottle bouncing off stones, a bright clink and a hollow knock, once, then a short roll."
+duration_s = 0.6
+level_db = -10.0
+placeholder = "res://assets/audio/sfx/grenade_bounce.wav"
+picks = []
+
+[cue.explosion_small]
+category = "projectile"
+prompt = "A small powder charge going off outdoors, a sharp crack and a punchy low thump, flying dirt and gravel pattering down after."
+duration_s = 2.5
+placeholder = "res://assets/audio/sfx/explosion.wav"
+picks = []
+
+[cue.explosion_large]
+category = "projectile"
+prompt = "A big satchel of black powder exploding, a huge concussive boom with a deep rolling rumble, falling earth and splintered wood raining down."
+duration_s = 4.0
+max_voices = 2
+placeholder = "res://assets/audio/sfx/explosion.wav"
+picks = []
+
+[cue.explosion_water]
+category = "projectile"
+prompt = "A powder charge exploding in a shallow river, a muffled deep thump, a heavy burst of water and a long cascade of splashing drops."
+duration_s = 3.0
+placeholder = "res://assets/audio/sfx/explosion.wav"
+picks = []
+
+[cue.gas_burst]
+category = "projectile"
+prompt = "A bloated body bursting open, a wet pop and a thick sputtering rush of foul gas escaping, ending in a long ragged hiss."
+duration_s = 3.0
+max_voices = 2
+placeholder = "res://assets/audio/sfx/explosion.wav"
+picks = []
+
+[cue.fizzle_hiss]
+category = "projectile"
+prompt = "A burning fuse or fire arrow dying in rain, a short sputtering hiss and a few spits of steam."
+duration_s = 1.2
+level_db = -6.0
+placeholder = "res://assets/audio/sfx/gas_hiss.wav"
+picks = []
+
+[cue.fizzle_water]
+category = "projectile"
+prompt = "A burning thing plunged into water, a sharp sizzling hiss and a quick bubbling gurgle."
+duration_s = 1.0
+level_db = -6.0
+placeholder = "res://assets/audio/sfx/gas_hiss.wav"
+picks = []
+
+[cue.satchel_thud]
+category = "projectile"
+prompt = "A canvas satchel of powder set down on the ground, a soft heavy thump, a rustle of cloth and a faint clink of buckles."
+duration_s = 0.7
+level_db = -10.0
+placeholder = "res://assets/audio/sfx/grenade_bounce.wav"
+picks = []
+
+[cue.fire_whoomp]
+category = "projectile"
+prompt = "Dry grass catching fire, a soft low whoomp of air rushing in, then a quick crackle of twigs taking flame."
+duration_s = 1.5
+level_db = -6.0
+placeholder = "res://assets/audio/sfx/fire_ignite.wav"
+picks = []
+
+[cue.grab]
+category = "projectile"
+prompt = "A hand snatching a heavy object off the ground, a scrape of gravel, a rustle of cloth and a scuff of boots."
+duration_s = 0.6
+level_db = -10.0
+placeholder = "res://assets/audio/sfx/ui_click.wav"
+picks = []
+
+[cue.thunder]
+category = "projectile"
+prompt = "A sharp lightning bolt striking close, a bright electric crack followed by a deep tearing thunder roll fading into the distance."
+duration_s = 3.5
+max_voices = 2
+placeholder = "res://assets/audio/sfx/lightning.wav"
+picks = []
+
+[cue.gas_release]
+category = "projectile"
+prompt = "A cloud of poison gas vented from a cracked vessel, a long soft hiss with a wet bubbling spit at the start."
+duration_s = 2.5
+level_db = -6.0
+placeholder = "res://assets/audio/sfx/gas_hiss.wav"
+picks = []
+
+[cue.death_shieldman]
+category = "death"
+prompt = "A tired armoured man killed in battle, a short strangled cry, the clatter of a wooden shield and mail hitting the ground and a last breath."
+duration_s = 1.8
+level_db = -6.0
+placeholder = "res://assets/audio/sfx/death.wav"
+picks = []
+
+[cue.death_reaver]
+category = "death"
+prompt = "A fierce swordsman killed, a ragged shout cut short, a heavy fall onto dirt and the clang of a dropped two-handed blade."
+duration_s = 1.8
+level_db = -6.0
+placeholder = "res://assets/audio/sfx/death.wav"
+picks = []
+
+[cue.death_longbow]
+category = "death"
+prompt = "A lightly armed archer killed, a sharp gasp and a cry, a soft collapse onto grass and a wooden bow clattering beside him."
+duration_s = 1.6
+level_db = -6.0
+placeholder = "res://assets/audio/sfx/death.wav"
+picks = []
+
+[cue.death_sapper]
+category = "death"
+prompt = "A man carrying glass bottles killed, a grunt and a fall followed by the clinking and rolling of bottles and a thud of a heavy pack."
+duration_s = 2.0
+level_db = -6.0
+placeholder = "res://assets/audio/sfx/death.wav"
+picks = []
+
+[cue.death_warden]
+category = "death"
+prompt = "An older woman healer killed, a short sorrowful cry, a soft fall and the scatter of dried herbs and small wooden tools."
+duration_s = 2.0
+level_db = -6.0
+placeholder = "res://assets/audio/sfx/death.wav"
+picks = []
+
+[cue.death_villager]
+category = "death"
+prompt = "An unarmed villager killed, a frightened short scream cut off, then a stumbling collapse on a dirt path."
+duration_s = 1.6
+level_db = -6.0
+placeholder = "res://assets/audio/sfx/death.wav"
+picks = []
+
+[cue.death_husk]
+category = "death"
+prompt = "A bog-sodden walking corpse falling apart, a low dry moan, wet crumbling of rotten flesh, a squelch and a slump into mud."
+duration_s = 2.0
+level_db = -6.0
+placeholder = "res://assets/audio/sfx/death.wav"
+picks = []
+
+[cue.death_ripper]
+category = "death"
+prompt = "A gaunt ghoul killed, a thin rasping shriek that breaks to a wheeze, brittle bones snapping as it folds to the ground."
+duration_s = 1.8
+level_db = -6.0
+placeholder = "res://assets/audio/sfx/death.wav"
+picks = []
+
+[cue.death_blightbag]
+category = "death"
+prompt = "A bloated gas-filled corpse collapsing, a long wet groan, a slow leaking sputter and a heavy flop onto the ground."
+duration_s = 2.2
+level_db = -6.0
+placeholder = "res://assets/audio/sfx/death.wav"
+picks = []
+
+[cue.death_drifter]
+category = "death"
+prompt = "A hooded spectre dispersing, a hollow dry sigh like wind through a cracked pipe, a faint rattle of old cloth and fading dust."
+duration_s = 2.2
+level_db = -6.0
+placeholder = "res://assets/audio/sfx/death.wav"
+picks = []
+
+[cue.death_stormcaller]
+category = "death"
+prompt = "A lightning sorcerer killed, a harsh gasp, a stuttering crackle of static discharging from the body and a heavy fall in robes."
+duration_s = 2.2
+level_db = -6.0
+placeholder = "res://assets/audio/sfx/death.wav"
+picks = []
+
+[cue.groan_husk]
+category = "groan"
+prompt = "A bog zombie groaning, a slow low dry moan, wet-throated and rasping, like air dragged through old wet leather."
+duration_s = 2.0
+picks = []
+
+[cue.groan_ripper]
+category = "groan"
+prompt = "A starved gaunt ghoul, a thin dry rattling hiss and a clicking in the throat, restless and hungry."
+duration_s = 1.5
+picks = []
+
+[cue.groan_blightbag]
+category = "groan"
+prompt = "A swollen corpse full of gas, a long gurgling moan with bubbling and a wheezy leak of foul air."
+duration_s = 2.5
+picks = []
+
+[cue.groan_drifter]
+category = "groan"
+prompt = "A hooded spectre drifting, a hollow whispering breath with a dry papery rustle of cloth, cold and wrong."
+duration_s = 2.5
+picks = []
+
+[cue.groan_stormcaller]
+category = "groan"
+prompt = "A lightning sorcerer muttering, a rough hoarse chant under his breath with a faint crackle of static sparks between words."
+duration_s = 2.0
+picks = []
+
+[cue.ui_click]
+category = "ui"
+prompt = "A small wooden button peg pressed, a single short dry tick of wood on wood."
+duration_s = 0.5
+bus = "Interface"
+level_db = -10.0
+placeholder = "res://assets/audio/sfx/ui_click.wav"
+picks = []
+
+[cue.ui_select]
+category = "ui"
+prompt = "A leather strap tightened over a buckle, a short crisp creak and a soft metal clink."
+duration_s = 0.5
+bus = "Interface"
+picks = []
+
+[cue.ui_formation]
+category = "ui"
+prompt = "Several spear shafts and boots shifting into line, a quick clatter of wood and a short scuff of feet."
+duration_s = 0.7
+bus = "Interface"
+picks = []
+
+[cue.ui_group]
+category = "ui"
+prompt = "A heavy iron key turned in a lock, a dull click and a short metal clunk."
+duration_s = 0.6
+bus = "Interface"
+picks = []
+
+[cue.ui_deny]
+category = "ui"
+prompt = "A dull wooden thunk of a closed door, short and flat, with a faint rattle of a latch."
+duration_s = 0.6
+bus = "Interface"
+level_db = -6.0
+placeholder = "res://assets/audio/sfx/order_deny.wav"
+picks = []
+
+[cue.order_ack]
+category = "ui"
+prompt = "A short rattle of buckles, mail and a sword hilt as a soldier settles and nods, brief and crisp."
+duration_s = 0.7
+bus = "Interface"
+level_db = -8.0
+placeholder = "res://assets/audio/sfx/order_ack.wav"
+picks = []
+
+[cue.march_grass]
+category = "march"
+prompt = "A small group of men marching steadily through long grass, soft swishing of stalks and a steady tread of boots, no talking."
+duration_s = 12
+bus = "Ambient"
+loop = true
+model = "eleven_text_to_sound_v3"
+variants = 1
+takes = 2
+picks = []
+
+[cue.march_sand]
+category = "march"
+prompt = "A small group of men marching across loose sand, a soft crunching shuffle of boots and a hiss of falling grains, no talking."
+duration_s = 12
+bus = "Ambient"
+loop = true
+model = "eleven_text_to_sound_v3"
+variants = 1
+takes = 2
+picks = []
+
+[cue.march_rock]
+category = "march"
+prompt = "A small group of men marching on bare rock and gravel, hard crunching steps and the clink of loose stones, no talking."
+duration_s = 12
+bus = "Ambient"
+loop = true
+model = "eleven_text_to_sound_v3"
+variants = 1
+takes = 2
+picks = []
+
+[cue.march_water]
+category = "march"
+prompt = "A small group of men wading through knee-deep water, heavy splashing steps and the sloshing drip of water off cloth, no talking."
+duration_s = 12
+bus = "Ambient"
+loop = true
+model = "eleven_text_to_sound_v3"
+variants = 1
+takes = 2
+picks = []
+
+[cue.bed_outdoor]
+category = "bed"
+prompt = "A quiet highland valley at dusk, a soft steady breeze through grass and trees, far off bird calls, nothing close."
+duration_s = 12
+bus = "Ambient"
+loop = true
+model = "eleven_text_to_sound_v3"
+variants = 1
+takes = 2
+picks = []
+
+[cue.bed_rain]
+category = "bed"
+prompt = "Steady rain falling on grass and mud, a dense soft patter with a faint wet drip off leaves, no thunder."
+duration_s = 12
+bus = "Ambient"
+loop = true
+model = "eleven_text_to_sound_v3"
+variants = 1
+takes = 2
+level_db = -4.0
+placeholder = "res://assets/audio/sfx/rain_loop.wav"
+picks = []
+
+[cue.bed_snow]
+category = "bed"
+prompt = "Falling snow on a still moor, a thin cold wind with a faint hush of drifting flakes and a creak of frozen branches."
+duration_s = 12
+bus = "Ambient"
+loop = true
+model = "eleven_text_to_sound_v3"
+variants = 1
+takes = 2
+picks = []
+
+[cue.bed_fire]
+category = "bed"
+prompt = "A big brush fire burning, a steady roaring crackle with snapping twigs and the dry rush of flames."
+duration_s = 12
+bus = "Ambient"
+loop = true
+model = "eleven_text_to_sound_v3"
+variants = 1
+takes = 2
+level_db = -4.0
+placeholder = "res://assets/audio/sfx/fire_loop.wav"
+picks = []
+
+[cue.bed_water]
+category = "bed"
+prompt = "A shallow creek running over stones, a constant bright burbling and trickle of water, nothing else."
+duration_s = 12
+bus = "Ambient"
+loop = true
+model = "eleven_text_to_sound_v3"
+variants = 1
+takes = 2
+picks = []
+
+[cue.bed_gas]
+category = "bed"
+prompt = "A cloud of poison gas hanging low, a thin steady hiss with a faint wet bubbling, unsettling and monotone."
+duration_s = 12
+bus = "Ambient"
+loop = true
+model = "eleven_text_to_sound_v3"
+variants = 1
+takes = 2
+level_db = -6.0
+placeholder = "res://assets/audio/sfx/gas_hiss.wav"
+picks = []
