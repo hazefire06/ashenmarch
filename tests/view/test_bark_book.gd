@@ -43,3 +43,18 @@ func test_seconds_is_the_stream_length_when_voiced_else_the_estimate() -> void:
 	line.streams[&"reaver"] = AudioFixtures.silent(2.5)
 	assert_almost_eq(line.seconds(&"reaver"), 2.5, 0.001)
 	assert_almost_eq(line.seconds(&"warden"), 2.4, 0.0001)
+
+
+func test_every_light_voice_in_the_sound_map_is_in_some_lines_voices() -> void:
+	var spoken: Dictionary[StringName, bool] = {}
+	for line: BarkLine in BarkBook.shared().lines:
+		for voice: StringName in line.voices:
+			spoken[voice] = true
+	var found: int = 0
+	for entry: UnitSound in SoundMap.shared().units:
+		for voice: StringName in entry.voices:
+			assert_true(spoken.has(voice), "%s has no voice file" % voice)
+			found += 1
+	assert_eq(found, 6, "shieldman_old, shieldman_young, reaver, longbow, sapper, warden")
+	for line: BarkLine in BarkBook.shared().clan_lines():
+		assert_eq(line.voices.size(), 6)

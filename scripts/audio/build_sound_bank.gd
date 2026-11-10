@@ -36,9 +36,9 @@ func _build() -> bool:
 		printerr("build_sound_bank: could not save %s" % SoundBank.PATH)
 		return false
 	print("built %s (%d cues)" % [SoundBank.PATH, bank.cues.size()])
-	var lines: Variant = (sidecar as Dictionary).get("lines", [])
+	var lines: Variant = (sidecar as Dictionary).get("lines")
 	if not lines is Array:
-		printerr("build_sound_bank: the sidecar's lines are not a list")
+		printerr("build_sound_bank: the sidecar has no list of bark lines; run make audio-build")
 		return false
 	var book: BarkBook = BarkBook.new()
 	for entry: Variant in lines:
@@ -111,6 +111,7 @@ func _line(entry: Variant, book: BarkBook) -> BarkLine:
 	line.clan = bool(e.get("clan", false))
 	var voices: Dictionary = e["voices"]
 	for voice: Variant in voices:
+		line.voices.append(StringName(str(voice)))
 		var path: String = str(voices[voice])
 		if path.is_empty():
 			continue

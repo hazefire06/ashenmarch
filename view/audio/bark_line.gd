@@ -3,8 +3,9 @@ extends Resource
 ## One spoken line: its text (shown over the speaker, so barks work before any
 ## voice is bought) and the voiced stream of each voice that has one. View only.
 
-## Seconds a line shows before its length is known, per 14 characters.
+## Characters of speech per second, for a line's estimated length.
 const CHARS_PER_SECOND: float = 14.0
+## Seconds of lead-in before the first word.
 const LEAD_SECONDS: float = 0.4
 
 @export var id: StringName
@@ -14,6 +15,9 @@ const LEAD_SECONDS: float = 0.4
 @export var trigger: StringName
 @export var text: String = ""
 @export var clan: bool = false
+## The voices that should speak it, voiced or not: a clan line lists all six
+## light voices, a unit's line its unit's voices.
+@export var voices: Array[StringName] = []
 ## Voice id to its voiced stream. A voice with no entry is unvoiced.
 @export var streams: Dictionary[StringName, AudioStream] = {}
 

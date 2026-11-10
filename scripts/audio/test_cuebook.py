@@ -429,9 +429,9 @@ class VoicesTest(unittest.TestCase):
             voices_from({"reaver.toml": UNIT.split("[voice.reaver]")[0] + '[line.attack_1]\ntrigger = "attack"\ntext = "x"\n'})
 
     def test_a_tag_is_bracketed_lowercase_words_only(self) -> None:
-        for good in ("[shouting]", "[roaring] [angry]", "[whispers softly]"):
+        for good in ("[shouting]", "[roaring] [angry]", "[whispers softly]", "[" + "a" * 38 + "]"):
             voices_from({"reaver.toml": UNIT.replace("[roaring]", good)})
-        for bad in ("shouting", "[SHOUT]", "[a][b]x", "[" + "a" * 25 + "]", "[ok] " * 9, "[x]; rm", ""):
+        for bad in ("shouting", "[SHOUT]", "[a][b]x", "[ ]", "[]", "[a ]", "[ok] ", "[ok]  [no]", "[" + "a" * 39 + "]", "[ok] " * 9, "[x]; rm", ""):
             with self.subTest(bad=bad), self.assertRaises(CueError):
                 voices_from({"reaver.toml": UNIT.replace("[roaring]", bad)})
 
@@ -449,6 +449,21 @@ class VoicesTest(unittest.TestCase):
         with self.assertRaises(CueError) as ctx:
             voices_from({"reaver.toml": UNIT.replace('"attack"', f'"{long}"')})
         self.assertNotIn(long, str(ctx.exception))
+
+    def test_the_turbo_model_loads_and_an_unknown_one_is_refused(self) -> None:
+        files = voices_from({"reaver.toml": UNIT.replace('"eleven_v4"', '"eleven_v4_turbo"')})
+        self.assertEqual(files["reaver"].voices["reaver"].model, "eleven_v4_turbo")
+        with self.assertRaisesRegex(CueError, "model"):
+            voices_from({"reaver.toml": UNIT.replace('"eleven_v4"', '"eleven_v5"')})
+
+    def test_a_voice_defined_in_two_files_is_refused(self) -> None:
+        other = UNIT.replace('unit = "reaver"', 'unit = "sapper"')
+        with self.assertRaisesRegex(CueError, "already defined"):
+            voices_from({"reaver.toml": UNIT, "sapper.toml": other})
+
+    def test_a_clan_prefixed_line_outside_the_clan_file_is_refused(self) -> None:
+        with self.assertRaisesRegex(CueError, "clan_"):
+            voices_from({"reaver.toml": UNIT.replace("attack_1", "clan_9")})
 
     def test_an_empty_folder_is_refused(self) -> None:
         with self.assertRaises(CueError):

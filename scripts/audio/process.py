@@ -63,10 +63,8 @@ def _cue_files(cue: cuebook.Cue, root: Path) -> list[str]:
     return [cue.placeholder] if cue.placeholder is not None else []
 
 
-def _line_entries(voices_dir: Path | None, root: Path) -> list[dict[str, object]]:
+def _line_entries(voices_dir: Path, root: Path) -> list[dict[str, object]]:
     """One entry per bark line: its text, and for every voice that can say it the voiced file ("" if unbought)."""
-    if voices_dir is None:
-        return []
     files = cuebook.load_voices(voices_dir)
     light = [v for unit, f in files.items() if unit != cuebook.CLAN for v in f.voices]
     entries: list[dict[str, object]] = []
@@ -85,7 +83,7 @@ def _line_entries(voices_dir: Path | None, root: Path) -> list[dict[str, object]
 
 
 def build_sidecar(
-    cues_path: Path, layers_path: Path, root: Path = ROOT, voices_dir: Path | None = None
+    cues_path: Path, layers_path: Path, root: Path = ROOT, voices_dir: Path = VOICES
 ) -> dict[str, object]:
     book = cuebook.load_cues(cues_path)
     entries: list[dict[str, object]] = []
@@ -183,7 +181,8 @@ def synthetic_plan(
             "pitch_spread": 0.0, "max_voices": 1, "loop": True,
             "playback": book.playback["music"], "files": [SYNTH_RES + made_m.name],
         })
-    # The lines stay unvoiced: the bark book the builder writes is the real one.
+    # Lines come from the real voice files, so the bark book the builder writes matches a real build
+    # (a line is voiced once it has picks; synthetic audio never stands in for a voice).
     return synths, {"cues": entries, "lines": _line_entries(voices_dir, ROOT)}
 
 

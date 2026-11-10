@@ -9,7 +9,7 @@ extends RefCounted
 ## missions, so each registers once (spec §4.3.1).
 static var _registered: Dictionary[int, bool] = {}
 
-## Silent stand-ins by "<voice>/<line>", kept for the session so a restart
+## Silent stand-ins by "<unit>/<voice>/<line>" (line ids repeat across units), kept for the session so a restart
 ## registers no new stand-in objects (a new object would register again).
 static var _stand_in_cache: Dictionary[String, AudioStream] = {}
 
@@ -21,6 +21,7 @@ const STAND_IN_RATE: int = 8000
 ## For tests: forget what was registered.
 static func reset_for_tests() -> void:
 	_registered.clear()
+	_stand_in_cache.clear()
 
 
 ## Every voiced bark stream of the types' voices, clan lines included.
@@ -47,7 +48,7 @@ static func stand_ins(
 		var line: BarkLine = pair[1]
 		if line.streams.has(voice):
 			continue
-		var key: String = "%s/%s" % [voice, line.id]
+		var key: String = _key(voice, line)
 		if not _stand_in_cache.has(key):
 			_stand_in_cache[key] = _silent(BarkLine.estimate_seconds(line.text))
 		out.append(_stand_in_cache[key])
@@ -55,7 +56,8 @@ static func stand_ins(
 
 
 ## Every [voice, line] a launch's types can speak: each voice of each type with
-## that type's own lines and every clan line. Unique, in type and book order.
+## that type's own lines and every clan line, when the line lists the voice.
+## Unique, in type and book order.
 static func _speakers(
 	types: Array[StringName], catalog: UnitCatalog, book: BarkBook, map: SoundMap
 ) -> Array[Array]:
@@ -70,11 +72,15 @@ static func _speakers(
 			continue
 		for voice: StringName in entry.voices:
 			for line: BarkLine in book.lines:
-				var key: String = "%s/%s" % [voice, line.id]
-				if (line.clan or line.unit == type_id) and not seen.has(key):
+				var key: String = _key(voice, line)
+				if (line.clan or line.unit == type_id) and voice in line.voices and not seen.has(key):
 					seen[key] = true
 					out.append([voice, line])
 	return out
+
+
+static func _key(voice: StringName, line: BarkLine) -> String:
+	return "%s/%s/%s" % [line.unit, voice, line.id]
 
 
 static func _silent(seconds: float) -> AudioStreamWAV:

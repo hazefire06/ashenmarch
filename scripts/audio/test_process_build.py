@@ -19,6 +19,12 @@ picks = []
 """
 
 
+MIN_VOICE: str = (
+    'unit = "reaver"\n[voice.reaver]\ndescription = "d"\nmodel = "eleven_v4"\n'
+    '[line.attack_1]\ntrigger = "attack"\ntext = "Hi"\npicks = {}\n'
+)
+
+
 def cue(name: str, category: str, extra: str = "") -> str:
     loop = 'loop = true\nmodel = "eleven_text_to_sound_v3"\n' if category in ("bed", "march") else ""
     return f'\n[cue.{name}]\ncategory = "{category}"\nprompt = "p"\nduration_s = 1.0\n{loop}{extra}\n'
@@ -32,7 +38,9 @@ def sidecar_of(book: str, music: str = MUSIC, files: tuple[str, ...] = ()) -> di
             (root / rel).write_bytes(b"x")
         (root / "cues.toml").write_text(HEAD + book, encoding="utf-8")
         (root / "prompts.toml").write_text(music, encoding="utf-8")
-        built = process.build_sidecar(root / "cues.toml", root / "prompts.toml", root)
+        (root / "voices").mkdir()
+        (root / "voices" / "reaver.toml").write_text(MIN_VOICE, encoding="utf-8")  # load_voices refuses an empty folder
+        built = process.build_sidecar(root / "cues.toml", root / "prompts.toml", root, root / "voices")
         return {str(c["id"]): c for c in built["cues"]}  # type: ignore[union-attr]
 
 

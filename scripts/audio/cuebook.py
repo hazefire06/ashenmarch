@@ -52,11 +52,11 @@ TRIGGERS: frozenset[str] = frozenset({
 REQUIRED_TRIGGERS: tuple[str, ...] = ("select", "move", "attack", "kill", "hurt", "death", "annoyed")
 CLAN: str = "_clan"  # the voice file whose lines any clan unit may say on any trigger
 CLAN_PREFIX: str = "clan_"
-VOICE_MODELS: tuple[str, ...] = ("eleven_v4",)  # until the A/B test
+VOICE_MODELS: tuple[str, ...] = ("eleven_v4", "eleven_v4_turbo")  # the A/B test compares both
 VOICE_KEYS: frozenset[str] = frozenset({"description", "model"})
 LINE_KEYS: frozenset[str] = frozenset({"trigger", "text", "tag", "picks"})
 # A delivery tag goes to a paid TTS, so it is bracketed lowercase words and nothing else.
-TAG: re.Pattern[str] = re.compile(r"(\[[a-z ]{1,24}\] ?)+")
+TAG: re.Pattern[str] = re.compile(r"(\[[a-z]+( [a-z]+)*\] ?)*\[[a-z]+( [a-z]+)*\]")
 MAX_TAG: int = 40
 MAX_LINE_TEXT: int = 300
 MAX_DESCRIPTION: int = 600
@@ -350,6 +350,7 @@ def load_voices(folder: Path) -> dict[str, VoiceFile]:
     if not paths:
         raise CueError(f"{_clip(folder.name)}: no voice files")
     files: dict[str, VoiceFile] = {}
+    owner: dict[str, str] = {}  # voice id -> the unit that defines it; files are voice/<voice>/<line>.ogg
     raw: dict[str, tuple[dict[str, object], dict[str, object]]] = {}
     for path in paths:
         root = _read(path)
@@ -359,6 +360,10 @@ def load_voices(folder: Path) -> dict[str, VoiceFile]:
         if unit != path.stem:
             raise CueError(f"{where}: unit {_show(unit)} must match the file name")
         voices = _voices(root, unit, where)
+        for voice_id in voices:
+            if voice_id in owner:
+                raise CueError(f"{where}: voice {_show(voice_id)} is already defined by {_show(owner[voice_id])}")
+            owner[voice_id] = unit
         raw[unit] = (root, voices)  # type: ignore[assignment]
         files[unit] = VoiceFile(unit, voices, {})  # type: ignore[arg-type]
     light = {v for f in files.values() for v in f.voices}
@@ -413,6 +418,8 @@ def _lines(root: dict[str, object], unit: str, known_voices: set[str]) -> dict[s
                 raise CueError(f"{where}: a clan line has no trigger")
             trigger = ""
         else:
+            if line_id.startswith(CLAN_PREFIX):
+                raise CueError(f"{where}: the {CLAN_PREFIX} prefix is for {CLAN}.toml")
             trigger = _text(body, "trigger", where)
             if trigger not in TRIGGERS:
                 raise CueError(f"{where}: unknown trigger {_show(trigger)}")

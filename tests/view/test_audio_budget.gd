@@ -103,14 +103,14 @@ func test_stand_ins_fill_every_unvoiced_line() -> void:
 	var book: BarkBook = BarkBook.shared()
 	var stand: Array[AudioStream] = SoundRegistry.stand_ins(types, _catalog(), book, SoundMap.shared())
 	assert_eq(stand.size(), 2 * 37 + 2 * 5)
-	var total: float = 0.0
-	for s: AudioStream in stand:
-		total += s.get_length()
-	var want: float = 0.0
-	for line: BarkLine in book.lines:
-		if line.unit == &"shieldman" or line.clan:
-			want += 2.0 * BarkLine.estimate_seconds(line.text)
-	assert_almost_eq(total, want, 0.01 * stand.size())
+	# stand_ins goes type, voice, then book order; check each against its own line.
+	var n: int = 0
+	for voice: StringName in [&"shieldman_old", &"shieldman_young"]:
+		for line: BarkLine in book.lines:
+			if line.unit == &"shieldman" or line.clan:
+				assert_almost_eq(stand[n].get_length(), BarkLine.estimate_seconds(line.text), 0.01, "%s/%s" % [voice, line.id])
+				n += 1
+	assert_eq(n, stand.size())
 	var again: Array[AudioStream] = SoundRegistry.stand_ins(types, _catalog(), book, SoundMap.shared())
 	for i: int in stand.size():
 		assert_same(again[i], stand[i], "a restart reuses the cached stand-ins")
@@ -124,6 +124,7 @@ func test_a_voiced_line_gets_no_stand_in_and_its_stream_registers() -> void:
 	line.unit = &"reaver"
 	line.trigger = &"select"
 	line.text = "Hi"
+	line.voices = [&"reaver"]
 	var voiced: AudioStream = AudioFixtures.silent(1.0)
 	line.streams[&"reaver"] = voiced
 	book.lines.append(line)
