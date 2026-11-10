@@ -3,7 +3,7 @@ MAC_APP := build/mac/Ashenmarch.app
 WIN_EXE := build/windows/Ashenmarch.exe
 WEB_HTML := build/web/index.html
 
-.PHONY: pad-playthrough import run demo demo-projectiles demo-abilities demo-ai test check-sim export-mac export-windows export-web export-all serve-web sfx bench profile-sim golden-replays verify-replays verify-replays-app verify-replays-x86 maps fixtures playtest skirmish-playtest capture capture-skirmish hooks check-leaks check-layout test-art test-audio audio-build art-candidates art-render art-attach art-prop-candidates art-build art-probe budget budget-app
+.PHONY: pad-playthrough import run demo demo-projectiles demo-abilities demo-ai test check-sim export-mac export-windows export-web export-all serve-web sfx bench profile-sim golden-replays verify-replays verify-replays-app verify-replays-x86 maps fixtures playtest skirmish-playtest capture capture-skirmish hooks check-leaks check-layout test-art test-audio audio-build audio-synthetic art-candidates art-render art-attach art-prop-candidates art-build art-probe budget budget-app
 
 # Builds the .godot/ import and class_name cache. A fresh clone has none, and
 # GUT can't resolve class_name types without it.
@@ -256,6 +256,15 @@ test-audio:
 # (scripts/audio/process.py, build_sound_bank.gd). Free.
 audio-build:
 	python3 scripts/audio/process.py build
+	$(GODOT) --headless --path . --import
+	$(GODOT) --headless --path . -s scripts/audio/build_sound_bank.gd
+
+# For the Web measurement only (A2 Task 11): ffmpeg tones and noise stand in for every
+# cue (assets/audio/synthetic/, git-ignored) and the bank is built from them. Never
+# commit the result. Restore: git checkout data/audio/sound_bank.tres, then make audio-build.
+# Does not run `process.py build`, which would overwrite the synthetic sidecar. Free.
+audio-synthetic:
+	python3 scripts/audio/process.py synthetic
 	$(GODOT) --headless --path . --import
 	$(GODOT) --headless --path . -s scripts/audio/build_sound_bank.gd
 

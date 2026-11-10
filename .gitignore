@@ -32,3 +32,5 @@ __pycache__/
 
 # The sound bank sidecar (make audio-build writes it).
 audio-src/build/
+# Synthetic test audio for the Web measurement (make audio-synthetic); never committed.
+assets/audio/synthetic/
