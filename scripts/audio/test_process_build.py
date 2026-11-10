@@ -77,7 +77,36 @@ class BuildTest(unittest.TestCase):
             self.assertEqual(process.build(out), 0)
             data = json.loads(out.read_text(encoding="utf-8"))
         self.assertEqual(len(data["cues"]), 66)
-        self.assertEqual(data["lines"], [])
+        self.assertEqual(len(data["lines"]), 37 + 4 + 3 + 4 + 3 + 5)
+
+    def test_the_sidecar_lists_every_voice_of_every_line(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp) / "bank.json"
+            self.assertEqual(process.build(out), 0)
+            lines = {str(x["id"]) + "/" + str(x["unit"]): x for x in json.loads(out.read_text(encoding="utf-8"))["lines"]}
+        shield = lines["select_1/shieldman"]
+        self.assertEqual(shield["voices"], {"shieldman_old": "", "shieldman_young": ""})
+        self.assertEqual((shield["trigger"], shield["clan"], shield["text"]), ("select", False, "Aye? Whit is it?"))
+        clan = lines["clan_1/_clan"]
+        self.assertEqual(set(clan["voices"]), {"shieldman_old", "shieldman_young", "reaver", "longbow", "sapper", "warden"})
+        self.assertEqual((clan["clan"], clan["trigger"]), (True, ""))
+
+    def test_a_picked_line_names_its_voiced_file_and_the_file_must_exist(self) -> None:
+        unit = ('unit = "reaver"\n[voice.reaver]\ndescription = "d"\nmodel = "eleven_v4"\n'
+                '[line.attack_1]\ntrigger = "attack"\ntext = "Hi"\npicks = {reaver = 2}\n')
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "cues.toml").write_text(HEAD + cue("hit_a", "melee"), encoding="utf-8")
+            (root / "prompts.toml").write_text(MUSIC, encoding="utf-8")
+            (root / "voices").mkdir()
+            (root / "voices" / "reaver.toml").write_text(unit, encoding="utf-8")
+            with self.assertRaisesRegex(Exception, "attack_1"):
+                process.build_sidecar(root / "cues.toml", root / "prompts.toml", root, root / "voices")
+            made = root / "assets" / "audio" / "voice" / "reaver" / "attack_1.ogg"
+            made.parent.mkdir(parents=True)
+            made.write_bytes(b"x")
+            built = process.build_sidecar(root / "cues.toml", root / "prompts.toml", root, root / "voices")
+        self.assertEqual(built["lines"][0]["voices"], {"reaver": "res://assets/audio/voice/reaver/attack_1.ogg"})  # type: ignore[index]
 
 
 if __name__ == "__main__":

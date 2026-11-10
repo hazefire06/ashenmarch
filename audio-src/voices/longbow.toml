@@ -1,0 +1,20 @@
+unit = "longbow"
+
+[voice.longbow]
+description = "a middle-aged Highland Scots woman, calm and dry, a low even alto, unhurried, speaking softly as if not to spook the deer"
+model = "eleven_v4"
+
+[line.select_1]
+trigger = "select"
+text = "Ah see it. It'll no' see me."
+picks = {}
+
+[line.attack_1]
+trigger = "attack"
+text = "One arrow, one less problem."
+picks = {}
+
+[line.special_1]
+trigger = "special"
+text = "Wan fire arrow. Better be worth it."
+picks = {}

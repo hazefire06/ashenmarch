@@ -1,0 +1,45 @@
+extends GutTest
+## The bark book the builder writes from audio-src/voices, and BarkLine's timing.
+
+
+func test_the_book_has_the_shieldmans_lines_as_text() -> void:
+	var book: BarkBook = BarkBook.shared()
+	var shield: int = 0
+	for line: BarkLine in book.lines:
+		if line.unit == &"shieldman":
+			shield += 1
+		assert_true(line.streams.is_empty(), "%s is unvoiced" % line.id)
+		assert_ne(line.text, "")
+	assert_eq(shield, 37)
+	assert_eq(book.lines_for(&"shieldman", &"select").size(), 5)
+	assert_eq(book.lines_for(&"shieldman", &"victory").size(), 2)
+	assert_true(book.has_trigger(&"shieldman", &"annoyed"))
+	assert_false(book.has_trigger(&"shieldman", &"retreat"))
+	assert_eq(book.clan_lines().size(), 5)
+	for line: BarkLine in book.clan_lines():
+		assert_eq(line.trigger, &"")
+		assert_true(String(line.id).begins_with("clan_"))
+	assert_eq(book.file_bytes(), 0, "nothing is voiced yet")
+
+
+func test_a_clan_line_is_not_among_a_units_lines() -> void:
+	var book: BarkBook = BarkBook.shared()
+	var found: int = 0
+	for trigger: StringName in [&"select", &"move", &"attack"]:
+		for line: BarkLine in book.lines_for(&"reaver", trigger):
+			assert_false(line.clan)
+			found += 1
+	assert_eq(found, 4, "select 1, attack 3")
+
+
+func test_estimate_seconds_is_a_lead_plus_a_fourteenth_per_character() -> void:
+	assert_almost_eq(BarkLine.estimate_seconds(""), 0.4, 0.0001)
+	assert_almost_eq(BarkLine.estimate_seconds("x".repeat(14)), 1.4, 0.0001)
+
+
+func test_seconds_is_the_stream_length_when_voiced_else_the_estimate() -> void:
+	var line: BarkLine = BarkLine.new()
+	line.text = "x".repeat(28)
+	line.streams[&"reaver"] = AudioFixtures.silent(2.5)
+	assert_almost_eq(line.seconds(&"reaver"), 2.5, 0.001)
+	assert_almost_eq(line.seconds(&"warden"), 2.4, 0.0001)

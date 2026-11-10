@@ -1,4 +1,5 @@
-"""Loads and checks the cue book (audio-src/cues.toml) and the music layers (audio-src/music/prompts.toml).
+"""Loads and checks the cue book (audio-src/cues.toml), the music layers (audio-src/music/prompts.toml)
+and the voice files (audio-src/voices/*.toml).
 
 The paid generator buys sounds from these prompts and the bank builder turns
 every id into a file name, so this is the security boundary: an id must match
@@ -38,6 +39,28 @@ DEFAULT_KEYS: tuple[str, ...] = (
 )
 CUE_KEYS: frozenset[str] = frozenset(DEFAULT_KEYS) | {"category", "prompt", "duration_s", "loop", "placeholder", "picks"}
 LAYER_KEYS: frozenset[str] = frozenset({"prompt", "length_s", "model", "takes", "picks"})
+
+FORMATION_NAMES: tuple[str, ...] = (  # Formations.Kind, lowercased
+    "short_line", "long_line", "loose_line", "staggered_line", "box", "rabble",
+    "shallow_encirclement", "deep_encirclement", "wedge", "circle",
+)
+TRIGGERS: frozenset[str] = frozenset({
+    "select", "move", "attack", "special", "retreat", "kill", "hurt", "death", "annoyed", "victory",
+    "status_burning", "status_paralyzed", "status_confused", "fizzle", "heal_undead",
+    *(f"formation_{name}" for name in FORMATION_NAMES),
+})
+REQUIRED_TRIGGERS: tuple[str, ...] = ("select", "move", "attack", "kill", "hurt", "death", "annoyed")
+CLAN: str = "_clan"  # the voice file whose lines any clan unit may say on any trigger
+CLAN_PREFIX: str = "clan_"
+VOICE_MODELS: tuple[str, ...] = ("eleven_v4",)  # until the A/B test
+VOICE_KEYS: frozenset[str] = frozenset({"description", "model"})
+LINE_KEYS: frozenset[str] = frozenset({"trigger", "text", "tag", "picks"})
+# A delivery tag goes to a paid TTS, so it is bracketed lowercase words and nothing else.
+TAG: re.Pattern[str] = re.compile(r"(\[[a-z ]{1,24}\] ?)+")
+MAX_TAG: int = 40
+MAX_LINE_TEXT: int = 300
+MAX_DESCRIPTION: int = 600
+MAX_TAKE: int = 20
 
 
 class CueError(Exception):
@@ -85,6 +108,29 @@ class Layer:
     model: str
     takes: int
     picks: tuple[int, ...]
+
+
+@dataclass(frozen=True)
+class Voice:
+    id: str
+    description: str
+    model: str
+
+
+@dataclass(frozen=True)
+class Line:
+    id: str
+    trigger: str  # "" for a clan line, which can replace any trigger
+    text: str
+    tag: str | None
+    picks: dict[str, int]  # voice id -> the kept take
+
+
+@dataclass(frozen=True)
+class VoiceFile:
+    unit: str  # a unit type id, or "_clan"
+    voices: dict[str, Voice]
+    lines: dict[str, Line]
 
 
 def _show(value: object) -> str:
@@ -296,3 +342,106 @@ def _cue(cue_id: str, body: dict[str, object], defaults: dict[str, object]) -> C
         placeholder=placeholder,
         picks=_picks(body, takes, where),
     )
+
+
+def load_voices(folder: Path) -> dict[str, VoiceFile]:
+    """Every audio-src/voices/*.toml, keyed by unit ("_clan" for the clan-wide lines)."""
+    paths = sorted(folder.glob("*.toml")) if folder.is_dir() else []
+    if not paths:
+        raise CueError(f"{_clip(folder.name)}: no voice files")
+    files: dict[str, VoiceFile] = {}
+    raw: dict[str, tuple[dict[str, object], dict[str, object]]] = {}
+    for path in paths:
+        root = _read(path)
+        where = f"[voice file {_clip(path.stem)}]"
+        _only_keys(root, {"unit", "voice", "line"}, where)
+        unit = check_id(root.get("unit"), f"{where} unit")
+        if unit != path.stem:
+            raise CueError(f"{where}: unit {_show(unit)} must match the file name")
+        voices = _voices(root, unit, where)
+        raw[unit] = (root, voices)  # type: ignore[assignment]
+        files[unit] = VoiceFile(unit, voices, {})  # type: ignore[arg-type]
+    light = {v for f in files.values() for v in f.voices}
+    for unit, (root, _) in raw.items():
+        known = light if unit == CLAN else set(files[unit].voices)
+        files[unit] = VoiceFile(unit, files[unit].voices, _lines(root, unit, known))
+    return files
+
+
+def _voices(root: dict[str, object], unit: str, where: str) -> dict[str, Voice]:
+    table = root.get("voice", {})
+    if not isinstance(table, dict):
+        raise CueError(f"{where}: [voice] isn't a table")
+    if unit == CLAN:
+        if table:
+            raise CueError(f"{where}: the clan file has no voices; each speaker uses its own")
+        return {}
+    if not table:
+        raise CueError(f"{where}: [voice] holds no voices")
+    voices: dict[str, Voice] = {}
+    for raw_id, body in table.items():
+        voice_id = check_id(raw_id, f"{where} [voice] table name")
+        here = f"[voice.{_clip(voice_id)}]"
+        if not isinstance(body, dict):
+            raise CueError(f"{here} isn't a table")
+        _only_keys(body, VOICE_KEYS, here)
+        description = _text(body, "description", here)
+        if len(description) > MAX_DESCRIPTION:
+            raise CueError(f"{here}: description is longer than {MAX_DESCRIPTION} characters")
+        model = _text(body, "model", here)
+        if model not in VOICE_MODELS:
+            raise CueError(f"{here}: model must be one of {', '.join(VOICE_MODELS)}")
+        voices[voice_id] = Voice(voice_id, description, model)
+    return voices
+
+
+def _lines(root: dict[str, object], unit: str, known_voices: set[str]) -> dict[str, Line]:
+    table = root.get("line")
+    if not isinstance(table, dict) or not table:
+        raise CueError(f"[voice file {_clip(unit)}]: [line] holds no lines")
+    lines: dict[str, Line] = {}
+    for raw_id, body in table.items():
+        line_id = check_id(raw_id, "[line] table name")
+        where = f"[line.{_clip(line_id)}]"
+        if not isinstance(body, dict):
+            raise CueError(f"{where} isn't a table")
+        _only_keys(body, LINE_KEYS, where)
+        if unit == CLAN:
+            if not line_id.startswith(CLAN_PREFIX):
+                raise CueError(f"{where}: a clan line's id must start with {CLAN_PREFIX}")
+            if "trigger" in body:
+                raise CueError(f"{where}: a clan line has no trigger")
+            trigger = ""
+        else:
+            trigger = _text(body, "trigger", where)
+            if trigger not in TRIGGERS:
+                raise CueError(f"{where}: unknown trigger {_show(trigger)}")
+        text = _text(body, "text", where)
+        if len(text) > MAX_LINE_TEXT:
+            raise CueError(f"{where}: text is longer than {MAX_LINE_TEXT} characters")
+        lines[line_id] = Line(line_id, trigger, text, _tag(body, where), _line_picks(body, known_voices, where))
+    return lines
+
+
+def _tag(body: dict[str, object], where: str) -> str | None:
+    if "tag" not in body:
+        return None
+    tag = body["tag"]
+    if not isinstance(tag, str) or len(tag) > MAX_TAG or TAG.fullmatch(tag) is None:
+        raise CueError(f"{where}: tag must be bracketed lowercase words, at most {MAX_TAG} characters")
+    return tag
+
+
+def _line_picks(body: dict[str, object], known_voices: set[str], where: str) -> dict[str, int]:
+    value = body.get("picks", {})
+    if not isinstance(value, dict):
+        raise CueError(f"{where}: picks must be a table of voice = take")
+    picks: dict[str, int] = {}
+    for voice, take in value.items():
+        voice_id = check_id(voice, f"{where} pick")
+        if voice_id not in known_voices:
+            raise CueError(f"{where}: pick for {_show(voice_id)}, which isn't one of its voices")
+        if isinstance(take, bool) or not isinstance(take, int) or not 1 <= take <= MAX_TAKE:
+            raise CueError(f"{where}: each pick must be a take number from 1 to {MAX_TAKE}")
+        picks[voice_id] = take
+    return picks

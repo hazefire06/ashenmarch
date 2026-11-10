@@ -268,8 +268,13 @@ func _ready() -> void:
 	_sfx.setup(world, _camera)
 	_sfx.enabled = audio_enabled
 	var audio_types: Array[StringName] = launch.unit_types() if launch != null else art_types
+	var bark_book: BarkBook = BarkBook.shared()
+	var barks: Array[AudioStream] = SoundRegistry.bark_streams(audio_types, world.catalog, bark_book, SoundMap.shared())
+	if audio_stand_ins:
+		barks.append_array(SoundRegistry.stand_ins(audio_types, world.catalog, bark_book, SoundMap.shared()))
 	audio_report = SoundRegistry.load_for(
-		audio_types, world.catalog, SoundBank.shared(), SoundMap.shared(), [], 0, OS.has_feature("web"), audio_enabled
+		audio_types, world.catalog, SoundBank.shared(), SoundMap.shared(), barks, bark_book.file_bytes(),
+		OS.has_feature("web"), audio_enabled
 	)
 	_ambience = Ambience.new()
 	_ambience.name = "Ambience"

@@ -1,0 +1,400 @@
+[gd_resource type="Resource" script_class="BarkBook" format=3]
+
+[ext_resource type="Script" path="res://view/audio/bark_line.gd" id="1_gaygm"]
+[ext_resource type="Script" path="res://view/audio/bark_book.gd" id="2_rjv0g"]
+
+[sub_resource type="Resource" id="Resource_r6dcd"]
+script = ExtResource("1_gaygm")
+id = &"clan_1"
+unit = &"_clan"
+text = "Crivens!"
+clan = true
+
+[sub_resource type="Resource" id="Resource_etx3h"]
+script = ExtResource("1_gaygm")
+id = &"clan_2"
+unit = &"_clan"
+text = "Michty me!"
+clan = true
+
+[sub_resource type="Resource" id="Resource_g7eol"]
+script = ExtResource("1_gaygm")
+id = &"clan_3"
+unit = &"_clan"
+text = "Haud yer wheesht!"
+clan = true
+
+[sub_resource type="Resource" id="Resource_upvnr"]
+script = ExtResource("1_gaygm")
+id = &"clan_4"
+unit = &"_clan"
+text = "Och, that's pure mince."
+clan = true
+
+[sub_resource type="Resource" id="Resource_qwg21"]
+script = ExtResource("1_gaygm")
+id = &"clan_5"
+unit = &"_clan"
+text = "Mind yer feet!"
+clan = true
+
+[sub_resource type="Resource" id="Resource_bsx1d"]
+script = ExtResource("1_gaygm")
+id = &"select_1"
+unit = &"longbow"
+trigger = &"select"
+text = "Ah see it. It'll no' see me."
+
+[sub_resource type="Resource" id="Resource_2bs75"]
+script = ExtResource("1_gaygm")
+id = &"attack_1"
+unit = &"longbow"
+trigger = &"attack"
+text = "One arrow, one less problem."
+
+[sub_resource type="Resource" id="Resource_ryshy"]
+script = ExtResource("1_gaygm")
+id = &"special_1"
+unit = &"longbow"
+trigger = &"special"
+text = "Wan fire arrow. Better be worth it."
+
+[sub_resource type="Resource" id="Resource_wcchs"]
+script = ExtResource("1_gaygm")
+id = &"select_1"
+unit = &"reaver"
+trigger = &"select"
+text = "Ah've no' had a guid fight since Tuesday!"
+
+[sub_resource type="Resource" id="Resource_2sfhu"]
+script = ExtResource("1_gaygm")
+id = &"attack_1"
+unit = &"reaver"
+trigger = &"attack"
+text = "Who wants tae be first?"
+
+[sub_resource type="Resource" id="Resource_tqnrv"]
+script = ExtResource("1_gaygm")
+id = &"attack_2"
+unit = &"reaver"
+trigger = &"attack"
+text = "Ah'll split ye like kindlin'!"
+
+[sub_resource type="Resource" id="Resource_wejn8"]
+script = ExtResource("1_gaygm")
+id = &"attack_3"
+unit = &"reaver"
+trigger = &"attack"
+text = "Raaargh!"
+
+[sub_resource type="Resource" id="Resource_clwcr"]
+script = ExtResource("1_gaygm")
+id = &"attack_1"
+unit = &"sapper"
+trigger = &"attack"
+text = "Mind yer heids, this one's a bit lively!"
+
+[sub_resource type="Resource" id="Resource_wfoob"]
+script = ExtResource("1_gaygm")
+id = &"select_1"
+unit = &"sapper"
+trigger = &"select"
+text = "Stand back! Further! Further than that!"
+
+[sub_resource type="Resource" id="Resource_4tver"]
+script = ExtResource("1_gaygm")
+id = &"special_1"
+unit = &"sapper"
+trigger = &"special"
+text = "Leavin' a wee present."
+
+[sub_resource type="Resource" id="Resource_6blc0"]
+script = ExtResource("1_gaygm")
+id = &"fizzle_1"
+unit = &"sapper"
+trigger = &"fizzle"
+text = "Ach. Damp."
+
+[sub_resource type="Resource" id="Resource_y081a"]
+script = ExtResource("1_gaygm")
+id = &"select_1"
+unit = &"shieldman"
+trigger = &"select"
+text = "Aye? Whit is it?"
+
+[sub_resource type="Resource" id="Resource_jn8rp"]
+script = ExtResource("1_gaygm")
+id = &"select_2"
+unit = &"shieldman"
+trigger = &"select"
+text = "Point me at somethin' ugly."
+
+[sub_resource type="Resource" id="Resource_gq1l7"]
+script = ExtResource("1_gaygm")
+id = &"select_3"
+unit = &"shieldman"
+trigger = &"select"
+text = "Shield's up, heid's doon. Whit's the plan?"
+
+[sub_resource type="Resource" id="Resource_ied6j"]
+script = ExtResource("1_gaygm")
+id = &"select_4"
+unit = &"shieldman"
+trigger = &"select"
+text = "Somebody need a wallop?"
+
+[sub_resource type="Resource" id="Resource_av6xk"]
+script = ExtResource("1_gaygm")
+id = &"select_5"
+unit = &"shieldman"
+trigger = &"select"
+text = "Ah'm listenin'. Make it quick, there's fightin' tae dae."
+
+[sub_resource type="Resource" id="Resource_10rpo"]
+script = ExtResource("1_gaygm")
+id = &"move_1"
+unit = &"shieldman"
+trigger = &"move"
+text = "Right ye are!"
+
+[sub_resource type="Resource" id="Resource_eyw2l"]
+script = ExtResource("1_gaygm")
+id = &"move_2"
+unit = &"shieldman"
+trigger = &"move"
+text = "Quick march, ya numpties!"
+
+[sub_resource type="Resource" id="Resource_ttedw"]
+script = ExtResource("1_gaygm")
+id = &"move_3"
+unit = &"shieldman"
+trigger = &"move"
+text = "Marchin'. Grumblin'. Same thing."
+
+[sub_resource type="Resource" id="Resource_6nfuu"]
+script = ExtResource("1_gaygm")
+id = &"move_4"
+unit = &"shieldman"
+trigger = &"move"
+text = "If it's a trap, ah'm blamin' you."
+
+[sub_resource type="Resource" id="Resource_fb2k4"]
+script = ExtResource("1_gaygm")
+id = &"move_5"
+unit = &"shieldman"
+trigger = &"move"
+text = "Onward! Mind the puddles."
+
+[sub_resource type="Resource" id="Resource_yoh44"]
+script = ExtResource("1_gaygm")
+id = &"attack_1"
+unit = &"shieldman"
+trigger = &"attack"
+text = "Get intae them!"
+
+[sub_resource type="Resource" id="Resource_kq1vx"]
+script = ExtResource("1_gaygm")
+id = &"attack_2"
+unit = &"shieldman"
+trigger = &"attack"
+text = "Gie it laldy, lads!"
+
+[sub_resource type="Resource" id="Resource_ssjkg"]
+script = ExtResource("1_gaygm")
+id = &"attack_3"
+unit = &"shieldman"
+trigger = &"attack"
+text = "Time fer a stramash!"
+
+[sub_resource type="Resource" id="Resource_myxrl"]
+script = ExtResource("1_gaygm")
+id = &"attack_4"
+unit = &"shieldman"
+trigger = &"attack"
+text = "Ah'll skelp ye intae next week!"
+
+[sub_resource type="Resource" id="Resource_0h7wg"]
+script = ExtResource("1_gaygm")
+id = &"attack_5"
+unit = &"shieldman"
+trigger = &"attack"
+text = "Charge! Ach, wait, ah'm already chargin'!"
+
+[sub_resource type="Resource" id="Resource_v8mxo"]
+script = ExtResource("1_gaygm")
+id = &"kill_1"
+unit = &"shieldman"
+trigger = &"kill"
+text = "An' STAY doon!"
+
+[sub_resource type="Resource" id="Resource_hy8gj"]
+script = ExtResource("1_gaygm")
+id = &"kill_2"
+unit = &"shieldman"
+trigger = &"kill"
+text = "Ye were deid already, ye just didnae ken."
+
+[sub_resource type="Resource" id="Resource_ltekn"]
+script = ExtResource("1_gaygm")
+id = &"kill_3"
+unit = &"shieldman"
+trigger = &"kill"
+text = "Is that it? Ah've had fiercer porridge."
+
+[sub_resource type="Resource" id="Resource_67dtp"]
+script = ExtResource("1_gaygm")
+id = &"kill_4"
+unit = &"shieldman"
+trigger = &"kill"
+text = "That's one fer the sang!"
+
+[sub_resource type="Resource" id="Resource_e5ylj"]
+script = ExtResource("1_gaygm")
+id = &"kill_5"
+unit = &"shieldman"
+trigger = &"kill"
+text = "Next!"
+
+[sub_resource type="Resource" id="Resource_tfwnm"]
+script = ExtResource("1_gaygm")
+id = &"hurt_1"
+unit = &"shieldman"
+trigger = &"hurt"
+text = "It's just a scratch! A big scratch!"
+
+[sub_resource type="Resource" id="Resource_ct1ou"]
+script = ExtResource("1_gaygm")
+id = &"hurt_2"
+unit = &"shieldman"
+trigger = &"hurt"
+text = "Ah've had worse frae ma granny!"
+
+[sub_resource type="Resource" id="Resource_xbcek"]
+script = ExtResource("1_gaygm")
+id = &"hurt_3"
+unit = &"shieldman"
+trigger = &"hurt"
+text = "Warden! Ah need a wee herb!"
+
+[sub_resource type="Resource" id="Resource_c6fl1"]
+script = ExtResource("1_gaygm")
+id = &"hurt_4"
+unit = &"shieldman"
+trigger = &"hurt"
+text = "Ah'm fine! Ah'm fine! Ah'm no' fine."
+
+[sub_resource type="Resource" id="Resource_omphw"]
+script = ExtResource("1_gaygm")
+id = &"death_1"
+unit = &"shieldman"
+trigger = &"death"
+text = "Tell ma mither… ah wis braw…"
+
+[sub_resource type="Resource" id="Resource_il30l"]
+script = ExtResource("1_gaygm")
+id = &"death_2"
+unit = &"shieldman"
+trigger = &"death"
+text = "Avenge me… or don't, ah'm no' fussy…"
+
+[sub_resource type="Resource" id="Resource_n5wym"]
+script = ExtResource("1_gaygm")
+id = &"death_3"
+unit = &"shieldman"
+trigger = &"death"
+text = "Ach… no' like this…"
+
+[sub_resource type="Resource" id="Resource_l8hfi"]
+script = ExtResource("1_gaygm")
+id = &"annoyed_1"
+unit = &"shieldman"
+trigger = &"annoyed"
+text = "Poke me again an' see whit happens."
+
+[sub_resource type="Resource" id="Resource_ghlyt"]
+script = ExtResource("1_gaygm")
+id = &"annoyed_2"
+unit = &"shieldman"
+trigger = &"annoyed"
+text = "Ah've got a shield, no' a lot o' patience."
+
+[sub_resource type="Resource" id="Resource_ghdpw"]
+script = ExtResource("1_gaygm")
+id = &"annoyed_3"
+unit = &"shieldman"
+trigger = &"annoyed"
+text = "Ye know ah can see ye, aye?"
+
+[sub_resource type="Resource" id="Resource_oo2ob"]
+script = ExtResource("1_gaygm")
+id = &"status_burning_1"
+unit = &"shieldman"
+trigger = &"status_burning"
+text = "Whit's that smell? Ach, it's me, ah'm on fire!"
+
+[sub_resource type="Resource" id="Resource_jghvq"]
+script = ExtResource("1_gaygm")
+id = &"status_paralyzed_1"
+unit = &"shieldman"
+trigger = &"status_paralyzed"
+text = "Cannae… move… ma… legs…"
+
+[sub_resource type="Resource" id="Resource_ph12w"]
+script = ExtResource("1_gaygm")
+id = &"status_confused_1"
+unit = &"shieldman"
+trigger = &"status_confused"
+text = "Which side am ah on again?"
+
+[sub_resource type="Resource" id="Resource_07o5p"]
+script = ExtResource("1_gaygm")
+id = &"formation_rabble_1"
+unit = &"shieldman"
+trigger = &"formation_rabble"
+text = "Rabble? Finally, somethin' we're good at."
+
+[sub_resource type="Resource" id="Resource_4spr5"]
+script = ExtResource("1_gaygm")
+id = &"formation_wedge_1"
+unit = &"shieldman"
+trigger = &"formation_wedge"
+text = "Pointy end first!"
+
+[sub_resource type="Resource" id="Resource_j2h21"]
+script = ExtResource("1_gaygm")
+id = &"victory_1"
+unit = &"shieldman"
+trigger = &"victory"
+text = "That's them sorted. Who's fer a dram?"
+
+[sub_resource type="Resource" id="Resource_ikkj6"]
+script = ExtResource("1_gaygm")
+id = &"victory_2"
+unit = &"shieldman"
+trigger = &"victory"
+text = "We won! Ah think. Did we win?"
+
+[sub_resource type="Resource" id="Resource_mioqt"]
+script = ExtResource("1_gaygm")
+id = &"special_1"
+unit = &"warden"
+trigger = &"special"
+text = "Haud still, ya big wean, it's only a herb."
+
+[sub_resource type="Resource" id="Resource_yn4gb"]
+script = ExtResource("1_gaygm")
+id = &"heal_undead_1"
+unit = &"warden"
+trigger = &"heal_undead"
+text = "Here's a tonic fer ye. Ye'll no' like it."
+
+[sub_resource type="Resource" id="Resource_ho3eu"]
+script = ExtResource("1_gaygm")
+id = &"special_2"
+unit = &"warden"
+trigger = &"special"
+text = "Ah didnae pick herbs all mornin' fer ye tae get stabbed again."
+
+[resource]
+script = ExtResource("2_rjv0g")
+lines = Array[ExtResource("1_gaygm")]([SubResource("Resource_r6dcd"), SubResource("Resource_etx3h"), SubResource("Resource_g7eol"), SubResource("Resource_upvnr"), SubResource("Resource_qwg21"), SubResource("Resource_bsx1d"), SubResource("Resource_2bs75"), SubResource("Resource_ryshy"), SubResource("Resource_wcchs"), SubResource("Resource_2sfhu"), SubResource("Resource_tqnrv"), SubResource("Resource_wejn8"), SubResource("Resource_clwcr"), SubResource("Resource_wfoob"), SubResource("Resource_4tver"), SubResource("Resource_6blc0"), SubResource("Resource_y081a"), SubResource("Resource_jn8rp"), SubResource("Resource_gq1l7"), SubResource("Resource_ied6j"), SubResource("Resource_av6xk"), SubResource("Resource_10rpo"), SubResource("Resource_eyw2l"), SubResource("Resource_ttedw"), SubResource("Resource_6nfuu"), SubResource("Resource_fb2k4"), SubResource("Resource_yoh44"), SubResource("Resource_kq1vx"), SubResource("Resource_ssjkg"), SubResource("Resource_myxrl"), SubResource("Resource_0h7wg"), SubResource("Resource_v8mxo"), SubResource("Resource_hy8gj"), SubResource("Resource_ltekn"), SubResource("Resource_67dtp"), SubResource("Resource_e5ylj"), SubResource("Resource_tfwnm"), SubResource("Resource_ct1ou"), SubResource("Resource_xbcek"), SubResource("Resource_c6fl1"), SubResource("Resource_omphw"), SubResource("Resource_il30l"), SubResource("Resource_n5wym"), SubResource("Resource_l8hfi"), SubResource("Resource_ghlyt"), SubResource("Resource_ghdpw"), SubResource("Resource_oo2ob"), SubResource("Resource_jghvq"), SubResource("Resource_ph12w"), SubResource("Resource_07o5p"), SubResource("Resource_4spr5"), SubResource("Resource_j2h21"), SubResource("Resource_ikkj6"), SubResource("Resource_mioqt"), SubResource("Resource_yn4gb"), SubResource("Resource_ho3eu")])

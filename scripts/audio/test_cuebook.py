@@ -344,5 +344,116 @@ class LayersTest(unittest.TestCase):
                     layers_from(bad)
 
 
+def voices_from(files: dict[str, str]) -> dict[str, cuebook.VoiceFile]:
+    with tempfile.TemporaryDirectory() as tmp:
+        for name, text in files.items():
+            (Path(tmp) / name).write_text(text, encoding="utf-8")
+        return cuebook.load_voices(Path(tmp))
+
+
+UNIT: str = """unit = "reaver"
+
+[voice.reaver]
+description = "a hoarse young Highland Scots man"
+model = "eleven_v4"
+
+[line.attack_1]
+trigger = "attack"
+text = "Raaargh!"
+tag = "[roaring]"
+picks = {}
+"""
+
+CLAN: str = """unit = "_clan"
+
+[line.clan_1]
+text = "Crivens!"
+picks = {}
+"""
+
+
+class VoicesTest(unittest.TestCase):
+    def test_voice_files_load_with_their_lines_and_voices(self) -> None:
+        files = cuebook.load_voices(ROOT / "audio-src" / "voices")
+        self.assertEqual(set(files), {"shieldman", "reaver", "longbow", "sapper", "warden", "_clan"})
+        shield = files["shieldman"]
+        self.assertEqual(set(shield.voices), {"shieldman_old", "shieldman_young"})
+        self.assertEqual(shield.voices["shieldman_old"].model, "eleven_v4")
+        self.assertEqual(len(shield.lines), 37)
+        self.assertEqual(shield.lines["select_1"].text, "Aye? Whit is it?")
+        self.assertEqual(files["reaver"].lines["attack_3"].tag, "[roaring]")
+        self.assertEqual(len(files["_clan"].lines), 5)
+        self.assertEqual(files["_clan"].voices, {})
+        for line in files["_clan"].lines.values():
+            self.assertTrue(line.id.startswith("clan_"))
+            self.assertEqual(line.trigger, "")
+
+    def test_the_shieldman_covers_the_required_triggers_and_victory(self) -> None:
+        lines = cuebook.load_voices(ROOT / "audio-src" / "voices")["shieldman"].lines
+        triggers = {line.trigger for line in lines.values()}
+        for trigger in (*cuebook.REQUIRED_TRIGGERS, "victory"):
+            self.assertIn(trigger, triggers)
+        self.assertEqual(len(cuebook.TRIGGERS), 15 + 10)
+        self.assertIn("formation_short_line", cuebook.TRIGGERS)
+        self.assertIn("formation_circle", cuebook.TRIGGERS)
+
+    def test_an_unknown_trigger_is_refused(self) -> None:
+        with self.assertRaisesRegex(CueError, "trigger"):
+            voices_from({"reaver.toml": UNIT.replace('"attack"', '"dance"')})
+
+    def test_a_line_pick_for_a_voice_the_unit_lacks_is_refused(self) -> None:
+        voices_from({"reaver.toml": UNIT.replace("picks = {}", "picks = {reaver = 2}")})
+        with self.assertRaisesRegex(CueError, "pick"):
+            voices_from({"reaver.toml": UNIT.replace("picks = {}", "picks = {warden = 2}")})
+        for bad in ("picks = {reaver = 0}", "picks = {reaver = true}", 'picks = {reaver = "1"}', "picks = []"):
+            with self.subTest(bad=bad), self.assertRaises(CueError):
+                voices_from({"reaver.toml": UNIT.replace("picks = {}", bad)})
+
+    def test_a_clan_pick_may_name_any_light_voice(self) -> None:
+        files = voices_from({
+            "reaver.toml": UNIT, "_clan.toml": CLAN.replace("picks = {}", "picks = {reaver = 1}")})
+        self.assertEqual(files["_clan"].lines["clan_1"].picks, {"reaver": 1})
+        with self.assertRaisesRegex(CueError, "pick"):
+            voices_from({"reaver.toml": UNIT, "_clan.toml": CLAN.replace("picks = {}", "picks = {husk = 1}")})
+
+    def test_clan_lines_have_clan_ids_and_no_trigger_or_voices(self) -> None:
+        for bad in (CLAN.replace("clan_1", "crivens"), CLAN.replace("text =", 'trigger = "select"\ntext ='),
+                    CLAN + '\n[voice.x]\ndescription = "d"\nmodel = "eleven_v4"\n'):
+            with self.subTest(bad=bad), self.assertRaises(CueError):
+                voices_from({"_clan.toml": bad})
+
+    def test_a_unit_line_needs_a_trigger_and_the_unit_a_voice(self) -> None:
+        with self.assertRaises(CueError):
+            voices_from({"reaver.toml": UNIT.replace('trigger = "attack"\n', "")})
+        with self.assertRaises(CueError):
+            voices_from({"reaver.toml": UNIT.split("[voice.reaver]")[0] + '[line.attack_1]\ntrigger = "attack"\ntext = "x"\n'})
+
+    def test_a_tag_is_bracketed_lowercase_words_only(self) -> None:
+        for good in ("[shouting]", "[roaring] [angry]", "[whispers softly]"):
+            voices_from({"reaver.toml": UNIT.replace("[roaring]", good)})
+        for bad in ("shouting", "[SHOUT]", "[a][b]x", "[" + "a" * 25 + "]", "[ok] " * 9, "[x]; rm", ""):
+            with self.subTest(bad=bad), self.assertRaises(CueError):
+                voices_from({"reaver.toml": UNIT.replace("[roaring]", bad)})
+
+    def test_ids_unknown_keys_and_the_unit_name_are_checked(self) -> None:
+        for bad in (UNIT.replace("[line.attack_1]", "[line.Attack_1]"), UNIT.replace("[line.attack_1]", "[line.a/b]"),
+                    UNIT.replace("[voice.reaver]", "[voice.X-y]"),
+                    UNIT.replace("text =", "txt ="), UNIT.replace('unit = "reaver"', 'unit = "sapper"'),
+                    UNIT.replace('text = "Raaargh!"', 'text = ""'), UNIT + "extra = 1\n",
+                    UNIT.replace('model = "eleven_v4"', 'model = "other"')):
+            with self.subTest(bad=bad), self.assertRaises(CueError):
+                voices_from({"reaver.toml": bad})
+
+    def test_a_long_value_is_clipped_in_the_message(self) -> None:
+        long = "x" * 500
+        with self.assertRaises(CueError) as ctx:
+            voices_from({"reaver.toml": UNIT.replace('"attack"', f'"{long}"')})
+        self.assertNotIn(long, str(ctx.exception))
+
+    def test_an_empty_folder_is_refused(self) -> None:
+        with self.assertRaises(CueError):
+            voices_from({})
+
+
 if __name__ == "__main__":
     unittest.main()

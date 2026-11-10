@@ -28,11 +28,13 @@ from cuebook import CueError
 ROOT: Path = Path(__file__).resolve().parents[2]
 CUES: Path = ROOT / "audio-src" / "cues.toml"
 LAYERS: Path = ROOT / "audio-src" / "music" / "prompts.toml"
+VOICES: Path = ROOT / "audio-src" / "voices"
 SIDECAR: Path = ROOT / "audio-src" / "build" / "bank.json"
 
 SFX_FILE: str = "res://assets/audio/sfx/{cue}_{pick}.wav"
 LOOP_FILE: str = "res://assets/audio/loop/{cue}.ogg"
 MUSIC_FILE: str = "res://assets/audio/music/{layer}.ogg"
+VOICE_FILE: str = "res://assets/audio/voice/{voice}/{line}.ogg"
 
 SYNTH_DIR: Path = ROOT / "assets" / "audio" / "synthetic"
 SYNTH_RES: str = "res://assets/audio/synthetic/"
@@ -61,7 +63,30 @@ def _cue_files(cue: cuebook.Cue, root: Path) -> list[str]:
     return [cue.placeholder] if cue.placeholder is not None else []
 
 
-def build_sidecar(cues_path: Path, layers_path: Path, root: Path = ROOT) -> dict[str, object]:
+def _line_entries(voices_dir: Path | None, root: Path) -> list[dict[str, object]]:
+    """One entry per bark line: its text, and for every voice that can say it the voiced file ("" if unbought)."""
+    if voices_dir is None:
+        return []
+    files = cuebook.load_voices(voices_dir)
+    light = [v for unit, f in files.items() if unit != cuebook.CLAN for v in f.voices]
+    entries: list[dict[str, object]] = []
+    for unit, voice_file in files.items():
+        for line in voice_file.lines.values():
+            speakers = light if unit == cuebook.CLAN else list(voice_file.voices)
+            voiced = {
+                v: _exists(root, VOICE_FILE.format(voice=v, line=line.id), f"{unit}/{line.id}") if v in line.picks else ""
+                for v in speakers
+            }
+            entries.append({
+                "id": line.id, "unit": unit, "trigger": line.trigger, "text": line.text,
+                "clan": unit == cuebook.CLAN, "voices": voiced,
+            })
+    return entries
+
+
+def build_sidecar(
+    cues_path: Path, layers_path: Path, root: Path = ROOT, voices_dir: Path | None = None
+) -> dict[str, object]:
     book = cuebook.load_cues(cues_path)
     entries: list[dict[str, object]] = []
     for cue in book.cues.values():
@@ -78,18 +103,20 @@ def build_sidecar(cues_path: Path, layers_path: Path, root: Path = ROOT) -> dict
             "pitch_spread": 0.0, "max_voices": 1, "loop": True,
             "playback": book.playback["music"], "files": files,
         })
-    return {"cues": entries, "lines": []}
+    return {"cues": entries, "lines": _line_entries(voices_dir, root)}
 
 
-def build(sidecar: Path, cues_path: Path = CUES, layers_path: Path = LAYERS, root: Path = ROOT) -> int:
+def build(
+    sidecar: Path, cues_path: Path = CUES, layers_path: Path = LAYERS, root: Path = ROOT, voices_dir: Path = VOICES
+) -> int:
     try:
-        data = build_sidecar(cues_path, layers_path, root)
+        data = build_sidecar(cues_path, layers_path, root, voices_dir)
     except CueError as err:
         print(f"process.py build: {err}", file=sys.stderr)
         return 1
     sidecar.parent.mkdir(parents=True, exist_ok=True)
     sidecar.write_text(json.dumps(data, indent=1) + "\n", encoding="utf-8")
-    print(f"wrote {sidecar} ({len(data['cues'])} cues)")  # type: ignore[arg-type]
+    print(f"wrote {sidecar} ({len(data['cues'])} cues, {len(data['lines'])} lines)")  # type: ignore[arg-type]
     return 0
 
 
@@ -133,7 +160,9 @@ def _music(layer_id: str) -> Synth:
                  OGG_CODEC)
 
 
-def synthetic_plan(cues_path: Path = CUES, layers_path: Path = LAYERS) -> tuple[list[Synth], dict[str, object]]:
+def synthetic_plan(
+    cues_path: Path = CUES, layers_path: Path = LAYERS, voices_dir: Path = VOICES
+) -> tuple[list[Synth], dict[str, object]]:
     """Every file to render, and the sidecar that points each cue at its own."""
     book = cuebook.load_cues(cues_path)
     synths: list[Synth] = []
@@ -154,7 +183,8 @@ def synthetic_plan(cues_path: Path = CUES, layers_path: Path = LAYERS) -> tuple[
             "pitch_spread": 0.0, "max_voices": 1, "loop": True,
             "playback": book.playback["music"], "files": [SYNTH_RES + made_m.name],
         })
-    return synths, {"cues": entries, "lines": []}
+    # The lines stay unvoiced: the bark book the builder writes is the real one.
+    return synths, {"cues": entries, "lines": _line_entries(voices_dir, ROOT)}
 
 
 def _import_text(name: str) -> str:

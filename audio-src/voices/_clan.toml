@@ -1,0 +1,21 @@
+unit = "_clan"
+
+[line.clan_1]
+text = "Crivens!"
+picks = {}
+
+[line.clan_2]
+text = "Michty me!"
+picks = {}
+
+[line.clan_3]
+text = "Haud yer wheesht!"
+picks = {}
+
+[line.clan_4]
+text = "Och, that's pure mince."
+picks = {}
+
+[line.clan_5]
+text = "Mind yer feet!"
+picks = {}

@@ -1,5 +1,5 @@
 extends SceneTree
-## Builds data/audio/sound_bank.tres from the sidecar that `process.py build`
+## Builds data/audio/sound_bank.tres and data/audio/barks.tres from the sidecar that `process.py build`
 ## writes (audio-src/build/bank.json). Generated; never edit the bank by hand.
 ## Run `make audio-build`, which writes the sidecar and imports the audio
 ## first, so every file is a stream Godot can load. A file that doesn't load,
@@ -36,6 +36,20 @@ func _build() -> bool:
 		printerr("build_sound_bank: could not save %s" % SoundBank.PATH)
 		return false
 	print("built %s (%d cues)" % [SoundBank.PATH, bank.cues.size()])
+	var lines: Variant = (sidecar as Dictionary).get("lines", [])
+	if not lines is Array:
+		printerr("build_sound_bank: the sidecar's lines are not a list")
+		return false
+	var book: BarkBook = BarkBook.new()
+	for entry: Variant in lines:
+		var line: BarkLine = _line(entry, book)
+		if line == null:
+			return false
+		book.lines.append(line)
+	if ResourceSaver.save(book, BarkBook.PATH) != OK:
+		printerr("build_sound_bank: could not save %s" % BarkBook.PATH)
+		return false
+	print("built %s (%d lines, %d bytes voiced)" % [BarkBook.PATH, book.lines.size(), book.voiced_bytes])
 	return true
 
 
@@ -80,6 +94,37 @@ func _cue(entry: Variant) -> SoundCue:
 		cue.streams.append(stream)
 		cue.file_bytes += bytes
 	return cue
+
+
+## The bark line for one sidecar entry, or null (after naming it) if it can't be built.
+## Adds the bytes of each voiced file to the book.
+func _line(entry: Variant, book: BarkBook) -> BarkLine:
+	if not entry is Dictionary or not (entry as Dictionary).get("voices") is Dictionary:
+		printerr("build_sound_bank: a bark line entry is not an object with voices")
+		return null
+	var e: Dictionary = entry
+	var line: BarkLine = BarkLine.new()
+	line.id = StringName(str(e.get("id", "")))
+	line.unit = StringName(str(e.get("unit", "")))
+	line.trigger = StringName(str(e.get("trigger", "")))
+	line.text = str(e.get("text", ""))
+	line.clan = bool(e.get("clan", false))
+	var voices: Dictionary = e["voices"]
+	for voice: Variant in voices:
+		var path: String = str(voices[voice])
+		if path.is_empty():
+			continue
+		var stream: AudioStream = load(path) as AudioStream
+		if stream == null:
+			printerr("build_sound_bank: line %s: %s did not load; run make audio-build, which imports first" % [line.id, path])
+			return null
+		var bytes: int = _imported_bytes(path)
+		if bytes <= 0:
+			printerr("build_sound_bank: line %s: no imported file found for %s" % [line.id, path])
+			return null
+		line.streams[StringName(str(voice))] = stream
+		book.voiced_bytes += bytes
+	return line
 
 
 ## Size of the imported file behind a source: the [remap] path in its .import.

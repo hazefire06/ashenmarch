@@ -1,0 +1,25 @@
+unit = "sapper"
+
+[voice.sapper]
+description = "a stocky Highland Scots man in his forties, nasal and cheery, a little deaf from the blasts so he talks too loud, quick and fretful"
+model = "eleven_v4"
+
+[line.attack_1]
+trigger = "attack"
+text = "Mind yer heids, this one's a bit lively!"
+picks = {}
+
+[line.select_1]
+trigger = "select"
+text = "Stand back! Further! Further than that!"
+picks = {}
+
+[line.special_1]
+trigger = "special"
+text = "Leavin' a wee present."
+picks = {}
+
+[line.fizzle_1]
+trigger = "fizzle"
+text = "Ach. Damp."
+picks = {}

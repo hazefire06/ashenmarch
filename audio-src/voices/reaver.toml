@@ -1,0 +1,26 @@
+unit = "reaver"
+
+[voice.reaver]
+description = "a young Highland Scots man, lean and wiry, hoarse and fast, a rough-edged baritone that cracks into a roar when he gets excited, a wild grin in every word"
+model = "eleven_v4"
+
+[line.select_1]
+trigger = "select"
+text = "Ah've no' had a guid fight since Tuesday!"
+picks = {}
+
+[line.attack_1]
+trigger = "attack"
+text = "Who wants tae be first?"
+picks = {}
+
+[line.attack_2]
+trigger = "attack"
+text = "Ah'll split ye like kindlin'!"
+picks = {}
+
+[line.attack_3]
+trigger = "attack"
+text = "Raaargh!"
+tag = "[roaring]"
+picks = {}
