@@ -2,8 +2,9 @@
 
 The paid generator buys sounds from these prompts and the bank builder turns
 every id into a file name, so this is the security boundary: an id must match
-[a-z0-9_]+ in full, every table refuses keys it doesn't know, and every number
-is range-checked before anything else sees it. Only CueError escapes. A
+[a-z0-9_]+ in full and at most 48 characters, every table refuses keys it
+doesn't know, and every number is
+range-checked before anything else sees it. Only CueError escapes. A
 message names the table and the key, and never echoes more than 40 characters
 of a value, so a hostile file can't flood a log or a terminal.
 """
@@ -25,6 +26,12 @@ BUSES: tuple[str, ...] = ("Effects", "Ambient", "Interface", "Music", "Voice")
 SFX_SECONDS: tuple[float, float] = (0.5, 30.0)  # ElevenLabs SFX duration_seconds
 MUSIC_SECONDS: tuple[float, float] = (3.0, 600.0)  # ElevenLabs music, 3,000 to 600,000 ms
 MAX_SHOWN: int = 40
+MAX_ID: int = 48
+
+SFX_MODELS: tuple[str, ...] = ("eleven_text_to_sound_v2", "eleven_text_to_sound_v3")
+MUSIC_MODELS: tuple[str, ...] = ("music_v1", "music_v2", "music_v2_5")
+LOOP_MODEL: str = "eleven_text_to_sound_v3"  # loops need the v3 model
+VOCAL_CATEGORIES: tuple[str, ...] = ("death", "groan")  # these take the vocal suffix
 
 DEFAULT_KEYS: tuple[str, ...] = (
     "variants", "takes", "bus", "level_db", "max_voices", "pitch_spread", "model", "prompt_influence",
@@ -59,8 +66,15 @@ class Cue:
 @dataclass(frozen=True)
 class CueBook:
     style_suffix: str
+    vocal_suffix: str
     playback: dict[str, str]
     cues: dict[str, Cue]
+
+    def prompt_for(self, cue_id: str) -> str:
+        """The prompt to send for a cue: its own text plus the style suffix for its category."""
+        cue = self.cues[cue_id]
+        suffix = self.vocal_suffix if cue.category in VOCAL_CATEGORIES else self.style_suffix
+        return f"{cue.prompt.strip()} {suffix}"
 
 
 @dataclass(frozen=True)
@@ -82,28 +96,34 @@ def _show(value: object) -> str:
 
 
 def check_id(value: object, what: str) -> str:
-    if not isinstance(value, str) or ID.fullmatch(value) is None:
-        raise CueError(f"{what}: {_show(value)} isn't a safe id (lowercase letters, digits and _ only)")
+    if not isinstance(value, str) or len(value) > MAX_ID or ID.fullmatch(value) is None:
+        raise CueError(f"{what}: {_show(value)} isn't a safe id (lowercase letters, digits and _, at most {MAX_ID})")
     return value
+
+
+def _clip(text: str) -> str:
+    """At most 40 characters of a checked id, for a message's table name."""
+    return text if len(text) <= MAX_SHOWN else text[:MAX_SHOWN] + "..."
 
 
 def load_cues(path: Path) -> CueBook:
     root = _read(path)
     _only_keys(root, {"style", "defaults", "playback", "cue"}, "top level")
     style = _table(root, "style")
-    _only_keys(style, {"suffix"}, "[style]")
+    _only_keys(style, {"suffix", "vocal_suffix"}, "[style]")
     suffix = _text(style, "suffix", "[style]")
+    vocal_suffix = _text(style, "vocal_suffix", "[style]")
     defaults = _defaults(_table(root, "defaults"))
     playback = _playback(_table(root, "playback"))
     cues: dict[str, Cue] = {}
     for raw_id, body in _table(root, "cue").items():
         cue_id = check_id(raw_id, "[cue] table name")
         if not isinstance(body, dict):
-            raise CueError(f"[cue.{cue_id}] isn't a table")
+            raise CueError(f"[cue.{_clip(cue_id)}] isn't a table")
         cues[cue_id] = _cue(cue_id, body, defaults)
     if not cues:
         raise CueError("[cue] holds no cues")
-    return CueBook(suffix, playback, cues)
+    return CueBook(suffix, vocal_suffix, playback, cues)
 
 
 def load_layers(path: Path) -> dict[str, Layer]:
@@ -112,16 +132,19 @@ def load_layers(path: Path) -> dict[str, Layer]:
     layers: dict[str, Layer] = {}
     for raw_id, body in _table(root, "layer").items():
         layer_id = check_id(raw_id, "[layer] table name")
-        where = f"[layer.{layer_id}]"
+        where = f"[layer.{_clip(layer_id)}]"
         if not isinstance(body, dict):
             raise CueError(f"{where} isn't a table")
         _only_keys(body, LAYER_KEYS, where)
         takes = _int(body, "takes", where, low=1, high=20)
+        model = _text(body, "model", where)
+        if model not in MUSIC_MODELS:
+            raise CueError(f"{where}: model must be one of {', '.join(MUSIC_MODELS)}")
         layers[layer_id] = Layer(
             id=layer_id,
             prompt=_text(body, "prompt", where),
             length_s=_number(body, "length_s", where, *MUSIC_SECONDS),
-            model=_text(body, "model", where),
+            model=model,
             takes=takes,
             picks=_picks(body, takes, where),
         )
@@ -195,7 +218,13 @@ def _defaults(table: dict[str, object]) -> dict[str, object]:
     if missing:
         raise CueError(f"[defaults] is missing {', '.join(missing)}")
     _check_shared(table, "[defaults]")
+    _check_variants(table, "[defaults]")
     return dict(table)
+
+
+def _check_variants(table: dict[str, object], where: str) -> None:
+    if _int(table, "variants", where, 1, 10) > _int(table, "takes", where, 1, 20):
+        raise CueError(f"{where}: variants can't exceed takes")
 
 
 def _check_shared(table: dict[str, object], where: str) -> None:
@@ -212,8 +241,8 @@ def _check_shared(table: dict[str, object], where: str) -> None:
         _number(table, "pitch_spread", where, 0.0, 0.5)
     if "prompt_influence" in table:
         _number(table, "prompt_influence", where, 0.0, 1.0)
-    if "model" in table:
-        _text(table, "model", where)
+    if "model" in table and table["model"] not in SFX_MODELS:
+        raise CueError(f"{where}: model must be one of {', '.join(SFX_MODELS)}")
     if "bus" in table and table["bus"] not in BUSES:
         raise CueError(f"{where}: bus must be one of {', '.join(BUSES)}")
 
@@ -230,7 +259,7 @@ def _playback(table: dict[str, object]) -> dict[str, str]:
 
 
 def _cue(cue_id: str, body: dict[str, object], defaults: dict[str, object]) -> Cue:
-    where = f"[cue.{cue_id}]"
+    where = f"[cue.{_clip(cue_id)}]"
     _only_keys(body, CUE_KEYS, where)
     _check_shared(body, where)
     category = body.get("category")
@@ -245,21 +274,25 @@ def _cue(cue_id: str, body: dict[str, object], defaults: dict[str, object]) -> C
     if placeholder is not None and (not isinstance(placeholder, str) or PLACEHOLDER.fullmatch(placeholder) is None):
         raise CueError(f"{where}: placeholder must be res://assets/audio/sfx/<name>.wav")
     merged = {**defaults, **{k: v for k, v in body.items() if k in DEFAULT_KEYS}}
-    takes = int(merged["takes"])  # type: ignore[call-overload]  # range-checked above
+    _check_variants(merged, where)
+    model = _text(merged, "model", where)
+    if loop and model != LOOP_MODEL:
+        raise CueError(f"{where}: a loop must use {LOOP_MODEL}")
+    takes = _int(merged, "takes", where, 1, 20)
     return Cue(
         id=cue_id,
         category=str(category),
         prompt=_text(body, "prompt", where),
         duration_s=_number(body, "duration_s", where, *SFX_SECONDS),
         loop=loop,
-        variants=int(merged["variants"]),  # type: ignore[call-overload]
+        variants=_int(merged, "variants", where, 1, 10),
         takes=takes,
-        bus=str(merged["bus"]),
-        level_db=float(merged["level_db"]),  # type: ignore[arg-type]
-        max_voices=int(merged["max_voices"]),  # type: ignore[call-overload]
-        pitch_spread=float(merged["pitch_spread"]),  # type: ignore[arg-type]
-        model=str(merged["model"]),
-        prompt_influence=float(merged["prompt_influence"]),  # type: ignore[arg-type]
+        bus=_text(merged, "bus", where),  # in BUSES: _check_shared ran on the defaults and on the cue
+        level_db=_number(merged, "level_db", where, -60.0, 12.0),
+        max_voices=_int(merged, "max_voices", where, 1, 24),
+        pitch_spread=_number(merged, "pitch_spread", where, 0.0, 0.5),
+        model=model,
+        prompt_influence=_number(merged, "prompt_influence", where, 0.0, 1.0),
         placeholder=placeholder,
         picks=_picks(body, takes, where),
     )

@@ -3,7 +3,8 @@
 # Ids become file names, so they match [a-z0-9_]+. level_db carries the old placeholder level where one exists.
 
 [style]
-suffix = "realistic close foley, grounded and gritty, no music, no voices"
+suffix = "realistic close foley, grounded and gritty, a single sound effect"
+vocal_suffix = "realistic close recording of a single wordless vocal sound, grounded and gritty"
 
 [defaults]
 variants = 3
@@ -27,31 +28,31 @@ music = "stream"
 
 [cue.swing_blade]
 category = "melee"
-prompt = "A one-handed steel sword cut through the air, a quick thin whoosh with a faint ring of the edge, no impact."
+prompt = "A one-handed steel sword cut through the air, a quick thin whoosh with a faint ring of the edge, ending in clean open air."
 duration_s = 0.6
 picks = []
 
 [cue.swing_heavy]
 category = "melee"
-prompt = "A heavy two-handed blade swung hard in a wide arc, a deep low whoosh with a rough drag of air and a creak of leather grip, no impact."
+prompt = "A heavy two-handed blade swung hard in a wide arc, a deep low whoosh with a rough drag of air and a creak of leather grip, ending in clean open air."
 duration_s = 0.9
 picks = []
 
 [cue.swing_staff]
 category = "melee"
-prompt = "A long wooden staff swung round, a soft hollow whoosh with a dry creak of timber, no impact."
+prompt = "A long wooden staff swung round, a soft hollow whoosh with a dry creak of timber, ending in clean open air."
 duration_s = 0.7
 picks = []
 
 [cue.swing_claw]
 category = "melee"
-prompt = "A bony clawed hand raking the air, a short dry scratchy swish with a rasp of brittle nails, no impact."
+prompt = "A bony clawed hand raking the air, a short dry scratchy swish with a rasp of brittle nails, ending in clean open air."
 duration_s = 0.5
 picks = []
 
 [cue.swing_stomp]
 category = "melee"
-prompt = "A huge boot lifted and driven down, a heavy rush of air then a dull ground thump, no flesh."
+prompt = "A huge boot lifted and driven down, a heavy rush of air then a dull ground thump on bare earth."
 duration_s = 0.8
 picks = []
 
@@ -65,7 +66,7 @@ picks = []
 
 [cue.hit_dry]
 category = "melee"
-prompt = "A blow landing on a long dead body, a dry papery crunch of old bone and leathery hide, no wetness, no cry."
+prompt = "A blow landing on a long dead body, a dry papery crunch of old bone and leathery hide, then silence."
 duration_s = 0.7
 level_db = -9.0
 placeholder = "res://assets/audio/sfx/sword_hit.wav"
@@ -165,7 +166,7 @@ picks = []
 
 [cue.thud_flesh]
 category = "projectile"
-prompt = "A heavy lump of flesh hitting the ground, a dull wet slap and a soft slump with no bounce."
+prompt = "A heavy lump of flesh hitting the ground, a dull wet slap and a soft slump that settles at once."
 duration_s = 0.7
 level_db = -10.0
 placeholder = "res://assets/audio/sfx/grenade_bounce.wav"
@@ -397,6 +398,7 @@ category = "ui"
 prompt = "A leather strap tightened over a buckle, a short crisp creak and a soft metal clink."
 duration_s = 0.5
 bus = "Interface"
+level_db = -10.0
 picks = []
 
 [cue.ui_formation]
@@ -404,6 +406,7 @@ category = "ui"
 prompt = "Several spear shafts and boots shifting into line, a quick clatter of wood and a short scuff of feet."
 duration_s = 0.7
 bus = "Interface"
+level_db = -10.0
 picks = []
 
 [cue.ui_group]
@@ -411,6 +414,7 @@ category = "ui"
 prompt = "A heavy iron key turned in a lock, a dull click and a short metal clunk."
 duration_s = 0.6
 bus = "Interface"
+level_db = -10.0
 picks = []
 
 [cue.ui_deny]
@@ -433,7 +437,7 @@ picks = []
 
 [cue.march_grass]
 category = "march"
-prompt = "A small group of men marching steadily through long grass, soft swishing of stalks and a steady tread of boots, no talking."
+prompt = "A small group of men marching steadily through long grass, soft swishing of stalks and a steady tread of boots, a quiet steady rhythm."
 duration_s = 12
 bus = "Ambient"
 loop = true
@@ -444,7 +448,7 @@ picks = []
 
 [cue.march_sand]
 category = "march"
-prompt = "A small group of men marching across loose sand, a soft crunching shuffle of boots and a hiss of falling grains, no talking."
+prompt = "A small group of men marching across loose sand, a soft crunching shuffle of boots and a hiss of falling grains, a quiet steady rhythm."
 duration_s = 12
 bus = "Ambient"
 loop = true
@@ -455,7 +459,7 @@ picks = []
 
 [cue.march_rock]
 category = "march"
-prompt = "A small group of men marching on bare rock and gravel, hard crunching steps and the clink of loose stones, no talking."
+prompt = "A small group of men marching on bare rock and gravel, hard crunching steps and the clink of loose stones, a quiet steady rhythm."
 duration_s = 12
 bus = "Ambient"
 loop = true
@@ -466,7 +470,7 @@ picks = []
 
 [cue.march_water]
 category = "march"
-prompt = "A small group of men wading through knee-deep water, heavy splashing steps and the sloshing drip of water off cloth, no talking."
+prompt = "A small group of men wading through knee-deep water, heavy splashing steps and the sloshing drip of water off cloth, a quiet steady rhythm."
 duration_s = 12
 bus = "Ambient"
 loop = true
@@ -477,7 +481,7 @@ picks = []
 
 [cue.bed_outdoor]
 category = "bed"
-prompt = "A quiet highland valley at dusk, a soft steady breeze through grass and trees, far off bird calls, nothing close."
+prompt = "A quiet highland valley at dusk, a soft steady breeze through grass and trees, far off bird calls, all of it distant and gentle."
 duration_s = 12
 bus = "Ambient"
 loop = true
@@ -488,7 +492,7 @@ picks = []
 
 [cue.bed_rain]
 category = "bed"
-prompt = "Steady rain falling on grass and mud, a dense soft patter with a faint wet drip off leaves, no thunder."
+prompt = "Steady rain falling on grass and mud, a dense soft patter with a faint wet drip off leaves, even and steady."
 duration_s = 12
 bus = "Ambient"
 loop = true
@@ -525,7 +529,7 @@ picks = []
 
 [cue.bed_water]
 category = "bed"
-prompt = "A shallow creek running over stones, a constant bright burbling and trickle of water, nothing else."
+prompt = "A shallow creek running over stones, a constant bright burbling and trickle of water, steady and even."
 duration_s = 12
 bus = "Ambient"
 loop = true
@@ -543,6 +547,4 @@ loop = true
 model = "eleven_text_to_sound_v3"
 variants = 1
 takes = 2
-level_db = -6.0
-placeholder = "res://assets/audio/sfx/gas_hiss.wav"
 picks = []

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import re
 import tempfile
 import unittest
 from pathlib import Path
@@ -32,7 +33,8 @@ SPEC_CUES: frozenset[str] = frozenset(
 
 HEAD: str = """
 [style]
-suffix = "realistic close foley"
+suffix = "close foley"
+vocal_suffix = "close wordless cry"
 
 [defaults]
 variants = 3
@@ -63,14 +65,14 @@ duration_s = 1.0
 """
 
 
-def book_from(text: str):
+def book_from(text: str) -> cuebook.CueBook:
     with tempfile.TemporaryDirectory() as tmp:
         path = Path(tmp) / "cues.toml"
         path.write_text(text, encoding="utf-8")
         return cuebook.load_cues(path)
 
 
-def layers_from(text: str):
+def layers_from(text: str) -> dict[str, cuebook.Layer]:
     with tempfile.TemporaryDirectory() as tmp:
         path = Path(tmp) / "prompts.toml"
         path.write_text(text, encoding="utf-8")
@@ -104,6 +106,46 @@ class CommittedBookTest(unittest.TestCase):
                 rel = cue.placeholder.removeprefix("res://")
                 self.assertTrue((ROOT / rel).is_file(), cue.id)
 
+    def test_the_loops_all_share_one_shape(self) -> None:
+        book = cuebook.load_cues(ROOT / "audio-src" / "cues.toml")
+        loops = [c for c in book.cues.values() if c.loop]
+        self.assertEqual(len(loops), 10)
+        for c in loops:
+            self.assertEqual(
+                (c.model, c.duration_s, c.bus, c.variants, c.takes),
+                ("eleven_text_to_sound_v3", 12.0, "Ambient", 1, 2), c.id)
+
+    def test_blasts_cap_their_voices_and_ui_sits_on_interface(self) -> None:
+        book = cuebook.load_cues(ROOT / "audio-src" / "cues.toml")
+        for cue_id in ("explosion_large", "thunder", "gas_burst"):
+            self.assertEqual(book.cues[cue_id].max_voices, 2, cue_id)
+        for c in book.cues.values():
+            if c.category == "ui" or c.id == "order_ack":
+                self.assertEqual(c.bus, "Interface", c.id)
+        for cue_id in ("ui_click", "ui_select", "ui_formation", "ui_group"):
+            self.assertEqual(book.cues[cue_id].level_db, -10.0, cue_id)
+
+    def test_bed_gas_has_no_one_shot_placeholder(self) -> None:
+        book = cuebook.load_cues(ROOT / "audio-src" / "cues.toml")
+        self.assertIsNone(book.cues["bed_gas"].placeholder)
+
+    def test_every_prompt_is_non_empty_and_says_what_to_play(self) -> None:
+        book = cuebook.load_cues(ROOT / "audio-src" / "cues.toml")
+        layers = cuebook.load_layers(ROOT / "audio-src" / "music" / "prompts.toml")
+        negation = re.compile(r"\b(no|not|without|nothing|never|neither|nor)\b", re.IGNORECASE)
+        texts = [(c.id, c.prompt) for c in book.cues.values()] + [(i, l.prompt) for i, l in layers.items()]
+        texts += [("suffix", book.style_suffix), ("vocal_suffix", book.vocal_suffix)]
+        for name, text in texts:
+            self.assertTrue(text.strip(), name)
+            self.assertIsNone(negation.search(text), f"{name} names what to leave out")
+
+    def test_the_committed_suffixes_are_applied_by_category(self) -> None:
+        book = cuebook.load_cues(ROOT / "audio-src" / "cues.toml")
+        for cue_id in ("swing_blade", "ui_click", "bed_rain", "explosion_large"):
+            self.assertTrue(book.prompt_for(cue_id).endswith(book.style_suffix), cue_id)
+        for cue_id in ("death_husk", "groan_drifter"):
+            self.assertTrue(book.prompt_for(cue_id).endswith(book.vocal_suffix), cue_id)
+
     def test_the_committed_layers_share_a_key_and_tempo_line(self) -> None:
         layers = cuebook.load_layers(ROOT / "audio-src" / "music" / "prompts.toml")
         self.assertEqual(set(layers), {"riverside_calm", "riverside_combat"})
@@ -133,6 +175,56 @@ class RefusalTest(unittest.TestCase):
             with self.subTest(bad=bad):
                 with self.assertRaises(CueError):
                     book_from(cue_with(f"picks = [{bad}]"))
+
+    def test_an_id_longer_than_48_characters_is_refused(self) -> None:
+        cuebook.check_id("a" * 48, "id")
+        for size in (49, 300):
+            with self.assertRaises(CueError) as ctx:
+                cuebook.check_id("a" * size, "cue id")
+            self.assertNotIn("a" * 41, str(ctx.exception))
+            with self.assertRaises(CueError) as ctx:
+                book_from(HEAD + f'\n[cue.{"a" * size}]\ncategory = "melee"\nprompt = "p"\nduration_s = 1.0\n')
+            self.assertNotIn("a" * 41, str(ctx.exception))
+
+    def test_a_message_that_names_a_long_valid_id_clips_it(self) -> None:
+        name = "b" * 48
+        with self.assertRaises(CueError) as ctx:
+            book_from(HEAD + f'\n[cue.{name}]\ncategory = "melee"\npromt = "p"\nduration_s = 1.0\n')
+        self.assertNotIn("b" * 41, str(ctx.exception))
+        with self.assertRaises(CueError) as ctx:
+            layers_from(f'[layer.{name}]\nprompt = "p"\nlength_s = 2\nmodel = "music_v2"\ntakes = 3\n')
+        self.assertNotIn("b" * 41, str(ctx.exception))
+
+    def test_variants_cannot_exceed_takes(self) -> None:
+        with self.assertRaises(CueError):
+            book_from(cue_with("variants = 4\ntakes = 3"))
+        with self.assertRaises(CueError):
+            book_from(HEAD.replace("takes = 6", "takes = 2") + GOOD_CUE)
+        book_from(cue_with("variants = 3\ntakes = 3"))
+
+    def test_models_come_from_an_allowlist(self) -> None:
+        for bad in ("eleven_text_to_sound_v22", "eleven_text_to_sound_v1", "music_v2", "x"):
+            with self.subTest(bad=bad):
+                with self.assertRaises(CueError):
+                    book_from(cue_with(f'model = "{bad}"'))
+        book_from(cue_with('model = "eleven_text_to_sound_v3"'))
+        for bad in ("music_v22", "eleven_text_to_sound_v2", ""):
+            with self.subTest(layer=bad):
+                with self.assertRaises(CueError):
+                    layers_from(LayersTest.GOOD.replace("music_v2", bad))
+        layers_from(LayersTest.GOOD.replace("music_v2", "music_v2_5"))
+        with self.assertRaises(CueError):
+            book_from(HEAD.replace("eleven_text_to_sound_v2", "eleven_text_to_sound_v22") + GOOD_CUE)
+
+    def test_a_loop_must_use_the_v3_model(self) -> None:
+        loop = '\n[cue.march_x]\ncategory = "march"\nprompt = "x"\nduration_s = 12\nloop = true\nbus = "Ambient"\n'
+        with self.assertRaises(CueError):
+            book_from(HEAD + loop)
+        book_from(HEAD + loop + 'model = "eleven_text_to_sound_v3"\n')
+
+    def test_both_suffixes_are_required(self) -> None:
+        with self.assertRaises(CueError):
+            book_from((HEAD.replace('vocal_suffix = "close wordless cry"\n', "")) + GOOD_CUE)
 
     def test_an_error_never_echoes_more_than_40_characters(self) -> None:
         long = "A" * 200
@@ -208,6 +300,19 @@ class RefusalTest(unittest.TestCase):
             book_from(HEAD.replace('music = "stream"\n', "") + GOOD_CUE)
         with self.assertRaises(CueError):
             book_from(HEAD.replace('music = "stream"', 'music = "loud"') + GOOD_CUE)
+
+
+class PromptForTest(unittest.TestCase):
+    def test_a_melee_cue_gets_the_suffix_and_vocal_cues_get_the_vocal_suffix(self) -> None:
+        text = HEAD + GOOD_CUE
+        for name, category in (("death_husk", "death"), ("groan_husk", "groan")):
+            text += f'\n[cue.{name}]\ncategory = "{category}"\nprompt = "a moan"\nduration_s = 2.0\n'
+        book = book_from(text)
+        self.assertEqual(book.prompt_for("swing_blade"), "a steel blade cuts the air close foley")
+        self.assertEqual(book.prompt_for("death_husk"), "a moan close wordless cry")
+        self.assertEqual(book.prompt_for("groan_husk"), "a moan close wordless cry")
+        with self.assertRaises(KeyError):
+            book.prompt_for("nope")
 
 
 class DefaultsTest(unittest.TestCase):
