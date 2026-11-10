@@ -101,3 +101,19 @@ func test_an_order_is_acknowledged() -> void:
 	assert_true(main._selection.order_given.is_connected(
 		(main.find_child("Sfx", true, false) as SfxPlayer).acknowledge
 	))
+
+
+func test_the_viewer_follows_side_changed() -> void:
+	var main: MainView = _main()
+	var sfx: SfxPlayer = main.find_child("Sfx", true, false) as SfxPlayer
+	assert_eq(sfx.viewer(), UnitType.Faction.LIGHT)
+	main._selection.side_changed.emit(UnitType.Faction.DARK)
+	assert_eq(sfx.viewer(), UnitType.Faction.DARK)
+
+
+func test_a_dark_skirmish_starts_with_a_dark_viewer() -> void:
+	var main: MainView = (load("res://view/main.tscn") as PackedScene).instantiate() as MainView
+	main.launch = ViewFixtures.skirmish_launch(SkirmishRules.Mode.KING_OF_THE_HILL, UnitType.Faction.DARK, 10)
+	add_child_autofree(main)
+	var sfx: SfxPlayer = main.find_child("Sfx", true, false) as SfxPlayer
+	assert_eq(sfx.viewer(), UnitType.Faction.DARK)
