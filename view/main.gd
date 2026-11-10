@@ -267,10 +267,9 @@ func _ready() -> void:
 	add_child(_sfx)
 	_sfx.setup(world, _camera)
 	_sfx.enabled = audio_enabled
-	var audio_catalog: UnitCatalog = load(CATALOG_PATH) as UnitCatalog
 	var audio_types: Array[StringName] = launch.unit_types() if launch != null else art_types
 	audio_report = SoundRegistry.load_for(
-		audio_types, audio_catalog, SoundBank.shared(), SoundMap.shared(), [], 0, OS.has_feature("web"), audio_enabled
+		audio_types, world.catalog, SoundBank.shared(), SoundMap.shared(), [], 0, OS.has_feature("web"), audio_enabled
 	)
 	_ambience = Ambience.new()
 	_ambience.name = "Ambience"

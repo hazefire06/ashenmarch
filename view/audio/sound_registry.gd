@@ -4,6 +4,16 @@ extends RefCounted
 ## nothing decodes mid-battle (spec §4.3). Loops stream and are never listed.
 ## Desktop registers nothing but still reports the sizes. View only.
 
+## Instance ids of the streams already registered this session. Registration is
+## never released, and the shared bank holds the same stream objects across
+## missions, so each registers once (spec §4.3.1).
+static var _registered: Dictionary[int, bool] = {}
+
+
+## For tests: forget what was registered.
+static func reset_for_tests() -> void:
+	_registered.clear()
+
 
 ## The one-shot cues a launch can need: every declared cue that isn't a loop and
 ## isn't a death or groan, plus each type's own death and groan. Sorted, unique.
@@ -35,24 +45,29 @@ static func one_shot_cues(
 static func load_for(
 	types: Array[StringName], catalog: UnitCatalog, bank: SoundBank, map: SoundMap,
 	extra: Array[AudioStream] = [], extra_file_bytes: int = 0,
-	on_web: bool = OS.has_feature("web"), enabled: bool = true
+	on_web: bool = OS.has_feature("web"), enabled: bool = true,
+	registrar: Callable = AudioServer.register_stream_as_sample
 ) -> Dictionary:
 	var started: int = Time.get_ticks_msec()
 	var streams: Array[AudioStream] = []
+	var seen: Dictionary[int, bool] = {}
 	for id: StringName in one_shot_cues(types, catalog, bank, map):
 		for s: AudioStream in bank.cue(id).streams:
-			if s != null and not streams.has(s):
+			if s != null and not seen.has(s.get_instance_id()):
+				seen[s.get_instance_id()] = true
 				streams.append(s)
 	for s: AudioStream in extra:
-		if s != null and not streams.has(s):
+		if s != null and not seen.has(s.get_instance_id()):
+			seen[s.get_instance_id()] = true
 			streams.append(s)
 	var lengths: PackedFloat32Array = PackedFloat32Array()
 	var seconds: float = 0.0
 	for s: AudioStream in streams:
 		lengths.append(s.get_length())
 		seconds += s.get_length()
-		if on_web and enabled:
-			AudioServer.register_stream_as_sample(s)
+		if on_web and enabled and not _registered.has(s.get_instance_id()):
+			_registered[s.get_instance_id()] = true
+			registrar.call(s)
 	var file_bytes: int = extra_file_bytes
 	for c: SoundCue in bank.cues:
 		if c != null:

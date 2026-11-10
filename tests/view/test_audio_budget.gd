@@ -39,13 +39,60 @@ func test_a_launch_registers_its_types_and_the_shared_cues() -> void:
 	assert_eq(ids, sorted, "sorted")
 
 
-func test_registration_runs_only_on_web() -> void:
+var _registered: Array[AudioStream] = []
+
+
+func _record(s: AudioStream) -> void:
+	_registered.append(s)
+
+
+func before_each() -> void:
+	SoundRegistry.reset_for_tests()
+	_registered.clear()
+
+
+func _load(on_web: bool, enabled: bool, extra: Array[AudioStream] = [], extra_bytes: int = 0) -> Dictionary:
 	var types: Array[StringName] = [&"shieldman", &"husk"]
-	var off: Dictionary = SoundRegistry.load_for(types, _catalog(), SoundBank.shared(), SoundMap.shared(), [], 0, false)
-	assert_gt(off["seconds"], 0.0, "still reports the seconds")
-	assert_gt(off["file_bytes"], 0)
-	assert_eq((off["lengths"] as PackedFloat32Array).size(), (off["streams"] as Array).size())
+	return SoundRegistry.load_for(
+		types, _catalog(), SoundBank.shared(), SoundMap.shared(), extra, extra_bytes, on_web, enabled, _record
+	)
+
+
+func test_web_and_enabled_registers_each_stream_once() -> void:
+	var r: Dictionary = _load(true, true)
+	assert_gt((r["streams"] as Array).size(), 0)
+	assert_eq(_registered.size(), (r["streams"] as Array).size())
+	for s: AudioStream in r["streams"]:
+		assert_eq(_registered.count(s), 1)
+
+
+func test_a_second_load_registers_nothing_again_but_still_counts() -> void:
+	var first: Dictionary = _load(true, true)
+	var n: int = _registered.size()
+	var second: Dictionary = _load(true, true)
+	assert_eq(_registered.size(), n, "no stream registers twice")
+	assert_eq(second["seconds"], first["seconds"])
+	assert_eq((second["streams"] as Array).size(), (first["streams"] as Array).size())
+
+
+func test_audio_0_never_registers() -> void:
+	var r: Dictionary = _load(true, false)
+	assert_eq(_registered.size(), 0)
+	assert_gt(r["seconds"], 0.0, "still reports the seconds")
+
+
+func test_desktop_never_registers() -> void:
+	var r: Dictionary = _load(false, true)
+	assert_eq(_registered.size(), 0)
+	assert_gt(r["seconds"], 0.0)
+	assert_gt(r["file_bytes"], 0)
+	assert_eq((r["lengths"] as PackedFloat32Array).size(), (r["streams"] as Array).size())
+
+
+func test_extra_streams_join_and_their_file_bytes_add() -> void:
+	var base: Dictionary = _load(false, true)
 	var extra: Array[AudioStream] = [AudioStreamWAV.new()]
-	var on: Dictionary = SoundRegistry.load_for(types, _catalog(), SoundBank.shared(), SoundMap.shared(), extra, 1000, false, true)
-	assert_eq(on["file_bytes"], off["file_bytes"] + 1000)
-	assert_eq((on["streams"] as Array).size(), (off["streams"] as Array).size() + 1, "extra joins")
+	var r: Dictionary = _load(true, true, extra, 1000)
+	assert_eq(r["file_bytes"], base["file_bytes"] + 1000)
+	assert_eq((r["streams"] as Array).size(), (base["streams"] as Array).size() + 1)
+	assert_has(_registered, extra[0])
