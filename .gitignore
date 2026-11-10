@@ -29,3 +29,6 @@ __pycache__/
 
 # Interrupted downloads and manifest writes leave these behind.
 *.part
+
+# The sound bank sidecar (make audio-build writes it).
+audio-src/build/

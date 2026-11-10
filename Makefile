@@ -3,7 +3,7 @@ MAC_APP := build/mac/Ashenmarch.app
 WIN_EXE := build/windows/Ashenmarch.exe
 WEB_HTML := build/web/index.html
 
-.PHONY: pad-playthrough import run demo demo-projectiles demo-abilities demo-ai test check-sim export-mac export-windows export-web export-all serve-web sfx bench profile-sim golden-replays verify-replays verify-replays-app verify-replays-x86 maps fixtures playtest skirmish-playtest capture capture-skirmish hooks check-leaks check-layout test-art test-audio art-candidates art-render art-attach art-prop-candidates art-build art-probe budget budget-app
+.PHONY: pad-playthrough import run demo demo-projectiles demo-abilities demo-ai test check-sim export-mac export-windows export-web export-all serve-web sfx bench profile-sim golden-replays verify-replays verify-replays-app verify-replays-x86 maps fixtures playtest skirmish-playtest capture capture-skirmish hooks check-leaks check-layout test-art test-audio audio-build art-candidates art-render art-attach art-prop-candidates art-build art-probe budget budget-app
 
 # Builds the .godot/ import and class_name cache. A fresh clone has none, and
 # GUT can't resolve class_name types without it.
@@ -250,6 +250,14 @@ test-art:
 # Python tests for the audio pipeline (scripts/audio/). No network, no paid calls.
 test-audio:
 	python3 -m unittest discover -s scripts/audio -p "test_*.py"
+
+# Writes the sound bank sidecar from the cue book (audio-src/build/bank.json),
+# imports the audio, then builds data/audio/sound_bank.tres from it
+# (scripts/audio/process.py, build_sound_bank.gd). Free.
+audio-build:
+	python3 scripts/audio/process.py build
+	$(GODOT) --headless --path . --import
+	$(GODOT) --headless --path . -s scripts/audio/build_sound_bank.gd
 
 # Renders UNIT's Meshy candidates into art-src/units/UNIT/review/candidates.png (free).
 art-candidates:

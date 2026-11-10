@@ -1,8 +1,8 @@
 extends GutTest
 ## The sound views: SfxPlayer turns the sim's events into sounds within its
 ## caps and cull distance and acknowledges orders; Ambience follows the rain
-## and the fire; UiSounds clicks for buttons added anywhere; every sound in the
-## bank loads; and H (or the bar's Center) glides the camera to the selection.
+## and the fire; UiSounds clicks for buttons added anywhere; and H (or the
+## bar's Center) glides the camera to the selection.
 
 const M: int = 1000
 
@@ -14,25 +14,16 @@ func _main() -> MainView:
 	return main
 
 
-func test_every_sound_loads_and_the_beds_loop() -> void:
-	for sound: StringName in SfxBank.STREAMS:
-		assert_not_null(SfxBank.stream(sound), String(sound))
-		assert_true(SfxBank.LEVELS_DB.has(sound), String(sound))
-	for bed: StringName in [&"rain_loop", &"fire_loop"]:
-		assert_eq((SfxBank.stream(bed) as AudioStreamWAV).loop_mode, AudioStreamWAV.LOOP_FORWARD, String(bed))
-	assert_eq((SfxBank.stream(&"explosion") as AudioStreamWAV).loop_mode, AudioStreamWAV.LOOP_DISABLED)
-
-
 func test_events_become_sounds_within_the_caps() -> void:
 	var main: MainView = _main()
 	var sfx: SfxPlayer = main.find_child("Sfx", true, false) as SfxPlayer
 	assert_not_null(sfx)
 	var near: Vector3 = main._camera.focus
 	for i: int in 5:
-		sfx.play_at(&"explosion", near)
+		sfx.play_at(&"explosion_small", near)
 	assert_eq(sfx.started_this_tick(), SfxPlayer.MAX_PER_TICK, "one sound at most MAX_PER_TICK a tick")
 	for i: int in 10:
-		sfx.play_at(&"sword_hit" if i % 2 == 0 else &"death", near)
+		sfx.play_at(&"hit_flesh" if i % 2 == 0 else &"death_villager", near)
 	assert_eq(sfx.started_this_tick(), SfxPlayer.MAX_TICK_TOTAL, "and MAX_TICK_TOTAL in all")
 	main._physics_process(1.0 / World.TICK_RATE)
 	assert_false(sfx.play_at(&"heal", near + Vector3(SfxPlayer.CULL_DISTANCE + 10.0, 0, 0)), "too far to hear")

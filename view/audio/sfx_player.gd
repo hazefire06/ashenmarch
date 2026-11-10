@@ -24,9 +24,9 @@ const PITCH_SPREAD: float = 0.06
 const UNIT_SIZE: float = 40.0
 ## The sound a launch makes, by projectile type id.
 const LAUNCH_SOUNDS: Dictionary[StringName, StringName] = {
-	&"arrow": &"bow_release", &"fire_arrow": &"bow_release",
-	&"grenade": &"grenade_bounce", &"satchel": &"grenade_bounce",
-	&"gas_packet": &"grenade_bounce", &"body_part": &"grenade_bounce",
+	&"arrow": &"bow_release", &"fire_arrow": &"bow_release_fire",
+	&"grenade": &"throw_bottle", &"gas_packet": &"throw_bottle",
+	&"satchel": &"throw_heavy", &"body_part": &"throw_heavy",
 }
 
 var _world: World
@@ -37,6 +37,9 @@ var _interface: AudioStreamPlayer
 var _counts: Dictionary[StringName, int] = {}
 var _started: int = 0
 var _seen_clouds: Dictionary[int, bool] = {}
+## The bank every sound comes from, and the view-only RNG that picks variants.
+var bank: SoundBank = SoundBank.shared()
+var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
 
 func setup(world: World, camera: RtsCamera) -> void:
@@ -67,7 +70,7 @@ func after_step() -> void:
 	for cloud: GasCloud in _world.clouds:
 		if not _seen_clouds.has(cloud.id):
 			_seen_clouds[cloud.id] = true
-			play_at(&"gas_hiss", _meters(cloud.x, cloud.y, cloud.z))
+			play_at(&"gas_release", _meters(cloud.x, cloud.y, cloud.z))
 
 
 ## The player's order was sent.
@@ -90,8 +93,9 @@ func play_at(sound: StringName, at: Vector3) -> bool:
 		if Vector2(at.x - focus.x, at.z - focus.z).length() > CULL_DISTANCE:
 			return false
 	var voice: AudioStreamPlayer3D = _free_voice()
-	voice.stream = SfxBank.stream(sound)
-	voice.volume_db = SfxBank.level_db(sound)
+	var cue: SoundCue = bank.cue(sound)
+	voice.stream = bank.pick(sound, _rng)
+	voice.volume_db = cue.level_db if cue != null else 0.0
 	voice.pitch_scale = 1.0 + randf_range(-PITCH_SPREAD, PITCH_SPREAD)
 	voice.position = at
 	voice.play()
@@ -102,8 +106,9 @@ func play_at(sound: StringName, at: Vector3) -> bool:
 
 ## Plays `sound` unplaced, on the Interface bus.
 func play_ui(sound: StringName) -> void:
-	_interface.stream = SfxBank.stream(sound)
-	_interface.volume_db = SfxBank.level_db(sound)
+	var cue: SoundCue = bank.cue(sound)
+	_interface.stream = bank.pick(sound, _rng)
+	_interface.volume_db = cue.level_db if cue != null else 0.0
 	_interface.play()
 
 
@@ -116,7 +121,7 @@ func _on_combat(event: CombatEvent) -> void:
 		play_at(&"heal", at)
 		return
 	if event.kind == CombatEvent.Kind.KILL:
-		play_at(&"death", at)
+		play_at(&"death_villager", at)
 	var attacker: Unit = _world.get_unit(event.attacker_id)
 	if attacker == null:
 		return
@@ -125,9 +130,9 @@ func _on_combat(event: CombatEvent) -> void:
 		return
 	match event.kind:
 		CombatEvent.Kind.HIT, CombatEvent.Kind.KILL:
-			play_at(&"sword_hit", at)
+			play_at(&"hit_flesh", at)
 		CombatEvent.Kind.BLOCK:
-			play_at(&"shield_block", at)
+			play_at(&"block_shield", at)
 
 
 func _on_projectile(event: ProjectileEvent) -> void:
@@ -139,21 +144,21 @@ func _on_projectile(event: ProjectileEvent) -> void:
 			if shooter != null and sound != &"":
 				play_at(sound, _meters(shooter.x, shooter.y, shooter.z))
 		ProjectileEvent.Kind.STICK, ProjectileEvent.Kind.HIT:
-			play_at(&"arrow_impact", at)
+			play_at(&"arrow_thunk", at)
 		ProjectileEvent.Kind.BOUNCE, ProjectileEvent.Kind.DROP:
-			play_at(&"grenade_bounce", at)
+			play_at(&"bottle_clink", at)
 		ProjectileEvent.Kind.EXPLODE:
-			play_at(&"explosion", at)
+			play_at(&"explosion_small", at)
 		ProjectileEvent.Kind.FIZZLE:
-			play_at(&"gas_hiss", at)
+			play_at(&"fizzle_hiss", at)
 		ProjectileEvent.Kind.IGNITE:
-			play_at(&"fire_ignite", at)
+			play_at(&"fire_whoomp", at)
 		ProjectileEvent.Kind.BOLT:
-			play_at(&"lightning", at)
+			play_at(&"thunder", at)
 		ProjectileEvent.Kind.CANT_REACH:
-			play_ui(&"order_deny")
+			play_ui(&"ui_deny")
 		ProjectileEvent.Kind.PICK_UP:
-			play_at(&"ui_click", at)
+			play_at(&"grab", at)
 
 
 # A bow for arrows, a toss for anything thrown; nothing for lightning, a

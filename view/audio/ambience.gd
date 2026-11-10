@@ -22,8 +22,8 @@ var _fire_target: float = 0.0
 
 func setup(world: World) -> void:
 	_world = world
-	_rain = _bed(&"rain_loop")
-	_fire = _bed(&"fire_loop")
+	_rain = _bed(&"bed_rain")
+	_fire = _bed(&"bed_fire")
 	after_step()
 
 
@@ -45,8 +45,8 @@ func _process(delta: float) -> void:
 	var blend: float = 1.0 - exp(-EASE_RATE * delta)
 	_rain_level = lerpf(_rain_level, _rain_target, blend)
 	_fire_level = lerpf(_fire_level, _fire_target, blend)
-	_drive(_rain, _rain_level, &"rain_loop")
-	_drive(_fire, _fire_level, &"fire_loop")
+	_drive(_rain, _rain_level, &"bed_rain")
+	_drive(_fire, _fire_level, &"bed_fire")
 
 
 func _drive(player: AudioStreamPlayer, level: float, sound: StringName) -> void:
@@ -54,14 +54,15 @@ func _drive(player: AudioStreamPlayer, level: float, sound: StringName) -> void:
 		if player.playing:
 			player.stop()
 		return
-	player.volume_db = maxf(SfxBank.level_db(sound) + linear_to_db(level), SILENT_DB)
+	var cue: SoundCue = SoundBank.shared().cue(sound)
+	player.volume_db = maxf((cue.level_db if cue != null else 0.0) + linear_to_db(level), SILENT_DB)
 	if not player.playing:
 		player.play()
 
 
 func _bed(sound: StringName) -> AudioStreamPlayer:
 	var player: AudioStreamPlayer = AudioStreamPlayer.new()
-	player.stream = SfxBank.stream(sound)
+	player.stream = SoundBank.shared().pick(sound, RandomNumberGenerator.new())
 	player.bus = &"Ambient"
 	add_child(player)
 	return player
