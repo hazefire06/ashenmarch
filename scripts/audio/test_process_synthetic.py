@@ -69,6 +69,16 @@ class PlanTest(unittest.TestCase):
             self.assertGreater((Path(tmp) / "cue_1.wav").stat().st_size, 100000)
             self.assertTrue((Path(tmp) / "cue_1.wav.import").is_file())
 
+    @unittest.skipIf(shutil.which("ffmpeg") is None, "needs ffmpeg")
+    def test_a_real_loop_and_music_layer_render_as_ogg(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(process, "SYNTH_LOOP_S", 0.5), \
+                mock.patch.object(process, "SYNTH_MUSIC_S", 0.5):
+            for synth in (process._loop("bed_x"), process._music("layer_x")):
+                process.render(synth, Path(tmp))
+                data = (Path(tmp) / synth.name).read_bytes()
+                self.assertGreater(len(data), 0, synth.name)
+                self.assertEqual(data[:4], b"OggS", synth.name)
+
 
 if __name__ == "__main__":
     unittest.main()

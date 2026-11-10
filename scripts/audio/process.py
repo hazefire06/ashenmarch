@@ -41,7 +41,8 @@ SYNTH_ONESHOT_S: float = 3.2   # 54 cues x 3 x 3.2 s = 518 s, the finished bank'
 SYNTH_LOOP_S: float = 12.0
 SYNTH_MUSIC_S: float = 110.0
 SYNTH_RATE: int = 32000
-# Homebrew's ffmpeg has no libvorbis, only the experimental native encoder (stereo, 44.1 kHz, fixed bitrate).
+# Homebrew's ffmpeg has no libvorbis, only the experimental native encoder (stereo, 44.1 kHz, fixed
+# bitrate). Good enough for measurement-only files; real assets are encoded with oggenc (vorbis-tools).
 OGG_CODEC: list[str] = ["-ac", "2", "-ar", "44100", "-c:a", "vorbis", "-strict", "-2", "-b:a", "96k"]
 
 
@@ -168,11 +169,8 @@ def _import_text(name: str) -> str:
 
 
 def render(synth: Synth, out_dir: Path) -> None:
-    exe = shutil.which("ffmpeg")
-    if exe is None:
-        raise RuntimeError("ffmpeg not found (brew install ffmpeg)")
-    dest = out_dir / synth.name
-    subprocess.run([exe, "-hide_banner", "-loglevel", "error", "-y", *synth.source, *synth.codec, str(dest)], check=True)
+    dest = out_dir / synth.name  # synthetic() has already checked that ffmpeg exists
+    subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", *synth.source, *synth.codec, str(dest)], check=True)
     Path(str(dest) + ".import").write_text(_import_text(synth.name), encoding="utf-8")
 
 
