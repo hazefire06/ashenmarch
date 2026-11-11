@@ -82,7 +82,7 @@ class BuildTest(unittest.TestCase):
     def test_the_committed_book_builds_with_a_file_for_every_placeholder(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             out = Path(tmp) / "bank.json"
-            self.assertEqual(process.build(out), 0)
+            self.assertEqual(process.write_sidecar(out), 0)
             data = json.loads(out.read_text(encoding="utf-8"))
         self.assertEqual(len(data["cues"]), 66)
         self.assertEqual(len(data["lines"]), 37 + 4 + 3 + 4 + 3 + 5)
@@ -90,7 +90,7 @@ class BuildTest(unittest.TestCase):
     def test_the_sidecar_lists_every_voice_of_every_line(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             out = Path(tmp) / "bank.json"
-            self.assertEqual(process.build(out), 0)
+            self.assertEqual(process.write_sidecar(out), 0)
             lines = {str(x["id"]) + "/" + str(x["unit"]): x for x in json.loads(out.read_text(encoding="utf-8"))["lines"]}
         shield = lines["select_1/shieldman"]
         self.assertEqual(shield["voices"], {"shieldman_old": "", "shieldman_young": ""})

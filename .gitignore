@@ -34,3 +34,5 @@ __pycache__/
 audio-src/build/
 # Synthetic test audio for the Web measurement (make audio-synthetic); never committed.
 assets/audio/synthetic/
+# Audition previews and pages (process.py batch); local listening files.
+audio-src/audition/
