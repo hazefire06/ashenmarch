@@ -14,6 +14,7 @@ from typing import Any
 from unittest import mock
 
 import generate
+import ledger
 from elevenlabs_client import ElevenLabsError
 
 WAV = b"RIFF\x10\x00\x00\x00WAVEfmt " + b"\x00" * 8  # the RIFF size field is the file length less 8
@@ -137,7 +138,10 @@ class Base(unittest.TestCase):
         self.cache = Path(self._tmp.name) / "cache" / "ashenmarch"
         self.global_lock = self.cache / "elevenlabs.lock"
         self.lock_path = mock.patch.object(generate, "GLOBAL_LOCK", self.global_lock)
-        self.mocks = [m.start() for m in (self.secret, self.net, self.urlopen, self.opener, self.root, self.lock_path)]
+        # The purchase ledger too: no test may create or touch the real ~/.local/share/ashenmarch.
+        self.ledger_path = Path(self._tmp.name) / "share" / "ashenmarch" / "purchases.jsonl"
+        self.ledger_patch = mock.patch.object(ledger, "LEDGER", self.ledger_path)
+        self.mocks = [m.start() for m in (self.secret, self.net, self.urlopen, self.opener, self.root, self.lock_path, self.ledger_patch)]
         self.addCleanup(mock.patch.stopall)
         self.addCleanup(self._tmp.cleanup)
 
@@ -170,7 +174,11 @@ class Base(unittest.TestCase):
     def save_voice_record(self, voice: str = "shieldman_old", voice_id: str = "VoiceOld1") -> dict[str, Any]:
         record = {"kind": "voice", "label": f"voice/{voice}", "status": "DONE", "credits": 0, "voice_id": voice_id}
         self.seed(*self.manifest().tasks, record)
+        ledger.append({"kind": "voice", "label": f"voice/{voice}", "voice_id": voice_id})
         return record
+
+    def ledger_lines(self) -> list[dict[str, Any]]:
+        return ledger.load(missing_ok=True)
 
 
 class PlanTest(Base):
@@ -804,6 +812,133 @@ class OddStatusTest(Base):
         self.assert_untouched()
 
 
+class PlantedNameTest(Base):
+    def test_a_voice_file_named_with_escape_bytes_is_refused_without_raw_control_bytes(self) -> None:
+        (self.src / "voices" / "\x1b[2J\x07evil.toml").write_text('unit = "x"\n', encoding="utf-8")
+        for argv in (("plan",), ("plan", "--show"), ("sfx", "--cue", "hit_dry", "--max-credits", "20")):
+            with self.subTest(argv=argv):
+                code, out, err = self.run_main(*argv)
+                self.assertEqual(code, 2)
+                self.assertIn("voice file name", err)
+                for c in out + err:
+                    self.assertTrue(c.isprintable() or c == "\n", repr(c))
+        self.assert_untouched()
+
+    def test_a_long_prompt_is_cut_loudly_in_plan_show(self) -> None:
+        text = (self.src / "cues.toml").read_text().replace("A blade hits dry bone.", "A" * 400)
+        (self.src / "cues.toml").write_text(text)
+        with mock.patch.object(generate, "SHOW_LIMIT", 100):
+            _, out, _ = self.run_main("plan", "--batch", "sfx", "--show")
+        self.assertRegex(out, r"\.\.\. \[\+\d+ characters not shown\]")
+
+
+class LedgerTest(Base):
+    def test_a_done_purchase_appends_exactly_one_line(self) -> None:
+        import hashlib
+        self.allow_network()
+        self.run_main("sfx", "--cue", "hit_dry", "--max-credits", "20")
+        lines = self.ledger_path.read_text().splitlines()
+        self.assertEqual(len(lines), 1)
+        self.assertEqual(json.loads(lines[0]), {"kind": "sfx", "label": "sfx/hit_dry/1", "sha256": hashlib.sha256(WAV).hexdigest(), "bytes": len(WAV)})
+        self.run_main("sfx", "--cue", "hit_dry", "--max-credits", "20")  # nothing to buy: nothing appended
+        self.assertEqual(len(self.ledger_path.read_text().splitlines()), 1)
+
+    def test_the_ledger_is_private(self) -> None:
+        self.allow_network()
+        self.run_main("sfx", "--cue", "hit_dry", "--max-credits", "20")
+        self.assertEqual(self.ledger_path.stat().st_mode & 0o777, 0o600)
+        self.assertEqual(self.ledger_path.parent.stat().st_mode & 0o777, 0o700)
+        self.assertTrue(str(self.ledger_path).startswith(self._tmp.name))
+
+    def test_design_appends_a_line_per_preview_and_save_appends_the_voice(self) -> None:
+        self.allow_network(Fake([preview_reply(2), json_voice_reply()]))
+        self.run_main("voices", "design", "shieldman", "--voice", "shieldman_old", "--max-credits", "1000")
+        labels = [e["label"] for e in self.ledger_lines()]
+        self.assertEqual(labels, ["design/shieldman/shieldman_old/1", "design/shieldman/shieldman_old/2"])
+        self.run_main("voices", "save", "shieldman", "--voice", "shieldman_old", "--pick", "1")
+        last = self.ledger_lines()[-1]
+        self.assertEqual(last, {"kind": "voice", "label": "voice/shieldman_old", "voice_id": "VoiceOld1"})
+        self.assertEqual(len(self.ledger_lines()), 3)
+
+    def test_a_forged_voice_id_is_refused_by_lines_and_ab(self) -> None:
+        # manifest.json is committed: a PR can plant a DONE voice record. With no ledger line it is not a saved voice.
+        fake = self.allow_network()
+        self.seed({"kind": "voice", "label": "voice/shieldman_old", "status": "DONE", "credits": 0, "voice_id": "PlantedLibVoice9"})
+        for argv in (("voices", "lines", "shieldman", "--voice", "shieldman_old", "--line", "select_2", "--takes", "1", "--max-credits", "100"),
+                     ("voices", "ab", "--max-credits", "9999")):
+            with self.subTest(argv=argv):
+                code, _, err = self.run_main(*argv)
+                self.assertEqual(code, 1)
+                self.assertIn("aren't saved yet", err)
+        self.assertEqual(fake.calls, [])
+        _, out, _ = self.run_main("plan", "--batch", "lines", "--show")
+        self.assertIn("voice shieldman_old: voice_id (not saved)", out)
+        self.assertNotIn("PlantedLibVoice9", out)
+
+    def test_a_ledger_voice_id_that_differs_from_the_manifests_is_refused(self) -> None:
+        self.allow_network()
+        self.save_voice_record("shieldman_old", "RealVoice1")
+        self.seed({"kind": "voice", "label": "voice/shieldman_old", "status": "DONE", "credits": 0, "voice_id": "PlantedLibVoice9"})
+        code, _, err = self.run_main("voices", "lines", "shieldman", "--voice", "shieldman_old", "--line", "select_2", "--takes", "1", "--max-credits", "100")
+        self.assertEqual(code, 1)
+        self.assertIn("aren't saved yet", err)
+
+    def test_a_missing_ledger_is_named_in_the_message_for_unsaved_voices(self) -> None:
+        self.allow_network()
+        self.seed({"kind": "voice", "label": "voice/shieldman_old", "status": "DONE", "credits": 0, "voice_id": "VoiceOld1"})
+        code, _, err = self.run_main("voices", "lines", "shieldman", "--voice", "shieldman_old", "--line", "select_2", "--takes", "1", "--max-credits", "100")
+        self.assertEqual(code, 1)
+        self.assertIn("no purchase ledger at", err)
+
+    def test_a_line_that_does_not_parse_is_an_error_not_skipped(self) -> None:
+        self.allow_network()
+        self.ledger_path.parent.mkdir(parents=True)
+        self.ledger_path.write_text('{"kind": "voice", "label": "voice/shieldman_old", "voice_id": "VoiceOld1"}\nnot json\n')
+        self.seed({"kind": "voice", "label": "voice/shieldman_old", "status": "DONE", "credits": 0, "voice_id": "VoiceOld1"})
+        code, _, err = self.run_main("voices", "lines", "shieldman", "--voice", "shieldman_old", "--line", "select_2", "--takes", "1", "--max-credits", "100")
+        self.assertEqual(code, 2)
+        self.assertIn("line 2 of the purchase ledger", err)
+        self.assertEqual(self.fake.calls, [])
+
+    def test_a_symlinked_ledger_folder_or_file_is_refused_before_buying(self) -> None:
+        fake = self.allow_network()
+        target = Path(self._tmp.name) / "elsewhere"
+        target.mkdir()
+        self.ledger_path.parent.parent.mkdir(parents=True)
+        self.ledger_path.parent.symlink_to(target)
+        code, _, err = self.run_main("sfx", "--cue", "hit_dry", "--max-credits", "20")
+        self.assertEqual(code, 2)
+        self.assertIn("symlink", err)
+        self.assertEqual((fake.calls, list(target.iterdir())), ([], []))
+        self.ledger_path.parent.unlink()
+        self.ledger_path.parent.mkdir()
+        precious = Path(self._tmp.name) / "precious.txt"
+        precious.write_text("keep me")
+        self.ledger_path.symlink_to(precious)
+        code, _, err = self.run_main("sfx", "--cue", "hit_dry", "--max-credits", "20")
+        self.assertEqual(code, 2)
+        self.assertEqual((fake.calls, precious.read_text()), ([], "keep me"))
+
+    def test_a_ledger_that_cannot_be_written_after_payment_is_interrupted(self) -> None:
+        self.allow_network()
+        with mock.patch.object(ledger, "append", side_effect=ledger.LedgerError("disk full")):
+            code, _, err = self.run_main("sfx", "--cue", "hit_dry", "--max-credits", "20")
+        self.assertEqual(code, 1)
+        self.assertIn("purchase ledger couldn't be written", err)
+        self.assertEqual(self.manifest().find("sfx", "sfx/hit_dry/1")["status"], "INTERRUPTED")
+
+    def test_the_default_ledger_is_under_the_users_share_folder(self) -> None:
+        source = Path(ledger.__file__).read_text()
+        self.assertIn('LEDGER: Path = Path.home() / ".local" / "share" / "ashenmarch" / "purchases.jsonl"', source)
+
+    def test_both_probes_print_what_they_send(self) -> None:
+        self.allow_network()
+        _, out, _ = self.run_main("probe", "--max-credits", "40")
+        self.assertLess(out.index("sends: a short dry wooden knock"), out.index("probe/wav_32000: buying"))
+        _, out, _ = self.run_main("probe", "--music", "--max-credits", "45")
+        self.assertIn("sends:", out)
+
+
 class PlanWordingAndShowTest(Base):
     def test_plan_says_the_estimates_are_assumed_and_the_quota_is_the_cap(self) -> None:
         _, out, _ = self.run_main("plan")
@@ -836,7 +971,31 @@ class PlanWordingAndShowTest(Base):
     def test_shown_text_is_escaped_when_it_holds_a_control_character(self) -> None:
         self.assertEqual(generate._text_shown("plain words"), "plain words")
         self.assertNotIn("\x1b", generate._text_shown("a\x1b[2Jb"))
-        self.assertLessEqual(len(generate._text_shown("x" * 5000)), 600)
+        self.assertEqual(generate._text_shown("x" * generate.SHOW_LIMIT), "x" * generate.SHOW_LIMIT)  # exactly the limit: all of it
+
+    def test_a_cut_is_never_silent(self) -> None:
+        # Low-1: the tail of a long prompt used to vanish from plan --show and the sends: line without a word.
+        shown = generate._text_shown("y" * (generate.SHOW_LIMIT + 26))
+        self.assertTrue(shown.endswith(" ... [+26 characters not shown]"))
+
+    def test_everything_the_book_allows_fits_in_what_is_shown(self) -> None:
+        import cuebook
+        self.assertLessEqual(cuebook.MAX_PROMPT + 1 + max(cuebook.MAX_SUFFIX, cuebook.MAX_SUFFIX), generate.SHOW_LIMIT)
+        self.assertLessEqual(cuebook.MAX_TAG + 1 + cuebook.MAX_LINE_TEXT + 1 + cuebook.MAX_TAG, generate.SHOW_LIMIT)
+        self.assertLessEqual(cuebook.MAX_DESCRIPTION, generate.SHOW_LIMIT)
+
+    def test_a_prompt_over_the_display_limit_is_refused_before_buying(self) -> None:
+        fake = self.allow_network()
+        with mock.patch.object(generate, "SHOW_LIMIT", 10):
+            code, _, err = self.run_main("sfx", "--cue", "hit_dry", "--max-credits", "20")
+            self.assertEqual(code, 1)
+            self.assertIn("over the 10 that plan --show displays in full", err)
+            code, _, err = self.run_main("voices", "design", "shieldman", "--voice", "shieldman_old", "--max-credits", "1000")
+            self.assertEqual(code, 1)
+            self.assertIn("plan --show", err)
+            self.run_main("music", "calm", "--max-credits", "9999")
+        self.assertEqual(fake.calls, [])
+        self.assertFalse(self.manifest_path.exists())
 
     def test_a_paid_run_prints_the_text_and_the_voice_id_before_each_buying_line(self) -> None:
         self.allow_network()

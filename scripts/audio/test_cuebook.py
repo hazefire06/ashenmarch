@@ -205,6 +205,46 @@ class RefusalTest(unittest.TestCase):
             layers_from(f'[layer.calm]\nprompt = "{long_prompt}"\nlength_s = 20\nmodel = "music_v2"\ntakes = 3\n')
         self.assertEqual((cuebook.MAX_DESCRIPTION, cuebook.MAX_LINE_TEXT), (600, 300))
 
+    def test_a_long_style_suffix_is_refused_at_load(self) -> None:
+        # Low-1: the suffixes go to the paid API with every prompt, so they are capped like the prompts.
+        ok = "s" * cuebook.MAX_SUFFIX
+        long = "s" * (cuebook.MAX_SUFFIX + 1)
+        head = HEAD.replace('suffix = "close foley"', f'suffix = "{ok}"')
+        book_from(head + GOOD_CUE)
+        for key, old in (("suffix", 'suffix = "close foley"'), ("vocal_suffix", 'vocal_suffix = "close wordless cry"')):
+            with self.assertRaisesRegex(CueError, f"{key} is longer than 120"):
+                book_from(HEAD.replace(old, f'{key} = "{long}"') + GOOD_CUE)
+        self.assertEqual(cuebook.MAX_SUFFIX, 120)
+
+    def test_a_voice_file_name_is_checked_like_an_id(self) -> None:
+        # Low-2: the stem went into messages before anything checked it; ESC and BEL must not reach the terminal.
+        for name in ("\x1b[2Jevil.toml", "a\x07b.toml", "Upper.toml", "a b.toml", "a-b.toml"):
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as tmp:
+                folder = Path(tmp)
+                (folder / name).write_text('unit = "x"\n', encoding="utf-8")
+                with self.assertRaises(CueError) as caught:
+                    cuebook.load_voices(folder)
+                self.assertTrue(all(c.isprintable() for c in str(caught.exception)), repr(str(caught.exception)))
+        with tempfile.TemporaryDirectory() as tmp:  # _clan still passes
+            (Path(tmp) / "_clan.toml").write_text('unit = "_clan"\n[line.clan_1]\ntext = "Hi"\n', encoding="utf-8")
+            self.assertIn("_clan", cuebook.load_voices(Path(tmp)))
+
+    def test_printable_escapes_control_characters_and_keeps_newlines(self) -> None:
+        self.assertEqual(cuebook.printable("a\nb"), "a\nb")
+        self.assertEqual(cuebook.printable("a\x1b[2Jb\x07"), "a\\x1b[2Jb\\x07")
+
+    def test_a_bad_toml_path_with_a_control_character_is_escaped_in_the_message(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "\x1b[31mcues.toml"
+            path.write_bytes(b"\xff\xfe")
+            with self.assertRaises(CueError) as caught:
+                cuebook.load_cues(path)
+            self.assertNotIn("\x1b", str(caught.exception))
+            path.write_text("a = = 1", encoding="utf-8")
+            with self.assertRaises(CueError) as caught:
+                cuebook.load_cues(path)
+            self.assertNotIn("\x1b", str(caught.exception))
+
     def test_variants_cannot_exceed_takes(self) -> None:
         with self.assertRaises(CueError):
             book_from(cue_with("variants = 4\ntakes = 3"))

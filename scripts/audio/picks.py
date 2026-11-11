@@ -125,11 +125,11 @@ def picks_file(path: Path, cues_path: Path, layers_path: Path, voices_dir: Path,
         layers = cuebook.load_layers(layers_path)
         files = cuebook.load_voices(voices_dir)
     except (CueError, UnsafePath, OSError) as err:
-        print(f"process.py picks: {err if isinstance(err, (CueError, UnsafePath)) else 'a file can not be read'}", file=sys.stderr)
+        cuebook.emit(f"process.py picks: {err if isinstance(err, (CueError, UnsafePath)) else 'a file can not be read'}", file=sys.stderr)
         return 1
     kinds = [k for k in ("cues", "lines", "design") if isinstance(data, dict) and k in data]
     if len(kinds) != 1 or not isinstance(data[kinds[0]], dict) or not data[kinds[0]]:
-        print("process.py picks: the file must hold one of cues, lines or design, as a non-empty object", file=sys.stderr)
+        cuebook.emit("process.py picks: the file must hold one of cues, lines or design, as a non-empty object", file=sys.stderr)
         return 1
     batch = data.get("batch")
     errors: list[str] = []
@@ -150,20 +150,20 @@ def picks_file(path: Path, cues_path: Path, layers_path: Path, voices_dir: Path,
         else:
             _check_line_pick(ident, value, files, raw, line_picks, unit_of, errors)
     if errors:
-        print("process.py picks: nothing written:\n  " + "\n  ".join(errors), file=sys.stderr)
+        cuebook.emit("process.py picks: nothing written:\n  " + "\n  ".join(errors), file=sys.stderr)
         return 1
     try:
         writes = _picks_text(cues_path, layers_path, voices_dir, cue_picks, layer_picks, line_picks, unit_of, files)
     except (PicksError, OSError, UnicodeDecodeError) as err:
-        print(f"process.py picks: nothing written: {err}", file=sys.stderr)
+        cuebook.emit(f"process.py picks: nothing written: {err}", file=sys.stderr)
         return 1
     try:
         _write_all(writes)
     except OSError as err:
-        print(f"process.py picks: nothing written: {err.strerror or 'a file can not be written'}", file=sys.stderr)
+        cuebook.emit(f"process.py picks: nothing written: {err.strerror or 'a file can not be written'}", file=sys.stderr)
         return 1
     for target in writes:
-        print(f"wrote picks to {target.name}")
+        cuebook.emit(f"wrote picks to {target.name}")
     return 0
 
 
@@ -294,9 +294,9 @@ def _design_picks(design: object, batch: object, files: dict[str, cuebook.VoiceF
             else:
                 commands.append(f"python3 scripts/audio/generate.py voices save {unit} --voice {voice_id} --pick {n}")
     if errors:
-        print("process.py picks: nothing to run:\n  " + "\n  ".join(errors), file=sys.stderr)
+        cuebook.emit("process.py picks: nothing to run:\n  " + "\n  ".join(errors), file=sys.stderr)
         return 1
-    print("Nothing was written. To save these voices, run in Terminal.app:")
+    cuebook.emit("Nothing was written. To save these voices, run in Terminal.app:")
     for command in commands:
-        print(f"  {command}")
+        cuebook.emit(f"  {command}")
     return 0

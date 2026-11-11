@@ -58,6 +58,7 @@ LINE_KEYS: frozenset[str] = frozenset({"trigger", "text", "tag", "picks"})
 # A delivery tag goes to a paid TTS, so it is bracketed lowercase words and nothing else.
 TAG: re.Pattern[str] = re.compile(r"(\[[a-z]+( [a-z]+)*\] ?)*\[[a-z]+( [a-z]+)*\]")
 MAX_TAG: int = 40
+MAX_SUFFIX: int = 120  # the style suffixes go to the paid API with every prompt
 MAX_PROMPT: int = 500  # a cue's or a music layer's prompt goes to a paid API as written
 MAX_LINE_TEXT: int = 300
 MAX_DESCRIPTION: int = 600
@@ -135,6 +136,18 @@ class VoiceFile:
     lines: dict[str, Line]
 
 
+def printable(text: str) -> str:
+    """text with every control character escaped (\\x1b), newlines kept. File names come from a public repo, so a planted ESC or BEL
+    in one must not reach the terminal raw."""
+    return text if all(c.isprintable() or c == "\n" for c in text) else "".join(
+        c if c.isprintable() or c == "\n" else c.encode("unicode_escape").decode("ascii") for c in text)
+
+
+def emit(text: str = "", file: object = None, flush: bool = False) -> None:
+    """print(), through printable()."""
+    print(printable(text), file=file, flush=flush)  # type: ignore[call-overload]
+
+
 def _show(value: object) -> str:
     """A value for a message: its type for non-text, else at most 40 characters."""
     if not isinstance(value, str):
@@ -159,8 +172,8 @@ def load_cues(path: Path) -> CueBook:
     _only_keys(root, {"style", "defaults", "playback", "cue"}, "top level")
     style = _table(root, "style")
     _only_keys(style, {"suffix", "vocal_suffix"}, "[style]")
-    suffix = _text(style, "suffix", "[style]")
-    vocal_suffix = _text(style, "vocal_suffix", "[style]")
+    suffix = _suffix(style, "suffix")
+    vocal_suffix = _suffix(style, "vocal_suffix")
     defaults = _defaults(_table(root, "defaults"))
     playback = _playback(_table(root, "playback"))
     cues: dict[str, Cue] = {}
@@ -205,11 +218,11 @@ def _read(path: Path) -> dict[str, object]:
     try:
         text = path.read_text(encoding="utf-8")
     except (OSError, UnicodeDecodeError):  # their messages can carry file bytes
-        raise CueError(f"{path} can't be read as UTF-8 text") from None
+        raise CueError(f"{printable(str(path))} can't be read as UTF-8 text") from None
     try:
         return tomllib.loads(text)
     except tomllib.TOMLDecodeError as err:  # a duplicate key or table is refused here too
-        raise CueError(f"{path} isn't valid TOML: {str(err)[:MAX_SHOWN * 2]}") from None
+        raise CueError(f"{printable(str(path))} isn't valid TOML: {printable(str(err)[:MAX_SHOWN * 2])}") from None
 
 
 def _only_keys(table: dict[str, object], allowed: set[str] | frozenset[str], where: str) -> None:
@@ -222,6 +235,13 @@ def _table(parent: dict[str, object], key: str) -> dict[str, object]:
     value = parent.get(key)
     if not isinstance(value, dict):
         raise CueError(f"[{key}] is missing or isn't a table")
+    return value
+
+
+def _suffix(style: dict[str, object], key: str) -> str:
+    value = _text(style, key, "[style]")
+    if len(value) > MAX_SUFFIX:
+        raise CueError(f"[style]: {key} is longer than {MAX_SUFFIX} characters")
     return value
 
 
@@ -357,11 +377,12 @@ def load_voices(folder: Path) -> dict[str, VoiceFile]:
     """Every audio-src/voices/*.toml, keyed by unit ("_clan" for the clan-wide lines)."""
     paths = sorted(folder.glob("*.toml")) if folder.is_dir() else []
     if not paths:
-        raise CueError(f"{_clip(folder.name)}: no voice files")
+        raise CueError(f"{printable(_clip(folder.name))}: no voice files")
     files: dict[str, VoiceFile] = {}
     owner: dict[str, str] = {}  # voice id -> the unit that defines it; files are voice/<voice>/<line>.ogg
     raw: dict[str, tuple[dict[str, object], dict[str, object]]] = {}
     for path in paths:
+        check_id(path.stem, "voice file name")  # before the stem is used anywhere; _clan passes (an underscore is allowed)
         root = _read(path)
         where = f"[voice file {_clip(path.stem)}]"
         _only_keys(root, {"unit", "voice", "line"}, where)

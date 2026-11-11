@@ -17,6 +17,7 @@ from unittest import mock
 
 import assets
 import ffmpeg_io
+import ledger
 import licences
 import process
 from ffmpeg_io import AudioError
@@ -96,6 +97,10 @@ class Tree:
         (self.voices / "_clan.toml").write_text(CLAN, encoding="utf-8")
         self.licences = self.root / "assets" / "LICENSES.md"
         self.licences.write_text(LICENSES, encoding="utf-8")
+        # The purchase ledger lives in the temp tree: no test may create or touch the real ~/.local/share/ashenmarch.
+        self.ledger_path = self.root / "share" / "ashenmarch" / "purchases.jsonl"
+        self._ledger_patch = mock.patch.object(ledger, "LEDGER", self.ledger_path)
+        self._ledger_patch.start()
 
     def raw(self, rel: str, frames: array | None = None, channels: int = 1) -> Path:
         path = self.root / "audio-src" / "raw" / rel
@@ -106,6 +111,7 @@ class Tree:
             "kind": label.split("/", 1)[0], "label": label, "model": "eleven_text_to_sound_v2", "status": "DONE", "files": [rel],
             "sha256": hashlib.sha256(data).hexdigest(), "bytes": len(data)}
         self.manifest([])
+        ledger.append({"kind": label.split("/", 1)[0], "label": label, "sha256": hashlib.sha256(data).hexdigest(), "bytes": len(data)})
         return path
 
     def manifest(self, tasks: list[dict[str, object]]) -> None:
@@ -141,6 +147,7 @@ class Tree:
         return path
 
     def close(self) -> None:
+        self._ledger_patch.stop()
         self._tmp.cleanup()
 
 
@@ -266,12 +273,108 @@ class PurchaseProofTest(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertIn("two records", err)
 
+    def test_a_forged_record_with_a_matching_hash_but_no_ledger_line_is_refused(self) -> None:
+        # Low-3: manifest.json is committed, so a PR can forge a DONE record for a planted file. The ledger is outside the repo.
+        self.tree.ledger_path.write_text("")
+        before = self.tree.snapshot()
+        code, _, err = self.tree.build()
+        self.assertEqual(code, 1)
+        self.assertIn("purchase ledger", err)
+        self.assertIn("no line for it", err)
+        self.assertEqual(self.tree.snapshot(), before)
+        code, _, err = self.tree.run("batch", "melee")
+        self.assertEqual(code, 1)
+        self.assertIn("no line for it", err)
+
+    def test_a_ledger_line_for_another_hash_or_size_does_not_count(self) -> None:
+        line = json.loads(self.tree.ledger_path.read_text().splitlines()[0])
+        for change in ({"sha256": "0" * 64}, {"bytes": line["bytes"] + 1}, {"label": "sfx/hit_a/2"}, {"kind": "music"}):
+            with self.subTest(change=change):
+                self.tree.ledger_path.write_text(json.dumps({**line, **change}) + "\n")
+                self.assertEqual(self.tree.build()[0], 1)
+
+    def test_a_missing_ledger_is_a_clear_refusal(self) -> None:
+        self.tree.ledger_path.unlink()
+        for code, _, err in (self.tree.build(), self.tree.run("batch", "melee")):
+            self.assertEqual(code, 1)
+            self.assertIn("no purchase ledger at", err)
+            self.assertIn("on this Mac", err)
+
+    def test_a_ledger_line_that_does_not_parse_is_an_error(self) -> None:
+        self.tree.ledger_path.write_text(self.tree.ledger_path.read_text() + "garbage\n")
+        code, _, err = self.tree.build()
+        self.assertEqual(code, 1)
+        self.assertIn("line 2 of the purchase ledger", err)
+
+    def test_a_tree_with_nothing_to_verify_needs_no_ledger(self) -> None:
+        empty = Tree()  # a raw file exists but nothing is picked, so nothing is verified
+        self.addCleanup(empty.close)
+        empty.raw("sfx/hit_a/1.wav")
+        empty.ledger_path.unlink()
+        self.assertEqual(empty.build()[0], 0)
+
+    def test_a_symlinked_ledger_folder_is_refused(self) -> None:
+        elsewhere = self.tree.root / "elsewhere"
+        elsewhere.mkdir()
+        shutil.copy(self.tree.ledger_path, elsewhere / "purchases.jsonl")
+        shutil.rmtree(self.tree.ledger_path.parent)
+        os.symlink(elsewhere, self.tree.ledger_path.parent)
+        code, _, err = self.tree.build()
+        self.assertEqual(code, 1)
+        self.assertIn("symlink", err)
+
+    def test_a_symlinked_ledger_file_is_refused(self) -> None:
+        real = self.tree.root / "real.jsonl"
+        shutil.move(str(self.tree.ledger_path), str(real))
+        os.symlink(real, self.tree.ledger_path)
+        self.assertEqual(self.tree.build()[0], 1)
+
     def test_the_licence_row_needs_the_record(self) -> None:
         asset = assets.plan_assets(self.tree.cues, self.tree.layers, self.tree.voices, self.tree.root)[0]
         with self.assertRaisesRegex(Exception, "no DONE purchase record with a model"):
             licences.licence_rows([asset], self.tree.root / "nowhere.json")
 
 
+class PlantedNamesTest(unittest.TestCase):
+    """Low-2: a file name from a public repo reaches messages, so no raw control byte may."""
+
+    def setUp(self) -> None:
+        self.tree = Tree()
+        self.addCleanup(self.tree.close)
+
+    def assert_clean(self, *texts: str) -> None:
+        for text in texts:
+            for c in text:
+                self.assertTrue(c.isprintable() or c == "\n", repr(c))
+
+    def test_an_orphan_with_escape_bytes_in_its_name_is_listed_escaped(self) -> None:
+        orphan = self.tree.root / "assets" / "audio" / "sfx" / "\x1b[2J\x07old.wav"
+        orphan.parent.mkdir(parents=True)
+        orphan.write_bytes(b"x")
+        code, out, err = self.tree.build()
+        self.assertEqual(code, 0)
+        self.assertIn("orphaned:", out)
+        self.assertIn("\\x1b", out)
+        self.assert_clean(out, err)
+
+    def test_a_symlink_with_escape_bytes_in_its_name_is_reported_escaped(self) -> None:
+        folder = self.tree.root / "assets" / "audio" / "sfx"
+        folder.mkdir(parents=True)
+        os.symlink(self.tree.root, folder / "\x1b[31mtrap")
+        code, out, err = self.tree.build()
+        self.assertEqual(code, 1)
+        self.assertIn("symlink", err)
+        self.assert_clean(out, err)
+
+    def test_a_voice_file_with_escape_bytes_in_its_name_stops_build_batch_and_picks(self) -> None:
+        (self.tree.voices / "\x1b[2Jevil.toml").write_text('unit = "x"\n', encoding="utf-8")
+        picks = self.tree.write_picks({"batch": "melee", "cues": {"hit_a": [1]}})
+        for code, out, err in (self.tree.build(), self.tree.run("batch", "melee"), self.tree.run("picks_file", picks)):
+            self.assertEqual(code, 1)
+            self.assert_clean(out, err)
+
+
+@unittest.skipUnless(HAS_TOOLS, "ffmpeg and oggenc needed")
 class PicksCommandTest(unittest.TestCase):
     def setUp(self) -> None:
         self.tree = Tree()

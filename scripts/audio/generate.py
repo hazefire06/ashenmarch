@@ -46,6 +46,7 @@ sys.path.insert(0, str(HERE.parent / "art"))  # secrets_file and manifest live w
 sys.path.insert(0, str(HERE))
 
 import cuebook  # noqa: E402
+import ledger  # noqa: E402
 from cuebook import CLAN, CueBook, CueError, Layer, VoiceFile, check_id  # noqa: E402
 from elevenlabs_client import ID as VOICE_ID  # noqa: E402
 from elevenlabs_client import FORMATS, ElevenLabsClient, ElevenLabsError, http_transport  # noqa: E402
@@ -65,6 +66,7 @@ MUSIC_CREDITS_PER_MIN = 900
 SPEECH_CREDITS_PER_CHAR = 1
 DESIGN_CREDITS_ASSUMED = 1000  # per design call; the real cost is unknown and the key's quota caps it
 PROBE_CREDITS = 40
+PROBE_SFX_PROMPT = "a short dry wooden knock"
 PROBE_MUSIC_MS = 3000
 PROBE_MUSIC_CREDITS = math.ceil(PROBE_MUSIC_MS / 1000 * MUSIC_CREDITS_PER_MIN / 60)  # 45
 PROBE_MUSIC_MODEL = "music_v2"
@@ -117,7 +119,7 @@ class Job:
 
 
 def _say(line: str) -> None:
-    print(line, flush=True)
+    cuebook.emit(line, flush=True)
 
 
 def _now() -> int:
@@ -206,10 +208,22 @@ def _save_audio(manifest: Manifest, started: dict[str, Any], raw: Path, label: s
         raise InterruptedRun(f"{label!r}: the call was paid but the audio couldn't be saved ({why}). {HOW_TO_RESOLVE}") from None
 
 
-def _text_shown(text: object, limit: int = 600) -> str:
-    """Text for the terminal: as it will be sent, but escaped if it holds a control character, so a planted prompt can't redraw the screen."""
-    text = str(text)[:limit]
-    return text if text.isprintable() else ascii(text)
+SHOW_LIMIT = 1000  # what plan --show and the "sends:" line display in full; longer text is refused before a purchase, never cut
+
+
+def _text_shown(text: object, limit: int | None = None) -> str:
+    """Text for the terminal, escaped if it holds a control character so a planted prompt can't redraw the screen. If it is over `limit`
+    the cut says so; a paid run refuses such text first (_check_shown), so a purchase never sends more than was displayed."""
+    text = str(text)
+    limit = SHOW_LIMIT if limit is None else limit
+    cut = f" ... [+{len(text) - limit} characters not shown]" if len(text) > limit else ""
+    return cuebook.printable(text[:limit]) + cut
+
+
+def _check_shown(label: str, text: str) -> None:
+    if len(text) > SHOW_LIMIT:
+        raise BlockedError(f"{label}: the text to send is {len(text)} characters, over the {SHOW_LIMIT} that plan --show displays in full; "
+                           "shorten the prompt or the style suffix")
 
 
 def _sends(manifest: Manifest, job: Job) -> list[str]:
@@ -218,6 +232,15 @@ def _sends(manifest: Manifest, job: Job) -> list[str]:
     if job.voice is not None:
         lines.append(f"  voice {job.voice}: voice_id {_voice_id(manifest, job.voice) or '(not saved)'}")
     return lines
+
+
+def _ledger_add(manifest: Manifest, started: dict[str, Any], entry: dict[str, Any]) -> None:
+    """One ledger line per DONE purchase. If it can't be written the call was paid: INTERRUPTED, and the run stops."""
+    try:
+        ledger.append(entry)
+    except (OSError, ledger.LedgerError) as error:
+        _store(manifest, {**started, "status": "INTERRUPTED"})
+        raise InterruptedRun(f"{started['label']!r}: the call was paid but the purchase ledger couldn't be written ({_local_error(error) if isinstance(error, OSError) else error}). {HOW_TO_RESOLVE}") from None
 
 
 def _local_error(error: Exception) -> str:
@@ -367,9 +390,13 @@ def read_format(src: Path) -> str:
 # ---- jobs -----------------------------------------------------------------------------------------------------------
 
 def _voice_id(manifest: Manifest, voice: str) -> str | None:
+    """The saved voice's id, if the manifest says it is saved AND the purchase ledger (outside the repo) has a line that saved that id.
+    manifest.json is committed, so a PR could plant a voice id there that points at a library voice."""
     record = manifest.find("voice", f"voice/{voice}")
     value = record.get("voice_id") if record is not None and _bought(record) else None
-    return value if isinstance(value, str) and VOICE_ID.fullmatch(value) else None
+    if not isinstance(value, str) or not VOICE_ID.fullmatch(value):
+        return None
+    return value if ledger.has_voice(ledger.load(missing_ok=True), voice, value) else None
 
 
 def sfx_jobs(book: CueBook, cue_ids: list[str]) -> list[Job]:
@@ -462,7 +489,10 @@ def _check_budget(what: str, cost: int, max_credits: int) -> None:
 def _check_voices(manifest: Manifest, jobs: list[Job]) -> None:
     missing = sorted({j.voice for j in jobs if j.voice is not None and _voice_id(manifest, j.voice) is None})
     if missing:
-        raise BlockedError(f"these voices aren't saved yet: {', '.join(missing)}. Run voices design, listen, then voices save --pick N for each.")
+        extra = ""
+        if not ledger.LEDGER.exists():
+            extra = f" (there is no purchase ledger at {cuebook.printable(str(ledger.LEDGER))}; a voice counts as saved only if this Mac saved it)"
+        raise BlockedError(f"these voices aren't saved yet: {', '.join(missing)}{extra}. Run voices design, listen, then voices save --pick N for each.")
 
 
 def run_jobs(manifest: Manifest, get_client: GetClient, raw: Path, fmt: str, jobs: list[Job], max_credits: int, say: Say = _say) -> int:
@@ -476,6 +506,8 @@ def run_jobs(manifest: Manifest, get_client: GetClient, raw: Path, fmt: str, job
     _check_voices(manifest, todo)
     for job in todo:
         _check_dest(raw, job.label)
+        _check_shown(job.label, str(job.fields.get("prompt", job.fields.get("text", ""))))
+    ledger.prepare()  # before a purchase: a ledger that can't be written would lose a paid take
     client = get_client(fmt)
     for job in todo:
         for line in _sends(manifest, job):
@@ -484,6 +516,7 @@ def run_jobs(manifest: Manifest, get_client: GetClient, raw: Path, fmt: str, job
         record = {"kind": job.kind, "label": job.label, "model": job.model, "format": fmt, **job.fields}
         data = _buy(manifest, record, lambda job=job: job.call(client))
         rel = _save_audio(manifest, record, raw, job.label, data)
+        _ledger_add(manifest, record, {"kind": job.kind, "label": job.label, **fingerprint(data)})
         _done(manifest, record, job.credits, [rel], **fingerprint(data))
         say(f"{job.label}: saved raw/{rel}")
     return len(todo)
@@ -500,6 +533,8 @@ def run_design(manifest: Manifest, get_client: GetClient, raw: Path, fmt: str, u
         raise BlockedError(f"{unit}/{voice} has had {MAX_DESIGN_ROUNDS} rounds of previews, the most this script buys; pick one of them")
     label = design_label(unit, voice, rounds + 1)
     _check_budget(f"designing {voice}", DESIGN_CREDITS_ASSUMED, max_credits)
+    _check_shown(label, description)
+    ledger.prepare()
     first = _last_preview(manifest, unit, voice) + 1  # numbers continue, so --pick N stays unique across rounds
     for n in range(first, first + 10):  # the client takes at most 10 previews
         _check_dest(raw, f"design/{unit}/{voice}/{n}")
@@ -514,6 +549,7 @@ def run_design(manifest: Manifest, get_client: GetClient, raw: Path, fmt: str, u
         preview_label = f"design/{unit}/{voice}/{n}"
         rel = _save_audio(manifest, started, raw, preview_label, audio)  # the audio only: the JSON the previews came in is never kept
         files.append(rel)
+        _ledger_add(manifest, started, {"kind": "design", "label": preview_label, **fingerprint(audio)})
         _done(manifest, {"kind": "design", "label": preview_label, "model": "eleven_ttv_v3", "generated_voice_id": generated_id}, 0, [rel],
               **fingerprint(audio))
         say(f"{preview_label}: saved raw/{rel}")
@@ -531,11 +567,14 @@ def run_save(manifest: Manifest, get_client: GetClient, fmt: str, unit: str, voi
     generated = preview.get("generated_voice_id") if preview is not None and _bought(preview) else None
     if not isinstance(generated, str):
         raise BlockedError(f"preview {pick} of {voice} was never made; run voices design {unit} --voice {voice} first")
+    _check_shown(label, description)
+    ledger.prepare()
     client = get_client(fmt)
     say(f"  sends: voice name {voice}, {_text_shown(description)}")
     say(f"{label}: saving preview {pick}")
     record = {"kind": "voice", "label": label, "generated_voice_id": generated}
     voice_id = _buy(manifest, record, lambda: client.save_voice(voice, description, generated))
+    _ledger_add(manifest, record, {"kind": "voice", "label": label, "voice_id": voice_id})
     _done(manifest, record, 0, [], voice_id=voice_id)
     say(f"{label}: saved as {voice_id}")
     return True
@@ -551,8 +590,10 @@ def run_probe(manifest: Manifest, get_client: GetClient, max_credits: int, say: 
     _check_budget("the probe needs", PROBE_CREDITS, max_credits)
     client = get_client(PROBE_FORMAT)
     record = {"kind": "probe", "label": label, "model": "eleven_text_to_sound_v2", "format": PROBE_FORMAT}
+    say(f"  sends: {PROBE_SFX_PROMPT}")
+    say(f"{label}: buying ({PROBE_CREDITS} credits, 1 s)")
     try:
-        data = _buy(manifest, record, lambda: client.sound("a short dry wooden knock", 1.0, 0.5, False, "eleven_text_to_sound_v2"))
+        data = _buy(manifest, record, lambda: client.sound(PROBE_SFX_PROMPT, 1.0, 0.5, False, "eleven_text_to_sound_v2"))
     except ElevenLabsError as error:  # only a definite rejection gets here
         text = str(error).lower()
         if any(word in text for word in ("format", "wav", "32000")):
@@ -788,11 +829,11 @@ def _voices(args: argparse.Namespace, files: dict[str, VoiceFile], manifest: Man
 def main(argv: list[str] | None = None) -> int:
     args = _build_parser().parse_args(argv)
     if getattr(args, "max_credits", 0) < 0:
-        print("generate.py: --max-credits can't be negative", file=sys.stderr)
+        cuebook.emit("generate.py: --max-credits can't be negative", file=sys.stderr)
         return 2
     unsafe = _unsafe_audio_src()
     if unsafe:
-        print(f"generate.py: {unsafe}", file=sys.stderr)
+        cuebook.emit(f"generate.py: {unsafe}", file=sys.stderr)
         return 2
     try:
         with contextlib.ExitStack() as stack:
@@ -801,13 +842,13 @@ def main(argv: list[str] | None = None) -> int:
                 stack.enter_context(_locked(AUDIO_SRC / LOCK_NAME))
             return _run(args)
     except (ElevenLabsError, BudgetError, BlockedError, InterruptedRun) as error:
-        print(f"generate.py: {error}", file=sys.stderr)
+        cuebook.emit(f"generate.py: {error}", file=sys.stderr)
         return 1
     except (CueError, ManifestError, SecretsError, UnsafePath) as error:
-        print(f"generate.py: {error}", file=sys.stderr)
+        cuebook.emit(f"generate.py: {error}", file=sys.stderr)
         return 2
     except OSError as error:  # the client turns network failures into ElevenLabsError, so this is local file trouble
-        print(f"generate.py: {_local_error(error)}", file=sys.stderr)
+        cuebook.emit(f"generate.py: {_local_error(error)}", file=sys.stderr)
         return 2 if args.command == "plan" else 1
 
 
@@ -818,7 +859,7 @@ def _run(args: argparse.Namespace) -> int:
     manifest = Manifest.load(AUDIO_SRC / "manifest.json", allowed=AUDIO_FIELDS)
     fmt = read_format(AUDIO_SRC)
     if args.command == "plan":  # the free command returns before anything looks for the key
-        print(plan_text(book, layers, files, manifest, fmt, args.batch, args.show))
+        cuebook.emit(plan_text(book, layers, files, manifest, fmt, args.batch, args.show))
         return 0
 
     def get_client(output_format: str) -> ElevenLabsClient:
@@ -828,7 +869,7 @@ def _run(args: argparse.Namespace) -> int:
         _dispatch(args, book, layers, files, manifest, get_client, AUDIO_SRC / "raw", fmt)
     except SystemExit as stop:  # the probe was refused: it has said why
         return int(stop.code or 0) if isinstance(stop.code, int) else 1
-    print(f"credits spent so far: {manifest.credits_spent()}")
+    cuebook.emit(f"credits spent so far: {manifest.credits_spent()}")
     return 0
 
 

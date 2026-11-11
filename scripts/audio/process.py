@@ -33,6 +33,7 @@ import assets
 import audition
 import cuebook
 import ffmpeg_io
+import ledger
 import licences
 import picks as picks_mod
 from assets import AUDITION_DIR, GUARDED, LOOP_FILE, MUSIC_FILE, SFX_FILE, VOICE_FILE, UnsafePath, _import_text
@@ -125,11 +126,11 @@ def write_sidecar(
     try:
         data = build_sidecar(cues_path, layers_path, root, voices_dir)
     except CueError as err:
-        print(f"process.py build: {err}", file=sys.stderr)
+        cuebook.emit(f"process.py build: {err}", file=sys.stderr)
         return 1
     sidecar.parent.mkdir(parents=True, exist_ok=True)
     sidecar.write_text(json.dumps(data, indent=1) + "\n", encoding="utf-8")
-    print(f"wrote {sidecar} ({len(data['cues'])} cues, {len(data['lines'])} lines)")  # type: ignore[arg-type]
+    cuebook.emit(f"wrote {sidecar} ({len(data['cues'])} cues, {len(data['lines'])} lines)")  # type: ignore[arg-type]
     return 0
 
 
@@ -219,15 +220,15 @@ def synthetic(sidecar: Path, out_dir: Path = SYNTH_DIR, cues_path: Path = CUES, 
         assets.check_no_symlinks(root, (*GUARDED, "audio-src/build"))
         assets.check_inputs(root, cues_path, layers_path, VOICES)
     except UnsafePath as err:
-        print(f"process.py synthetic: {err}", file=sys.stderr)
+        cuebook.emit(f"process.py synthetic: {err}", file=sys.stderr)
         return 1
     if shutil.which("ffmpeg") is None:
-        print("process.py synthetic: ffmpeg not found (brew install ffmpeg)", file=sys.stderr)
+        cuebook.emit("process.py synthetic: ffmpeg not found (brew install ffmpeg)", file=sys.stderr)
         return 1
     try:
         synths, data = synthetic_plan(cues_path, layers_path)
     except CueError as err:
-        print(f"process.py synthetic: {err}", file=sys.stderr)
+        cuebook.emit(f"process.py synthetic: {err}", file=sys.stderr)
         return 1
     try:
         out_dir.mkdir(parents=True, exist_ok=True)
@@ -236,11 +237,11 @@ def synthetic(sidecar: Path, out_dir: Path = SYNTH_DIR, cues_path: Path = CUES, 
         sidecar.parent.mkdir(parents=True, exist_ok=True)
         assets.write_bytes_nofollow(sidecar, (json.dumps(data, indent=1) + "\n").encode("utf-8"))
     except (OSError, subprocess.CalledProcessError) as err:
-        print(f"process.py synthetic: {err.strerror if isinstance(err, OSError) and err.strerror else 'a render failed'}"
+        cuebook.emit(f"process.py synthetic: {err.strerror if isinstance(err, OSError) and err.strerror else 'a render failed'}"
               f"{': ' + str(err.filename) if isinstance(err, OSError) and err.filename else ''}", file=sys.stderr)
         return 1
     one_shot_s = sum(x.seconds for x in synths if x.name.endswith(".wav"))
-    print(f"wrote {len(synths)} synthetic files ({one_shot_s:.0f} s of one-shots) and {sidecar} ({len(data['cues'])} cues)")  # type: ignore[arg-type]
+    cuebook.emit(f"wrote {len(synths)} synthetic files ({one_shot_s:.0f} s of one-shots) and {sidecar} ({len(data['cues'])} cues)")  # type: ignore[arg-type]
     return 0
 
 
@@ -269,16 +270,16 @@ def build(
         assets.render_assets(todo, root, stamps)
         for asset in plan:
             if assets.ensure_import(root / asset.dest, assets.import_params(asset)):
-                print(f"wrote {asset.dest}.import")
+                cuebook.emit(f"wrote {asset.dest}.import")
         placeholders = {c.placeholder for c in cuebook.load_cues(cues_path).cues.values() if c.placeholder}
         for orphan in assets.orphans(root, plan, placeholders):
-            print(f"orphaned: {orphan} (no current pick makes it; delete it if it is stale)")
+            cuebook.emit(f"orphaned: {orphan} (no current pick makes it; delete it if it is stale)")
     except (CueError, UnsafePath, ToolMissing, AudioError, OSError) as err:
-        print(f"process.py build: {err}", file=sys.stderr)
+        cuebook.emit(f"process.py build: {err}", file=sys.stderr)
         return 1
     if new_text != text:
         licence_path.write_text(new_text, encoding="utf-8")
-        print(f"wrote {licence_path.relative_to(root)} ({len(plan)} audio rows)")
+        cuebook.emit(f"wrote {licence_path.relative_to(root)} ({len(plan)} audio rows)")
     return write_sidecar(sidecar, cues_path, layers_path, root, voices_dir)
 
 
@@ -341,8 +342,9 @@ def _batch_work(name: str, cues_path: Path, layers_path: Path, voices_dir: Path,
         raise CueError(f"batch {name!r}: use a category ({', '.join(c for c in cuebook.CATEGORIES if c not in cuebook.LOOP_CATEGORIES)}), "
                        "loops, music, voices-<unit>, design-<unit> or ab")
     records = assets.load_records(root / assets.MANIFEST)
+    ledger_lines = ledger.lazy()
     for _, path, _ in work:
-        assets.verify_raw(path, root, records)  # a file nobody bought is never decoded
+        assets.verify_raw(path, root, records, ledger_lines)  # a file nobody bought is never decoded
     return work
 
 
@@ -360,15 +362,15 @@ def batch(name: str, cues_path: Path = CUES, layers_path: Path = LAYERS, voices_
             try:
                 frames, rate, channels = assets.render_take(source, kind)
             except AudioError as err:
-                print(f"skipped {take.id} take {take.take}: {err}", file=sys.stderr)
+                cuebook.emit(f"skipped {take.id} take {take.take}: {err}", file=sys.stderr)
                 continue
             ffmpeg_io.write_wav(frames, rate, channels, out / take.file)
             done.append(take)
         (out / f"{name}.html").write_text(audition.page(name, done, NOTES.get(name, "")), encoding="utf-8")
     except (CueError, UnsafePath, ToolMissing, AudioError, OSError) as err:
-        print(f"process.py batch: {err}", file=sys.stderr)
+        cuebook.emit(f"process.py batch: {err}", file=sys.stderr)
         return 1
-    print(f"wrote {len(done)} previews and {out / (name + '.html')}")
+    cuebook.emit(f"wrote {len(done)} previews and {out / (name + '.html')}")
     return 0
 
 

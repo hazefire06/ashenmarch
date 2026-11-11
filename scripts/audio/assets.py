@@ -12,12 +12,15 @@ import json
 import os
 import stat
 from array import array
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 import cuebook
 import dsp
 import ffmpeg_io
+import ledger
 from cuebook import CueError
 from ffmpeg_io import AudioError
 
@@ -66,12 +69,12 @@ def check_no_symlinks(root: Path, rels: tuple[str, ...] = GUARDED) -> None:
             except FileNotFoundError:
                 break  # nothing below a missing folder can be a link
             if is_link:
-                raise UnsafePath(f"{here.relative_to(root)} is a symlink; replace it with a real folder or file")
+                raise UnsafePath(f"{cuebook.printable(str(here.relative_to(root)))} is a symlink; replace it with a real folder or file")
         else:
             for folder, names, files in os.walk(here, followlinks=False):
                 for entry in sorted(names + files):
                     if stat.S_ISLNK(os.lstat(os.path.join(folder, entry)).st_mode):
-                        raise UnsafePath(f"{Path(folder, entry).relative_to(root)} is a symlink; replace it with a real folder or file")
+                        raise UnsafePath(f"{cuebook.printable(str(Path(folder, entry).relative_to(root)))} is a symlink; replace it with a real folder or file")
 
 
 MANIFEST: str = "audio-src/manifest.json"
@@ -99,7 +102,7 @@ def check_inputs(root: Path, cues_path: Path, layers_path: Path, voices_dir: Pat
             except FileNotFoundError:
                 break
             if linked:
-                raise UnsafePath(f"{here.relative_to(root)} is a symlink; replace it with a real file or folder")
+                raise UnsafePath(f"{cuebook.printable(str(here.relative_to(root)))} is a symlink; replace it with a real file or folder")
 
 
 def load_records(manifest: Path) -> dict[tuple[str, str], dict[str, object]]:
@@ -127,9 +130,12 @@ def load_records(manifest: Path) -> dict[tuple[str, str], dict[str, object]]:
     return records
 
 
-def verify_raw(path: Path, root: Path, records: dict[tuple[str, str], dict[str, object]]) -> None:
+def verify_raw(path: Path, root: Path, records: dict[tuple[str, str], dict[str, object]],
+               ledger_lines: Callable[[], list[dict[str, Any]]]) -> None:
     """A raw file is used only if generate.py bought it: a DONE record lists it, with the file's own hash and size. The raw folder is
-    committed through LFS and the repo is public, so a PR could plant or swap a file; without this its licence row would claim a purchase."""
+    committed through LFS and the repo is public, so a PR could plant or swap a file; without this its licence row would claim a purchase.
+    The manifest is committed too, so a forged record could match a planted file: the ledger outside the repo must also have a line for
+    this label, hash and size (ledger_lines loads it on first use, and refuses if it is missing)."""
     rel = path.relative_to(root / "audio-src" / "raw").as_posix()
     label = rel.rsplit(".", 1)[0]
     record = records.get((label.split("/", 1)[0], label))
@@ -142,6 +148,8 @@ def verify_raw(path: Path, root: Path, records: dict[tuple[str, str], dict[str, 
             size += len(chunk)
     if record.get("sha256") != digest.hexdigest() or record.get("bytes") != size:
         raise CueError(f"raw/{rel}: its hash differs from the purchase record's (or the record has none), so it isn't the file that was bought")
+    if not ledger.has_file(ledger_lines(), label.split("/", 1)[0], label, digest.hexdigest(), size):
+        raise CueError(f"raw/{rel}: the purchase ledger ({cuebook.printable(str(ledger.LEDGER))}) has no line for it, so this Mac didn't buy this file")
 
 
 def write_bytes_nofollow(path: Path, data: bytes) -> None:
@@ -210,12 +218,13 @@ def plan_assets(cues_path: Path, layers_path: Path, voices_dir: Path, root: Path
     raw = root / "audio-src" / "raw"
     plan: list[Asset] = []
     records = load_records(root / MANIFEST)
+    ledger_lines = ledger.lazy()
 
     def add(kind: str, res: str, folder: str, take: int, what: str, ident: str, record_kind: str) -> None:
         source = find_raw(raw / folder, take)
         if source is None:
             raise CueError(f"{what}: picked take {take} has no file under audio-src/raw/{folder}/")
-        verify_raw(source, root, records)
+        verify_raw(source, root, records, ledger_lines)
         plan.append(Asset(kind, res.removeprefix("res://"), source, f"{what} take {take}", ident, (record_kind, f"{folder}/{take}")))
 
     for cue in cuebook.load_cues(cues_path).cues.values():
@@ -309,11 +318,11 @@ def render_assets(todo: list[Asset], root: Path, stamps: dict[str, dict[str, obj
         frames, rate, channels = _render(asset)
         write_asset(frames, rate, channels, asset, root)
         _write_stamp(asset, root, stamps)
-        print(f"wrote {asset.dest} ({len(frames) // channels / rate:.2f} s)")
+        cuebook.emit(f"wrote {asset.dest} ({len(frames) // channels / rate:.2f} s)")
     for (asset, _, rate, channels), frames in zip(layers, looped):
         write_asset(frames, rate, channels, asset, root)
         _write_stamp(asset, root, stamps)
-        print(f"wrote {asset.dest} ({len(frames) // channels / rate:.2f} s)")
+        cuebook.emit(f"wrote {asset.dest} ({len(frames) // channels / rate:.2f} s)")
 
 
 def _render(asset: Asset) -> tuple[array, int, int]:
