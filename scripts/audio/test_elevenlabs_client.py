@@ -39,9 +39,11 @@ def json_reply(obj: Any) -> tuple[str, bytes]:
 
 
 class FakeResponse:
-    def __init__(self, data: bytes, content_type: str = "audio/wav") -> None:
-        self._io = io.BytesIO(data)
+    def __init__(self, data: bytes, content_type: str = "audio/wav", content_length: int | str | None = None) -> None:
+        self._io = io.BytesIO(data)  # read(n) hands back what is there at an early close, like HTTPResponse.read(amt)
         self.headers = {"Content-Type": content_type}
+        if content_length is not None:
+            self.headers["Content-Length"] = str(content_length)
 
     def read(self, size: int = -1) -> bytes:
         return self._io.read(size)
@@ -146,9 +148,9 @@ class DesignTest(unittest.TestCase):
 
 class AudioCheckTest(unittest.TestCase):
     def test_a_reply_that_isnt_audio_is_refused(self) -> None:
-        c = lambda r: ElevenLabsClient(FakeTransport([r]), "wav_32000").sound("x", 1, 0.3, False, "m")  # noqa: E731
+        c = lambda r: ElevenLabsClient(FakeTransport([r]), "mp3_44100_128" if r[1][:1] != b"R" else "wav_32000").sound("x", 1, 0.3, False, "m")  # noqa: E731
         for reply in (("application/json", b'{"detail": "oops"}'), ("audio/wav", b'{"detail": "oops"}'),
-                      ("audio/wav", b""), ("audio/wav", b"\xff"), ("audio/wav", b"\xff\x1f"), ("text/html", WAV), ("audio/ogg", WAV)):
+                      ("audio/wav", b""), ("audio/wav", b"\xff"), ("audio/wav", b"\xff\x1f"), ("audio/wav", b"RIFF\x00\x00\x00\x00AVI "), ("text/html", WAV), ("audio/ogg", WAV)):
             with self.subTest(reply=reply[0], head=reply[1][:6]):
                 with self.assertRaises(ElevenLabsError) as caught:
                     c(reply)
@@ -297,6 +299,58 @@ class TransportTest(unittest.TestCase):
 
     def test_content_type_parameters_are_ignored(self) -> None:
         self.assertEqual(call_with(opener_that(returns=FakeResponse(WAV, "Audio/WAV; charset=binary")))[0], "audio/wav")
+
+
+class FixRoundTest(unittest.TestCase):
+    def test_a_body_shorter_than_its_content_length_is_a_lost_reply(self) -> None:
+        caught = failure(opener_that(returns=FakeResponse(WAV, content_length=1000)))
+        self.assertTrue(caught.may_have_charged)
+        self.assertIn("no reply", str(caught))
+        # complete, absent and unusable lengths are accepted
+        for header in (len(WAV), None, "abc", "-5", "9" * 5000):
+            with self.subTest(header=header):
+                self.assertEqual(call_with(opener_that(returns=FakeResponse(WAV, content_length=header)))[1], WAV)
+
+    def test_the_reply_must_match_the_requested_format(self) -> None:
+        for fmt, wrong in (("wav_32000", MP3), ("wav_32000", ID3), ("mp3_44100_128", WAV)):
+            with self.subTest(fmt=fmt):
+                with self.assertRaisesRegex(ElevenLabsError, "differs from the requested") as caught:
+                    ElevenLabsClient(FakeTransport([("audio/mpeg", wrong)]), fmt).music("x", 5000, "m")
+                self.assertTrue(caught.exception.may_have_charged)
+
+    def test_a_422_detail_list_gives_its_first_msg_and_never_the_input(self) -> None:
+        body = json.dumps({"detail": [{"loc": ["body", "x"], "msg": f"bad {KEY} value", "type": "t", "input": "SECRETINPUT"}]}).encode()
+        text = str(failure(opener_that(raises=http_error(422, body))))
+        self.assertIn("HTTP 422 bad [redacted] value", text)
+        self.assertNotIn("SECRETINPUT", text)
+        self.assertNotIn(KEY, text)
+        long = json.dumps({"detail": [{"msg": "\x1b" + "m" * 500}]}).encode()
+        out = str(failure(opener_that(raises=http_error(422, long))))
+        self.assertNotIn("\x1b", out)
+        self.assertLess(len(out), 300)
+        for odd in ([], ["x"], [{"msg": 5}]):
+            self.assertIn("HTTP 422", str(failure(opener_that(raises=http_error(422, json.dumps({"detail": odd}).encode())))))
+
+    def test_a_non_ascii_key_is_refused_up_front(self) -> None:
+        with self.assertRaises(ElevenLabsError) as caught:
+            http_transport("key\u00e9\u4e2d")
+        self.assertNotIn("key\u00e9", str(caught.exception))
+
+    def test_leaks_via_context_are_closed(self) -> None:
+        for error in (urllib.error.URLError(KEY), TimeoutError(KEY), http_error(401, b"{}")):
+            caught = failure(opener_that(raises=error))
+            self.assertIsNone(caught.__context__)
+
+    def test_only_https_base_urls(self) -> None:
+        for url in ("http://api.elevenlabs.io", "ftp://x", "api.elevenlabs.io", ""):
+            with self.assertRaisesRegex(ElevenLabsError, "https"):
+                http_transport(KEY, base_url=url)
+        http_transport(KEY, base_url="https://api.elevenlabs.io")
+
+    def test_a_save_without_a_voice_id_says_to_check_the_library(self) -> None:
+        with self.assertRaisesRegex(ElevenLabsError, "voice library") as caught:
+            ElevenLabsClient(FakeTransport([json_reply({})]), "wav_32000").save_voice("n", "d", "gen1")
+        self.assertTrue(caught.exception.may_have_charged)
 
 
 if __name__ == "__main__":

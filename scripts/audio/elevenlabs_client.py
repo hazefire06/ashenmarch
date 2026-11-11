@@ -132,7 +132,7 @@ class ElevenLabsClient:
         body = {"voice_name": name, "voice_description": description, "generated_voice_id": generated_voice_id}
         voice_id = self._json("/v1/text-to-voice", {}, body).get("voice_id")
         if not _valid_id(voice_id):
-            raise ElevenLabsError("saving the voice returned no usable voice_id" + CHARGE_WARNING, may_have_charged=True)
+            raise ElevenLabsError("saving the voice returned no usable voice_id; the voice may have been created, so check the voice library on elevenlabs.io (Voices) before rerunning, or a duplicate will use another voice slot", may_have_charged=True)
         return voice_id
 
     def speech(self, voice_id: str, text: str, model_id: str) -> bytes:
@@ -152,6 +152,9 @@ class ElevenLabsClient:
             raise ElevenLabsError(f"{path}: the reply isn't audio (content type {_safe(content_type, 60)})" + CHARGE_WARNING, may_have_charged=True)
         if len(data) > MAX_AUDIO_BYTES or not _looks_like_audio(data):
             raise ElevenLabsError(f"{path}: the reply doesn't look like audio" + CHARGE_WARNING, may_have_charged=True)
+        # A reply in another format than the one requested means the format query was ignored or misread.
+        if self._format.startswith("wav_") != (data[:4] == b"RIFF"):
+            raise ElevenLabsError(f"{path}: the reply's format differs from the requested {self._format}" + CHARGE_WARNING, may_have_charged=True)
         return data
 
     def _json(self, path: str, query: dict[str, str], body: dict[str, Any]) -> dict[str, Any]:
@@ -170,8 +173,8 @@ def _valid_id(value: object) -> bool:
 
 
 def _looks_like_audio(data: bytes) -> bool:
-    """RIFF (WAV), an ID3 tag, or an MP3 frame sync: 0xFF then a byte whose top three bits are set."""
-    if data[:4] == b"RIFF" or data[:3] == b"ID3":
+    """A WAV (RIFF....WAVE), an ID3 tag, or an MP3 frame sync: 0xFF then a byte whose top three bits are set."""
+    if (data[:4] == b"RIFF" and data[8:12] == b"WAVE") or data[:3] == b"ID3":
         return True
     return len(data) >= 2 and data[0] == 0xFF and data[1] & 0xE0 == 0xE0
 
@@ -202,10 +205,20 @@ def _server_message(error: urllib.error.HTTPError, api_key: str) -> str:
     """ElevenLabs' own message for an error (detail.message, or detail as a string), with the key scrubbed in case it is echoed back."""
     try:
         detail = json.loads(error.read(MAX_ERROR_BYTES).decode("utf-8")).get("detail", "")
+        if isinstance(detail, list):  # a 422: [{"loc", "msg", "type", "input"}]; only msg is used, input can echo request values
+            first = detail[0] if detail else None
+            detail = {"message": first.get("msg", "")} if isinstance(first, dict) else ""
         message = detail.get("message", "") if isinstance(detail, dict) else detail if isinstance(detail, str) else ""
         return _safe(str(message).replace(api_key, "[redacted]")[:200])
     except (ValueError, RecursionError, AttributeError, OSError, http.client.HTTPException):  # no JSON, too deep, or cut off
         return ""
+
+
+def _content_length(response: Any) -> int | None:
+    """The body length the server promised, or None without a usable Content-Length header (digits only, short enough for int())."""
+    headers = getattr(response, "headers", None)
+    raw = headers.get("Content-Length") if headers is not None else None
+    return int(raw) if isinstance(raw, str) and len(raw) <= 15 and raw.isascii() and raw.isdigit() else None
 
 
 def _content_type(response: Any) -> str:
@@ -215,12 +228,22 @@ def _content_type(response: Any) -> str:
 
 
 def http_transport(api_key: str, base_url: str = BASE_URL, timeout: float = 120.0) -> Transport:
-    if not api_key or not api_key.isprintable() or any(c.isspace() for c in api_key):
+    if not base_url.startswith("https://"):
+        raise ElevenLabsError("refusing a base URL that isn't https")
+    if not api_key or not api_key.isascii() or not api_key.isprintable() or any(c.isspace() for c in api_key):
         raise ElevenLabsError("the API key is empty or holds spaces or control characters; check ~/.config/ashenmarch/secrets.env")
 
     opener = urllib.request.build_opener(_NoRedirects(), urllib.request.HTTPSHandler(context=_tls_context()))
 
     def call(path: str, query: dict[str, str], body: dict[str, Any]) -> tuple[str, bytes]:
+        try:
+            return send(path, query, body)
+        except ElevenLabsError as error:
+            # `from None` hides the original error from a traceback but it stays in __context__, and it can hold the key.
+            error.__context__ = None
+            raise
+
+    def send(path: str, query: dict[str, str], body: dict[str, Any]) -> tuple[str, bytes]:
         # Refused before any socket opens: nothing is sent, so nothing is charged.
         if not any(p.fullmatch(path) for p in PATHS):
             raise ElevenLabsError(f"refusing unexpected API path {_safe(path, 80)!r}")
@@ -255,6 +278,10 @@ def http_transport(api_key: str, base_url: str = BASE_URL, timeout: float = 120.
             raise ElevenLabsError(_lost(path), may_have_charged=True) from None
         if len(data) > cap:
             raise ElevenLabsError(f"ElevenLabs POST {path}: the reply is over the {cap // (1024 * 1024)} MB cap; refusing" + CHARGE_WARNING, may_have_charged=True)
+        # read(n) returns what arrived when the server closes early, without raising: only the length shows a cut-short body.
+        expected = _content_length(response)
+        if expected is not None and len(data) < expected:
+            raise ElevenLabsError(_lost(path), may_have_charged=True)
         return content_type, data
 
     return call
