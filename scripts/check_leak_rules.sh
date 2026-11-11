@@ -36,6 +36,10 @@ expect_leak() { # name, line
 
 expect_leak meshy "$(fake msy_ 16)"
 expect_leak elevenlabs "$(fake sk_ 24)"
+# A key glued to a word character (a variable or JSON name) has no \b before its prefix.
+expect_leak elevenlabs-glued "xi_api_key_$(fake sk_ 24)"
+expect_leak elevenlabs-assigned "ELEVENLABS_API_KEY=$(fake sk_ 24)"
+expect_leak meshy-glued "meshy_key_$(fake msy_ 16)"
 
 if ! gitleaks git . --config "$config" --no-banner --redact >/dev/null 2>&1; then
 	echo "FAIL: the history contains a leak (run: gitleaks git . --config $config -v)"
