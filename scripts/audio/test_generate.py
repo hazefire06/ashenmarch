@@ -146,6 +146,11 @@ class Base(unittest.TestCase):
         self.mocks[1].return_value = self.fake
         return self.fake
 
+    def assert_untouched(self) -> None:
+        """The key was never read, no transport was built and urllib was never used."""
+        for m in self.mocks[:4]:
+            m.assert_not_called()
+
     def run_main(self, *argv: str) -> tuple[int, str, str]:
         out, err = io.StringIO(), io.StringIO()
         with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
@@ -212,13 +217,14 @@ class PlanTest(Base):
 
 class BudgetAndResumeTest(Base):
     def test_a_run_over_max_credits_buys_nothing(self) -> None:
-        fake = self.allow_network()
+        fake = self.fake
         code, _, err = self.run_main("sfx", "--cue", "hit_flesh", "--max-credits", "79")
         self.assertEqual(code, 1)
         self.assertIn("80", err)
         self.assertEqual(fake.calls, [])
         self.assertFalse(self.manifest_path.exists())
         self.assertFalse(self.raw.exists())
+        self.assert_untouched()
 
     def test_a_rerun_skips_what_is_bought(self) -> None:
         fake = self.allow_network()
@@ -262,7 +268,7 @@ class BudgetAndResumeTest(Base):
         self.assertEqual(self.manifest().find("sfx", "sfx/hit_dry/1")["format"], "mp3_44100_128")
 
     def test_ids_from_the_command_line_are_checked(self) -> None:
-        fake = self.allow_network()
+        fake = self.fake
         for argv in (("sfx", "--cue", "../etc", "--max-credits", "9999"), ("sfx", "--cue", "nope", "--max-credits", "9999"),
                      ("sfx", "--category", "x/y", "--max-credits", "9999"), ("sfx", "--category", "weird", "--max-credits", "9999"),
                      ("music", "..", "--max-credits", "9999"), ("voices", "lines", "bad.unit", "--max-credits", "9999"),
@@ -271,20 +277,21 @@ class BudgetAndResumeTest(Base):
                 code, _, _ = self.run_main(*argv)
                 self.assertEqual(code, 2)
         self.assertEqual(fake.calls, [])
+        self.assert_untouched()
 
     def test_max_credits_is_required_and_not_negative(self) -> None:
-        self.allow_network()
         with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
             generate.main(["sfx", "--cue", "hit_dry"])
         code, _, _ = self.run_main("sfx", "--cue", "hit_dry", "--max-credits", "-5")
         self.assertEqual(code, 2)
+        self.assert_untouched()
 
 
 class InterruptionTest(Base):
     def test_an_interrupted_entry_stops_every_paid_run(self) -> None:
         for status in ("INTERRUPTED", "PENDING"):
             self.seed({"kind": "sfx", "label": "sfx/hit_flesh/1", "status": status})
-            fake = self.allow_network(Fake())
+            fake = self.fake
             for argv in (("sfx", "--cue", "hit_dry", "--max-credits", "999"), ("probe", "--max-credits", "999"),
                          ("music", "calm", "--max-credits", "9999"), ("voices", "design", "shieldman", "--voice", "shieldman_old", "--max-credits", "9999"),
                          ("voices", "lines", "shieldman", "--max-credits", "99999"), ("voices", "ab", "--max-credits", "9999"),
@@ -294,6 +301,7 @@ class InterruptionTest(Base):
                     self.assertEqual(code, 1)
                     self.assertIn("manifest", err)
             self.assertEqual(fake.calls, [])
+            self.assert_untouched()
 
     def test_a_charge_that_may_have_happened_records_interrupted_and_stops(self) -> None:
         fake = self.allow_network(Fake([ElevenLabsError("no reply", may_have_charged=True)]))
@@ -377,10 +385,11 @@ class DesignTest(Base):
         self.assertIn("assumed", out)
 
     def test_design_over_the_budget_buys_nothing_and_a_rerun_does_not_rebuy(self) -> None:
-        fake = self.allow_network(Fake([preview_reply(1)]))
         code, _, _ = self.run_main("voices", "design", "shieldman", "--voice", "shieldman_old", "--max-credits", "999")
         self.assertEqual(code, 1)
-        self.assertEqual(fake.calls, [])
+        self.assertEqual(self.fake.calls, [])
+        self.assert_untouched()
+        fake = self.allow_network(Fake([preview_reply(1)]))
         self.run_main("voices", "design", "shieldman", "--voice", "shieldman_old", "--max-credits", "1000")
         code, out, _ = self.run_main("voices", "design", "shieldman", "--voice", "shieldman_old", "--max-credits", "0")
         self.assertEqual(code, 0)
@@ -388,10 +397,10 @@ class DesignTest(Base):
         self.assertIn("nothing to buy", out)
 
     def test_a_voice_that_is_not_in_the_unit_file_is_refused(self) -> None:
-        self.allow_network()
         code, _, err = self.run_main("voices", "design", "shieldman", "--voice", "nobody", "--max-credits", "1000")
         self.assertEqual(code, 2)
         self.assertIn("nobody", err)
+        self.assert_untouched()
 
     def test_save_reads_the_generated_id_from_the_manifest(self) -> None:
         fake = self.allow_network(Fake([preview_reply(2), ("application/json", b'{"voice_id": "VoiceNew9"}')]))
@@ -411,11 +420,12 @@ class DesignTest(Base):
         self.assertIn("already saved", out)
 
     def test_save_refuses_a_preview_that_was_never_made(self) -> None:
-        fake = self.allow_network()
+        fake = self.fake
         code, _, err = self.run_main("voices", "save", "shieldman", "--voice", "shieldman_old", "--pick", "3")
         self.assertEqual(code, 1)
         self.assertIn("preview 3", err)
         self.assertEqual(fake.calls, [])
+        self.assert_untouched()
 
     def test_a_save_that_may_have_charged_is_interrupted(self) -> None:
         fake = self.allow_network(Fake([preview_reply(1), ("application/json", b'{"nope": 1}')]))
@@ -452,34 +462,37 @@ class LinesTest(Base):
 
     def test_a_voice_that_is_not_saved_stops_the_run_before_buying(self) -> None:
         self.save_voice_record("shieldman_old", "VoiceOld1")
-        fake = self.allow_network()
+        fake = self.fake
         code, _, err = self.run_main("voices", "lines", "shieldman", "--max-credits", "999999")
         self.assertEqual(code, 1)
         self.assertIn("shieldman_young", err)
         self.assertEqual(fake.calls, [])
+        self.assert_untouched()
 
     def test_lines_budget_counts_characters(self) -> None:
         self.save_voice_record("shieldman_old", "VoiceOld1")
-        fake = self.allow_network()
+        fake = self.fake
         # "[whispers] Hello." is 17 characters, x 3 takes = 51
         code, _, err = self.run_main("voices", "lines", "shieldman", "--voice", "shieldman_old", "--line", "select_2", "--max-credits", "50")
         self.assertEqual(code, 1)
         self.assertIn("51", err)
         self.assertEqual(fake.calls, [])
+        self.assert_untouched()
 
     def test_an_unknown_line_is_refused(self) -> None:
-        self.allow_network()
         code, _, _ = self.run_main("voices", "lines", "shieldman", "--line", "nope_1", "--max-credits", "9")
         self.assertEqual(code, 2)
+        self.assert_untouched()
 
 
 class AbTest(Base):
     def test_ab_refuses_until_shieldman_old_is_saved(self) -> None:
-        fake = self.allow_network()
+        fake = self.fake
         code, _, err = self.run_main("voices", "ab", "--max-credits", "99999")
         self.assertEqual(code, 1)
         self.assertIn("shieldman_old", err)
         self.assertEqual(fake.calls, [])
+        self.assert_untouched()
 
     def test_ab_buys_two_takes_of_each_line_in_each_model(self) -> None:
         self.save_voice_record("shieldman_old", "VoiceOld1")
@@ -507,10 +520,11 @@ class MusicTest(Base):
         self.assertTrue((self.raw / "music" / "calm" / "2.wav").exists())
 
     def test_music_over_the_budget_buys_nothing(self) -> None:
-        fake = self.allow_network()
+        fake = self.fake
         code, _, _ = self.run_main("music", "calm", "--max-credits", "1799")
         self.assertEqual(code, 1)
         self.assertEqual(fake.calls, [])
+        self.assert_untouched()
 
 
 class ProbeTest(Base):
@@ -544,10 +558,11 @@ class ProbeTest(Base):
         self.assertIn("already", out)
 
     def test_probe_over_the_budget_buys_nothing(self) -> None:
-        fake = self.allow_network()
+        fake = self.fake
         code, _, _ = self.run_main("probe", "--max-credits", "39")
         self.assertEqual(code, 1)
         self.assertEqual(fake.calls, [])
+        self.assert_untouched()
 
 
 class SymlinkTest(Base):
@@ -556,23 +571,25 @@ class SymlinkTest(Base):
         outside.mkdir()
         (self.raw / "sfx").mkdir(parents=True)
         (self.raw / "sfx" / "hit_dry").symlink_to(outside)
-        fake = self.allow_network()
+        fake = self.fake
         code, _, err = self.run_main("sfx", "--cue", "hit_dry", "--max-credits", "20")
         self.assertEqual(code, 2)
         self.assertIn("symlink", err)
         self.assertEqual(fake.calls, [])  # refused before anything was bought
         self.assertEqual(list(outside.iterdir()), [])
+        self.assert_untouched()
 
     def test_a_symlinked_raw_folder_is_refused_up_front(self) -> None:
         outside = Path(self._tmp.name) / "outside"
         outside.mkdir()
         self.raw.symlink_to(outside)
-        fake = self.allow_network()
+        fake = self.fake
         code, _, err = self.run_main("sfx", "--cue", "hit_dry", "--max-credits", "20")
         self.assertNotEqual(code, 0)
         self.assertIn("symlink", err)
         self.assertEqual(fake.calls, [])
         self.assertEqual(list(outside.iterdir()), [])
+        self.assert_untouched()
 
     def test_a_symlinked_part_file_is_refused_before_buying(self) -> None:
         target = Path(self._tmp.name) / "precious.txt"
@@ -580,12 +597,13 @@ class SymlinkTest(Base):
         folder = self.raw / "sfx" / "hit_dry"
         folder.mkdir(parents=True)
         (folder / "1.wav.part").symlink_to(target)
-        fake = self.allow_network()
+        fake = self.fake
         code, _, err = self.run_main("sfx", "--cue", "hit_dry", "--max-credits", "20")
         self.assertEqual(code, 2)  # the up-front scan of raw/ finds it
         self.assertIn("symlink", err)
         self.assertEqual(fake.calls, [])
         self.assertEqual(target.read_text(), "keep me")
+        self.assert_untouched()
 
     def test_write_file_never_follows_a_part_symlink_planted_after_the_checks(self) -> None:
         target = Path(self._tmp.name) / "precious.txt"
@@ -627,6 +645,183 @@ class SecretTest(Base):
         code, _, err = self.run_main("sfx", "--cue", "hit_dry", "--max-credits", "20")
         self.assertEqual(code, 2)
         self.assertIn("ELEVENLABS_API_KEY", err)
+
+
+class DesignRoundsTest(Base):
+    ARGS = ("voices", "design", "shieldman", "--voice", "shieldman_old", "--max-credits", "1000")
+
+    def test_a_second_round_keeps_round_one_and_continues_the_numbering(self) -> None:
+        fake = self.allow_network(Fake([preview_reply(2), preview_reply(2)]))
+        self.run_main(*self.ARGS)
+        code, _, _ = self.run_main(*self.ARGS, "--again")
+        self.assertEqual(code, 0)
+        self.assertEqual(len(fake.calls), 2)
+        base = self.raw / "design" / "shieldman" / "shieldman_old"
+        self.assertEqual(sorted(p.name for p in base.iterdir()), ["1.mp3", "2.mp3", "3.mp3", "4.mp3"])
+        self.assertEqual((base / "1.mp3").read_bytes(), MP3 + b"\x01")  # round one untouched
+        m = self.manifest()
+        self.assertEqual(m.find("design", "design/shieldman/shieldman_old/1")["generated_voice_id"], "gen1")
+        self.assertEqual(m.find("design", "design/shieldman/shieldman_old/3")["generated_voice_id"], "gen1")
+        self.assertEqual(m.find("design", "design/shieldman/shieldman_old/4")["generated_voice_id"], "gen2")
+        self.assertEqual(m.find("design", "design/shieldman/shieldman_old/call2")["status"], "DONE")
+        self.assertEqual(m.credits_spent(), 2000)
+
+    def test_save_works_for_a_preview_from_either_round(self) -> None:
+        fake = self.allow_network(Fake([preview_reply(2), preview_reply(2), ("application/json", b'{"voice_id": "VoiceNew9"}')]))
+        self.run_main(*self.ARGS)
+        self.run_main(*self.ARGS, "--again")
+        code, _, _ = self.run_main("voices", "save", "shieldman", "--voice", "shieldman_old", "--pick", "4")
+        self.assertEqual(code, 0)
+        self.assertEqual(fake.calls[2][2]["generated_voice_id"], "gen2")
+
+    def test_without_again_nothing_is_bought_once_a_round_exists(self) -> None:
+        fake = self.allow_network(Fake([preview_reply(1)]))
+        self.run_main(*self.ARGS)
+        code, out, _ = self.run_main(*self.ARGS)
+        self.assertEqual(code, 0)
+        self.assertEqual(len(fake.calls), 1)
+        self.assertIn("--again", out)
+
+    def test_a_fourth_round_is_refused(self) -> None:
+        fake = self.allow_network(Fake([preview_reply(1)] * 3))
+        self.run_main(*self.ARGS)
+        self.run_main(*self.ARGS, "--again")
+        self.run_main(*self.ARGS, "--again")
+        code, _, err = self.run_main(*self.ARGS, "--again")
+        self.assertEqual(code, 1)
+        self.assertIn("3 rounds", err)
+        self.assertEqual(len(fake.calls), 3)
+        self.assertEqual(self.manifest().find("design", "design/shieldman/shieldman_old/call3")["status"], "DONE")
+
+    def test_each_round_needs_its_own_budget(self) -> None:
+        self.allow_network(Fake([preview_reply(1)]))
+        self.run_main(*self.ARGS)
+        code, _, _ = self.run_main("voices", "design", "shieldman", "--voice", "shieldman_old", "--again", "--max-credits", "999")
+        self.assertEqual(code, 1)
+        self.assertEqual(len(self.fake.calls), 1)
+
+    def test_plan_reports_the_rounds(self) -> None:
+        self.allow_network(Fake([preview_reply(1)]))
+        self.run_main(*self.ARGS)
+        _, out, _ = self.run_main("plan", "--batch", "design")
+        self.assertIn("shieldman_old 1", out)
+        self.assertIn("shieldman_young 0", out)
+
+
+class WriteFailureTest(Base):
+    def test_a_failed_write_after_a_paid_reply_is_interrupted(self) -> None:
+        fake = self.allow_network()
+        with mock.patch.object(generate, "write_file", side_effect=PermissionError(13, "Permission denied", "/x/y")):
+            code, _, err = self.run_main("sfx", "--category", "melee", "--max-credits", "100")
+        self.assertEqual(code, 1)
+        self.assertEqual(len(fake.calls), 1)
+        self.assertIn("paid", err)
+        self.assertIn("couldn't be saved", err)
+        self.assertIn("Permission denied", err)
+        self.assertIn("by hand", err)
+        self.assertEqual(self.manifest().find("sfx", "sfx/hit_dry/1")["status"], "INTERRUPTED")
+
+    def test_an_unsafe_path_found_at_write_time_is_interrupted_too(self) -> None:
+        self.allow_network()
+        with mock.patch.object(generate, "write_file", side_effect=generate.UnsafePath("x is a symlink")):
+            code, _, err = self.run_main("music", "calm", "--max-credits", "1800")
+        self.assertEqual(code, 1)
+        self.assertIn("symlink", err)
+        self.assertEqual(self.manifest().find("music", "music/calm/1")["status"], "INTERRUPTED")
+
+    def test_a_failed_preview_write_interrupts_the_design_call(self) -> None:
+        self.allow_network(Fake([preview_reply(2)]))
+        with mock.patch.object(generate, "write_file", side_effect=OSError(28, "No space left on device")):
+            code, _, err = self.run_main("voices", "design", "shieldman", "--voice", "shieldman_old", "--max-credits", "1000")
+        self.assertEqual(code, 1)
+        self.assertIn("No space", err)
+        self.assertEqual(self.manifest().find("design", "design/shieldman/shieldman_old/call")["status"], "INTERRUPTED")
+        code, _, _ = self.run_main("voices", "design", "shieldman", "--voice", "shieldman_old", "--max-credits", "1000", "--again")
+        self.assertEqual(code, 1)  # blocked until resolved by hand
+
+
+class OddStatusTest(Base):
+    def test_any_status_but_done_or_failed_blocks_and_is_never_rebought(self) -> None:
+        for status in ("done", "Done", "SUCCEEDED", "", "wat", None):
+            record = {"kind": "sfx", "label": "sfx/hit_dry/1", "credits": 20}
+            if status is not None:
+                record["status"] = status
+            self.seed(record)
+            with self.subTest(status=status):
+                code, _, err = self.run_main("sfx", "--cue", "hit_dry", "--max-credits", "999")
+                self.assertEqual(code, 1)
+                self.assertIn("unknown status", err)
+                self.assertEqual(self.fake.calls, [])
+                _, out, _ = self.run_main("plan", "--batch", "sfx")
+                self.assertIn("blocked", out)
+        self.assert_untouched()
+
+
+class LockTest(Base):
+    LOCK = "manifest.json.lock"
+
+    def test_a_paid_run_holds_the_lock_and_removes_it_after(self) -> None:
+        seen: list[bool] = []
+
+        def transport(path: str, query: dict[str, str], body: dict[str, Any]) -> tuple[str, bytes]:
+            seen.append((self.src / self.LOCK).exists())
+            return "audio/wav", WAV
+
+        self.allow_network(transport)  # type: ignore[arg-type]
+        self.run_main("sfx", "--cue", "hit_dry", "--max-credits", "20")
+        self.assertEqual(seen, [True])
+        self.assertFalse((self.src / self.LOCK).exists())
+
+    def test_the_lock_is_removed_after_an_error(self) -> None:
+        self.allow_network(Fake([ElevenLabsError("no reply", may_have_charged=True)]))
+        code, _, _ = self.run_main("sfx", "--cue", "hit_dry", "--max-credits", "20")
+        self.assertEqual(code, 1)
+        self.assertFalse((self.src / self.LOCK).exists())
+        code, _, _ = self.run_main("sfx", "--cue", "nope", "--max-credits", "20")
+        self.assertFalse((self.src / self.LOCK).exists())
+
+    def test_an_existing_lock_refuses_every_paid_run_and_is_left_alone(self) -> None:
+        (self.src / self.LOCK).write_text("")
+        for argv in (("sfx", "--cue", "hit_dry", "--max-credits", "20"), ("probe", "--max-credits", "40"), ("music", "calm", "--max-credits", "9999"),
+                     ("voices", "save", "shieldman", "--voice", "shieldman_old", "--pick", "1")):
+            with self.subTest(argv=argv):
+                code, _, err = self.run_main(*argv)
+                self.assertEqual(code, 1)
+                self.assertIn("another run may be going", err)
+                self.assertIn("delete", err)
+        self.assertTrue((self.src / self.LOCK).exists())
+        self.assert_untouched()
+
+    def test_plan_takes_no_lock_and_works_while_one_is_held(self) -> None:
+        (self.src / self.LOCK).write_text("")
+        code, _, _ = self.run_main("plan")
+        self.assertEqual(code, 0)
+        self.assertTrue((self.src / self.LOCK).exists())
+        (self.src / self.LOCK).unlink()
+        self.run_main("plan")
+        self.assertFalse((self.src / self.LOCK).exists())
+
+    def test_a_symlink_in_the_locks_place_is_not_followed(self) -> None:
+        target = Path(self._tmp.name) / "precious.txt"
+        target.write_text("keep me")
+        (self.src / self.LOCK).symlink_to(target)
+        code, _, _ = self.run_main("sfx", "--cue", "hit_dry", "--max-credits", "20")
+        self.assertEqual(code, 1)
+        self.assertEqual(target.read_text(), "keep me")
+        self.assertTrue((self.src / self.LOCK).is_symlink())
+
+
+class MissingFileTest(Base):
+    def test_plan_flags_a_done_record_whose_file_is_gone(self) -> None:
+        (self.raw / "sfx" / "hit_flesh").mkdir(parents=True)
+        (self.raw / "sfx" / "hit_flesh" / "1.wav").write_bytes(WAV)
+        self.seed({"kind": "sfx", "label": "sfx/hit_flesh/1", "status": "DONE", "credits": 40, "files": ["sfx/hit_flesh/1.wav"]},
+                  {"kind": "sfx", "label": "sfx/hit_flesh/2", "status": "DONE", "credits": 40, "files": ["sfx/hit_flesh/2.wav"]})
+        _, out, _ = self.run_main("plan", "--batch", "sfx")
+        self.assertIn("bought but the file is gone", out)
+        self.assertIn("sfx/hit_flesh/2.wav", out)
+        self.assertNotIn("1.wav'", out)
+        self.assertNotIn("blocked", out)  # it is a warning, and nothing is re-bought
 
 
 if __name__ == "__main__":

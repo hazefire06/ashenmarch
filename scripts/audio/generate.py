@@ -26,12 +26,13 @@ written through a symlink. The format is wav_32000, unless audio-src/format.txt 
 from __future__ import annotations
 
 import argparse
+import contextlib
 import math
 import os
 import stat
 import sys
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -69,6 +70,8 @@ AB_LINES: tuple[tuple[str, str], ...] = (
     ("attack_1", "[shouting]"), ("attack_2", "[shouting]"), ("hurt_1", "[shouting]"),
     ("kill_1", "[laughs]"), ("kill_2", "[laughs]"), ("victory_1", "[laughs]"),
 )
+MAX_DESIGN_ROUNDS = 3
+LOCK_NAME = "manifest.json.lock"
 BATCHES: tuple[str, ...] = ("probe", "sfx", "loops", "design", "lines", "ab", "music")
 
 Say = Callable[[str], None]
@@ -122,17 +125,27 @@ def _bought(record: dict[str, Any] | None) -> bool:
     return record is not None and record.get("status") == "DONE"
 
 
-def _unresolved(manifest: Manifest, status: str) -> list[dict[str, Any]]:
+def _with_status(manifest: Manifest, status: str) -> list[dict[str, Any]]:
     return [t for t in manifest.tasks if t.get("status") == status]
+
+
+def _odd(manifest: Manifest) -> list[dict[str, Any]]:
+    """Records whose status is anything but exactly DONE, FAILED, PENDING or INTERRUPTED: a hand-edited "done", a typo, none at all.
+    They are never read as unbought, so nothing is bought twice."""
+    return [t for t in manifest.tasks if t.get("status") not in ("DONE", "FAILED", "PENDING", "INTERRUPTED")]
 
 
 def _pending(manifest: Manifest) -> list[str]:
     # !r: the manifest is committed, so a kind or label could hold terminal escapes or a newline.
-    return [f"pending: {t.get('kind')!r} {t.get('label')!r}; a request was sent and the run never saw it finish" for t in _unresolved(manifest, "PENDING")]
+    return [f"pending: {t.get('kind')!r} {t.get('label')!r}; a request was sent and the run never saw it finish" for t in _with_status(manifest, "PENDING")]
 
 
 def _interrupted(manifest: Manifest) -> list[str]:
-    return [f"interrupted: {t.get('kind')!r} {t.get('label')!r}; the request may have been charged" for t in _unresolved(manifest, "INTERRUPTED")]
+    return [f"interrupted: {t.get('kind')!r} {t.get('label')!r}; the request may have been charged" for t in _with_status(manifest, "INTERRUPTED")]
+
+
+def _unknown(manifest: Manifest) -> list[str]:
+    return [f"unknown status {t.get('status')!r}: {t.get('kind')!r} {t.get('label')!r}; only DONE, FAILED, PENDING and INTERRUPTED are understood" for t in _odd(manifest)]
 
 
 HOW_TO_RESOLVE = ("Check the usage page on elevenlabs.io, then fix that entry in audio-src/manifest.json by hand: delete it if nothing was charged "
@@ -140,7 +153,7 @@ HOW_TO_RESOLVE = ("Check the usage page on elevenlabs.io, then fix that entry in
 
 
 def _refuse_if_blocked(manifest: Manifest) -> None:
-    messages = [*_pending(manifest), *_interrupted(manifest)]
+    messages = [*_pending(manifest), *_interrupted(manifest), *_unknown(manifest)]
     if messages:
         extra = f" (and {len(messages) - 1} more)" if len(messages) > 1 else ""
         raise BlockedError(f"{messages[0]}{extra}. {HOW_TO_RESOLVE}")
@@ -164,6 +177,23 @@ def _buy(manifest: Manifest, record: dict[str, Any], call: Callable[[], Any]) ->
             raise InterruptedRun(f"{record['label']!r}: {error}. {HOW_TO_RESOLVE}") from None
         _store(manifest, {**started, "status": "FAILED", "credits": 0})
         raise
+
+
+def _save_audio(manifest: Manifest, started: dict[str, Any], raw: Path, label: str, data: bytes) -> str:
+    """Writes a paid reply. If that fails the call was paid and the audio is lost: INTERRUPTED, and the run stops."""
+    try:
+        return write_file(raw, label, data)
+    except (OSError, UnsafePath) as error:
+        _store(manifest, {**started, "status": "INTERRUPTED"})
+        why = _local_error(error)
+        raise InterruptedRun(f"{label!r}: the call was paid but the audio couldn't be saved ({why}). {HOW_TO_RESOLVE}") from None
+
+
+def _local_error(error: Exception) -> str:
+    if isinstance(error, OSError):
+        what = error.strerror or type(error).__name__
+        return f"{what}: {_shown(Path(str(error.filename)))}" if error.filename else what
+    return str(error)
 
 
 def _done(manifest: Manifest, record: dict[str, Any], credits: int, files: list[str], **extra: Any) -> None:
@@ -204,6 +234,20 @@ def write_file(raw: Path, label: str, data: bytes) -> str:
         out.write(data)
     part.replace(dest)
     return rel
+
+
+@contextlib.contextmanager
+def _locked(path: Path) -> Iterator[None]:
+    """One paid run at a time: two would each see a voice or take as unbought and buy it twice. Created exclusively, removed at exit."""
+    try:
+        os.close(os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o644))
+    except FileExistsError:
+        raise BlockedError(f"{_shown(path)} exists, so another run may be going. If none is (a run was killed), delete that file and rerun.") from None
+    try:
+        yield
+    finally:
+        with contextlib.suppress(OSError):
+            os.unlink(path)
 
 
 def _shown(path: Path) -> str:
@@ -327,8 +371,19 @@ def ab_jobs(manifest: Manifest, files: dict[str, VoiceFile]) -> list[Job]:
     return jobs
 
 
-def design_label(unit: str, voice: str) -> str:
-    return f"design/{unit}/{voice}/call"
+def design_label(unit: str, voice: str, round_no: int = 1) -> str:
+    """The marker for one design call: call for round 1, then call2, call3."""
+    return f"design/{unit}/{voice}/call" + ("" if round_no == 1 else str(round_no))
+
+
+def design_rounds(manifest: Manifest, unit: str, voice: str) -> int:
+    return sum(1 for r in range(1, MAX_DESIGN_ROUNDS + 1) if _bought(manifest.find("design", design_label(unit, voice, r))))
+
+
+def _last_preview(manifest: Manifest, unit: str, voice: str) -> int:
+    prefix = f"design/{unit}/{voice}/"
+    labels = [str(t.get("label")) for t in manifest.tasks if t.get("kind") == "design"]
+    return max((int(x[len(prefix):]) for x in labels if x.startswith(prefix) and x[len(prefix):].isdigit()), default=0)
 
 
 # ---- running --------------------------------------------------------------------------------------------------------
@@ -365,30 +420,35 @@ def run_jobs(manifest: Manifest, get_client: GetClient, raw: Path, fmt: str, job
         say(f"{job.label}: buying ({job.credits} credits)")
         record = {"kind": job.kind, "label": job.label, "model": job.model, "format": fmt, **job.fields}
         data = _buy(manifest, record, lambda job=job: job.call(client))
-        rel = write_file(raw, job.label, data)
+        rel = _save_audio(manifest, record, raw, job.label, data)
         _done(manifest, record, job.credits, [rel])
         say(f"{job.label}: saved raw/{rel}")
     return len(todo)
 
 
 def run_design(manifest: Manifest, get_client: GetClient, raw: Path, fmt: str, unit: str, voice: str, description: str,
-               max_credits: int, say: Say = _say) -> int:
+               max_credits: int, again: bool = False, say: Say = _say) -> int:
     _refuse_if_blocked(manifest)
-    label = design_label(unit, voice)
-    if _bought(manifest.find("design", label)):
-        say(f"nothing to buy: {unit}/{voice} already has its previews")
+    rounds = design_rounds(manifest, unit, voice)
+    if rounds and not again:
+        say(f"nothing to buy: {unit}/{voice} already has its previews (--again buys another round)")
         return 0
+    if rounds >= MAX_DESIGN_ROUNDS:
+        raise BlockedError(f"{unit}/{voice} has had {MAX_DESIGN_ROUNDS} rounds of previews, the most this script buys; pick one of them")
+    label = design_label(unit, voice, rounds + 1)
     _check_budget(f"designing {voice}", DESIGN_CREDITS_ASSUMED, max_credits)
-    for n in range(1, 11):  # the client takes at most 10 previews
+    first = _last_preview(manifest, unit, voice) + 1  # numbers continue, so --pick N stays unique across rounds
+    for n in range(first, first + 10):  # the client takes at most 10 previews
         _check_dest(raw, f"design/{unit}/{voice}/{n}")
     client = get_client(fmt)
     say(f"{label}: designing ({DESIGN_CREDITS_ASSUMED} credits, assumed)")
     call = {"kind": "design", "label": label, "model": "eleven_ttv_v3", "text": description}
     previews = _buy(manifest, call, lambda: client.design(description))
+    started = {**call, "status": "PENDING"}
     files: list[str] = []
-    for n, (generated_id, audio) in enumerate(previews, 1):
+    for n, (generated_id, audio) in enumerate(previews, first):
         preview_label = f"design/{unit}/{voice}/{n}"
-        rel = write_file(raw, preview_label, audio)  # the audio only: the JSON the previews came in is never kept
+        rel = _save_audio(manifest, started, raw, preview_label, audio)  # the audio only: the JSON the previews came in is never kept
         files.append(rel)
         _done(manifest, {"kind": "design", "label": preview_label, "model": "eleven_ttv_v3", "generated_voice_id": generated_id}, 0, [rel])
         say(f"{preview_label}: saved raw/{rel}")
@@ -440,6 +500,17 @@ def run_probe(manifest: Manifest, get_client: GetClient, max_credits: int, say: 
     return True
 
 
+def _missing_files(manifest: Manifest, raw: Path) -> list[str]:
+    out: list[str] = []
+    for t in manifest.tasks:
+        if t.get("status") != "DONE" or not isinstance(t.get("files"), list):
+            continue
+        for rel in t["files"]:
+            if isinstance(rel, str) and ".." not in rel.split("/") and not rel.startswith("/") and not os.path.lexists(raw / rel):
+                out.append(f"bought but the file is gone: {t.get('label')!r} ({rel!r}); it is not bought again, so restore the file or fix the entry by hand")
+    return out
+
+
 # ---- the plan -------------------------------------------------------------------------------------------------------
 
 def _line(name: str, jobs: list[Job], manifest: Manifest, note: str = "") -> str:
@@ -463,8 +534,10 @@ def batch_lines(name: str, book: CueBook, layers: dict[str, Layer], files: dict[
         pairs = [(u, v) for u in units for v in files[u].voices]
         todo = [p for p in pairs if not _bought(manifest.find("design", design_label(*p)))]
         cost = len(todo) * DESIGN_CREDITS_ASSUMED
+        rounds = ", ".join(f"{v} {design_rounds(manifest, u, v)}" for u, v in pairs)
         return [f"design: {len(pairs)} voices, {len(pairs) - len(todo)} of {len(pairs)} bought, {cost} credits still to buy "
-                f"({DESIGN_CREDITS_ASSUMED} per design call, assumed; the real cost is unknown)"]
+                f"({DESIGN_CREDITS_ASSUMED} per design call, assumed; the real cost is unknown)",
+                f"  rounds of previews so far (at most {MAX_DESIGN_ROUNDS}; --again buys another): {rounds}"]
     jobs = ab_jobs(manifest, files) if name == "ab" else [j for u in units for j in line_jobs(manifest, files, u, None, None, LINE_TAKES)]
     unsaved = sorted({j.voice for j in jobs if j.voice and _voice_id(manifest, j.voice) is None})
     out = [_line(name, jobs, manifest, f" ({SPEECH_CREDITS_PER_CHAR}/character, assumed; v4 may cost more)")]
@@ -479,8 +552,9 @@ def plan_text(book: CueBook, layers: dict[str, Layer], files: dict[str, VoiceFil
     for name in names:
         lines += batch_lines(name, book, layers, files, manifest)
     lines.append(f"spent so far: {manifest.credits_spent()} credits")
-    lines += [*_pending(manifest), *_interrupted(manifest)]
-    if _pending(manifest) or _interrupted(manifest):
+    lines += [*_pending(manifest), *_interrupted(manifest), *_unknown(manifest)]
+    lines += _missing_files(manifest, AUDIO_SRC / "raw")
+    if _pending(manifest) or _interrupted(manifest) or _unknown(manifest):
         lines.append(f"blocked: no paid command will run. {HOW_TO_RESOLVE}")
     return "\n".join(lines)
 
@@ -510,6 +584,7 @@ def _build_parser() -> argparse.ArgumentParser:
     design = paid(vsub.add_parser("design"))
     design.add_argument("unit")
     design.add_argument("--voice", required=True)
+    design.add_argument("--again", action="store_true", help="buy another round of previews (at most 3)")
     save = vsub.add_parser("save")
     save.add_argument("unit")
     save.add_argument("--voice", required=True)
@@ -563,7 +638,7 @@ def _voices(args: argparse.Namespace, files: dict[str, VoiceFile], manifest: Man
         return
     _voice_of(files, args.unit, args.voice)
     if args.action == "design":
-        run_design(manifest, get_client, raw, fmt, args.unit, args.voice, files[args.unit].voices[args.voice].description, args.max_credits)
+        run_design(manifest, get_client, raw, fmt, args.unit, args.voice, files[args.unit].voices[args.voice].description, args.max_credits, args.again)
     elif args.action == "save":
         run_save(manifest, get_client, fmt, args.unit, args.voice, files[args.unit].voices[args.voice].description, args.pick)
     else:
@@ -585,20 +660,29 @@ def main(argv: list[str] | None = None) -> int:
         print(f"generate.py: {unsafe}", file=sys.stderr)
         return 2
     try:
-        book = cuebook.load_cues(AUDIO_SRC / "cues.toml")
-        layers = cuebook.load_layers(AUDIO_SRC / "music" / "prompts.toml")
-        files = cuebook.load_voices(AUDIO_SRC / "voices")
-        manifest = Manifest.load(AUDIO_SRC / "manifest.json", allowed=AUDIO_FIELDS)
-        fmt = read_format(AUDIO_SRC)
-    except (CueError, ManifestError, UnsafePath, OSError) as error:
+        with contextlib.ExitStack() as stack:
+            if args.command != "plan":  # plan is free and takes no lock
+                stack.enter_context(_locked(AUDIO_SRC / LOCK_NAME))
+            return _run(args)
+    except (ElevenLabsError, BudgetError, BlockedError, InterruptedRun) as error:
+        print(f"generate.py: {error}", file=sys.stderr)
+        return 1
+    except (CueError, ManifestError, SecretsError, UnsafePath) as error:
         print(f"generate.py: {error}", file=sys.stderr)
         return 2
+    except OSError as error:  # the client turns network failures into ElevenLabsError, so this is local file trouble
+        print(f"generate.py: {_local_error(error)}", file=sys.stderr)
+        return 2 if args.command == "plan" else 1
+
+
+def _run(args: argparse.Namespace) -> int:
+    book = cuebook.load_cues(AUDIO_SRC / "cues.toml")
+    layers = cuebook.load_layers(AUDIO_SRC / "music" / "prompts.toml")
+    files = cuebook.load_voices(AUDIO_SRC / "voices")
+    manifest = Manifest.load(AUDIO_SRC / "manifest.json", allowed=AUDIO_FIELDS)
+    fmt = read_format(AUDIO_SRC)
     if args.command == "plan":  # the free command returns before anything looks for the key
-        try:
-            print(plan_text(book, layers, files, manifest, fmt, args.batch))
-        except CueError as error:
-            print(f"generate.py: {error}", file=sys.stderr)
-            return 2
+        print(plan_text(book, layers, files, manifest, fmt, args.batch))
         return 0
 
     def get_client(output_format: str) -> ElevenLabsClient:
@@ -606,19 +690,6 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         _dispatch(args, book, layers, files, manifest, get_client, AUDIO_SRC / "raw", fmt)
-    except CueError as error:
-        print(f"generate.py: {error}", file=sys.stderr)
-        return 2
-    except (SecretsError, UnsafePath) as error:
-        print(f"generate.py: {error}", file=sys.stderr)
-        return 2
-    except (ElevenLabsError, BudgetError, BlockedError, InterruptedRun) as error:
-        print(f"generate.py: {error}", file=sys.stderr)
-        return 1
-    except OSError as error:  # the client turns network failures into ElevenLabsError, so this is local file trouble
-        what = error.strerror or type(error).__name__
-        print(f"generate.py: {what}: {error.filename}" if error.filename else f"generate.py: {what}", file=sys.stderr)
-        return 1
     except SystemExit as stop:  # the probe was refused: it has said why
         return int(stop.code or 0) if isinstance(stop.code, int) else 1
     print(f"credits spent so far: {manifest.credits_spent()}")
