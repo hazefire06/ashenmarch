@@ -136,16 +136,16 @@ class VoiceFile:
     lines: dict[str, Line]
 
 
-def printable(text: str) -> str:
-    """text with every control character escaped (\\x1b), newlines kept. File names come from a public repo, so a planted ESC or BEL
-    in one must not reach the terminal raw."""
-    return text if all(c.isprintable() or c == "\n" for c in text) else "".join(
-        c if c.isprintable() or c == "\n" else c.encode("unicode_escape").decode("ascii") for c in text)
+def printable(text: str, keep_newlines: bool = False) -> str:
+    """text with every control character escaped (\\x1b). Newlines and carriage returns are escaped too, so a value (a file name, a
+    prompt) can't fake a line of output; emit() keeps the newlines a message puts between its own lines."""
+    keep = "\n" if keep_newlines else ""
+    return "".join(c if c.isprintable() or c in keep else c.encode("unicode_escape").decode("ascii") for c in text)
 
 
 def emit(text: str = "", file: object = None, flush: bool = False) -> None:
-    """print(), through printable()."""
-    print(printable(text), file=file, flush=flush)  # type: ignore[call-overload]
+    """print(), through printable(), keeping a message's own line breaks."""
+    print(printable(text, keep_newlines=True), file=file, flush=flush)  # type: ignore[call-overload]
 
 
 def _show(value: object) -> str:

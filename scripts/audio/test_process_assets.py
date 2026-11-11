@@ -357,6 +357,26 @@ class PlantedNamesTest(unittest.TestCase):
         self.assertIn("\\x1b", out)
         self.assert_clean(out, err)
 
+    def test_an_orphan_name_cannot_fake_a_line_of_output(self) -> None:
+        orphan = self.tree.root / "assets" / "audio" / "sfx" / "x\nwrote LICENSES.md (0 audio rows).wav"
+        orphan.parent.mkdir(parents=True)
+        orphan.write_bytes(b"x")
+        code, out, err = self.tree.build()
+        self.assertEqual(code, 0)
+        self.assertIn("sfx/x\\nwrote LICENSES.md", out)
+        self.assertFalse([line for line in out.splitlines() if line.startswith("wrote LICENSES.md")])
+
+    def test_a_bug_in_main_is_reported_through_emit_and_ctrl_c_is_not_swallowed(self) -> None:
+        err = io.StringIO()
+        with mock.patch.object(process, "build", side_effect=RuntimeError("boom\x1b[2J\nfake")), contextlib.redirect_stderr(err):
+            self.assertEqual(process.main(["build"]), 1)
+        self.assertIn("process.py build: unexpected RuntimeError: boom", err.getvalue())
+        self.assertNotIn("Traceback", err.getvalue())
+        self.assertNotIn("\x1b", err.getvalue())
+        self.assertEqual(err.getvalue().count("\n"), 1)
+        with mock.patch.object(process, "build", side_effect=KeyboardInterrupt), self.assertRaises(KeyboardInterrupt):
+            process.main(["build"])
+
     def test_a_symlink_with_escape_bytes_in_its_name_is_reported_escaped(self) -> None:
         folder = self.tree.root / "assets" / "audio" / "sfx"
         folder.mkdir(parents=True)

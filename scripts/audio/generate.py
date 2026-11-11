@@ -31,6 +31,7 @@ from __future__ import annotations
 import argparse
 import contextlib
 import hashlib
+import json
 import math
 import os
 import stat
@@ -217,7 +218,7 @@ def _text_shown(text: object, limit: int | None = None) -> str:
     text = str(text)
     limit = SHOW_LIMIT if limit is None else limit
     cut = f" ... [+{len(text) - limit} characters not shown]" if len(text) > limit else ""
-    return cuebook.printable(text[:limit]) + cut
+    return cuebook.printable(text[:limit]) + cut  # newlines escaped too: a prompt can't fake a line of output
 
 
 def _check_shown(label: str, text: str) -> None:
@@ -234,13 +235,21 @@ def _sends(manifest: Manifest, job: Job) -> list[str]:
     return lines
 
 
-def _ledger_add(manifest: Manifest, started: dict[str, Any], entry: dict[str, Any]) -> None:
-    """One ledger line per DONE purchase. If it can't be written the call was paid: INTERRUPTED, and the run stops."""
+def _ledger_add(manifest: Manifest, started: dict[str, Any], entry: dict[str, Any], rel: str | None = None, credits: int = 0) -> None:
+    """One ledger line per DONE purchase. If it can't be written the call was paid and the audio is saved: the entry stays INTERRUPTED, and
+    the message gives what is needed to finish by hand (the saved path, its hash and size or the new voice id, the line to append)."""
     try:
         ledger.append(entry)
     except (OSError, ledger.LedgerError) as error:
         _store(manifest, {**started, "status": "INTERRUPTED"})
-        raise InterruptedRun(f"{started['label']!r}: the call was paid but the purchase ledger couldn't be written ({_local_error(error) if isinstance(error, OSError) else error}). {HOW_TO_RESOLVE}") from None
+        why = _local_error(error) if isinstance(error, OSError) else str(error)
+        saved = (f"The audio is saved at audio-src/raw/{rel} (sha256 {entry.get('sha256')}, {entry.get('bytes')} bytes). " if rel is not None
+                 else f"The new voice id is {entry.get('voice_id')}. ")
+        raise InterruptedRun(
+            f"{started['label']!r}: the call was paid ({credits} credits) but the purchase ledger couldn't be written ({why}). {saved}"
+            f"Append this exact line to {cuebook.printable(str(ledger.LEDGER))} by hand (if its last line is partial, delete that first): "
+            f"{json.dumps(entry, sort_keys=True)}  Then set this entry in audio-src/manifest.json to DONE with credits {credits}"
+            f"{' and the file, sha256 and bytes above' if rel is not None else ' and that voice_id'}.") from None
 
 
 def _local_error(error: Exception) -> str:
@@ -516,7 +525,7 @@ def run_jobs(manifest: Manifest, get_client: GetClient, raw: Path, fmt: str, job
         record = {"kind": job.kind, "label": job.label, "model": job.model, "format": fmt, **job.fields}
         data = _buy(manifest, record, lambda job=job: job.call(client))
         rel = _save_audio(manifest, record, raw, job.label, data)
-        _ledger_add(manifest, record, {"kind": job.kind, "label": job.label, **fingerprint(data)})
+        _ledger_add(manifest, record, {"kind": job.kind, "label": job.label, **fingerprint(data)}, rel, job.credits)
         _done(manifest, record, job.credits, [rel], **fingerprint(data))
         say(f"{job.label}: saved raw/{rel}")
     return len(todo)
@@ -549,7 +558,7 @@ def run_design(manifest: Manifest, get_client: GetClient, raw: Path, fmt: str, u
         preview_label = f"design/{unit}/{voice}/{n}"
         rel = _save_audio(manifest, started, raw, preview_label, audio)  # the audio only: the JSON the previews came in is never kept
         files.append(rel)
-        _ledger_add(manifest, started, {"kind": "design", "label": preview_label, **fingerprint(audio)})
+        _ledger_add(manifest, started, {"kind": "design", "label": preview_label, "generated_voice_id": generated_id, **fingerprint(audio)}, rel, 0)
         _done(manifest, {"kind": "design", "label": preview_label, "model": "eleven_ttv_v3", "generated_voice_id": generated_id}, 0, [rel],
               **fingerprint(audio))
         say(f"{preview_label}: saved raw/{rel}")
@@ -567,14 +576,18 @@ def run_save(manifest: Manifest, get_client: GetClient, fmt: str, unit: str, voi
     generated = preview.get("generated_voice_id") if preview is not None and _bought(preview) else None
     if not isinstance(generated, str):
         raise BlockedError(f"preview {pick} of {voice} was never made; run voices design {unit} --voice {voice} first")
+    if not ledger.has_design(ledger.load(missing_ok=True), f"design/{unit}/{voice}/{pick}", generated):
+        # manifest.json is committed: a PR could point a preview record at another voice's generated id.
+        raise BlockedError(f"preview {pick} of {voice} isn't in the purchase ledger with that generated voice id (or there is no ledger at "
+                           f"{cuebook.printable(str(ledger.LEDGER))}), so this Mac didn't make it; run voices design {unit} --voice {voice} --again")
     _check_shown(label, description)
     ledger.prepare()
     client = get_client(fmt)
-    say(f"  sends: voice name {voice}, {_text_shown(description)}")
+    say(f"  sends: voice name {voice}, generated_voice_id {generated}, {_text_shown(description)}")
     say(f"{label}: saving preview {pick}")
     record = {"kind": "voice", "label": label, "generated_voice_id": generated}
     voice_id = _buy(manifest, record, lambda: client.save_voice(voice, description, generated))
-    _ledger_add(manifest, record, {"kind": "voice", "label": label, "voice_id": voice_id})
+    _ledger_add(manifest, record, {"kind": "voice", "label": label, "voice_id": voice_id}, None, 0)
     _done(manifest, record, 0, [], voice_id=voice_id)
     say(f"{label}: saved as {voice_id}")
     return True
@@ -837,6 +850,7 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     try:
         with contextlib.ExitStack() as stack:
+            stack.callback(ledger.close)
             if args.command != "plan":  # plan is free and takes no lock
                 stack.enter_context(_locked(_global_lock_path()))  # first: it is the one that sees other checkouts
                 stack.enter_context(_locked(AUDIO_SRC / LOCK_NAME))
@@ -850,6 +864,11 @@ def main(argv: list[str] | None = None) -> int:
     except OSError as error:  # the client turns network failures into ElevenLabsError, so this is local file trouble
         cuebook.emit(f"generate.py: {_local_error(error)}", file=sys.stderr)
         return 2 if args.command == "plan" else 1
+    except Exception as error:  # a bug: say so through emit, with no traceback (a locals-printing traceback viewer is not wanted here)
+        # KeyboardInterrupt is not an Exception and still propagates. A Ctrl-C during a POST leaves that entry PENDING, by design: the
+        # request may have been charged, so the next run is blocked until Tim checks the usage page.
+        cuebook.emit(f"generate.py: unexpected {type(error).__name__}: {cuebook.printable(str(error))[:200]}", file=sys.stderr)
+        return 1
 
 
 def _run(args: argparse.Namespace) -> int:

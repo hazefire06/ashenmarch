@@ -4,8 +4,11 @@ from __future__ import annotations
 
 import base64
 import contextlib
+import hashlib
 import io
 import json
+import os
+import stat
 import tempfile
 import unittest
 import urllib.request
@@ -812,6 +815,173 @@ class OddStatusTest(Base):
         self.assert_untouched()
 
 
+class LedgerHardeningTest(Base):
+    """The last security items: save trusts the ledger, prepare() proves the append, a ledger failure keeps what Tim needs."""
+
+    # -- Low 1
+    def test_a_design_ledger_line_carries_the_generated_voice_id(self) -> None:
+        self.allow_network(Fake([preview_reply(2)]))
+        self.run_main("voices", "design", "shieldman", "--voice", "shieldman_old", "--max-credits", "1000")
+        self.assertEqual([(e["label"], e["generated_voice_id"]) for e in self.ledger_lines()],
+                         [("design/shieldman/shieldman_old/1", "gen1"), ("design/shieldman/shieldman_old/2", "gen2")])
+
+    def test_a_manifest_preview_edited_to_another_id_is_refused_by_save(self) -> None:
+        fake = self.allow_network(Fake([preview_reply(1), json_voice_reply()]))
+        self.run_main("voices", "design", "shieldman", "--voice", "shieldman_old", "--max-credits", "1000")
+        tasks = [dict(t) for t in self.manifest().tasks]
+        for t in tasks:
+            if t["label"] == "design/shieldman/shieldman_old/1":
+                t["generated_voice_id"] = "PlantedLibVoice9"
+        self.seed(*tasks)
+        code, _, err = self.run_main("voices", "save", "shieldman", "--voice", "shieldman_old", "--pick", "1")
+        self.assertEqual(code, 1)
+        self.assertIn("isn't in the purchase ledger with that generated voice id", err)
+        self.assertEqual(len(fake.calls), 1)  # only the design call; nothing was sent to save
+        self.assertIsNone(self.manifest().find("voice", "voice/shieldman_old"))
+
+    # -- Low 2
+    def _prepare_refused(self, setup: Any, expect: str) -> None:
+        self.ledger_path.parent.mkdir(parents=True, exist_ok=True)
+        setup(self.ledger_path)
+        with self.assertRaisesRegex(ledger.LedgerError, expect):
+            ledger.prepare()
+        ledger.close()
+        fake = self.allow_network()
+        code, _, err = self.run_main("sfx", "--cue", "hit_dry", "--max-credits", "20")
+        self.assertEqual((code, fake.calls), (2, []))  # refused before the paid call
+        self.assertIn("ledger", err)
+        self.assertFalse(self.manifest_path.exists())
+
+    def test_prepare_refuses_a_folder_at_the_ledger_path(self) -> None:
+        self._prepare_refused(lambda p: p.mkdir(), "can't be opened for appending")
+
+    def test_prepare_refuses_a_read_only_file(self) -> None:
+        self._prepare_refused(lambda p: (p.write_text(""), p.chmod(0o400)), "can't be opened for appending|must be mode 600")
+
+    def test_prepare_refuses_a_file_with_looser_permissions(self) -> None:
+        self._prepare_refused(lambda p: (p.write_text(""), p.chmod(0o644)), "must be mode 600")
+
+    def test_prepare_refuses_a_fifo(self) -> None:
+        self._prepare_refused(lambda p: os.mkfifo(p), "isn't a regular file|can't be opened for appending")
+
+    def test_prepare_refuses_a_hardlinked_ledger(self) -> None:
+        def setup(p: Path) -> None:
+            other = Path(self._tmp.name) / "other.jsonl"
+            other.write_text("")
+            other.chmod(0o600)
+            os.link(other, p)
+        self._prepare_refused(setup, "hard links")
+
+    def test_prepare_makes_a_private_folder_and_a_600_file_and_keeps_one_fd(self) -> None:
+        self.ledger_path.parent.mkdir(parents=True, mode=0o755)
+        self.ledger_path.parent.chmod(0o755)
+        ledger.prepare()
+        first = ledger._open
+        ledger.prepare()
+        self.assertIs(ledger._open, first)  # the same fd, kept
+        self.assertEqual(self.ledger_path.parent.stat().st_mode & 0o777, 0o700)
+        self.assertEqual(self.ledger_path.stat().st_mode & 0o777, 0o600)
+
+    def test_a_ledger_replaced_during_the_run_is_noticed(self) -> None:
+        ledger.append({"kind": "sfx", "label": "a"})
+        self.ledger_path.unlink()
+        ledger.append({"kind": "sfx", "label": "b"})  # reopened, not written to the unlinked file
+        self.assertEqual([e["label"] for e in ledger.load()], ["b"])
+
+    def test_a_run_closes_the_fd(self) -> None:
+        self.allow_network()
+        self.run_main("sfx", "--cue", "hit_dry", "--max-credits", "20")
+        self.assertIsNone(ledger._open)
+
+    # -- Low 3
+    def test_a_ledger_failure_after_payment_gives_the_path_hash_size_and_the_line_to_append(self) -> None:
+        self.allow_network()
+        with mock.patch.object(ledger, "append", side_effect=ledger.LedgerError("disk full")):
+            code, _, err = self.run_main("sfx", "--cue", "hit_dry", "--max-credits", "20")
+        self.assertEqual(code, 1)
+        line = json.dumps({"kind": "sfx", "label": "sfx/hit_dry/1", "sha256": hashlib.sha256(WAV).hexdigest(), "bytes": len(WAV)}, sort_keys=True)
+        self.assertIn("disk full", err)
+        self.assertIn("audio-src/raw/sfx/hit_dry/1.wav", err)
+        self.assertIn(hashlib.sha256(WAV).hexdigest(), err)
+        self.assertIn(f"{len(WAV)} bytes", err)
+        self.assertIn(line, err)
+        self.assertIn(str(self.ledger_path), err)
+        self.assertNotIn("the audio is gone", err)
+        self.assertEqual(self.manifest().find("sfx", "sfx/hit_dry/1")["status"], "INTERRUPTED")
+        self.assertTrue((self.raw / "sfx" / "hit_dry" / "1.wav").is_file())
+
+    def test_a_ledger_failure_when_saving_a_voice_gives_the_voice_id_and_the_line(self) -> None:
+        self.allow_network(Fake([preview_reply(1), json_voice_reply()]))
+        self.run_main("voices", "design", "shieldman", "--voice", "shieldman_old", "--max-credits", "1000")
+        real = ledger.append
+
+        def fail_for_voice(entry: dict[str, Any]) -> None:
+            if entry["kind"] == "voice":
+                raise ledger.LedgerError("disk full")
+            real(entry)
+
+        with mock.patch.object(ledger, "append", fail_for_voice):
+            code, _, err = self.run_main("voices", "save", "shieldman", "--voice", "shieldman_old", "--pick", "1")
+        self.assertEqual(code, 1)
+        self.assertIn("The new voice id is VoiceOld1", err)
+        self.assertIn(json.dumps({"kind": "voice", "label": "voice/shieldman_old", "voice_id": "VoiceOld1"}, sort_keys=True), err)
+        self.assertEqual(self.manifest().find("voice", "voice/shieldman_old")["status"], "INTERRUPTED")
+
+    # -- Low 4
+    def test_a_short_write_is_an_error(self) -> None:
+        with mock.patch.object(ledger.os, "write", side_effect=lambda fd, data: len(data) - 1):
+            with self.assertRaisesRegex(ledger.LedgerError, "only .* of .* bytes reached"):
+                ledger.append({"kind": "sfx", "label": "a"})
+
+    def test_every_append_is_fsynced(self) -> None:
+        with mock.patch.object(ledger.os, "fsync") as fsync:
+            ledger.append({"kind": "sfx", "label": "a"})
+        self.assertEqual(fsync.call_count, 1)
+        self.assertEqual(fsync.call_args.args[0], ledger._open[1])  # type: ignore[index]
+
+    def test_a_failed_fsync_is_an_error(self) -> None:
+        with mock.patch.object(ledger.os, "fsync", side_effect=OSError(5, "Input/output error")):
+            with self.assertRaisesRegex(ledger.LedgerError, "can't be written"):
+                ledger.append({"kind": "sfx", "label": "a"})
+
+
+class UnexpectedErrorTest(Base):
+    def test_a_bug_is_reported_through_emit_without_a_traceback(self) -> None:
+        with mock.patch.object(generate, "_run", side_effect=RuntimeError("boom\x1b[2J\nfake line")):
+            code, out, err = self.run_main("plan")
+        self.assertEqual(code, 1)
+        self.assertIn("unexpected RuntimeError: boom", err)
+        self.assertNotIn("Traceback", err)
+        self.assertNotIn("\x1b", err)
+        self.assertEqual(err.count("\n"), 1)  # the newline in the message was escaped
+        self.assertEqual(out, "")
+
+    def test_a_paid_run_releases_its_locks_and_fd_after_a_bug(self) -> None:
+        self.allow_network()
+        with mock.patch.object(generate, "_dispatch", side_effect=RuntimeError("boom")):
+            code, _, _ = self.run_main("sfx", "--cue", "hit_dry", "--max-credits", "20")
+        self.assertEqual(code, 1)
+        self.assertFalse(self.global_lock.exists())
+        self.assertFalse((self.src / "manifest.json.lock").exists())
+        self.assertIsNone(ledger._open)
+
+    def test_ctrl_c_is_not_swallowed(self) -> None:
+        self.allow_network()
+        with mock.patch.object(generate, "_dispatch", side_effect=KeyboardInterrupt):
+            with self.assertRaises(KeyboardInterrupt):
+                self.run_main("sfx", "--cue", "hit_dry", "--max-credits", "20")
+        self.assertFalse(self.global_lock.exists())  # still cleaned up
+
+    def test_a_ctrl_c_mid_post_leaves_the_entry_pending(self) -> None:
+        def interrupted(path: str, query: dict[str, str], body: dict[str, Any]) -> tuple[str, bytes]:
+            raise KeyboardInterrupt
+
+        self.allow_network(interrupted)  # type: ignore[arg-type]
+        with self.assertRaises(KeyboardInterrupt):
+            self.run_main("sfx", "--cue", "hit_dry", "--max-credits", "20")
+        self.assertEqual(self.manifest().find("sfx", "sfx/hit_dry/1")["status"], "PENDING")  # by design: it may have been charged
+
+
 class PlantedNameTest(Base):
     def test_a_voice_file_named_with_escape_bytes_is_refused_without_raw_control_bytes(self) -> None:
         (self.src / "voices" / "\x1b[2J\x07evil.toml").write_text('unit = "x"\n', encoding="utf-8")
@@ -1012,7 +1182,7 @@ class PlanWordingAndShowTest(Base):
         self.assertLess(out.index("sends: a gruff old man"), out.index("designing"))
         self.allow_network(Fake([json_voice_reply()]))
         _, out, _ = self.run_main("voices", "save", "shieldman", "--voice", "shieldman_old", "--pick", "1")
-        self.assertLess(out.index("sends: voice name shieldman_old, a gruff old man"), out.index("saving preview 1"))
+        self.assertLess(out.index("sends: voice name shieldman_old, generated_voice_id gen1, a gruff old man"), out.index("saving preview 1"))
 
 
 def json_voice_reply() -> tuple[str, bytes]:

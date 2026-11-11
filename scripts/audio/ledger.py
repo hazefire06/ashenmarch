@@ -3,12 +3,13 @@
 audio-src/manifest.json and audio-src/raw/ are committed, so a PR can forge a DONE record with a matching hash for a planted file. The
 ledger is not in the repo (~/.local/share/ashenmarch/purchases.jsonl), so process.py uses a raw file only if a line here matches its
 label, hash and size, and generate.py uses a voice id only if a line here saved it. Lines are {"kind", "label", "sha256", "bytes"}, or
-{"kind": "voice", "label", "voice_id"}. A line that doesn't parse is an error, never skipped.
+{"kind": "voice", "label", "voice_id"}; a design line also carries "generated_voice_id". A line that doesn't parse is an error, never skipped.
 """
 from __future__ import annotations
 
 import json
 import os
+import stat
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -28,28 +29,85 @@ def _folder(create: bool) -> None:
         raise LedgerError(f"{printable(str(folder))} is a symlink; replace it with a real folder (or remove it)")
     if create:
         folder.mkdir(mode=0o700, parents=True, exist_ok=True)
-        if folder.is_symlink() or not folder.is_dir():  # also catches a swap between the first look and the mkdir
-            raise LedgerError(f"{printable(str(folder))} isn't a real folder")
+        try:
+            fd = os.open(folder, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)  # not a link, and the one we then chmod
+        except OSError:
+            raise LedgerError(f"{printable(str(folder))} isn't a real folder") from None
+        try:
+            os.fchmod(fd, 0o700)
+        except OSError as err:
+            raise LedgerError(f"{printable(str(folder))} can't be made private ({err.strerror})") from None
+        finally:
+            os.close(fd)
+
+
+_open: tuple[Path, int, tuple[int, int]] | None = None  # the ledger path, its append fd, and the file's (device, inode)
+
+
+def close() -> None:
+    """Closes the append fd (the end of a run)."""
+    global _open
+    if _open is not None:
+        os.close(_open[1])
+        _open = None
+
+
+def _check(fd: int, name: str) -> tuple[int, int]:
+    info = os.fstat(fd)
+    if not stat.S_ISREG(info.st_mode):
+        raise LedgerError(f"{name} isn't a regular file (a folder or a pipe?); move it away")
+    if info.st_uid != os.getuid():
+        raise LedgerError(f"{name} isn't owned by you; replace it with your own file")
+    if info.st_nlink != 1:
+        raise LedgerError(f"{name} has other hard links; replace it with a plain file")
+    if info.st_mode & 0o177 or not info.st_mode & 0o200:
+        raise LedgerError(f"{name} must be mode 600 (chmod 600 it); it is {info.st_mode & 0o777:o}")
+    return info.st_dev, info.st_ino
 
 
 def prepare() -> None:
-    """Before a purchase: the folder exists at 0700 and neither it nor the ledger is a link, so a failed append can't lose a paid take."""
+    """Before a purchase, and again before every append: the folder exists at 0700 and neither it nor the ledger is a link, and the
+    ledger is open for appending (kept open for the run) and is a regular file of ours, mode 600, with no other links. So a ledger
+    that cannot be appended to is found before the paid call, not after it."""
+    global _open
     _folder(True)
+    name = f"the purchase ledger {printable(str(LEDGER))}"
     if LEDGER.is_symlink():
-        raise LedgerError(f"{printable(str(LEDGER))} is a symlink; replace it with a real file (or remove it)")
+        raise LedgerError(f"{name} is a symlink; replace it with a real file (or remove it)")
+    if _open is not None:
+        try:
+            same = _open[0] == LEDGER and os.lstat(LEDGER).st_ino == _open[2][1] and os.fstat(_open[1]).st_nlink == 1
+        except OSError:
+            same = False
+        if same:
+            _check(_open[1], name)
+            return
+        close()  # the file was replaced or moved under us
+    try:
+        # O_NONBLOCK: opening a FIFO for writing with no reader would hang; fstat then refuses it.
+        fd = os.open(LEDGER, os.O_WRONLY | os.O_APPEND | os.O_CREAT | os.O_NOFOLLOW | os.O_NONBLOCK, 0o600)
+    except OSError as err:
+        raise LedgerError(f"{name} can't be opened for appending ({err.strerror})") from None
+    try:
+        ids = _check(fd, name)
+    except BaseException:
+        os.close(fd)
+        raise
+    _open = (LEDGER, fd, ids)
 
 
 def append(entry: dict[str, Any]) -> None:
+    """One line, written whole to the open fd and fsynced. A short write is an error (the ledger may then end in a partial line)."""
     prepare()
+    assert _open is not None
     data = (json.dumps(entry, sort_keys=True) + "\n").encode("utf-8")
     try:
-        fd = os.open(LEDGER, os.O_WRONLY | os.O_APPEND | os.O_CREAT | os.O_NOFOLLOW, 0o600)
+        written = os.write(_open[1], data)  # one write: a line is never split
+        if written != len(data):
+            raise LedgerError(f"only {written} of {len(data)} bytes reached {printable(str(LEDGER))}; delete its last (partial) line by hand")
+        os.fsync(_open[1])
     except OSError as err:
-        raise LedgerError(f"{printable(str(LEDGER))} can't be opened for writing ({err.strerror})") from None
-    try:
-        os.write(fd, data)  # one write: a line is never split
-    finally:
-        os.close(fd)
+        raise LedgerError(f"{printable(str(LEDGER))} can't be written ({err.strerror})") from None
 
 
 def load(missing_ok: bool = False) -> list[dict[str, Any]]:
@@ -94,6 +152,10 @@ def lazy() -> Callable[[], list[dict[str, Any]]]:
 
 def has_file(entries: list[dict[str, Any]], kind: str, label: str, sha256: str, size: int) -> bool:
     return any(e.get("kind") == kind and e.get("label") == label and e.get("sha256") == sha256 and e.get("bytes") == size for e in entries)
+
+
+def has_design(entries: list[dict[str, Any]], label: str, generated_voice_id: str) -> bool:
+    return any(e.get("kind") == "design" and e.get("label") == label and e.get("generated_voice_id") == generated_voice_id for e in entries)
 
 
 def has_voice(entries: list[dict[str, Any]], voice: str, voice_id: str) -> bool:

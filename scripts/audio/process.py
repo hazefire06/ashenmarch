@@ -273,7 +273,7 @@ def build(
                 cuebook.emit(f"wrote {asset.dest}.import")
         placeholders = {c.placeholder for c in cuebook.load_cues(cues_path).cues.values() if c.placeholder}
         for orphan in assets.orphans(root, plan, placeholders):
-            cuebook.emit(f"orphaned: {orphan} (no current pick makes it; delete it if it is stale)")
+            cuebook.emit(f"orphaned: {cuebook.printable(orphan)} (no current pick makes it; delete it if it is stale)")
     except (CueError, UnsafePath, ToolMissing, AudioError, OSError) as err:
         cuebook.emit(f"process.py build: {err}", file=sys.stderr)
         return 1
@@ -387,13 +387,17 @@ def main(argv: list[str]) -> int:
     y = sub.add_parser("synthetic", help="write synthetic test audio and a sidecar for it (Web measurement only)")
     y.add_argument("--sidecar", type=Path, default=SIDECAR)
     args = parser.parse_args(argv)
-    if args.command == "synthetic":
-        return synthetic(args.sidecar)
-    if args.command == "batch":
-        return batch(args.name)
-    if args.command == "picks":
-        return picks_file(args.file)
-    return build(args.sidecar, force=args.force)
+    try:
+        if args.command == "synthetic":
+            return synthetic(args.sidecar)
+        if args.command == "batch":
+            return batch(args.name)
+        if args.command == "picks":
+            return picks_file(args.file)
+        return build(args.sidecar, force=args.force)
+    except Exception as error:  # a bug: reported through emit, with no traceback. KeyboardInterrupt still propagates.
+        cuebook.emit(f"process.py {args.command}: unexpected {type(error).__name__}: {cuebook.printable(str(error))[:200]}", file=sys.stderr)
+        return 1
 
 
 if __name__ == "__main__":

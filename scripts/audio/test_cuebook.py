@@ -229,9 +229,20 @@ class RefusalTest(unittest.TestCase):
             (Path(tmp) / "_clan.toml").write_text('unit = "_clan"\n[line.clan_1]\ntext = "Hi"\n', encoding="utf-8")
             self.assertIn("_clan", cuebook.load_voices(Path(tmp)))
 
-    def test_printable_escapes_control_characters_and_keeps_newlines(self) -> None:
-        self.assertEqual(cuebook.printable("a\nb"), "a\nb")
+    def test_printable_escapes_control_characters_and_newlines_in_values(self) -> None:
+        # A value (a file name, a prompt) must not be able to fake a line of output.
         self.assertEqual(cuebook.printable("a\x1b[2Jb\x07"), "a\\x1b[2Jb\\x07")
+        self.assertEqual(cuebook.printable("a\nb\rc"), "a\\nb\\rc")
+        self.assertEqual(cuebook.printable("a\nb", keep_newlines=True), "a\nb")
+        self.assertEqual(cuebook.printable("a\rb", keep_newlines=True), "a\\rb")
+
+    def test_emit_keeps_a_messages_own_lines_but_not_control_characters(self) -> None:
+        import contextlib
+        import io
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            cuebook.emit("one\ntwo \x1b[2J\r")
+        self.assertEqual(out.getvalue(), "one\ntwo \\x1b[2J\\r\n")
 
     def test_a_bad_toml_path_with_a_control_character_is_escaped_in_the_message(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
