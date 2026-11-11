@@ -54,13 +54,16 @@ class Manifest:
             data = json.loads(path.read_text(encoding="utf-8"))  # JSONDecodeError and UnicodeDecodeError are both ValueErrors
             tasks = data.get("tasks", []) if isinstance(data, dict) else None
             if isinstance(tasks, list) and all(isinstance(t, dict) for t in tasks):
-                return cls(path, tasks, allowed)  # cleans each record, and clean() recurses into a deeply nested value
+                loaded = cls(path, tasks, allowed)  # cleans each record, and clean() recurses into a deeply nested value
+                keys = [repr((t.get("kind"), t.get("label"))) for t in loaded.tasks]
+                if len(set(keys)) == len(keys):
+                    return loaded
         except (ValueError, RecursionError):
             pass
         # Not echoed (it is a committed file, so it could hold anything). Not "delete it" or "restore it" either: an older
         # copy forgets what was bought since, and the next run would buy that again.
         raise ManifestError(f"{path} can't be read as a manifest (JSON: an object with a list of task records). "
-                            "Fix it by hand (for a merge conflict, keep both sides' records). "
+                            "Fix it by hand (for a merge conflict, merge both sides' records into one per label: two records for the same kind and label would make a bought item look unbought). "
                             "Don't delete it or check out an older copy: tasks bought since then would be bought again.")
 
     def find(self, kind: str, label: str) -> dict[str, Any] | None:

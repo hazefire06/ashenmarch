@@ -322,6 +322,9 @@ def _batch_work(name: str, cues_path: Path, layers_path: Path, voices_dir: Path,
     else:
         raise CueError(f"batch {name!r}: use a category ({', '.join(c for c in cuebook.CATEGORIES if c not in cuebook.LOOP_CATEGORIES)}), "
                        "loops, music, voices-<unit>, design-<unit> or ab")
+    records = assets.load_records(root / assets.MANIFEST)
+    for _, path, _ in work:
+        assets.verify_raw(path, root, records)  # a file nobody bought is never decoded
     return work
 
 

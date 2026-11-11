@@ -2,10 +2,10 @@
 from __future__ import annotations
 
 import datetime
-import json
 import re
 from pathlib import Path
 
+import assets
 from assets import Asset
 from cuebook import CueError
 
@@ -29,22 +29,16 @@ def _date(record: dict[str, object] | None, source: Path) -> str:
     return when.strftime("%Y-%m-%d")
 
 
-def _manifest_records(path: Path) -> dict[tuple[str, str], dict[str, object]]:
-    try:
-        tasks = json.loads(path.read_text(encoding="utf-8")).get("tasks", [])
-    except (OSError, ValueError, AttributeError):
-        return {}
-    return {(str(t.get("kind")), str(t.get("label"))): t for t in tasks if isinstance(t, dict)}
-
-
 def licence_rows(plan: list[Asset], manifest: Path) -> list[str]:
-    records = _manifest_records(manifest)
+    records = assets.load_records(manifest)
     rows: list[str] = []
     dates: list[str] = []
     for asset in sorted(plan, key=lambda a: a.dest):
         record = records.get(asset.record)
-        model = _clean(record.get("model", "")) if record else ""
-        source = f"ElevenLabs {ENDPOINTS[asset.record[0]]}" + (f" ({model})" if model else "")
+        model = _clean(record.get("model", "")) if record is not None and record.get("status") == "DONE" else ""
+        if not model:  # the row claims a paid purchase, so it needs the record that proves one
+            raise CueError(f"{asset.dest}: no DONE purchase record with a model in audio-src/manifest.json, so no licence row can be written")
+        source = f"ElevenLabs {ENDPOINTS[asset.record[0]]} ({model})"
         parts = asset.record[1].split("/")
         noun = {"sfx": "cue", "music": "layer", "voices": "line"}[asset.record[0]]
         voice = f" ({parts[1]})" if asset.record[0] == "voices" else ""

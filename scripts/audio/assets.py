@@ -74,6 +74,51 @@ def check_no_symlinks(root: Path, rels: tuple[str, ...] = GUARDED) -> None:
                         raise UnsafePath(f"{Path(folder, entry).relative_to(root)} is a symlink; replace it with a real folder or file")
 
 
+MANIFEST: str = "audio-src/manifest.json"
+
+
+def load_records(manifest: Path) -> dict[tuple[str, str], dict[str, object]]:
+    """The manifest's records by (kind, label). A missing file is no records. A file that can't be read as a list of records, or that
+    holds two records for one kind and label (a bad merge), is refused: either could make a file look bought, or unbought."""
+    try:
+        text = manifest.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        return {}
+    except OSError:
+        raise CueError(f"{manifest.name} can't be read") from None
+    try:
+        data = json.loads(text)
+        tasks = data.get("tasks", []) if isinstance(data, dict) else None
+    except (ValueError, RecursionError):
+        tasks = None
+    if not isinstance(tasks, list) or not all(isinstance(t, dict) for t in tasks):
+        raise CueError(f"{manifest.name} can't be read as a manifest (an object with a list of task records)")
+    records: dict[tuple[str, str], dict[str, object]] = {}
+    for task in tasks:
+        key = (str(task.get("kind")), str(task.get("label")))
+        if key in records:
+            raise CueError(f"{manifest.name} has two records for one kind and label; merge them into one per label")
+        records[key] = task
+    return records
+
+
+def verify_raw(path: Path, root: Path, records: dict[tuple[str, str], dict[str, object]]) -> None:
+    """A raw file is used only if generate.py bought it: a DONE record lists it, with the file's own hash and size. The raw folder is
+    committed through LFS and the repo is public, so a PR could plant or swap a file; without this its licence row would claim a purchase."""
+    rel = path.relative_to(root / "audio-src" / "raw").as_posix()
+    label = rel.rsplit(".", 1)[0]
+    record = records.get((label.split("/", 1)[0], label))
+    if record is None or record.get("status") != "DONE" or not isinstance(record.get("files"), list) or rel not in record["files"]:
+        raise CueError(f"raw/{rel}: no DONE purchase record lists this file in {MANIFEST}, so it isn't used (generate.py writes the record when it buys a take)")
+    digest, size = hashlib.sha256(), 0
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1 << 20), b""):
+            digest.update(chunk)
+            size += len(chunk)
+    if record.get("sha256") != digest.hexdigest() or record.get("bytes") != size:
+        raise CueError(f"raw/{rel}: its hash differs from the purchase record's (or the record has none), so it isn't the file that was bought")
+
+
 def find_raw(folder: Path, take: int) -> Path | None:
     """audio-src/raw/.../<take>.wav or .mp3, whichever generate.py wrote."""
     for ext in (".wav", ".mp3"):
@@ -125,11 +170,13 @@ def plan_assets(cues_path: Path, layers_path: Path, voices_dir: Path, root: Path
     """Every picked take, with the raw file it comes from. A pick with no raw file is an error."""
     raw = root / "audio-src" / "raw"
     plan: list[Asset] = []
+    records = load_records(root / MANIFEST)
 
     def add(kind: str, res: str, folder: str, take: int, what: str, ident: str, record_kind: str) -> None:
         source = find_raw(raw / folder, take)
         if source is None:
             raise CueError(f"{what}: picked take {take} has no file under audio-src/raw/{folder}/")
+        verify_raw(source, root, records)
         plan.append(Asset(kind, res.removeprefix("res://"), source, f"{what} take {take}", ident, (record_kind, f"{folder}/{take}")))
 
     for cue in cuebook.load_cues(cues_path).cues.values():

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import contextlib
 import datetime
+import hashlib
 import io
 import json
 import math
@@ -85,6 +86,7 @@ class Tree:
         (src / "voices").mkdir(parents=True)
         (src / "music").mkdir()
         (self.root / "assets").mkdir()
+        self.records: dict[tuple[str, str], dict[str, object]] = {}  # the DONE record generate.py would have written for each raw file
         self.cues = src / "cues.toml"
         self.layers = src / "music" / "prompts.toml"
         self.voices = src / "voices"
@@ -98,10 +100,20 @@ class Tree:
     def raw(self, rel: str, frames: array | None = None, channels: int = 1) -> Path:
         path = self.root / "audio-src" / "raw" / rel
         ffmpeg_io.write_wav(frames if frames is not None else tone(0.5), RATE, channels, path)
+        label = rel.rsplit(".", 1)[0]
+        data = path.read_bytes()
+        self.records[(label.split("/", 1)[0], label)] = {
+            "kind": label.split("/", 1)[0], "label": label, "model": "eleven_text_to_sound_v2", "status": "DONE", "files": [rel],
+            "sha256": hashlib.sha256(data).hexdigest(), "bytes": len(data)}
+        self.manifest([])
         return path
 
     def manifest(self, tasks: list[dict[str, object]]) -> None:
-        (self.root / "audio-src" / "manifest.json").write_text(json.dumps({"tasks": tasks}), encoding="utf-8")
+        """Writes the manifest: a record for every raw file made so far, with these records laid over them."""
+        for task in tasks:
+            key = (str(task["kind"]), str(task["label"]))
+            self.records[key] = {**self.records.get(key, {}), **task}
+        (self.root / "audio-src" / "manifest.json").write_text(json.dumps({"tasks": list(self.records.values())}), encoding="utf-8")
 
     def set_picks(self, cue_picks: dict[str, str]) -> None:
         text = self.cues.read_text(encoding="utf-8")
@@ -208,6 +220,56 @@ class SafetyTest(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertIn("hit_a", err)
         self.assertEqual(self.tree.snapshot(), before)
+
+
+class PurchaseProofTest(unittest.TestCase):
+    """M3: a raw file is used only if a DONE record lists it with a matching hash, so a planted or swapped file buys nothing."""
+
+    def setUp(self) -> None:
+        self.tree = Tree()
+        self.addCleanup(self.tree.close)
+        self.tree.raw("sfx/hit_a/1.wav")
+        self.tree.set_picks({"hit_a": "[1]"})
+
+    def test_a_file_with_no_record_is_refused_by_build_and_batch(self) -> None:
+        (self.tree.root / "audio-src" / "manifest.json").unlink()
+        before = self.tree.snapshot()
+        code, _, err = self.tree.build()
+        self.assertEqual(code, 1)
+        self.assertIn("no DONE purchase record", err)
+        self.assertEqual(self.tree.snapshot(), before)
+        code, _, err = self.tree.run("batch", "melee")
+        self.assertEqual(code, 1)
+        self.assertIn("no DONE purchase record", err)
+        self.assertFalse((self.tree.root / "audio-src" / "audition").exists())
+
+    def test_a_swapped_file_is_refused_by_build_and_batch(self) -> None:
+        ffmpeg_io.write_wav(tone(0.7, freq=900), RATE, 1, self.tree.root / "audio-src" / "raw" / "sfx" / "hit_a" / "1.wav")  # not what was bought
+        for code, _, err in (self.tree.build(), self.tree.run("batch", "melee")):
+            self.assertEqual(code, 1)
+            self.assertIn("hash differs", err)
+        self.assertFalse((self.tree.root / "assets" / "audio").exists())
+
+    def test_a_record_that_is_not_done_or_does_not_list_the_file_is_refused(self) -> None:
+        for change in ({"status": "INTERRUPTED"}, {"files": ["sfx/hit_a/2.wav"]}, {"sha256": None}, {"bytes": 1}):
+            with self.subTest(change=change):
+                self.tree.manifest([{"kind": "sfx", "label": "sfx/hit_a/1", **change}])
+                code, _, err = self.tree.build()
+                self.assertEqual(code, 1)
+                self.assertIn("raw/sfx/hit_a/1.wav", err)
+                self.tree.raw("sfx/hit_a/1.wav")  # puts the true record back
+
+    def test_a_manifest_with_two_records_for_one_label_is_refused(self) -> None:
+        record = self.tree.records[("sfx", "sfx/hit_a/1")]
+        (self.tree.root / "audio-src" / "manifest.json").write_text(json.dumps({"tasks": [{**record, "status": "FAILED"}, record]}), encoding="utf-8")
+        code, _, err = self.tree.build()
+        self.assertEqual(code, 1)
+        self.assertIn("two records", err)
+
+    def test_the_licence_row_needs_the_record(self) -> None:
+        asset = assets.plan_assets(self.tree.cues, self.tree.layers, self.tree.voices, self.tree.root)[0]
+        with self.assertRaisesRegex(Exception, "no DONE purchase record with a model"):
+            licences.licence_rows([asset], self.tree.root / "nowhere.json")
 
 
 class PicksCommandTest(unittest.TestCase):
@@ -452,7 +514,7 @@ class BuildTest(unittest.TestCase):
     def test_mismatched_music_layers_are_refused_before_any_write(self) -> None:
         t = self.tree
         t.root.joinpath("audio-src", "raw", "music", "war", "2.wav").unlink()
-        ffmpeg_io.write_wav(tone(3.0, lead_s=0), RATE, 1, t.root / "audio-src" / "raw" / "music" / "war" / "2.wav")  # mono, calm is stereo
+        t.raw("music/war/2.wav", tone(3.0, lead_s=0))  # mono, calm is stereo
         before = t.snapshot()
         code, _, err = t.build()
         self.assertEqual(code, 1)

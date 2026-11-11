@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+import hashlib
 import math
 import os
 import stat
@@ -52,6 +53,7 @@ AUDIO_SRC = HERE.parent.parent / "audio-src"
 AUDIO_FIELDS: frozenset[str] = frozenset({
     "kind", "label", "model", "status", "credits", "created_at", "finished_at", "files",
     "voice_id", "generated_voice_id", "prompt", "text", "format",
+    "sha256", "bytes",  # of each saved file: process.py uses a raw file only if its hash matches a DONE record
 })
 
 # Assumed rates (spec §5.2). The plan output flags the ones nobody has confirmed.
@@ -112,6 +114,11 @@ def _say(line: str) -> None:
 
 def _now() -> int:
     return int(time.time())
+
+
+def fingerprint(data: bytes) -> dict[str, Any]:
+    """What a DONE record keeps of the audio it paid for, so a swapped or planted raw file is noticed later."""
+    return {"sha256": hashlib.sha256(data).hexdigest(), "bytes": len(data)}
 
 
 def extension(data: bytes) -> str:
@@ -421,7 +428,7 @@ def run_jobs(manifest: Manifest, get_client: GetClient, raw: Path, fmt: str, job
         record = {"kind": job.kind, "label": job.label, "model": job.model, "format": fmt, **job.fields}
         data = _buy(manifest, record, lambda job=job: job.call(client))
         rel = _save_audio(manifest, record, raw, job.label, data)
-        _done(manifest, record, job.credits, [rel])
+        _done(manifest, record, job.credits, [rel], **fingerprint(data))
         say(f"{job.label}: saved raw/{rel}")
     return len(todo)
 
@@ -450,7 +457,8 @@ def run_design(manifest: Manifest, get_client: GetClient, raw: Path, fmt: str, u
         preview_label = f"design/{unit}/{voice}/{n}"
         rel = _save_audio(manifest, started, raw, preview_label, audio)  # the audio only: the JSON the previews came in is never kept
         files.append(rel)
-        _done(manifest, {"kind": "design", "label": preview_label, "model": "eleven_ttv_v3", "generated_voice_id": generated_id}, 0, [rel])
+        _done(manifest, {"kind": "design", "label": preview_label, "model": "eleven_ttv_v3", "generated_voice_id": generated_id}, 0, [rel],
+              **fingerprint(audio))
         say(f"{preview_label}: saved raw/{rel}")
     _done(manifest, call, DESIGN_CREDITS_ASSUMED, files)
     return len(files)

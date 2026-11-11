@@ -1,6 +1,8 @@
 """Tests for licences.py: the audio block of LICENSES.md."""
 from __future__ import annotations
 
+import json
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -34,11 +36,27 @@ class LicenceBlockTest(unittest.TestCase):
 class RowsTest(unittest.TestCase):
     def test_rows_name_the_model_and_end_with_the_import_note(self) -> None:
         asset = Asset("oneshot", "assets/audio/sfx/hit_1.wav", Path(__file__), "cue hit take 1", "hit", ("sfx", "sfx/hit/1"))
-        rows = licences.licence_rows([asset], Path("/nonexistent/manifest.json"))
+        with tempfile.TemporaryDirectory() as tmp:
+            manifest = Path(tmp) / "manifest.json"
+            manifest.write_text(json.dumps({"tasks": [{"kind": "sfx", "label": "sfx/hit/1", "status": "DONE", "model": "eleven_text_to_sound_v2"}]}))
+            rows = licences.licence_rows([asset], manifest)
         self.assertEqual(len(rows), 2)
-        self.assertIn("ElevenLabs sound-generation", rows[0])
+        self.assertIn("ElevenLabs sound-generation (eleven_text_to_sound_v2)", rows[0])
         self.assertIn("`assets/audio/**/*.import`", rows[1])
         self.assertEqual(licences.licence_rows([], Path("/nonexistent")), [])
+
+    def test_no_row_without_a_done_record_with_a_model(self) -> None:
+        asset = Asset("oneshot", "assets/audio/sfx/hit_1.wav", Path(__file__), "cue hit take 1", "hit", ("sfx", "sfx/hit/1"))
+        bad = ({}, {"tasks": []}, {"tasks": [{"kind": "sfx", "label": "sfx/hit/1", "status": "DONE"}]},
+               {"tasks": [{"kind": "sfx", "label": "sfx/hit/1", "status": "FAILED", "model": "m"}]})
+        for data in bad:
+            with self.subTest(data=data), tempfile.TemporaryDirectory() as tmp:
+                manifest = Path(tmp) / "manifest.json"
+                manifest.write_text(json.dumps(data))
+                with self.assertRaisesRegex(CueError, "no DONE purchase record"):
+                    licences.licence_rows([asset], manifest)
+        with self.assertRaisesRegex(CueError, "no DONE purchase record"):
+            licences.licence_rows([asset], Path("/nonexistent/manifest.json"))
 
 
 if __name__ == "__main__":

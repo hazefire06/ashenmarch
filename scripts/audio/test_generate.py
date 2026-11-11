@@ -363,6 +363,26 @@ class ManifestFieldsTest(Base):
         self.assertNotIn("evil", self.manifest_path.read_text())
 
 
+class PurchaseProofTest(Base):
+    def test_a_done_record_keeps_the_hash_and_size_of_its_file(self) -> None:
+        import hashlib
+        self.allow_network()
+        self.run_main("sfx", "--cue", "hit_dry", "--max-credits", "20")
+        record = self.manifest().find("sfx", "sfx/hit_dry/1")
+        self.assertEqual(record["sha256"], hashlib.sha256(WAV).hexdigest())
+        self.assertEqual(record["bytes"], len(WAV))
+        self.assertTrue({"sha256", "bytes"} <= generate.AUDIO_FIELDS)
+
+    def test_each_design_preview_keeps_its_own_hash(self) -> None:
+        import hashlib
+        self.allow_network(Fake([preview_reply(2)]))
+        self.run_main("voices", "design", "shieldman", "--voice", "shieldman_old", "--max-credits", "1000")
+        for n in (1, 2):
+            record = self.manifest().find("design", f"design/shieldman/shieldman_old/{n}")
+            self.assertEqual(record["sha256"], hashlib.sha256(MP3 + bytes([n])).hexdigest())
+            self.assertEqual(record["bytes"], len(MP3) + 1)
+
+
 class DesignTest(Base):
     def test_design_saves_the_previews_and_never_the_json(self) -> None:
         fake = self.allow_network(Fake([preview_reply(2)]))

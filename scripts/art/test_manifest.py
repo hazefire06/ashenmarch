@@ -147,10 +147,19 @@ class CorruptManifestTest(unittest.TestCase):
         with self.assertRaises(ManifestError) as caught:
             Manifest.load(self.path)
         text = str(caught.exception)
-        self.assertIn("Fix it by hand (for a merge conflict, keep both sides' records).", text)
+        self.assertIn("merge both sides' records into one per label", text)
         self.assertIn("Don't delete it or check out an older copy: tasks bought since then would be bought again.", text)
         for bad in ("Restore", "restore", "from git"):
             self.assertNotIn(bad, text)
+
+    def test_two_records_for_one_kind_and_label_are_refused(self) -> None:
+        # After a merge a FAILED record can sit before a DONE one: find() would return the first and the item would be bought twice.
+        self.path.write_text('{"tasks": [{"kind": "rig", "label": "x", "status": "FAILED"}, {"kind": "rig", "label": "x", "status": "DONE"}]}')
+        with self.assertRaises(ManifestError) as caught:
+            Manifest.load(self.path)
+        self.assertIn("merge both sides' records into one per label", str(caught.exception))
+        self.path.write_text('{"tasks": [{"kind": "rig", "label": "x"}, {"kind": "rig", "label": "y"}, {"kind": "mesh", "label": "x"}]}')
+        self.assertEqual(len(Manifest.load(self.path).tasks), 3)
 
     def test_a_record_nested_deeper_than_clean_can_handle_is_a_manifest_error(self) -> None:
         self.path.write_bytes(NESTED_RECORD)
