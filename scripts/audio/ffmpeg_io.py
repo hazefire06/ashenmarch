@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import json
 import os
-import re
 import shutil
 import subprocess
 import sys
@@ -60,8 +59,25 @@ def _run(cmd: list[str], data: bytes | None = None) -> subprocess.CompletedProce
     return done
 
 
+FORMATS: dict[str, str] = {".wav": "wav", ".mp3": "mp3", ".ogg": "ogg"}  # the demuxer for each extension a take can have
+MAX_DECODED_S: int = 11 * 60  # the longest take decoded; the longest music layer is 600 s
+MAX_RATE: int = 384000
+MAX_CHANNELS: int = 16
+
+
+def _input_options(path: Path) -> list[str]:
+    """Options that go before -i for a raw take. A raw file is committed and the repo is public, so ffmpeg is not left to guess: a file
+    named 1.wav that is really an ffconcat or HLS list would be opened as one and read other files, or the network. The demuxer comes
+    from the extension, and only the file protocol is allowed."""
+    demuxer = FORMATS.get(path.suffix.lower())
+    if demuxer is None:
+        raise AudioError(f"{path.name} isn't a .wav, .mp3 or .ogg file")
+    return ["-protocol_whitelist", "file", "-f", demuxer]
+
+
 def probe(path: Path) -> tuple[int, int]:
-    """(sample rate, channels) of a file. WAV is read directly; anything else is asked of ffmpeg."""
+    """(sample rate, channels) of a file. WAV is read directly; anything else is asked of ffprobe, as JSON about its first audio stream
+    (not scraped from text, which a metadata tag could fake)."""
     try:
         with wave.open(str(path), "rb") as wav:
             return wav.getframerate(), wav.getnchannels()
@@ -69,20 +85,25 @@ def probe(path: Path) -> tuple[int, int]:
         pass
     except OSError as err:
         raise AudioError(f"{path.name} can't be read: {err.strerror}") from None
-    text = subprocess.run(["ffmpeg", "-hide_banner", "-i", str(path)], capture_output=True, check=False).stderr.decode("utf-8", "replace")
-    match = re.search(r"Audio: .*?, (\d+) Hz, ([^,\n]+)", text)
-    if match is None:
-        raise AudioError(f"{path.name} has no audio stream ffmpeg can read")
-    layout = match.group(2).strip()
-    count = re.match(r"(\d+) channels", layout)
-    channels = 1 if layout == "mono" else int(count.group(1)) if count else 2
-    return int(match.group(1)), channels
+    done = _run(["ffprobe", "-v", "error", *_input_options(path), "-select_streams", "a:0", "-show_streams", "-of", "json", str(path)])
+    try:
+        stream = json.loads(done.stdout.decode("utf-8", "replace"))["streams"][0]
+        rate, channels = int(stream["sample_rate"]), int(stream["channels"])
+    except (ValueError, KeyError, IndexError, TypeError, RecursionError):
+        raise AudioError(f"{path.name} has no audio stream ffmpeg can read") from None
+    if not 0 < rate <= MAX_RATE or not 0 < channels <= MAX_CHANNELS:
+        raise AudioError(f"{path.name} has an unusable sample rate or channel count")
+    return rate, channels
 
 
 def decode(path: Path, rate: int, channels: int) -> array:
-    """The whole file as 16-bit frames at `rate` and `channels` (ffmpeg mixes down or up to fit)."""
-    done = _run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-i", str(path), "-f", "s16le", "-acodec", "pcm_s16le",
-                 "-ac", str(channels), "-ar", str(rate), "-"])
+    """The whole file as 16-bit frames at `rate` and `channels` (ffmpeg mixes down or up to fit). A file that decodes to more than
+    MAX_DECODED_S seconds is refused: ffmpeg is told to stop writing there, so a planted long or looping file can't fill memory."""
+    limit = MAX_DECODED_S * rate * channels * 2
+    done = _run(["ffmpeg", "-hide_banner", "-loglevel", "error", *_input_options(path), "-i", str(path), "-f", "s16le", "-acodec", "pcm_s16le",
+                 "-ac", str(channels), "-ar", str(rate), "-fs", str(limit + 1), "-"])
+    if len(done.stdout) > limit:
+        raise AudioError(f"{path.name} is longer than {MAX_DECODED_S // 60} minutes")
     return _to_array(done.stdout)
 
 

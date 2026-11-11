@@ -33,6 +33,22 @@ class LicenceBlockTest(unittest.TestCase):
             licences.update_licences("x\n<!-- audio:end -->\n<!-- audio:begin -->\n", [])
 
 
+class UnreadableManifestTest(unittest.TestCase):
+    def test_a_garbled_deep_or_oddly_shaped_manifest_is_refused_with_a_message(self) -> None:
+        # L8: RecursionError and a tasks value that isn't a list used to escape as a traceback, or read as no records.
+        asset = Asset("oneshot", "assets/audio/sfx/hit_1.wav", Path(__file__), "cue hit take 1", "hit", ("sfx", "sfx/hit/1"))
+        for text in ("[" * 200000, '{"tasks": 3}', '{"tasks": {"a": 1}}', "[]", "null", '{"tasks": [1]}', "{", '{"tasks": [' + '{"a": ' * 5000,
+                     '{"tasks": [{"kind": "sfx", "label": "sfx/hit/1", "status": "DONE", "model": "m"}, '
+                     '{"kind": "sfx", "label": "sfx/hit/1", "status": "FAILED"}]}'):
+            with self.subTest(text=text[:20]), tempfile.TemporaryDirectory() as tmp:
+                manifest = Path(tmp) / "manifest.json"
+                manifest.write_text(text)
+                with self.assertRaises(CueError) as caught:
+                    licences.licence_rows([asset], manifest)
+                self.assertIn("manifest.json", str(caught.exception))
+                self.assertNotIn(tmp, str(caught.exception))
+
+
 class RowsTest(unittest.TestCase):
     def test_rows_name_the_model_and_end_with_the_import_note(self) -> None:
         asset = Asset("oneshot", "assets/audio/sfx/hit_1.wav", Path(__file__), "cue hit take 1", "hit", ("sfx", "sfx/hit/1"))

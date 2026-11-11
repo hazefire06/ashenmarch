@@ -26,6 +26,7 @@ import json
 import shutil
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 import assets
@@ -203,12 +204,23 @@ def synthetic_plan(
 
 
 def render(synth: Synth, out_dir: Path) -> None:
-    dest = out_dir / synth.name  # synthetic() has already checked that ffmpeg exists
-    subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", *synth.source, *synth.codec, str(dest)], check=True)
-    Path(str(dest) + ".import").write_text(_import_text(synth.name), encoding="utf-8")
+    """ffmpeg renders into a private temp folder (so it never opens a path the repo controls), and the bytes are written to out_dir
+    through O_NOFOLLOW .part files."""
+    with tempfile.TemporaryDirectory() as tmp:  # synthetic() has already checked that ffmpeg exists
+        made = Path(tmp) / synth.name
+        subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", *synth.source, *synth.codec, str(made)], check=True)
+        assets.write_bytes_nofollow(out_dir / synth.name, made.read_bytes())
+    assets.write_bytes_nofollow(out_dir / (synth.name + ".import"), _import_text(synth.name).encode("utf-8"))
 
 
-def synthetic(sidecar: Path, out_dir: Path = SYNTH_DIR, cues_path: Path = CUES, layers_path: Path = LAYERS) -> int:
+def synthetic(sidecar: Path, out_dir: Path = SYNTH_DIR, cues_path: Path = CUES, layers_path: Path = LAYERS, root: Path = ROOT) -> int:
+    try:
+        # First: the repo is public, so assets/audio/synthetic, audio-src/build or a file in them could be a planted symlink.
+        assets.check_no_symlinks(root, (*GUARDED, "audio-src/build"))
+        assets.check_inputs(root, cues_path, layers_path, VOICES)
+    except UnsafePath as err:
+        print(f"process.py synthetic: {err}", file=sys.stderr)
+        return 1
     if shutil.which("ffmpeg") is None:
         print("process.py synthetic: ffmpeg not found (brew install ffmpeg)", file=sys.stderr)
         return 1
@@ -217,11 +229,16 @@ def synthetic(sidecar: Path, out_dir: Path = SYNTH_DIR, cues_path: Path = CUES, 
     except CueError as err:
         print(f"process.py synthetic: {err}", file=sys.stderr)
         return 1
-    out_dir.mkdir(parents=True, exist_ok=True)
-    for synth in synths:
-        render(synth, out_dir)
-    sidecar.parent.mkdir(parents=True, exist_ok=True)
-    sidecar.write_text(json.dumps(data, indent=1) + "\n", encoding="utf-8")
+    try:
+        out_dir.mkdir(parents=True, exist_ok=True)
+        for synth in synths:
+            render(synth, out_dir)
+        sidecar.parent.mkdir(parents=True, exist_ok=True)
+        assets.write_bytes_nofollow(sidecar, (json.dumps(data, indent=1) + "\n").encode("utf-8"))
+    except (OSError, subprocess.CalledProcessError) as err:
+        print(f"process.py synthetic: {err.strerror if isinstance(err, OSError) and err.strerror else 'a render failed'}"
+              f"{': ' + str(err.filename) if isinstance(err, OSError) and err.filename else ''}", file=sys.stderr)
+        return 1
     one_shot_s = sum(x.seconds for x in synths if x.name.endswith(".wav"))
     print(f"wrote {len(synths)} synthetic files ({one_shot_s:.0f} s of one-shots) and {sidecar} ({len(data['cues'])} cues)")  # type: ignore[arg-type]
     return 0
@@ -236,6 +253,7 @@ def build(
     licence_path = root / "assets" / "LICENSES.md"
     try:
         assets.check_no_symlinks(root, assets.BUILD_GUARDED)
+        assets.check_inputs(root, cues_path, layers_path, voices_dir)
         plan = assets.plan_assets(cues_path, layers_path, voices_dir, root)
         stamps = assets.load_stamps(root)
         # Everything that can refuse does so before the first write.
@@ -332,6 +350,7 @@ def batch(name: str, cues_path: Path = CUES, layers_path: Path = LAYERS, voices_
     out = root / AUDITION_DIR
     try:
         assets.check_no_symlinks(root, (*GUARDED, AUDITION_DIR))
+        assets.check_inputs(root, cues_path, layers_path, voices_dir)
         work = _batch_work(name, cues_path, layers_path, voices_dir, root)
         if not work:
             raise CueError(f"batch {name}: no downloaded takes under audio-src/raw/ for it")

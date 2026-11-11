@@ -77,6 +77,31 @@ def check_no_symlinks(root: Path, rels: tuple[str, ...] = GUARDED) -> None:
 MANIFEST: str = "audio-src/manifest.json"
 
 
+def check_inputs(root: Path, cues_path: Path, layers_path: Path, voices_dir: Path) -> None:
+    """Refuses a symlink anywhere on the way to the files that are read: the cue book, the layer file, each voice file and the manifest.
+    Every part of each path counts (a symlinked audio-src/music would redirect the layer file), up to but not above the project root.
+    The repo is public, so a PR could plant a link to a file of Tim's, and its text would be parsed and echoed in a message."""
+    paths = [cues_path, layers_path, voices_dir, root / MANIFEST]
+    if voices_dir.is_dir() and not voices_dir.is_symlink():
+        paths += sorted(voices_dir.glob("*.toml"))
+    for path in paths:
+        try:
+            parts = path.relative_to(root).parts
+        except ValueError:
+            parts = ()
+            if path.is_symlink():
+                raise UnsafePath(f"{path.name} is a symlink; replace it with a real file or folder")
+        here = root
+        for part in parts:
+            here = here / part
+            try:
+                linked = stat.S_ISLNK(os.lstat(here).st_mode)
+            except FileNotFoundError:
+                break
+            if linked:
+                raise UnsafePath(f"{here.relative_to(root)} is a symlink; replace it with a real file or folder")
+
+
 def load_records(manifest: Path) -> dict[tuple[str, str], dict[str, object]]:
     """The manifest's records by (kind, label). A missing file is no records. A file that can't be read as a list of records, or that
     holds two records for one kind and label (a bad merge), is refused: either could make a file look bought, or unbought."""
@@ -117,6 +142,20 @@ def verify_raw(path: Path, root: Path, records: dict[tuple[str, str], dict[str, 
             size += len(chunk)
     if record.get("sha256") != digest.hexdigest() or record.get("bytes") != size:
         raise CueError(f"raw/{rel}: its hash differs from the purchase record's (or the record has none), so it isn't the file that was bought")
+
+
+def write_bytes_nofollow(path: Path, data: bytes) -> None:
+    """Writes data through <path>.part, opened with O_NOFOLLOW, then renames it over path. A rename replaces a symlink at path instead
+    of following it, so nothing is ever written through a link the repo's PRs could plant."""
+    part = path.with_name(path.name + ".part")
+    fd = os.open(part, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW, 0o644)
+    try:
+        with os.fdopen(fd, "wb") as out:
+            out.write(data)
+        os.replace(part, path)
+    except BaseException:
+        part.unlink(missing_ok=True)
+        raise
 
 
 def find_raw(folder: Path, take: int) -> Path | None:

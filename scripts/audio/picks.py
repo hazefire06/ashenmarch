@@ -9,6 +9,7 @@ refused, never invented.
 from __future__ import annotations
 
 import json
+import os
 import re
 import sys
 import tomllib
@@ -106,19 +107,12 @@ def _take_error(what: str, value: object, takes: int, folder: Path, seen: list[i
     return None
 
 
-def _check_toml_files(cues_path: Path, layers_path: Path, voices_dir: Path) -> None:
-    """picks writes these, so none of them (or the folder of voice files) may be a symlink."""
-    for path in (cues_path, layers_path, voices_dir, *sorted(voices_dir.glob("*.toml"))):
-        if path.is_symlink():
-            raise UnsafePath(f"{path.name} is a symlink; replace it with a real file or folder")
-
-
 def picks_file(path: Path, cues_path: Path, layers_path: Path, voices_dir: Path, root: Path) -> int:
     """Checks a picks file against the cue book and the voice files, then writes it. Any error and nothing is written."""
     raw = root / "audio-src" / "raw"
     try:
         assets.check_no_symlinks(root)
-        _check_toml_files(cues_path, layers_path, voices_dir)
+        assets.check_inputs(root, cues_path, layers_path, voices_dir)  # picks writes these, so no part of their paths may be a symlink
         if not path.is_file():
             raise CueError(f"the picks file {path.name[:40]} doesn't exist")
         if path.stat().st_size > MAX_PICKS_BYTES:
@@ -163,10 +157,33 @@ def picks_file(path: Path, cues_path: Path, layers_path: Path, voices_dir: Path,
     except (PicksError, OSError, UnicodeDecodeError) as err:
         print(f"process.py picks: nothing written: {err}", file=sys.stderr)
         return 1
-    for target, text in writes.items():
-        target.write_text(text, encoding="utf-8", newline="")
+    try:
+        _write_all(writes)
+    except OSError as err:
+        print(f"process.py picks: nothing written: {err.strerror or 'a file can not be written'}", file=sys.stderr)
+        return 1
+    for target in writes:
         print(f"wrote picks to {target.name}")
     return 0
+
+
+def _write_all(writes: dict[Path, str]) -> None:
+    """Every target is written to its .part file (opened with O_NOFOLLOW) first, and only when all of those are in place are they renamed
+    over their targets. A failure while staging leaves every target as it was."""
+    staged: list[tuple[Path, Path]] = []
+    try:
+        for target, text in writes.items():
+            part = target.with_name(target.name + ".part")
+            fd = os.open(part, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW, 0o644)
+            staged.append((part, target))
+            with os.fdopen(fd, "wb") as out:
+                out.write(text.encode("utf-8"))  # as the text is: no newline translation
+    except BaseException:
+        for part, _ in staged:
+            part.unlink(missing_ok=True)
+        raise
+    for part, target in staged:
+        os.replace(part, target)
 
 
 def _check_cue_pick(ident: str, value: object, book: cuebook.CueBook, layers: dict[str, cuebook.Layer], raw: Path,
@@ -272,7 +289,7 @@ def _design_picks(design: object, batch: object, files: dict[str, cuebook.VoiceF
                 continue
             if voice_id not in files[unit].voices:
                 errors.append(f"{voice_id} isn't a voice of {unit}")
-            elif isinstance(n, bool) or not isinstance(n, int) or not 1 <= n <= cuebook.MAX_TAKE or find_raw(raw / "design" / unit / voice_id, n) is None:
+            elif isinstance(n, bool) or not isinstance(n, int) or not 1 <= n <= cuebook.MAX_DESIGN_PICK or find_raw(raw / "design" / unit / voice_id, n) is None:
                 errors.append(f"{voice_id}: preview {n if isinstance(n, int) else 'that'} has no downloaded file")
             else:
                 commands.append(f"python3 scripts/audio/generate.py voices save {unit} --voice {voice_id} --pick {n}")

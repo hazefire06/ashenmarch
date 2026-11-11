@@ -383,6 +383,13 @@ class ManifestFieldsTest(Base):
         self.assertNotIn("evil", self.manifest_path.read_text())
 
 
+class DesignPickLimitTest(unittest.TestCase):
+    def test_the_design_pick_maximum_matches_what_generate_can_buy(self) -> None:
+        import cuebook
+        import elevenlabs_client
+        self.assertEqual(cuebook.MAX_DESIGN_PICK, generate.MAX_DESIGN_ROUNDS * elevenlabs_client.MAX_PREVIEWS)
+
+
 class PurchaseProofTest(Base):
     def test_a_done_record_keeps_the_hash_and_size_of_its_file(self) -> None:
         import hashlib

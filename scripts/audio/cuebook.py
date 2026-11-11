@@ -62,6 +62,7 @@ MAX_PROMPT: int = 500  # a cue's or a music layer's prompt goes to a paid API as
 MAX_LINE_TEXT: int = 300
 MAX_DESCRIPTION: int = 600
 MAX_TAKE: int = 20
+MAX_DESIGN_PICK: int = 30  # generate.py buys at most 3 rounds of up to 10 previews, numbered on from one (test_generate checks this)
 
 
 class CueError(Exception):

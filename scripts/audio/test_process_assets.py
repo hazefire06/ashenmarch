@@ -343,9 +343,30 @@ class PicksCommandTest(unittest.TestCase):
         self.assertNotIn("picks = [1]", real.read_text())
 
     def test_a_huge_design_pick_is_refused_before_any_path_lookup(self) -> None:
-        for n in (0, 21, 10**30):
+        for n in (0, 31, 10**30):
             with mock.patch.object(process.picks_mod, "find_raw", side_effect=AssertionError("looked up")):
                 self.assertEqual(self.picks({"batch": "design-reaver", "design": {"reaver": n}})[0], 1)
+
+    def test_a_design_pick_can_be_as_high_as_three_rounds_of_ten_previews(self) -> None:
+        self.tree.raw("design/reaver/reaver/30.wav", tone(1.0))
+        code, out, _ = self.picks({"batch": "design-reaver", "design": {"reaver": 30}})
+        self.assertEqual(code, 0)
+        self.assertIn("--pick 30", out)
+        self.assertEqual(self.picks({"batch": "design-reaver", "design": {"reaver": 31}})[0], 1)
+
+    def test_picks_are_staged_before_any_target_is_replaced(self) -> None:
+        # L8: two files change together. If the second can't be staged, the first must not have been replaced.
+        part = self.tree.layers.with_name(self.tree.layers.name + ".part")
+        victim = self.tree.root / "victim.txt"
+        victim.write_text("keep me")
+        os.symlink(victim, part)  # O_NOFOLLOW refuses it
+        cues_before, layers_before = self.tree.cues.read_bytes(), self.tree.layers.read_bytes()
+        code, _, err = self.picks({"batch": "x", "cues": {"hit_a": [1], "calm": [2]}})
+        self.assertEqual(code, 1)
+        self.assertIn("nothing written", err)
+        self.assertEqual((self.tree.cues.read_bytes(), self.tree.layers.read_bytes()), (cues_before, layers_before))
+        self.assertEqual(victim.read_text(), "keep me")
+        self.assertFalse(self.tree.cues.with_name("cues.toml.part").exists())
 
     def test_one_bad_entry_blocks_the_good_ones(self) -> None:
         before = self.tree.snapshot()
