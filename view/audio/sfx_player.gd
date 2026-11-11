@@ -77,6 +77,8 @@ var rng: RandomNumberGenerator = RandomNumberGenerator.new()
 ## The bank every sound comes from, and who makes which.
 var bank: SoundBank = null
 var map: SoundMap = null
+## The barks, if any: a voiced death line replaces the death cry.
+var _barks: Barks = null
 
 var _world: World
 var _camera: RtsCamera
@@ -160,6 +162,11 @@ func after_step() -> void:
 	_groan()
 
 
+## Lets a voiced death bark stand in for the death cry.
+func set_barks(barks: Barks) -> void:
+	_barks = barks
+
+
 ## The player's order was sent (the ids and kind are for the barks).
 func acknowledge(_ids: PackedInt32Array = PackedInt32Array(), _kind: int = 0) -> void:
 	play_ui(ORDER_ACK)
@@ -168,7 +175,10 @@ func acknowledge(_ids: PackedInt32Array = PackedInt32Array(), _kind: int = 0) ->
 ## Tones for what the player does: orders, picks, formations and groups.
 func connect_selection(controller: SelectionController) -> void:
 	controller.order_given.connect(acknowledge)
-	controller.player_selected.connect(func(_ids: PackedInt32Array) -> void: play_ui(UI_SELECT))
+	controller.player_selected.connect(func(ids: PackedInt32Array) -> void:
+		# A box over nothing, or a toggle-off, reports an empty selection.
+		if not ids.is_empty():
+			play_ui(UI_SELECT))
 	controller.formation_changed.connect(func(_kind: Formations.Kind) -> void: play_ui(UI_FORMATION))
 	controller.group_changed.connect(func(slot: int) -> void:
 		if slot >= 0:
@@ -252,7 +262,8 @@ func _on_combat(event: CombatEvent) -> void:
 				return
 			if attacker != null and _close(attacker, target):
 				_play_hit(target, target_at)
-			play_at(map.death_cue(target.type, bank), target_at)
+			if _barks == null or not _barks.voiced_death(target.id):
+				play_at(map.death_cue(target.type, bank), target_at)
 		CombatEvent.Kind.HEAL:
 			if _heard(target):
 				var undead: bool = target.type.nature == UnitType.Nature.UNDEAD

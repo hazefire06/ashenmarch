@@ -37,6 +37,7 @@ var _squad_last: Dictionary[String, float] = {}
 var _clicks: Dictionary[int, Array] = {}
 var _last_was_clan: bool = false
 var _bags: Dictionary[StringName, ShuffleBag] = {}
+var _bag_sizes: Dictionary[StringName, int] = {}
 
 
 ## The cooldown family: formation_* and status_* share one each.
@@ -68,7 +69,8 @@ func allow(trigger: StringName, now: float, squad: PackedInt32Array = PackedInt3
 ## when it is gapped, and the squad's repeat clock.
 func started(trigger: StringName, now: float, seconds: float,
 		squad: PackedInt32Array = PackedInt32Array()) -> void:
-	_speaking_until = now + seconds
+	# A death cuts in on a longer bark; it must not shorten it.
+	_speaking_until = maxf(_speaking_until, now + seconds)
 	var fam: StringName = family(trigger)
 	if COOLDOWNS.has(fam):
 		_cooldown_until[fam] = now + COOLDOWNS[fam]
@@ -115,6 +117,9 @@ func pick(key: StringName, count: int) -> int:
 	if bag == null:
 		bag = ShuffleBag.new(count)
 		_bags[key] = bag
+		_bag_sizes[key] = count
+	elif _bag_sizes[key] != count:
+		push_error("BarkRules.pick: %s was %d lines and is now %d" % [key, _bag_sizes[key], count])
 	return bag.next(rng)
 
 

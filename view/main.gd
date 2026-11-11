@@ -192,6 +192,7 @@ var _replay_speed: int = 1
 var _sfx: SfxPlayer
 var _ambience: Ambience
 var _music: Music
+var _barks: Barks
 
 @onready var _terrain_view: TerrainView = $TerrainView
 @onready var _units_view: UnitsView = $Units
@@ -302,6 +303,14 @@ func _ready() -> void:
 	_selection.side_changed.connect(_sfx.set_viewer)
 	_selection.side_changed.connect(_ambience.set_viewer)
 	_selection.side_changed.connect(_music.set_viewer)
+	_barks = Barks.new()
+	_barks.name = "Barks"
+	add_child(_barks)
+	_barks.setup(world, _camera, _units_view, bark_book)
+	_barks.enabled = audio_enabled
+	_barks.connect_selection(_selection)
+	_selection.side_changed.connect(_barks.set_viewer)
+	_sfx.set_barks(_barks)
 	if launch != null and launch.is_skirmish():
 		# The player may be Dark: they select, and see, from their own side.
 		_selection.side = launch.player_faction()
@@ -309,6 +318,7 @@ func _ready() -> void:
 		_sfx.set_viewer(launch.player_faction())
 		_ambience.set_viewer(launch.player_faction())
 		_music.set_viewer(launch.player_faction())
+		_barks.set_viewer(launch.player_faction())
 	_control_bar.setup(_selection, world)
 	if launch != null and launch.is_skirmish():
 		_control_bar.set_skirmish(launch.player_faction())
@@ -420,6 +430,7 @@ func _advance() -> void:
 	_gas_view.after_step()
 	_plants_view.after_step()
 	_ai_debug.after_step()
+	_barks.after_step()
 	_sfx.after_step()
 	_ambience.after_step()
 	_music.after_step()

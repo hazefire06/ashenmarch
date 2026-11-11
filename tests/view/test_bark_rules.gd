@@ -126,3 +126,20 @@ func test_pick_keeps_a_bag_per_key() -> void:
 	for i: int in 3:
 		seen[rules.pick(&"shieldman_old/select", 3)] = true
 	assert_eq(seen.size(), 3)
+
+
+func test_a_death_does_not_shorten_a_longer_bark() -> void:
+	var rules: BarkRules = _rules()
+	rules.started(&"select", 0.0, 5.0)
+	rules.started(&"death", 1.0, 0.5)
+	assert_true(rules.speaking(3.0), "the long bark is still speaking")
+	assert_false(rules.speaking(5.1))
+
+
+func test_pick_with_a_different_count_for_a_key_is_an_error() -> void:
+	var rules: BarkRules = _rules(2)
+	rules.pick(&"warden/move", 3)
+	rules.pick(&"warden/move", 3)
+	assert_push_error_count(0)
+	rules.pick(&"warden/move", 4)
+	assert_push_error("warden/move")

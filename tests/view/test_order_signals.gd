@@ -129,3 +129,17 @@ func test_the_tones_follow_the_selection_signals() -> void:
 		cues.append(played["cue"])
 	assert_eq(cues, [&"order_ack", &"ui_select", &"ui_formation", &"ui_group"])
 	assert_true(sfx.played_this_tick()[0].has("db"))
+
+
+func test_an_empty_player_selection_plays_no_tone() -> void:
+	var main: MainView = _main()
+	var sfx: SfxPlayer = _sfx(main)
+	var variants: Dictionary = {}
+	for id: StringName in SoundBank.shared().ids():
+		variants[id] = 1
+	sfx.bank = AudioFixtures.bank(variants, 3, 0.2)
+	sfx.after_step()
+	main._selection.player_selected.emit(PackedInt32Array())
+	assert_eq(sfx.played_this_tick().size(), 0, "a box over nothing is silent")
+	main._selection.player_selected.emit(PackedInt32Array([1]))
+	assert_eq(sfx.played_this_tick().size(), 1, "a real selection still plays its tone")
