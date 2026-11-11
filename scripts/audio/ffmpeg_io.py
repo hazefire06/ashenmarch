@@ -6,6 +6,7 @@ Homebrew's ffmpeg has no libvorbis, so ffmpeg never encodes Ogg here. WAV is wri
 from __future__ import annotations
 
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -85,20 +86,41 @@ def decode(path: Path, rate: int, channels: int) -> array:
     return _to_array(done.stdout)
 
 
+def _part(path: Path) -> Path:
+    return path.with_name(path.name + ".part")
+
+
+def _publish(part: Path, path: Path) -> None:
+    os.replace(part, path)
+
+
 def write_wav(frames: array, rate: int, channels: int, path: Path) -> None:
+    """Written to <path>.part and renamed, so a killed write never leaves a file that looks finished."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    with wave.open(str(path), "wb") as out:
-        out.setnchannels(channels)
-        out.setsampwidth(2)
-        out.setframerate(rate)
-        out.writeframes(_to_bytes(frames))
+    part = _part(path)
+    try:
+        with wave.open(str(part), "wb") as out:
+            out.setnchannels(channels)
+            out.setsampwidth(2)
+            out.setframerate(rate)
+            out.writeframes(_to_bytes(frames))
+        _publish(part, path)
+    except BaseException:
+        part.unlink(missing_ok=True)
+        raise
 
 
 def write_ogg(frames: array, rate: int, channels: int, path: Path, quality: int = 5) -> None:
     """Ogg Vorbis through oggenc, at its quality scale (4 for loops and barks, 5 for music)."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    _run(["oggenc", "--quiet", "--raw", "--raw-bits=16", f"--raw-chan={channels}", f"--raw-rate={rate}", "--raw-endianness=0",
-          "-q", str(quality), "-o", str(path), "-"], _to_bytes(frames))
+    part = _part(path)  # written there and renamed, so a killed encode never leaves a file that looks finished
+    try:
+        _run(["oggenc", "--quiet", "--raw", "--raw-bits=16", f"--raw-chan={channels}", f"--raw-rate={rate}", "--raw-endianness=0",
+              "-q", str(quality), "-o", str(part), "-"], _to_bytes(frames))
+        _publish(part, path)
+    except BaseException:
+        part.unlink(missing_ok=True)
+        raise
 
 
 def loudness_normalise(frames: array, rate: int, channels: int, lufs: float) -> array:

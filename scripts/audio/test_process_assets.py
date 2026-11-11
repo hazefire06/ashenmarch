@@ -14,8 +14,11 @@ from array import array
 from pathlib import Path
 from unittest import mock
 
+import assets
 import ffmpeg_io
+import licences
 import process
+from ffmpeg_io import AudioError
 from test_cuebook import HEAD
 
 HAS_TOOLS: bool = shutil.which("ffmpeg") is not None and shutil.which("oggenc") is not None
@@ -129,26 +132,6 @@ class Tree:
         self._tmp.cleanup()
 
 
-class LicenceBlockTest(unittest.TestCase):
-    def test_the_licence_block_is_replaced_and_the_rest_kept(self) -> None:
-        before = "# L\n\n| a |\n\n<!-- audio:begin -->\nold rows\n<!-- audio:end -->\n\ntail text\n"
-        out = process.update_licences(before, ["| `x.wav` | s | t | d | m |"])
-        self.assertTrue(out.startswith("# L\n\n| a |\n\n<!-- audio:begin -->\n"))
-        self.assertTrue(out.endswith("<!-- audio:end -->\n\ntail text\n"))
-        self.assertIn("| `x.wav` | s | t | d | m |", out)
-        self.assertNotIn("old rows", out)
-        self.assertEqual(process.update_licences(out, ["| `x.wav` | s | t | d | m |"]), out)  # stable
-
-    def test_markers_are_added_after_the_existing_rows(self) -> None:
-        out = process.update_licences(LICENSES, [])
-        self.assertTrue(out.startswith(LICENSES))
-        self.assertEqual(out[len(LICENSES):], "\n<!-- audio:begin -->\n<!-- audio:end -->\n")
-
-    def test_a_lone_marker_is_refused(self) -> None:
-        with self.assertRaisesRegex(process.CueError, "markers"):
-            process.update_licences("x\n<!-- audio:end -->\n<!-- audio:begin -->\n", [])
-
-
 class SafetyTest(unittest.TestCase):
     def setUp(self) -> None:
         self.tree = Tree()
@@ -174,6 +157,20 @@ class SafetyTest(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertIn("symlink", err)
         self.assertFalse((self.tree.root / "audio-src" / "audition").exists())
+
+    def test_a_symlinked_licences_file_or_build_folder_stops_the_build(self) -> None:
+        (self.tree.root / "elsewhere.md").write_text("x", encoding="utf-8")
+        self.tree.licences.unlink()
+        os.symlink(self.tree.root / "elsewhere.md", self.tree.licences)
+        code, _, err = self.tree.build()
+        self.assertEqual((code, "symlink" in err), (1, True))
+        self.tree.licences.unlink()
+        self.tree.licences.write_text(LICENSES, encoding="utf-8")
+        (self.tree.root / "real").mkdir()
+        os.symlink(self.tree.root / "real", self.tree.root / "audio-src" / "build")
+        code, _, err = self.tree.build()
+        self.assertEqual((code, "symlink" in err), (1, True))
+        self.assertEqual(list((self.tree.root / "real").iterdir()), [])
 
     def test_a_symlinked_assets_audio_stops_the_build(self) -> None:
         (self.tree.root / "real").mkdir()
@@ -264,6 +261,30 @@ class PicksCommandTest(unittest.TestCase):
             self.assertEqual({k: v for k, v in self.tree.snapshot().items() if k != "picks.json"},
                              {k: v for k, v in before.items() if k != "picks.json"}, bad)
 
+    def test_a_missing_or_hostile_picks_file_gets_its_own_message(self) -> None:
+        code, _, err = self.tree.run("picks_file", self.tree.root / "nope.json")
+        self.assertEqual(code, 1)
+        self.assertIn("doesn't exist", err)
+        deep = self.tree.root / "deep.json"
+        deep.write_text("[" * 200000, encoding="utf-8")
+        code, _, err = self.tree.run("picks_file", deep)
+        self.assertEqual(code, 1)
+        self.assertIn("JSON", err)
+
+    def test_a_symlinked_toml_file_stops_picks(self) -> None:
+        real = self.tree.root / "real_cues.toml"
+        real.write_text(self.tree.cues.read_text(), encoding="utf-8")
+        self.tree.cues.unlink()
+        os.symlink(real, self.tree.cues)
+        code, _, err = self.picks({"batch": "melee", "cues": {"hit_a": [1]}})
+        self.assertEqual((code, "symlink" in err), (1, True))
+        self.assertNotIn("picks = [1]", real.read_text())
+
+    def test_a_huge_design_pick_is_refused_before_any_path_lookup(self) -> None:
+        for n in (0, 21, 10**30):
+            with mock.patch.object(process.picks_mod, "find_raw", side_effect=AssertionError("looked up")):
+                self.assertEqual(self.picks({"batch": "design-reaver", "design": {"reaver": n}})[0], 1)
+
     def test_one_bad_entry_blocks_the_good_ones(self) -> None:
         before = self.tree.snapshot()
         code, _, _ = self.picks({"batch": "x", "cues": {"hit_a": [1], "calm": [1]}})  # calm 1 has no raw take
@@ -332,7 +353,7 @@ class BuildTest(unittest.TestCase):
         self.assertEqual(ffmpeg_io.probe(a / "voice" / "reaver" / "attack_1.ogg"), (RATE, 1))
         calm, war = (len(ffmpeg_io.decode(a / "music" / f"{n}.ogg", RATE, 2)) for n in ("calm", "war"))
         self.assertAlmostEqual(calm, war, delta=2 * 2048)
-        self.assertAlmostEqual(calm / 2 / RATE, 3.0, delta=0.15)
+        self.assertAlmostEqual(calm / 2 / RATE, 2.0, delta=0.15)  # cut to the 3 s layer, then 1 s lost to the loop crossfade
         # Imports.
         wav = (a / "sfx" / "hit_a_1.wav.import").read_text()
         self.assertIn("compress/mode=2", wav)
@@ -356,23 +377,114 @@ class BuildTest(unittest.TestCase):
         self.assertIn("loop=true", fixed)
         self.assertIn('uid="uid://abc123"', fixed)
 
+    def mtimes(self) -> dict[str, int]:
+        return {str(p.relative_to(self.tree.root)): p.stat().st_mtime_ns for p in (self.tree.root / "assets" / "audio").rglob("*") if p.suffix in (".ogg", ".wav")}
+
+    def pick_layer(self, layer: str, take: int) -> None:
+        file = self.tree.layers
+        head, _, rest = file.read_text().partition(f"[layer.{layer}]")
+        before, _, after = rest.partition("picks = ")
+        _, _, tail = after.partition("\n")
+        file.write_text(head + f"[layer.{layer}]" + before + f"picks = [{take}]\n" + tail)
+
     def test_a_second_build_rewrites_no_audio_and_force_does(self) -> None:
         self.assertEqual(self.tree.build()[0], 0)
-        ogg = self.tree.root / "assets" / "audio" / "loop" / "bed_x.ogg"
-        ogg.write_bytes(ogg.read_bytes() + b"x")
-        marked = ogg.read_bytes()
-        os.utime(ogg, (4102444800, 4102444800))
+        first = self.mtimes()
         self.assertEqual(self.tree.build()[0], 0)
-        self.assertEqual(ogg.read_bytes(), marked)
+        self.assertEqual(self.mtimes(), first)
         self.assertEqual(self.tree.build(force=True)[0], 0)
-        self.assertNotEqual(ogg.read_bytes(), marked)
+        again = self.mtimes()
+        self.assertTrue(all(again[k] > first[k] for k in first), (first, again))
+
+    def test_repicking_a_loop_a_bark_or_music_rerenders_it(self) -> None:
+        t = self.tree
+        self.assertEqual(t.build()[0], 0)
+        first = self.mtimes()
+        t.raw("sfx/bed_x/3.wav", tone(3.5, freq=220, channels=2, lead_s=0), channels=2)
+        cues = t.cues.read_text().replace("picks = [2]", "picks = [3]")
+        t.cues.write_text(cues)
+        t.raw("voices/reaver/attack_1/1.wav", tone(1.5, freq=200, amp=0.05))
+        (t.voices / "reaver.toml").write_text(VOICE.replace("picks = {}", "picks = { reaver = 1 }"), encoding="utf-8")
+        t.raw("music/calm/2.wav", tone(4.0, freq=300, lead_s=0, channels=2), channels=2)
+        self.pick_layer("calm", 2)
+        self.assertEqual(t.build()[0], 0)
+        now = self.mtimes()
+        for rel in ("assets/audio/loop/bed_x.ogg", "assets/audio/voice/reaver/attack_1.ogg", "assets/audio/music/calm.ogg", "assets/audio/music/war.ogg"):
+            self.assertGreater(now[rel], first[rel], rel)  # music goes together
+        for rel in ("assets/audio/sfx/hit_a_1.wav", "assets/audio/sfx/hit_a_3.wav"):
+            self.assertEqual(now[rel], first[rel], rel)
+
+    def test_changing_a_processing_constant_rerenders(self) -> None:
+        self.assertEqual(self.tree.build()[0], 0)
+        first = self.mtimes()
+        with mock.patch.object(assets, "BARK_LUFS", -20.0):
+            self.assertEqual(self.tree.build()[0], 0)
+        now = self.mtimes()
+        self.assertGreater(now["assets/audio/voice/reaver/attack_1.ogg"], first["assets/audio/voice/reaver/attack_1.ogg"])
+
+    def test_a_killed_encode_leaves_no_finished_looking_file(self) -> None:
+        real = ffmpeg_io.write_ogg
+        def die(frames: array, rate: int, channels: int, path: Path, quality: int = 5) -> None:
+            Path(str(path) + ".part").write_bytes(b"half")
+            raise AudioError("killed")
+        with mock.patch.object(ffmpeg_io, "write_ogg", die):
+            code, _, err = self.tree.build()
+        self.assertEqual(code, 1)
+        self.assertFalse((self.tree.root / "assets" / "audio" / "loop" / "bed_x.ogg").exists())
+        self.assertEqual(self.tree.build()[0], 0)  # the next run builds it
+        self.assertTrue((self.tree.root / "assets" / "audio" / "loop" / "bed_x.ogg").is_file())
+        self.assertIs(ffmpeg_io.write_ogg, real)
+
+    def test_music_layers_are_one_length_and_loop_seamlessly(self) -> None:
+        written: dict[str, array] = {}
+        def capture(frames: array, rate: int, channels: int, path: Path, quality: int = 5) -> None:
+            written[path.name] = frames
+        todo = [a for a in assets.plan_assets(self.tree.cues, self.tree.layers, self.tree.voices, self.tree.root) if a.kind == "music"]
+        with mock.patch.object(ffmpeg_io, "write_ogg", capture):
+            assets.render_assets(todo, self.tree.root, {})
+        calm, war = written["calm.ogg"], written["war.ogg"]
+        self.assertEqual(len(calm), len(war))
+        self.assertAlmostEqual(len(calm) / 2 / RATE, 2.0, delta=0.05)
+        for frames in (calm, war):
+            step = max(abs(frames[i + 2] - frames[i]) for i in range(0, len(frames) - 2, 2))
+            self.assertLessEqual(abs(frames[0] - frames[-2]), step + 1)
+
+    def test_mismatched_music_layers_are_refused_before_any_write(self) -> None:
+        t = self.tree
+        t.root.joinpath("audio-src", "raw", "music", "war", "2.wav").unlink()
+        ffmpeg_io.write_wav(tone(3.0, lead_s=0), RATE, 1, t.root / "audio-src" / "raw" / "music" / "war" / "2.wav")  # mono, calm is stereo
+        before = t.snapshot()
+        code, _, err = t.build()
+        self.assertEqual(code, 1)
+        self.assertIn("music layers", err)
+        self.assertFalse((t.root / "assets" / "audio").exists())
+        self.assertEqual(t.snapshot(), before)
+
+    def test_orphaned_files_are_reported_not_deleted(self) -> None:
+        stray = self.tree.root / "assets" / "audio" / "sfx" / "old_9.wav"
+        stray.parent.mkdir(parents=True)
+        stray.write_bytes(b"x")
+        code, out, _ = self.tree.build()
+        self.assertEqual(code, 0)
+        self.assertIn("orphaned: assets/audio/sfx/old_9.wav", out)
+        self.assertNotIn("orphaned: assets/audio/loop", out)
+        self.assertTrue(stray.exists())
+
+    def test_an_import_file_without_a_final_newline_is_fixed_cleanly(self) -> None:
+        wav = self.tree.root / "x.wav"
+        wav.write_bytes(b"")
+        imp = self.tree.root / "x.wav.import"
+        imp.write_text("[remap]\n\n[params]\n\ncompress/mode=1", encoding="utf-8")
+        self.assertTrue(assets.ensure_import(wav, assets.WAV_PARAMS))
+        self.assertEqual(imp.read_text(), "[remap]\n\n[params]\n\ncompress/mode=2\nedit/loop_mode=0\n")
 
     def test_build_writes_the_licence_rows_and_the_sidecar(self) -> None:
         self.assertEqual(self.tree.build()[0], 0)
         text = self.tree.licences.read_text()
         self.assertTrue(text.startswith(LICENSES))
         block = text[text.index("<!-- audio:begin -->"):text.index("<!-- audio:end -->")]
-        self.assertEqual(block.count("| `assets/audio/"), 6)
+        self.assertEqual(block.count("| `assets/audio/"), 7)  # six files and the note on their .import files
+        self.assertIn("`assets/audio/**/*.import`", block)
         self.assertIn("ElevenLabs paid plan: commercial use, no attribution", block)
         self.assertIn("ElevenLabs sound-generation (eleven_text_to_sound_v2)", block)
         self.assertIn("ElevenLabs text-to-speech (eleven_v4)", block)
@@ -393,7 +505,7 @@ class BuildTest(unittest.TestCase):
         code, _, err = empty.build()
         self.assertEqual(code, 0, err)
         self.assertFalse((empty.root / "assets" / "audio").exists())
-        self.assertEqual(empty.licences.read_text(), process.update_licences(LICENSES, []))
+        self.assertEqual(empty.licences.read_text(), licences.update_licences(LICENSES, []))
         self.assertTrue((empty.root / "audio-src" / "build" / "bank.json").is_file())
 
     def test_a_silent_take_is_refused_by_name(self) -> None:
@@ -439,6 +551,17 @@ class BatchTest(unittest.TestCase):
         self.assertIn("Hi", self.page("voices-reaver"))
         self.assertIn('data-kind="design"', self.page("design-reaver"))
         self.assertNotIn("Save picks", self.page("ab"))
+
+    def test_loop_and_music_pages_allow_one_take_and_music_says_it_is_not_looped(self) -> None:
+        for name, single in (("loops", "true"), ("music", "true"), ("melee", "false")):
+            self.assertEqual(self.tree.run("batch", name)[0], 0, name)
+            self.assertIn(f'data-single="{single}"', self.page(name), name)
+        self.assertIn("aren&#x27;t looped yet", self.page("music"))
+        self.assertNotIn("looped yet", self.page("melee"))
+
+    def test_a_single_loop_category_is_a_batch_too(self) -> None:
+        self.assertEqual(self.tree.run("batch", "bed")[0], 0)
+        self.assertEqual(self.tree.run("batch", "march")[0], 1)  # no takes of it
 
     def test_an_unknown_batch_or_one_with_no_takes_is_refused(self) -> None:
         for name in ("nope", "voices-nobody", "design-../x", "groan"):

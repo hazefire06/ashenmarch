@@ -36,6 +36,37 @@ class WavTest(unittest.TestCase):
             self.assertEqual(ffmpeg_io.probe(path), (32000, 1))
 
 
+class AtomicTest(unittest.TestCase):
+    def test_a_wav_write_that_fails_partway_leaves_nothing(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "a.wav"
+            with mock.patch.object(ffmpeg_io, "_to_bytes", side_effect=RuntimeError("killed")):
+                with self.assertRaises(RuntimeError):
+                    ffmpeg_io.write_wav(tone(0.1, 8000), 8000, 1, path)
+            self.assertEqual(list(Path(tmp).iterdir()), [])
+
+    def test_a_failed_wav_write_keeps_the_old_file(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "a.wav"
+            ffmpeg_io.write_wav(tone(0.1, 8000), 8000, 1, path)
+            old = path.read_bytes()
+            with mock.patch.object(ffmpeg_io, "_publish", side_effect=OSError("killed")):
+                with self.assertRaises(OSError):
+                    ffmpeg_io.write_wav(tone(0.2, 8000), 8000, 1, path)
+            self.assertEqual(path.read_bytes(), old)
+            self.assertEqual([p.name for p in Path(tmp).iterdir()], ["a.wav"])
+
+    def test_an_ogg_encode_that_dies_partway_leaves_no_file(self) -> None:
+        def die(cmd: list[str], data: bytes | None = None) -> None:
+            Path(cmd[cmd.index("-o") + 1]).write_bytes(b"half")
+            raise ffmpeg_io.AudioError("oggenc failed")
+        with tempfile.TemporaryDirectory() as tmp:
+            with mock.patch.object(ffmpeg_io, "_run", die):
+                with self.assertRaises(ffmpeg_io.AudioError):
+                    ffmpeg_io.write_ogg(tone(0.1, 8000), 8000, 1, Path(tmp) / "a.ogg")
+            self.assertEqual(list(Path(tmp).iterdir()), [])
+
+
 @unittest.skipUnless(HAS_FFMPEG, "ffmpeg not installed")
 class FfmpegTest(unittest.TestCase):
     def test_decode_gives_the_asked_rate_and_channels(self) -> None:

@@ -13,6 +13,8 @@ from __future__ import annotations
 import html
 from dataclasses import dataclass
 
+import cuebook
+
 
 @dataclass(frozen=True)
 class Take:
@@ -21,6 +23,9 @@ class Take:
     prompt_or_text: str
     file: str  # relative to the page
     voice: str | None  # a line's voice, or the model of an A/B take
+
+
+SINGLE: frozenset[str] = frozenset({"loops", *cuebook.LOOP_CATEGORIES})  # a loop or a music layer keeps one take
 
 
 def kind_of(batch: str) -> str:
@@ -47,6 +52,7 @@ button{font:inherit;padding:6px 14px;margin:10px 0}
 SCRIPT: str = """
 const body = document.body;
 const kind = body.dataset.kind;
+const single = body.dataset.single === 'true';
 function picks() {
   const out = {batch: body.dataset.batch};
   const boxes = [...document.querySelectorAll('input[type=checkbox]:checked')];
@@ -65,11 +71,10 @@ function picks() {
 }
 document.addEventListener('change', (e) => {
   const box = e.target;
-  if (kind === 'cues' || !box.checked) return;
-  const key = kind === 'lines' ? box.dataset.id + '/' + box.dataset.voice : box.dataset.voice;
+  if ((kind === 'cues' && !single) || !box.checked) return;
+  const keyOf = (b) => kind === 'lines' ? b.dataset.id + '/' + b.dataset.voice : kind === 'design' ? b.dataset.voice : b.dataset.id;
   for (const other of document.querySelectorAll('input[type=checkbox]')) {
-    const k = kind === 'lines' ? other.dataset.id + '/' + other.dataset.voice : other.dataset.voice;
-    if (other !== box && k === key) other.checked = false;
+    if (other !== box && keyOf(other) === keyOf(box)) other.checked = false;
   }
 });
 document.getElementById('save').addEventListener('click', () => {
@@ -82,7 +87,7 @@ document.getElementById('save').addEventListener('click', () => {
 """
 
 
-def page(batch: str, takes: list[Take]) -> str:
+def page(batch: str, takes: list[Take], note: str = "") -> str:
     kind = kind_of(batch)
     groups: dict[str, list[Take]] = {}
     for t in takes:
@@ -103,6 +108,6 @@ def page(batch: str, takes: list[Take]) -> str:
     return (
         "<!DOCTYPE html>\n<html lang=\"en\"><head><meta charset=\"utf-8\">"
         f"<title>Audition: {_e(batch)}</title><style>{STYLE}</style></head>\n"
-        f'<body data-kind="{kind}" data-batch="{_e(batch)}" data-file="picks-{_e(batch)}.json">\n<h1>Audition: {_e(batch)}</h1>\n'
+        f'<body data-kind="{kind}" data-batch="{_e(batch)}" data-file="picks-{_e(batch)}.json" data-single="{str(batch in SINGLE).lower()}">\n<h1>Audition: {_e(batch)}</h1>\n'
         f"<p>{len(takes)} takes. Tick the keepers" + (", then save the picks." if kind != "ab" else ". Say which model you prefer.") + "</p>\n"
-        + save + "\n" + "\n".join(parts) + "\n" + script + "\n</body></html>\n")
+        + (f"<p><em>{_e(note)}</em></p>\n" if note else "") + save + "\n" + "\n".join(parts) + "\n" + script + "\n</body></html>\n")

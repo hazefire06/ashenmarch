@@ -35,24 +35,32 @@ picks = { v1 = 1 }
 class CuePicksTest(unittest.TestCase):
     def test_picks_change_only_the_picks_lines(self) -> None:
         before = (ROOT / "audio-src" / "cues.toml").read_text(encoding="utf-8")
-        ids = ["swing_blade", "swing_heavy"]
         after = picks.apply_cue_picks(before, {"swing_blade": [1, 4, 5], "swing_heavy": [2]})
         changed = [d for d in difflib.unified_diff(before.splitlines(), after.splitlines(), lineterm="", n=0) if d[0] in "+-" and d[:3] not in ("+++", "---")]
         self.assertEqual(len(changed), 4, changed)
         self.assertIn("+picks = [1, 4, 5]", changed)
         self.assertIn("+picks = [2]", changed)
         self.assertTrue(all("picks" in d for d in changed))
-        self.assertEqual(len(ids), 2)
 
     def test_a_header_inside_a_multiline_string_is_not_a_table(self) -> None:
         out = picks.apply_cue_picks(CUES, {"a": [1, 3]})
-        self.assertIn('picks = [1, 3]\n\n[cue.b]', out)
+        self.assertIn('picks = [1, 3]  # none yet\n\n[cue.b]', out)  # the comment after the value survives
         self.assertIn("picks = [2]\n", out)  # b untouched
 
     def test_other_bytes_survive_including_crlf(self) -> None:
         text = CUES.replace("\n", "\r\n")
         out = picks.apply_cue_picks(text, {"b": [1]})
         self.assertEqual(out, text.replace("picks = [2]", "picks = [1]"))
+
+    def test_indent_and_trailing_comment_are_kept(self) -> None:
+        text = '[cue.a]\n    picks = [ 1 ]   # keep me\n[cue.b]\npicks = [2]\n'
+        self.assertEqual(picks.apply_cue_picks(text, {"a": [4, 5]}), '[cue.a]\n    picks = [4, 5]   # keep me\n[cue.b]\npicks = [2]\n')
+        lines = '[line.a]\n\tpicks = { v = 1 } # c\n'
+        self.assertEqual(picks.apply_line_picks(lines, {"a": {"v": 2}}), '[line.a]\n\tpicks = { v = 2 } # c\n')
+
+    def test_a_picks_line_that_runs_over_lines_is_refused(self) -> None:
+        with self.assertRaisesRegex(picks.PicksError, "one line"):
+            picks.apply_cue_picks('[cue.a]\npicks = [\n  1,\n]\n', {"a": [2]})
 
     def test_an_empty_list_is_written_as_empty(self) -> None:
         self.assertIn("picks = []\n", picks.apply_cue_picks(CUES, {"b": []}))
