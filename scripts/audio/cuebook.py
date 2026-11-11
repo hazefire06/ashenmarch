@@ -58,6 +58,7 @@ LINE_KEYS: frozenset[str] = frozenset({"trigger", "text", "tag", "picks"})
 # A delivery tag goes to a paid TTS, so it is bracketed lowercase words and nothing else.
 TAG: re.Pattern[str] = re.compile(r"(\[[a-z]+( [a-z]+)*\] ?)*\[[a-z]+( [a-z]+)*\]")
 MAX_TAG: int = 40
+MAX_PROMPT: int = 500  # a cue's or a music layer's prompt goes to a paid API as written
 MAX_LINE_TEXT: int = 300
 MAX_DESCRIPTION: int = 600
 MAX_TAKE: int = 20
@@ -188,7 +189,7 @@ def load_layers(path: Path) -> dict[str, Layer]:
             raise CueError(f"{where}: model must be one of {', '.join(MUSIC_MODELS)}")
         layers[layer_id] = Layer(
             id=layer_id,
-            prompt=_text(body, "prompt", where),
+            prompt=_prompt(body, where),
             length_s=_number(body, "length_s", where, *MUSIC_SECONDS),
             model=model,
             takes=takes,
@@ -220,6 +221,13 @@ def _table(parent: dict[str, object], key: str) -> dict[str, object]:
     value = parent.get(key)
     if not isinstance(value, dict):
         raise CueError(f"[{key}] is missing or isn't a table")
+    return value
+
+
+def _prompt(table: dict[str, object], where: str) -> str:
+    value = _text(table, "prompt", where)
+    if len(value) > MAX_PROMPT:
+        raise CueError(f"{where}: prompt is longer than {MAX_PROMPT} characters")
     return value
 
 
@@ -328,7 +336,7 @@ def _cue(cue_id: str, body: dict[str, object], defaults: dict[str, object]) -> C
     return Cue(
         id=cue_id,
         category=str(category),
-        prompt=_text(body, "prompt", where),
+        prompt=_prompt(body, where),
         duration_s=_number(body, "duration_s", where, *SFX_SECONDS),
         loop=loop,
         variants=_int(merged, "variants", where, 1, 10),

@@ -195,6 +195,16 @@ class RefusalTest(unittest.TestCase):
             layers_from(f'[layer.{name}]\nprompt = "p"\nlength_s = 2\nmodel = "music_v2"\ntakes = 3\n')
         self.assertNotIn("b" * 41, str(ctx.exception))
 
+    def test_text_that_goes_to_the_paid_api_is_capped(self) -> None:
+        # M5: a prompt, a voice description or a line is sent as written, so each has a length cap.
+        long_prompt = "p" * (cuebook.MAX_PROMPT + 1)
+        book_from(HEAD + f'\n[cue.hit_ok]\ncategory = "melee"\nprompt = "{"p" * cuebook.MAX_PROMPT}"\nduration_s = 1.0\n')
+        with self.assertRaisesRegex(CueError, "prompt is longer than 500"):
+            book_from(HEAD + f'\n[cue.hit_long]\ncategory = "melee"\nprompt = "{long_prompt}"\nduration_s = 1.0\n')
+        with self.assertRaisesRegex(CueError, "prompt is longer than 500"):
+            layers_from(f'[layer.calm]\nprompt = "{long_prompt}"\nlength_s = 20\nmodel = "music_v2"\ntakes = 3\n')
+        self.assertEqual((cuebook.MAX_DESCRIPTION, cuebook.MAX_LINE_TEXT), (600, 300))
+
     def test_variants_cannot_exceed_takes(self) -> None:
         with self.assertRaises(CueError):
             book_from(cue_with("variants = 4\ntakes = 3"))

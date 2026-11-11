@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Buys the game's sound from ElevenLabs (spec §9.3): sound effects, designed voices, spoken lines and music.
 
-    python3 scripts/audio/generate.py plan [--batch B]                 free: what each batch would buy
+    python3 scripts/audio/generate.py plan [--batch B] [--show]        free: what each batch would buy (--show: the text sent, and each voice id)
     python3 scripts/audio/generate.py probe --max-credits 40           paid: one 1 s sound at wav_32000
+    python3 scripts/audio/generate.py probe --music --max-credits 45   paid: one 3 s music clip at wav_32000
     python3 scripts/audio/generate.py sfx --cue hit_flesh --max-credits 100
     python3 scripts/audio/generate.py sfx --category melee --max-credits 2000
     python3 scripts/audio/generate.py voices design shieldman --voice shieldman_old --max-credits 1000
@@ -11,8 +12,10 @@
     python3 scripts/audio/generate.py voices ab --max-credits 2000
     python3 scripts/audio/generate.py music riverside_calm --max-credits 3000
 
-Tim runs the paid commands in Terminal.app. plan returns before anything looks for the key and makes no network call.
-Every paid command prices what isn't bought yet and refuses, before buying anything, if that is over --max-credits.
+Tim runs the paid commands in Terminal.app, from one worktree only (the manifest is per checkout; a global lock stops two runs at once). plan returns before anything looks for the key and makes no network call.
+Every paid command prices what isn't bought yet and refuses, before buying anything, if that is over --max-credits. The prices
+are assumed rates, so --max-credits caps the estimate and the key's quota on elevenlabs.io is the real cap. Each command prints the
+prompt or text it sends, and the voice id, before its "buying" line.
 
 Every purchase is recorded in audio-src/manifest.json: PENDING before the request, DONE (with the file and credits) after
 the file is written. A request that may have charged (it went out and no usable reply came back) is INTERRUPTED and stops
@@ -62,6 +65,9 @@ MUSIC_CREDITS_PER_MIN = 900
 SPEECH_CREDITS_PER_CHAR = 1
 DESIGN_CREDITS_ASSUMED = 1000  # per design call; the real cost is unknown and the key's quota caps it
 PROBE_CREDITS = 40
+PROBE_MUSIC_MS = 3000
+PROBE_MUSIC_CREDITS = math.ceil(PROBE_MUSIC_MS / 1000 * MUSIC_CREDITS_PER_MIN / 60)  # 45
+PROBE_MUSIC_MODEL = "music_v2"
 DEFAULT_FORMAT = "wav_32000"
 PROBE_FORMAT = "wav_32000"
 LINE_TAKES = 3
@@ -74,6 +80,8 @@ AB_LINES: tuple[tuple[str, str], ...] = (
 )
 MAX_DESIGN_ROUNDS = 3
 LOCK_NAME = "manifest.json.lock"
+# A second lock outside the checkout: two worktrees each have their own manifest and lock, so only this one sees both.
+GLOBAL_LOCK = Path.home() / ".cache" / "ashenmarch" / "elevenlabs.lock"
 BATCHES: tuple[str, ...] = ("probe", "sfx", "loops", "design", "lines", "ab", "music")
 
 Say = Callable[[str], None]
@@ -198,6 +206,20 @@ def _save_audio(manifest: Manifest, started: dict[str, Any], raw: Path, label: s
         raise InterruptedRun(f"{label!r}: the call was paid but the audio couldn't be saved ({why}). {HOW_TO_RESOLVE}") from None
 
 
+def _text_shown(text: object, limit: int = 600) -> str:
+    """Text for the terminal: as it will be sent, but escaped if it holds a control character, so a planted prompt can't redraw the screen."""
+    text = str(text)[:limit]
+    return text if text.isprintable() else ascii(text)
+
+
+def _sends(manifest: Manifest, job: Job) -> list[str]:
+    """What the paid API receives for a job: its prompt or text and, for speech, the voice id."""
+    lines = [f"  sends: {_text_shown(job.fields.get('prompt', job.fields.get('text', '')))}"]
+    if job.voice is not None:
+        lines.append(f"  voice {job.voice}: voice_id {_voice_id(manifest, job.voice) or '(not saved)'}")
+    return lines
+
+
 def _local_error(error: Exception) -> str:
     if isinstance(error, OSError):
         what = error.strerror or type(error).__name__
@@ -224,10 +246,29 @@ def _check_chain(raw: Path, rel: str) -> None:
 
 
 def _check_dest(raw: Path, label: str) -> None:
-    """Before anything is bought: the folder chain, and the final and .part names in either extension."""
+    """Before anything is bought: the folder chain, and the final and .part names in either extension. Every part that exists must be
+    a folder, and the file's own name must not be a folder: a PR could commit a file or a folder in the way, and a purchase would be
+    lost at the write."""
     for ext in (".wav", ".mp3"):
-        _check_chain(raw, label + ext)
-        _check_chain(raw, label + ext + ".part")
+        for rel in (label + ext, label + ext + ".part"):
+            _check_obstacles(raw, rel)  # first: lstat through a file raises NotADirectoryError
+            _check_chain(raw, rel)
+
+
+def _check_obstacles(raw: Path, rel: str) -> None:
+    here = raw
+    parts = rel.split("/")
+    for i, part in enumerate(("", *parts)):
+        here = here / part if part else here
+        try:
+            mode = os.lstat(here).st_mode
+        except FileNotFoundError:
+            return  # nothing below a missing folder can be in the way
+        last = i == len(parts)
+        if last and stat.S_ISDIR(mode):
+            raise UnsafePath(f"{_shown(here)} is a folder where the file {_shown(Path(part))} goes; remove it and rerun")
+        if not last and not stat.S_ISDIR(mode):
+            raise UnsafePath(f"{_shown(here)} is a file where a folder is needed; remove it and rerun")
 
 
 def write_file(raw: Path, label: str, data: bytes) -> str:
@@ -251,12 +292,23 @@ def _locked(path: Path) -> Iterator[None]:
     try:
         os.close(os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o644))
     except FileExistsError:
-        raise BlockedError(f"{_shown(path)} exists, so another run may be going. If none is (a run was killed), delete that file and rerun.") from None
+        raise BlockedError(f"{_shown(path)} exists, so another run may be going (it may be from another worktree). If none is (a run was killed), delete that file and rerun.") from None
     try:
         yield
     finally:
         with contextlib.suppress(OSError):
             os.unlink(path)
+
+
+def _global_lock_path() -> Path:
+    """GLOBAL_LOCK, in a folder made at mode 700 if it is missing. A symlink in its place is refused, as a symlinked lock file is."""
+    folder = GLOBAL_LOCK.parent
+    if folder.is_symlink():
+        raise UnsafePath(f"{_shown(folder)} is a symlink; replace it with a real folder (or remove it)")
+    folder.mkdir(mode=0o700, parents=True, exist_ok=True)
+    if folder.is_symlink() or not folder.is_dir():  # also catches a swap between the first look and the mkdir
+        raise UnsafePath(f"{_shown(folder)} isn't a real folder")
+    return GLOBAL_LOCK
 
 
 def _shown(path: Path) -> str:
@@ -426,6 +478,8 @@ def run_jobs(manifest: Manifest, get_client: GetClient, raw: Path, fmt: str, job
         _check_dest(raw, job.label)
     client = get_client(fmt)
     for job in todo:
+        for line in _sends(manifest, job):
+            say(line)
         say(f"{job.label}: buying ({job.credits} credits)")
         record = {"kind": job.kind, "label": job.label, "model": job.model, "format": fmt, **job.fields}
         data = _buy(manifest, record, lambda job=job: job.call(client))
@@ -450,6 +504,7 @@ def run_design(manifest: Manifest, get_client: GetClient, raw: Path, fmt: str, u
     for n in range(first, first + 10):  # the client takes at most 10 previews
         _check_dest(raw, f"design/{unit}/{voice}/{n}")
     client = get_client(fmt)
+    say(f"  sends: {_text_shown(description)}")
     say(f"{label}: designing ({DESIGN_CREDITS_ASSUMED} credits, assumed)")
     call = {"kind": "design", "label": label, "model": "eleven_ttv_v3", "text": description}
     previews = _buy(manifest, call, lambda: client.design(description))
@@ -477,6 +532,7 @@ def run_save(manifest: Manifest, get_client: GetClient, fmt: str, unit: str, voi
     if not isinstance(generated, str):
         raise BlockedError(f"preview {pick} of {voice} was never made; run voices design {unit} --voice {voice} first")
     client = get_client(fmt)
+    say(f"  sends: voice name {voice}, {_text_shown(description)}")
     say(f"{label}: saving preview {pick}")
     record = {"kind": "voice", "label": label, "generated_voice_id": generated}
     voice_id = _buy(manifest, record, lambda: client.save_voice(voice, description, generated))
@@ -510,6 +566,34 @@ def run_probe(manifest: Manifest, get_client: GetClient, max_credits: int, say: 
     return True
 
 
+def run_probe_music(manifest: Manifest, get_client: GetClient, max_credits: int, say: Say = _say) -> bool:
+    """One 3 s music clip at wav_32000, whatever format.txt says: /v1/music's output_format is unverified, and a music batch is dear.
+    Returns True if the format was accepted. Writes no audio and no format.txt."""
+    _refuse_if_blocked(manifest)
+    label = f"probe/music/{PROBE_FORMAT}"
+    if _bought(manifest.find("probe", label)):
+        say(f"nothing to buy: the music probe already ran; {PROBE_FORMAT} was accepted")
+        return True
+    _check_budget("the music probe needs", PROBE_MUSIC_CREDITS, max_credits)
+    client = get_client(PROBE_FORMAT)
+    prompt = "a single soft low drone"
+    record = {"kind": "probe", "label": label, "model": PROBE_MUSIC_MODEL, "format": PROBE_FORMAT, "prompt": prompt}
+    say(f"  sends: {prompt}")
+    say(f"{label}: buying ({PROBE_MUSIC_CREDITS} credits, {PROBE_MUSIC_MS} ms)")
+    try:
+        data = _buy(manifest, record, lambda: client.music(prompt, PROBE_MUSIC_MS, PROBE_MUSIC_MODEL))
+    except ElevenLabsError as error:  # only a definite rejection gets here
+        if any(word in str(error).lower() for word in ("format", "wav", "32000")):
+            say(f"{PROBE_FORMAT} was refused for music ({error}).")
+            say("Put mp3_44100_128 in audio-src/format.txt and every purchase will use it.")
+            return False
+        raise
+    _done(manifest, record, PROBE_MUSIC_CREDITS, [])
+    say(f"{PROBE_FORMAT} was accepted for music: the reply is {len(data)} bytes of {'WAV' if data[:4] == b'RIFF' else 'MP3'}.")
+    say("Now check the usage page on elevenlabs.io: did the clip draw on your credits, as about 45?")
+    return True
+
+
 def _missing_files(manifest: Manifest, raw: Path) -> list[str]:
     out: list[str] = []
     for t in manifest.tasks:
@@ -532,7 +616,10 @@ def _line(name: str, jobs: list[Job], manifest: Manifest, note: str = "") -> str
 def batch_lines(name: str, book: CueBook, layers: dict[str, Layer], files: dict[str, VoiceFile], manifest: Manifest) -> list[str]:
     if name == "probe":
         done = _bought(manifest.find("probe", f"probe/{PROBE_FORMAT}"))
-        return [f"probe: 1 sound of 1 s, {'1 of 1 bought' if done else '0 of 1 bought'}, {0 if done else PROBE_CREDITS} credits still to buy"]
+        music = _bought(manifest.find("probe", f"probe/music/{PROBE_FORMAT}"))
+        return [f"probe: 1 sound of 1 s, {'1 of 1 bought' if done else '0 of 1 bought'}, {0 if done else PROBE_CREDITS} credits still to buy",
+                f"probe --music: 1 clip of {PROBE_MUSIC_MS // 1000} s, {'1 of 1 bought' if music else '0 of 1 bought'}, "
+                f"{0 if music else PROBE_MUSIC_CREDITS} credits still to buy"]
     if name in ("sfx", "loops"):
         ids = sorted(i for i, c in book.cues.items() if c.loop == (name == "loops"))
         return [_line(name, sfx_jobs(book, ids), manifest, f" ({SFX_CREDITS_PER_S}/s, assumed)")]
@@ -548,7 +635,7 @@ def batch_lines(name: str, book: CueBook, layers: dict[str, Layer], files: dict[
         return [f"design: {len(pairs)} voices, {len(pairs) - len(todo)} of {len(pairs)} bought, {cost} credits still to buy "
                 f"({DESIGN_CREDITS_ASSUMED} per design call, assumed; the real cost is unknown)",
                 f"  rounds of previews so far (at most {MAX_DESIGN_ROUNDS}; --again buys another): {rounds}"]
-    jobs = ab_jobs(manifest, files) if name == "ab" else [j for u in units for j in line_jobs(manifest, files, u, None, None, LINE_TAKES)]
+    jobs = _speech_jobs(name, manifest, files)
     unsaved = sorted({j.voice for j in jobs if j.voice and _voice_id(manifest, j.voice) is None})
     out = [_line(name, jobs, manifest, f" ({SPEECH_CREDITS_PER_CHAR}/character, assumed; v4 may cost more)")]
     if unsaved:
@@ -556,11 +643,47 @@ def batch_lines(name: str, book: CueBook, layers: dict[str, Layer], files: dict[
     return out
 
 
-def plan_text(book: CueBook, layers: dict[str, Layer], files: dict[str, VoiceFile], manifest: Manifest, fmt: str, batch: str | None) -> str:
+def _speech_jobs(name: str, manifest: Manifest, files: dict[str, VoiceFile]) -> list[Job]:
+    units = sorted(u for u, f in files.items() if u != CLAN and f.voices)
+    return ab_jobs(manifest, files) if name == "ab" else [j for u in units for j in line_jobs(manifest, files, u, None, None, LINE_TAKES)]
+
+
+def show_lines(name: str, book: CueBook, layers: dict[str, Layer], files: dict[str, VoiceFile], manifest: Manifest) -> list[str]:
+    """Every prompt, line or description still to buy in a batch, as the paid API will receive it, and the voice id each voice uses.
+    The cue book, the voice files and manifest.json are committed, so a PR can change any of them: Tim reads this before buying."""
+    if name == "probe":
+        return []
+    out: list[str] = []
+    units = sorted(u for u, f in files.items() if u != CLAN and f.voices)
+    if name == "design":
+        for u in units:
+            for v, voice in files[u].voices.items():
+                if not _bought(manifest.find("design", design_label(u, v))):
+                    out.append(f"  design/{u}/{v}: {_text_shown(voice.description)}")
+        return out
+    if name in ("sfx", "loops"):
+        jobs = sfx_jobs(book, sorted(i for i, c in book.cues.items() if c.loop == (name == "loops")))
+    elif name == "music":
+        jobs = [j for layer in layers.values() for j in music_jobs(layer)]
+    else:
+        jobs = _speech_jobs(name, manifest, files)
+    todo, _ = _cost(manifest, jobs)
+    for job in todo:
+        out.append(f"  {job.label}: {_text_shown(job.fields.get('prompt', job.fields.get('text', '')))}")
+    for voice in sorted({j.voice for j in jobs if j.voice is not None}):
+        out.append(f"  voice {voice}: voice_id {_voice_id(manifest, voice) or '(not saved)'}")
+    return out
+
+
+def plan_text(book: CueBook, layers: dict[str, Layer], files: dict[str, VoiceFile], manifest: Manifest, fmt: str, batch: str | None,
+              show: bool = False) -> str:
     names = [batch] if batch else list(BATCHES)
-    lines = [f"format: {fmt}"]
+    lines = [f"format: {fmt}",
+             "These estimates use assumed rates. The key's quota on elevenlabs.io is the real cap on spending, so set it before buying."]
     for name in names:
         lines += batch_lines(name, book, layers, files, manifest)
+        if show:
+            lines += show_lines(name, book, layers, files, manifest)
     lines.append(f"spent so far: {manifest.credits_spent()} credits")
     lines += [*_pending(manifest), *_interrupted(manifest), *_unknown(manifest)]
     lines += _missing_files(manifest, AUDIO_SRC / "raw")
@@ -581,7 +704,9 @@ def _build_parser() -> argparse.ArgumentParser:
 
     plan = sub.add_parser("plan")
     plan.add_argument("--batch", choices=BATCHES)
-    paid(sub.add_parser("probe"))
+    plan.add_argument("--show", action="store_true", help="also list each prompt, line and description still to buy, and each voice id")
+    probe = paid(sub.add_parser("probe"))
+    probe.add_argument("--music", action="store_true", help="probe /v1/music instead: one 3 s clip at wav_32000 (about 45 credits)")
     sfx = paid(sub.add_parser("sfx"))
     which = sfx.add_mutually_exclusive_group(required=True)
     which.add_argument("--cue")
@@ -620,7 +745,7 @@ def _dispatch(args: argparse.Namespace, book: CueBook, layers: dict[str, Layer],
               get_client: GetClient, raw: Path, fmt: str) -> None:
     command = args.command
     if command == "probe":
-        if not run_probe(manifest, get_client, args.max_credits):
+        if not (run_probe_music if args.music else run_probe)(manifest, get_client, args.max_credits):
             raise SystemExit(1)
     elif command == "sfx":
         if args.cue is not None:
@@ -672,6 +797,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         with contextlib.ExitStack() as stack:
             if args.command != "plan":  # plan is free and takes no lock
+                stack.enter_context(_locked(_global_lock_path()))  # first: it is the one that sees other checkouts
                 stack.enter_context(_locked(AUDIO_SRC / LOCK_NAME))
             return _run(args)
     except (ElevenLabsError, BudgetError, BlockedError, InterruptedRun) as error:
@@ -692,7 +818,7 @@ def _run(args: argparse.Namespace) -> int:
     manifest = Manifest.load(AUDIO_SRC / "manifest.json", allowed=AUDIO_FIELDS)
     fmt = read_format(AUDIO_SRC)
     if args.command == "plan":  # the free command returns before anything looks for the key
-        print(plan_text(book, layers, files, manifest, fmt, args.batch))
+        print(plan_text(book, layers, files, manifest, fmt, args.batch, args.show))
         return 0
 
     def get_client(output_format: str) -> ElevenLabsClient:

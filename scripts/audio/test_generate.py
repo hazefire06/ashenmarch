@@ -133,7 +133,11 @@ class Base(unittest.TestCase):
         self.urlopen = mock.patch.object(urllib.request, "urlopen", side_effect=AssertionError("urllib was used"))
         self.opener = mock.patch.object(urllib.request.OpenerDirector, "open", side_effect=AssertionError("urllib was used"))
         self.root = mock.patch.object(generate, "AUDIO_SRC", self.src)
-        self.mocks = [m.start() for m in (self.secret, self.net, self.urlopen, self.opener, self.root)]
+        # The global lock lives in the temp dir: no test may create or touch the real ~/.cache/ashenmarch.
+        self.cache = Path(self._tmp.name) / "cache" / "ashenmarch"
+        self.global_lock = self.cache / "elevenlabs.lock"
+        self.lock_path = mock.patch.object(generate, "GLOBAL_LOCK", self.global_lock)
+        self.mocks = [m.start() for m in (self.secret, self.net, self.urlopen, self.opener, self.root, self.lock_path)]
         self.addCleanup(mock.patch.stopall)
         self.addCleanup(self._tmp.cleanup)
 
@@ -791,6 +795,217 @@ class OddStatusTest(Base):
                 _, out, _ = self.run_main("plan", "--batch", "sfx")
                 self.assertIn("blocked", out)
         self.assert_untouched()
+
+
+class PlanWordingAndShowTest(Base):
+    def test_plan_says_the_estimates_are_assumed_and_the_quota_is_the_cap(self) -> None:
+        _, out, _ = self.run_main("plan")
+        self.assertIn("assumed rates", out)
+        self.assertIn("quota", out)
+        self.assertIn("real cap", out)
+
+    def test_show_lists_every_prompt_still_to_buy(self) -> None:
+        self.seed({"kind": "sfx", "label": "sfx/hit_flesh/1", "status": "DONE", "credits": 40})
+        _, plain, _ = self.run_main("plan", "--batch", "sfx")
+        _, out, _ = self.run_main("plan", "--batch", "sfx", "--show")
+        self.assertNotIn("A blade hits", plain)  # without --show only counts
+        self.assertIn("sfx/hit_flesh/2: A blade hits flesh. close foley", out)  # the style suffix is part of what is sent
+        self.assertIn("sfx/hit_dry/1: A blade hits dry bone. close foley", out)
+        self.assertNotIn("sfx/hit_flesh/1:", out)  # bought already
+        _, music, _ = self.run_main("plan", "--batch", "music", "--show")
+        self.assertIn("music/calm/1: Sparse drone.", music)
+        self.assert_untouched()
+
+    def test_show_lists_voice_descriptions_lines_and_the_voice_id_each_voice_uses(self) -> None:
+        _, out, _ = self.run_main("plan", "--batch", "design", "--show")
+        self.assertIn("design/shieldman/shieldman_old: a gruff old man", out)
+        self.save_voice_record("shieldman_old", "PlantedLibVoice9")  # manifest.json is committed, so a PR can plant a voice id
+        _, out, _ = self.run_main("plan", "--batch", "lines", "--show")
+        self.assertIn("voices/shieldman_old/select_1/1: Text of select_1.", out)
+        self.assertIn("voices/shieldman_old/select_2/1: [whispers] Hello.", out)
+        self.assertIn("voice shieldman_old: voice_id PlantedLibVoice9", out)
+        self.assertIn("voice shieldman_young: voice_id (not saved)", out)
+
+    def test_shown_text_is_escaped_when_it_holds_a_control_character(self) -> None:
+        self.assertEqual(generate._text_shown("plain words"), "plain words")
+        self.assertNotIn("\x1b", generate._text_shown("a\x1b[2Jb"))
+        self.assertLessEqual(len(generate._text_shown("x" * 5000)), 600)
+
+    def test_a_paid_run_prints_the_text_and_the_voice_id_before_each_buying_line(self) -> None:
+        self.allow_network()
+        _, out, _ = self.run_main("sfx", "--cue", "hit_dry", "--max-credits", "20")
+        self.assertLess(out.index("sends: A blade hits dry bone. close foley"), out.index("sfx/hit_dry/1: buying"))
+        self.save_voice_record("shieldman_old", "VoiceOld1")
+        _, out, _ = self.run_main("voices", "lines", "shieldman", "--voice", "shieldman_old", "--line", "select_2", "--takes", "1", "--max-credits", "100")
+        self.assertLess(out.index("sends: [whispers] Hello."), out.index("voice_id VoiceOld1"))
+        self.assertLess(out.index("voice_id VoiceOld1"), out.index("voices/shieldman_old/select_2/1: buying"))
+
+    def test_design_and_save_print_the_description_before_buying(self) -> None:
+        self.allow_network(Fake([preview_reply(1)]))
+        _, out, _ = self.run_main("voices", "design", "shieldman", "--voice", "shieldman_old", "--max-credits", "1000")
+        self.assertLess(out.index("sends: a gruff old man"), out.index("designing"))
+        self.allow_network(Fake([json_voice_reply()]))
+        _, out, _ = self.run_main("voices", "save", "shieldman", "--voice", "shieldman_old", "--pick", "1")
+        self.assertLess(out.index("sends: voice name shieldman_old, a gruff old man"), out.index("saving preview 1"))
+
+
+def json_voice_reply() -> tuple[str, bytes]:
+    return "application/json", json.dumps({"voice_id": "VoiceOld1"}).encode()
+
+
+class ProbeMusicTest(Base):
+    def test_the_music_probe_buys_one_3_second_clip_at_wav_32000(self) -> None:
+        (self.src / "format.txt").write_text("mp3_44100_128\n")
+        fake = self.allow_network()
+        code, out, _ = self.run_main("probe", "--music", "--max-credits", "45")
+        self.assertEqual(code, 0)
+        path, query, body = fake.calls[0]
+        self.assertEqual((path, query), ("/v1/music", {"output_format": "wav_32000"}))
+        self.assertEqual((body["music_length_ms"], body["force_instrumental"]), (3000, True))
+        self.assertIn("accepted for music", out)
+        record = self.manifest().find("probe", "probe/music/wav_32000")
+        self.assertEqual((record["status"], record["credits"]), ("DONE", 45))
+        self.assertEqual((self.src / "format.txt").read_text(), "mp3_44100_128\n")  # never rewritten
+        self.assertFalse(self.raw.exists())
+
+    def test_the_music_probe_is_not_bought_twice_and_respects_the_budget(self) -> None:
+        fake = self.allow_network()
+        code, _, _ = self.run_main("probe", "--music", "--max-credits", "44")
+        self.assertEqual((code, fake.calls), (1, []))
+        self.run_main("probe", "--music", "--max-credits", "45")
+        code, out, _ = self.run_main("probe", "--music", "--max-credits", "45")
+        self.assertEqual((code, len(fake.calls)), (0, 1))
+        self.assertIn("already", out)
+
+    def test_the_sfx_probe_and_the_music_probe_are_separate_purchases(self) -> None:
+        fake = self.allow_network()
+        self.run_main("probe", "--max-credits", "40")
+        self.run_main("probe", "--music", "--max-credits", "45")
+        self.assertEqual([c[0] for c in fake.calls], ["/v1/sound-generation", "/v1/music"])
+        _, out, _ = self.run_main("plan", "--batch", "probe")
+        self.assertIn("probe --music: 1 clip of 3 s, 1 of 1 bought, 0 credits", out)
+
+    def test_a_refused_music_format_is_reported(self) -> None:
+        self.allow_network(Fake([ElevenLabsError("ElevenLabs POST /v1/music failed: HTTP 422 output_format wav_32000 is not supported")]))
+        code, out, err = self.run_main("probe", "--music", "--max-credits", "45")
+        self.assertEqual(code, 1)
+        self.assertIn("refused for music", out + err)
+        self.assertEqual(self.manifest().find("probe", "probe/music/wav_32000")["status"], "FAILED")
+
+
+class ObstacleTest(Base):
+    def _refused(self, *argv: str) -> None:
+        fake = self.allow_network()
+        code, _, err = self.run_main(*argv)
+        self.assertEqual(code, 2)
+        self.assertEqual(fake.calls, [])  # nothing was bought
+        self.assertFalse(self.manifest_path.exists())
+        self.assertRegex(err, "where a folder is needed|is a folder where the file")
+
+    def test_a_file_where_a_folder_goes_is_refused_before_buying(self) -> None:
+        (self.raw / "sfx").mkdir(parents=True)
+        (self.raw / "sfx" / "hit_dry").write_bytes(b"planted")
+        self._refused("sfx", "--cue", "hit_dry", "--max-credits", "20")
+
+    def test_a_file_in_place_of_raw_itself_is_refused(self) -> None:
+        self.raw.write_bytes(b"planted")
+        self._refused("sfx", "--cue", "hit_dry", "--max-credits", "20")
+
+    def test_a_folder_named_like_the_audio_file_or_its_part_is_refused(self) -> None:
+        for name in ("1.wav", "1.mp3", "1.wav.part", "1.mp3.part"):
+            with self.subTest(name=name):
+                folder = self.raw / "sfx" / "hit_dry" / name
+                folder.mkdir(parents=True)
+                self._refused("sfx", "--cue", "hit_dry", "--max-credits", "20")
+                folder.rmdir()
+
+    def test_design_checks_every_preview_name(self) -> None:
+        (self.raw / "design" / "shieldman" / "shieldman_old" / "3.mp3").mkdir(parents=True)
+        self.allow_network(Fake([preview_reply(3)]))
+        code, _, err = self.run_main("voices", "design", "shieldman", "--voice", "shieldman_old", "--max-credits", "1000")
+        self.assertEqual(code, 2)
+        self.assertIn("is a folder where the file", err)
+        self.assertEqual(self.fake.calls, [])
+
+    def test_an_ordinary_existing_take_does_not_trip_it(self) -> None:
+        (self.raw / "sfx" / "hit_dry").mkdir(parents=True)
+        (self.raw / "sfx" / "hit_dry" / "2.wav").write_bytes(WAV)
+        self.allow_network()
+        self.assertEqual(self.run_main("sfx", "--cue", "hit_dry", "--max-credits", "20")[0], 0)
+
+
+class GlobalLockTest(Base):
+    def test_the_test_lock_is_inside_the_temp_dir(self) -> None:
+        self.assertTrue(str(generate.GLOBAL_LOCK).startswith(self._tmp.name))
+        self.assertNotIn(".cache/ashenmarch", str(generate.GLOBAL_LOCK).replace(self._tmp.name, ""))
+
+    def test_a_paid_run_holds_the_global_lock_in_a_private_folder_and_removes_it(self) -> None:
+        seen: list[tuple[bool, int]] = []
+
+        def transport(path: str, query: dict[str, str], body: dict[str, Any]) -> tuple[str, bytes]:
+            seen.append((self.global_lock.exists(), self.cache.stat().st_mode & 0o777))
+            return "audio/wav", WAV
+
+        self.allow_network(transport)  # type: ignore[arg-type]
+        self.run_main("sfx", "--cue", "hit_dry", "--max-credits", "20")
+        self.assertEqual(seen, [(True, 0o700)])
+        self.assertFalse(self.global_lock.exists())
+
+    def test_an_existing_global_lock_refuses_every_paid_run_and_is_left_alone(self) -> None:
+        self.cache.mkdir(parents=True)
+        self.global_lock.write_text("")
+        for argv in (("sfx", "--cue", "hit_dry", "--max-credits", "20"), ("probe", "--max-credits", "40"), ("probe", "--music", "--max-credits", "45"),
+                     ("voices", "save", "shieldman", "--voice", "shieldman_old", "--pick", "1")):
+            with self.subTest(argv=argv):
+                code, _, err = self.run_main(*argv)
+                self.assertEqual(code, 1)
+                self.assertIn("another run may be going", err)
+                self.assertIn("another worktree", err)
+        self.assertTrue(self.global_lock.exists())
+        self.assertFalse((self.src / "manifest.json.lock").exists())  # the local lock was never taken
+        self.assert_untouched()
+
+    def test_the_global_lock_is_released_after_an_error_and_the_local_one_too(self) -> None:
+        self.allow_network(Fake([ElevenLabsError("no reply", may_have_charged=True)]))
+        code, _, _ = self.run_main("sfx", "--cue", "hit_dry", "--max-credits", "20")
+        self.assertEqual(code, 1)
+        self.assertFalse(self.global_lock.exists())
+        self.assertFalse((self.src / "manifest.json.lock").exists())
+
+    def test_plan_takes_no_global_lock_and_creates_no_folder(self) -> None:
+        self.run_main("plan")
+        self.assertFalse(self.cache.exists())
+        self.cache.mkdir(parents=True)
+        self.global_lock.write_text("")
+        self.assertEqual(self.run_main("plan")[0], 0)
+
+    def test_a_symlinked_lock_folder_is_refused_and_nothing_is_written_through_it(self) -> None:
+        target = Path(self._tmp.name) / "elsewhere"
+        target.mkdir()
+        self.cache.parent.mkdir(parents=True)
+        self.cache.symlink_to(target)
+        code, _, err = self.run_main("sfx", "--cue", "hit_dry", "--max-credits", "20")
+        self.assertEqual(code, 2)
+        self.assertIn("symlink", err)
+        self.assertEqual(list(target.iterdir()), [])
+        self.assert_untouched()
+
+    def test_a_symlinked_lock_file_is_not_followed(self) -> None:
+        precious = Path(self._tmp.name) / "precious.txt"
+        precious.write_text("keep me")
+        self.cache.mkdir(parents=True)
+        self.global_lock.symlink_to(precious)
+        code, _, _ = self.run_main("sfx", "--cue", "hit_dry", "--max-credits", "20")
+        self.assertEqual(code, 1)
+        self.assertEqual(precious.read_text(), "keep me")
+
+    def test_the_local_lock_file_is_git_ignored(self) -> None:
+        ignore = (Path(__file__).resolve().parents[2] / ".gitignore").read_text()
+        self.assertIn("audio-src/manifest.json.lock", ignore.splitlines())
+
+    def test_the_default_lock_is_under_the_users_cache_folder(self) -> None:
+        source = (Path(generate.__file__)).read_text()
+        self.assertIn('GLOBAL_LOCK = Path.home() / ".cache" / "ashenmarch" / "elevenlabs.lock"', source)
 
 
 class LockTest(Base):

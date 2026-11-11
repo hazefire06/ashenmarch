@@ -34,5 +34,7 @@ __pycache__/
 audio-src/build/
 # Synthetic test audio for the Web measurement (make audio-synthetic); never committed.
 assets/audio/synthetic/
+# The paid generator's lock (scripts/audio/generate.py); a killed run leaves it behind.
+audio-src/manifest.json.lock
 # Audition previews and pages (process.py batch); local listening files.
 audio-src/audition/
