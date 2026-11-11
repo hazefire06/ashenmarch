@@ -323,11 +323,26 @@ class FixRoundTest(unittest.TestCase):
         self.assertEqual(call_with(opener_that(returns=FakeResponse(WAV, content_length=None, chunked=True)))[1], WAV)
 
     def test_a_wav_whose_riff_size_disagrees_with_its_length_is_refused(self) -> None:
-        for data in (WAV + b"x", WAV[:-1], b"RIFF\xff\xff\xff\xffWAVEfmt "):
+        for data in (WAV + b"x", WAV[:-1], b"RIFF\x01\x00\x00\x00WAVEfmt "):
             with self.subTest(length=len(data)):
                 with self.assertRaisesRegex(ElevenLabsError, "cut short") as caught:
                     ElevenLabsClient(FakeTransport([("audio/wav", data)]), "wav_32000").music("x", 5000, "m")
                 self.assertTrue(caught.exception.may_have_charged)
+
+    def test_streaming_placeholder_riff_sizes_are_accepted_when_the_length_matches(self) -> None:
+        for size in (b"\x00\x00\x00\x00", b"\xff\xff\xff\xff"):
+            wav = b"RIFF" + size + b"WAVEfmt "
+            with self.subTest(size=size):
+                self.assertEqual(call_with(opener_that(returns=FakeResponse(wav, content_length=len(wav))))[1], wav)
+                self.assertEqual(ElevenLabsClient(FakeTransport([("audio/wav", wav)]), "wav_32000").music("x", 5000, "m"), wav)
+
+    def test_streaming_placeholder_riff_sizes_are_refused_when_short_against_content_length(self) -> None:
+        for size in (b"\x00\x00\x00\x00", b"\xff\xff\xff\xff"):
+            wav = b"RIFF" + size + b"WAVEfmt "
+            with self.subTest(size=size):
+                caught = failure(opener_that(returns=FakeResponse(wav, content_length=len(wav) + 100)))
+                self.assertTrue(caught.may_have_charged)
+                self.assertIn("no reply", str(caught))
 
     def test_the_reply_must_match_the_requested_format(self) -> None:
         for fmt, wrong in (("wav_32000", MP3), ("wav_32000", ID3), ("mp3_44100_128", WAV)):

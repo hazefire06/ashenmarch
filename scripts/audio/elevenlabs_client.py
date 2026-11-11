@@ -174,7 +174,9 @@ class ElevenLabsClient:
             raise ElevenLabsError(f"{path}: the reply isn't audio (content type {_safe(content_type, 60)})" + CHARGE_WARNING, may_have_charged=True)
         if len(data) > MAX_AUDIO_BYTES or not _looks_like_audio(data):
             raise ElevenLabsError(f"{path}: the reply doesn't look like audio" + CHARGE_WARNING, may_have_charged=True)
-        if data[:4] == b"RIFF" and int.from_bytes(data[4:8], "little") + 8 != len(data):
+        # A streaming encoder writes 0 or 0xFFFFFFFF in the RIFF size because it can't know the length yet; for those the Content-Length
+        # or chunked guard above is the only check. Any other size must match.
+        if data[:4] == b"RIFF" and int.from_bytes(data[4:8], "little") not in (0, 0xFFFFFFFF) and int.from_bytes(data[4:8], "little") + 8 != len(data):
             raise ElevenLabsError(f"{path}: the WAV's header length doesn't match the reply, so it was cut short" + CHARGE_WARNING, may_have_charged=True)
         # A reply in another format than the one requested means the format query was ignored or misread.
         if self._format.startswith("wav_") != (data[:4] == b"RIFF"):
