@@ -79,6 +79,28 @@ class ElevenLabsError(Exception):
         self.may_have_charged = may_have_charged
 
 
+class _Secret:
+    """The API key, wrapped so that nothing which prints a local (a traceback viewer, a debugger, a log of frame locals) shows it.
+    It is unwrapped in one place, where the request header is added."""
+
+    __slots__ = ("_value",)
+
+    def __init__(self, value: str) -> None:
+        self._value = value
+
+    def __repr__(self) -> str:
+        return "[redacted]"
+
+    __str__ = __repr__
+
+    def reveal(self) -> str:
+        return self._value
+
+    def scrub(self, text: str) -> str:
+        """text with the key replaced, in case the server echoed it back."""
+        return text.replace(self._value, "[redacted]")
+
+
 class _NoRedirects(urllib.request.HTTPRedirectHandler):
     """A redirect would carry the xi-api-key header to another host, so calls refuse
     them: the 3xx surfaces as an HTTPError."""
@@ -152,6 +174,8 @@ class ElevenLabsClient:
             raise ElevenLabsError(f"{path}: the reply isn't audio (content type {_safe(content_type, 60)})" + CHARGE_WARNING, may_have_charged=True)
         if len(data) > MAX_AUDIO_BYTES or not _looks_like_audio(data):
             raise ElevenLabsError(f"{path}: the reply doesn't look like audio" + CHARGE_WARNING, may_have_charged=True)
+        if data[:4] == b"RIFF" and int.from_bytes(data[4:8], "little") + 8 != len(data):
+            raise ElevenLabsError(f"{path}: the WAV's header length doesn't match the reply, so it was cut short" + CHARGE_WARNING, may_have_charged=True)
         # A reply in another format than the one requested means the format query was ignored or misread.
         if self._format.startswith("wav_") != (data[:4] == b"RIFF"):
             raise ElevenLabsError(f"{path}: the reply's format differs from the requested {self._format}" + CHARGE_WARNING, may_have_charged=True)
@@ -201,7 +225,7 @@ def _lost(path: str) -> str:
     return f"ElevenLabs POST {path}: no reply (timed out or the connection failed)" + CHARGE_WARNING
 
 
-def _server_message(error: urllib.error.HTTPError, api_key: str) -> str:
+def _server_message(error: urllib.error.HTTPError, secret: _Secret) -> str:
     """ElevenLabs' own message for an error (detail.message, or detail as a string), with the key scrubbed in case it is echoed back."""
     try:
         detail = json.loads(error.read(MAX_ERROR_BYTES).decode("utf-8")).get("detail", "")
@@ -209,7 +233,7 @@ def _server_message(error: urllib.error.HTTPError, api_key: str) -> str:
             first = detail[0] if detail else None
             detail = {"message": first.get("msg", "")} if isinstance(first, dict) else ""
         message = detail.get("message", "") if isinstance(detail, dict) else detail if isinstance(detail, str) else ""
-        return _safe(str(message).replace(api_key, "[redacted]")[:200])
+        return _safe(secret.scrub(str(message))[:200])
     except (ValueError, RecursionError, AttributeError, OSError, http.client.HTTPException):  # no JSON, too deep, or cut off
         return ""
 
@@ -233,6 +257,8 @@ def http_transport(api_key: str, base_url: str = BASE_URL, timeout: float = 120.
     if not api_key or not api_key.isascii() or not api_key.isprintable() or any(c.isspace() for c in api_key):
         raise ElevenLabsError("the API key is empty or holds spaces or control characters; check ~/.config/ashenmarch/secrets.env")
 
+    secret = _Secret(api_key)  # from here on only this wrapper is closed over, so no frame's locals hold the bare key
+    del api_key
     opener = urllib.request.build_opener(_NoRedirects(), urllib.request.HTTPSHandler(context=_tls_context()))
 
     def call(path: str, query: dict[str, str], body: dict[str, Any]) -> tuple[str, bytes]:
@@ -241,7 +267,7 @@ def http_transport(api_key: str, base_url: str = BASE_URL, timeout: float = 120.
         except ElevenLabsError as error:
             # `from None` hides the original error from a traceback but it stays in __context__, and it can hold the key.
             error.__context__ = None
-            raise
+            raise error.with_traceback(None)  # drops send's frame (and its locals) from the error
 
     def send(path: str, query: dict[str, str], body: dict[str, Any]) -> tuple[str, bytes]:
         # Refused before any socket opens: nothing is sent, so nothing is charged.
@@ -250,8 +276,8 @@ def http_transport(api_key: str, base_url: str = BASE_URL, timeout: float = 120.
         if set(query) - {"output_format"} or query.get("output_format", "wav_32000") not in FORMATS:
             raise ElevenLabsError("refusing unexpected query parameters or output format")
         url = base_url + path + ("?" + urllib.parse.urlencode(query) if query else "")
-        request = urllib.request.Request(url, data=json.dumps(body).encode("utf-8"), method="POST")
-        request.add_header("xi-api-key", api_key)
+        request: urllib.request.Request | None = urllib.request.Request(url, data=json.dumps(body).encode("utf-8"), method="POST")
+        request.add_header("xi-api-key", secret.reveal())
         request.add_header("Content-Type", "application/json")
         try:
             response = opener.open(request, timeout=timeout)
@@ -260,7 +286,7 @@ def http_transport(api_key: str, base_url: str = BASE_URL, timeout: float = 120.
             # can come from in front of the app, so neither proves nothing was charged.
             unsure = not _definite_rejection(error.code)
             raise ElevenLabsError(
-                f"ElevenLabs POST {path} failed: HTTP {error.code} {_server_message(error, api_key)}".rstrip() + (CHARGE_WARNING if unsure else ""),
+                f"ElevenLabs POST {path} failed: HTTP {error.code} {_server_message(error, secret)}".rstrip() + (CHARGE_WARNING if unsure else ""),
                 may_have_charged=unsure,
             ) from None
         except (urllib.error.URLError, OSError, ValueError, http.client.HTTPException) as error:
@@ -268,11 +294,17 @@ def http_transport(api_key: str, base_url: str = BASE_URL, timeout: float = 120.
             if isinstance(error, urllib.error.URLError) and isinstance(error.reason, ssl.SSLCertVerificationError):
                 raise ElevenLabsError(CERT_FAILURE, may_have_charged=False) from None
             raise ElevenLabsError(_lost(path), may_have_charged=True) from None
+        finally:
+            request = None  # the request holds the key in its headers; an error that isn't ours must not carry it in this frame
 
         content_type = _content_type(response)
         cap = MAX_JSON_BYTES if content_type == "application/json" else MAX_AUDIO_BYTES
         try:
             with response:
+                # Python's ssl reports a missing close_notify as a normal end of stream, so a reply with neither a length nor chunked
+                # framing could be cut short and still look whole: a reply that can't show it is whole is a lost one.
+                if getattr(response, "length", None) is None and not getattr(response, "chunked", False):
+                    raise ElevenLabsError(_lost(path), may_have_charged=True)
                 data = response.read(cap + 1)
         except (OSError, ValueError, http.client.HTTPException):  # IncompleteRead: the server dropped the connection mid-reply
             raise ElevenLabsError(_lost(path), may_have_charged=True) from None

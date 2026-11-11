@@ -16,7 +16,7 @@ from unittest import mock
 import generate
 from elevenlabs_client import ElevenLabsError
 
-WAV = b"RIFF\x24\x00\x00\x00WAVEfmt " + b"\x00" * 8
+WAV = b"RIFF\x10\x00\x00\x00WAVEfmt " + b"\x00" * 8  # the RIFF size field is the file length less 8
 MP3 = b"\xff\xfb\x90\x00" + b"\x00" * 16
 
 CUES = """
@@ -341,6 +341,21 @@ class InterruptionTest(Base):
         self.assertEqual(seen, ["PENDING"])
 
 
+class InterruptedRunChainTest(Base):
+    def test_an_interrupted_run_carries_no_traceback_of_the_failed_call(self) -> None:
+        # L1: __context__.__traceback__ would reach the frames that held the request (and once, the key).
+        manifest = generate.Manifest(self.manifest_path, allowed=generate.AUDIO_FIELDS)
+
+        def lost() -> bytes:
+            raise ElevenLabsError("no reply", may_have_charged=True)
+
+        with self.assertRaises(generate.InterruptedRun) as caught:
+            generate._buy(manifest, {"kind": "sfx", "label": "sfx/x/1"}, lost)
+        self.assertIsNone(caught.exception.__context__)
+        self.assertIsNone(caught.exception.__cause__)
+        self.assertEqual(manifest.find("sfx", "sfx/x/1")["status"], "INTERRUPTED")
+
+
 class ManifestFieldsTest(Base):
     def test_the_manifest_keeps_only_audio_fields(self) -> None:
         self.seed()
@@ -358,8 +373,9 @@ class ManifestFieldsTest(Base):
 
     def test_a_reply_cannot_put_anything_in_the_manifest(self) -> None:
         # The client returns bytes only, so a hostile reply body can't reach a record. The record holds our own request text.
-        self.allow_network(Fake(default=("audio/wav", WAV + b"https://evil.example/{\"x\": 1}")))
-        self.run_main("sfx", "--cue", "hit_dry", "--max-credits", "20")
+        self.allow_network(Fake(default=("audio/wav", b"RIFF\x2d\x00\x00\x00WAVEfmt " + b"\x00" * 8 + b"https://evil.example/{\"x\": 1}")))
+        code, _, _ = self.run_main("sfx", "--cue", "hit_dry", "--max-credits", "20")
+        self.assertEqual(code, 0)  # the reply was accepted, so its text had its chance to reach the record
         self.assertNotIn("evil", self.manifest_path.read_text())
 
 

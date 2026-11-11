@@ -16,7 +16,7 @@ import elevenlabs_client
 from elevenlabs_client import ElevenLabsClient, ElevenLabsError, http_transport
 
 KEY = "FAKEKEY123"
-WAV = b"RIFF\x24\x00\x00\x00WAVEfmt "
+WAV = b"RIFF\x08\x00\x00\x00WAVEfmt "  # the RIFF size field is the file length less 8
 MP3 = b"\xff\xfb\x90\x00" + b"\x00" * 16
 ID3 = b"ID3\x03\x00\x00\x00\x00\x00\x00"
 
@@ -39,11 +39,16 @@ def json_reply(obj: Any) -> tuple[str, bytes]:
 
 
 class FakeResponse:
-    def __init__(self, data: bytes, content_type: str = "audio/wav", content_length: int | str | None = None) -> None:
+    def __init__(self, data: bytes, content_type: str = "audio/wav", content_length: int | str | None = "auto", chunked: bool = False) -> None:  # type: ignore[assignment]
         self._io = io.BytesIO(data)  # read(n) hands back what is there at an early close, like HTTPResponse.read(amt)
         self.headers = {"Content-Type": content_type}
+        if content_length == "auto":
+            content_length = len(data)
         if content_length is not None:
             self.headers["Content-Length"] = str(content_length)
+        # What http.client.HTTPResponse sets: length is the promised body length (None if none or unusable), chunked is truthy for chunked encoding.
+        self.length = int(content_length) if isinstance(content_length, int) else None
+        self.chunked = chunked
 
     def read(self, size: int = -1) -> bytes:
         return self._io.read(size)
@@ -306,10 +311,23 @@ class FixRoundTest(unittest.TestCase):
         caught = failure(opener_that(returns=FakeResponse(WAV, content_length=1000)))
         self.assertTrue(caught.may_have_charged)
         self.assertIn("no reply", str(caught))
-        # complete, absent and unusable lengths are accepted
-        for header in (len(WAV), None, "abc", "-5", "9" * 5000):
-            with self.subTest(header=header):
-                self.assertEqual(call_with(opener_that(returns=FakeResponse(WAV, content_length=header)))[1], WAV)
+        self.assertEqual(call_with(opener_that(returns=FakeResponse(WAV, content_length=len(WAV))))[1], WAV)
+
+    def test_a_reply_with_no_length_and_no_chunking_may_be_cut_short(self) -> None:
+        # L2: ssl treats a missing close_notify as a normal end of stream, so only a length or chunked framing shows a cut.
+        for header in (None, "abc", "-5", "9" * 5000):
+            with self.subTest(header=str(header)[:12]):
+                caught = failure(opener_that(returns=FakeResponse(WAV, content_length=header)))
+                self.assertTrue(caught.may_have_charged)
+                self.assertIn("no reply", str(caught))
+        self.assertEqual(call_with(opener_that(returns=FakeResponse(WAV, content_length=None, chunked=True)))[1], WAV)
+
+    def test_a_wav_whose_riff_size_disagrees_with_its_length_is_refused(self) -> None:
+        for data in (WAV + b"x", WAV[:-1], b"RIFF\xff\xff\xff\xffWAVEfmt "):
+            with self.subTest(length=len(data)):
+                with self.assertRaisesRegex(ElevenLabsError, "cut short") as caught:
+                    ElevenLabsClient(FakeTransport([("audio/wav", data)]), "wav_32000").music("x", 5000, "m")
+                self.assertTrue(caught.exception.may_have_charged)
 
     def test_the_reply_must_match_the_requested_format(self) -> None:
         for fmt, wrong in (("wav_32000", MP3), ("wav_32000", ID3), ("mp3_44100_128", WAV)):
@@ -340,6 +358,36 @@ class FixRoundTest(unittest.TestCase):
         for error in (urllib.error.URLError(KEY), TimeoutError(KEY), http_error(401, b"{}")):
             caught = failure(opener_that(raises=error))
             self.assertIsNone(caught.__context__)
+
+    def test_the_key_is_in_no_traceback_local_of_any_error(self) -> None:
+        # L1: a traceback (and so a debugger, or a log that prints locals) can reach every frame's locals, and anything chained to it.
+        def reachable(error: BaseException | None) -> list[str]:
+            seen: list[str] = []
+            while error is not None:
+                tb = error.__traceback__
+                while tb is not None:
+                    seen += [repr(v) for v in tb.tb_frame.f_locals.values()]
+                    tb = tb.tb_next
+                error = error.__context__ or error.__cause__
+            return seen
+
+        cases = [opener_that(raises=urllib.error.URLError(KEY)), opener_that(raises=http_error(401, b"{}")), opener_that(raises=http_error(500, b"{}")),
+                 opener_that(returns=FakeResponse(WAV, content_length=1000)), opener_that(returns=FakeResponse(WAV, content_length=None))]
+        for opener in cases:
+            with self.subTest(opener=opener):
+                self.assertFalse([r for r in reachable(failure(opener)) if KEY in r])
+        # An error that isn't ours escapes `call` with its traceback, and send's locals must still not hold the key.
+        with mock.patch.object(elevenlabs_client.urllib.request, "build_opener", return_value=opener_that(raises=RuntimeError("boom"))):
+            with self.assertRaises(RuntimeError) as caught:
+                http_transport(KEY)("/v1/sound-generation", {"output_format": "wav_32000"}, {"text": "x"})
+        self.assertFalse([r for r in reachable(caught.exception) if KEY in r])
+
+    def test_the_secret_wrapper_never_prints_the_key(self) -> None:
+        secret = elevenlabs_client._Secret(KEY)
+        for text in (repr(secret), str(secret), f"{secret}", repr([secret]), repr({"k": secret})):
+            self.assertNotIn(KEY, text)
+        self.assertEqual(secret.reveal(), KEY)
+        self.assertEqual(secret.scrub(f"bad {KEY} here"), "bad [redacted] here")
 
     def test_only_https_base_urls(self) -> None:
         for url in ("http://api.elevenlabs.io", "ftp://x", "api.elevenlabs.io", ""):

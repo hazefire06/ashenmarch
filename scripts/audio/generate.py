@@ -179,11 +179,13 @@ def _buy(manifest: Manifest, record: dict[str, Any], call: Callable[[], Any]) ->
     try:
         return call()
     except ElevenLabsError as error:
-        if error.may_have_charged:
-            _store(manifest, {**started, "status": "INTERRUPTED"})
-            raise InterruptedRun(f"{record['label']!r}: {error}. {HOW_TO_RESOLVE}") from None
-        _store(manifest, {**started, "status": "FAILED", "credits": 0})
-        raise
+        if not error.may_have_charged:
+            _store(manifest, {**started, "status": "FAILED", "credits": 0})
+            raise
+        _store(manifest, {**started, "status": "INTERRUPTED"})
+        reason = f"{record['label']!r}: {error}. {HOW_TO_RESOLVE}"
+    # Raised outside the except block, so the new error has no __context__ and the original's traceback can't be reached through it.
+    raise InterruptedRun(reason)
 
 
 def _save_audio(manifest: Manifest, started: dict[str, Any], raw: Path, label: str, data: bytes) -> str:
