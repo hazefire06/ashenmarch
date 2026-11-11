@@ -52,7 +52,8 @@ func family(trigger: StringName) -> StringName:
 
 ## True when this bark may sound now. A refusal records nothing.
 func allow(trigger: StringName, now: float, squad: PackedInt32Array = PackedInt32Array()) -> bool:
-	if trigger != &"death" and speaking(now):
+	# A death and the victory cut in on whatever is being said.
+	if trigger != &"death" and trigger != &"victory" and speaking(now):
 		return false
 	if now < _cooldown_until.get(family(trigger), -INF):
 		return false

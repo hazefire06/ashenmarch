@@ -24,6 +24,14 @@ func _book(voiced: Array[StringName] = []) -> BarkBook:
 				StringName("shieldman_%s_%d" % [trigger, n]), &"shieldman", trigger,
 				"%s %d" % [trigger, n], VOICES, streams
 			))
+	for n: int in 2:
+		lines.append(AudioFixtures.bark_line(
+			StringName("sapper_fizzle_%d" % n), &"sapper", &"fizzle", "sapper fizzle %d" % n, [&"sapper"]
+		))
+		lines.append(AudioFixtures.bark_line(
+			StringName("clan_%d" % n), &"_clan", &"", "clan %d" % n,
+			[&"shieldman_old", &"shieldman_young", &"sapper"], {}, true
+		))
 	return AudioFixtures.bark_book(lines)
 
 
@@ -46,6 +54,7 @@ func _main(voiced: Array[StringName] = []) -> MainView:
 	main._physics_process(1.0 / World.TICK_RATE)
 	main._process(0.1)
 	main._barks.book = _book(voiced)
+	main._barks.rules.rng.seed = 7
 	return main
 
 
@@ -302,3 +311,171 @@ func test_the_fourth_click_on_one_unit_is_annoyed() -> void:
 		triggers.append(barks.last_bark()["trigger"])
 	assert_eq(triggers[3], &"annoyed")
 	assert_eq(triggers[0], &"select")
+
+
+func _spawn(main: MainView, id: StringName, side: UnitType.Faction, dx: float = 0.0) -> Unit:
+	var focus: Vector3 = main._camera.focus
+	return main.world.spawn_unit(
+		main.world.catalog.index_of(id), side,
+		roundi((focus.x + dx) * 1000.0), roundi((focus.z - 3.0) * 1000.0), 0, 1000
+	)
+
+
+func test_a_death_bark_shows_its_text_on_the_dead_speaker() -> void:
+	for voiced: bool in [false, true]:
+		var triggers: Array[StringName] = []
+		if voiced:
+			triggers.append(&"death")
+		var main: MainView = _main(triggers)
+		var light: PackedInt32Array = _ids(main)
+		var dark: PackedInt32Array = _ids(main, DARK)
+		main.world.get_unit(light[0]).kill()
+		var events: Array[CombatEvent] = [CombatEvent.new(CombatEvent.Kind.KILL, dark[0], light[0])]
+		main.world.combat_events.append_array(events)
+		# The sprite lies down first, as in MainView._advance.
+		main._units_view.after_step()
+		main._barks.after_step()
+		var bark: Dictionary = main._barks.last_bark()
+		assert_eq(bark["trigger"], &"death")
+		assert_eq(bark["voiced"], voiced)
+		var sprite: UnitSprite = _sprite(main, light[0])
+		assert_not_null(sprite, "a dead light body is still visible to its side")
+		assert_true(sprite.is_dead())
+		assert_eq(sprite.notice_text(), bark["text"], "voiced=%s" % voiced)
+		sprite.set_hp(0, 100)
+		assert_eq(sprite.notice_text(), bark["text"], "an overlay refresh leaves the bark")
+
+
+func test_an_ordinary_notice_still_hides_on_a_dead_sprite() -> void:
+	var main: MainView = _main()
+	var id: int = _ids(main)[0]
+	main.world.get_unit(id).kill()
+	main._units_view.after_step()
+	var sprite: UnitSprite = _sprite(main, id)
+	sprite.show_notice("hello")
+	assert_eq(sprite.notice_text(), "")
+
+
+func test_a_fizzle_reaches_the_thrower_after_the_projectile_is_gone() -> void:
+	var main: MainView = _main()
+	var sapper: Unit = _spawn(main, &"sapper", LIGHT)
+	var launch: ProjectileEvent = ProjectileEvent.new(ProjectileEvent.Kind.LAUNCH)
+	launch.projectile_id = 987654
+	launch.unit_id = sapper.id
+	main.world.projectile_events.clear()
+	main.world.projectile_events.append(launch)
+	main._barks.after_step()
+	var fizzle: ProjectileEvent = ProjectileEvent.new(ProjectileEvent.Kind.FIZZLE)
+	fizzle.projectile_id = 987654
+	main.world.projectile_events.clear()
+	main.world.projectile_events.append(fizzle)
+	assert_null(main.world.get_entity(987654))
+	main._barks.after_step()
+	assert_eq(main._barks.last_bark()["unit_id"], sapper.id)
+	assert_eq(main._barks.last_bark()["trigger"], &"fizzle")
+	assert_false(main._barks._launched.has(987654), "forgotten once it fizzled")
+
+
+func test_the_trackers_forget_units_that_are_gone() -> void:
+	var main: MainView = _main()
+	var unit: Unit = main.world.get_unit(_ids(main)[0])
+	main._barks.after_step()
+	assert_true(main._barks._statuses.has(unit.id))
+	unit.kill()
+	main._barks.after_step()
+	assert_false(main._barks._statuses.has(unit.id))
+	assert_false(main._barks._hurt_armed.has(unit.id))
+	main._barks.set_viewer(DARK)
+	main._barks.after_step()
+	assert_true(main._barks._statuses.is_empty())
+
+
+func test_victory_cuts_in_after_a_kill_bark_in_the_same_step() -> void:
+	var main: MainView = _main()
+	var light: PackedInt32Array = _ids(main)
+	var dark: PackedInt32Array = _ids(main, DARK)
+	main.world.get_unit(dark[0]).kill()
+	main.world.mission_events.append(MissionEvent.new(MissionEvent.Kind.WON, -1))
+	_step(main, [CombatEvent.new(CombatEvent.Kind.KILL, light[0], dark[0])])
+	assert_eq(main._barks.last_bark()["trigger"], &"victory")
+
+
+func test_no_kill_bark_for_friendly_fire_or_a_self_kill() -> void:
+	var main: MainView = _main()
+	var light: PackedInt32Array = _ids(main)
+	main.world.get_unit(light[1]).kill()
+	_step(main, [CombatEvent.new(CombatEvent.Kind.KILL, light[0], light[1])])
+	assert_eq(main._barks.last_bark()["trigger"], &"death", "only the victim speaks")
+	main._barks.now += 10.0
+	main.world.get_unit(light[2]).kill()
+	_step(main, [CombatEvent.new(CombatEvent.Kind.KILL, light[2], light[2])])
+	assert_eq(main._barks.last_bark()["unit_id"], light[2])
+	assert_eq(main._barks.last_bark()["trigger"], &"death")
+
+
+func test_a_wounded_or_burning_unit_seen_first_says_nothing() -> void:
+	var main: MainView = _main()
+	var late: Unit = _spawn(main, &"shieldman", LIGHT, 1.0)
+	late.hp = 1
+	late.status_until[StatusEffects.Kind.BURNING] = main.world.tick + 300
+	main._barks.last_bark().clear()
+	main._barks._last = {}
+	main._barks.after_step()
+	assert_true(main._barks.last_bark().is_empty(), "seeded silently")
+	main._barks.now += 10.0
+	main._barks.after_step()
+	assert_true(main._barks.last_bark().is_empty(), "and still wounded, still burning: nothing new")
+
+
+func test_a_refused_hurt_retry_does_not_burn_rng() -> void:
+	var main: MainView = _main()
+	var barks: Barks = main._barks
+	var unit: Unit = main.world.get_unit(_ids(main)[0])
+	unit.hp = 1
+	barks.rules.started(&"kill", barks.now, 100.0)
+	var before: int = barks.rules.rng.state
+	barks.after_step()
+	assert_eq(barks.rules.rng.state, before, "a refused bark rolls nothing")
+
+
+func test_clan_lines_can_play_and_never_twice_in_a_row() -> void:
+	var main: MainView = _main()
+	var barks: Barks = main._barks
+	var one: PackedInt32Array = PackedInt32Array([_ids(main)[0]])
+	var clans: int = 0
+	var last_clan: bool = false
+	for i: int in 300:
+		barks.now += 20.0
+		barks._last = {}
+		barks.on_player_selected(one)
+		var is_clan: bool = String(barks.last_bark()["line_id"]).begins_with("clan")
+		if is_clan:
+			clans += 1
+			assert_false(last_clan, "two clan lines in a row at %d" % i)
+		last_clan = is_clan
+		# Space the clicks so none counts as annoyed.
+		barks.rules._clicks.clear()
+	assert_gt(clans, 5, "about one in ten")
+	assert_lt(clans, 80)
+
+
+func test_event_barks_come_only_from_units_within_160_m() -> void:
+	var main: MainView = _main()
+	var light: PackedInt32Array = _ids(main)
+	var dark: PackedInt32Array = _ids(main, DARK)
+	main.world.get_unit(dark[0]).kill()
+	main._camera.focus += Vector3(200.0, 0.0, 0.0)
+	_step(main, [CombatEvent.new(CombatEvent.Kind.KILL, light[0], dark[0])])
+	assert_true(main._barks.last_bark().is_empty(), "too far to hear")
+	main._camera.focus -= Vector3(200.0, 0.0, 0.0)
+	_step(main, [CombatEvent.new(CombatEvent.Kind.KILL, light[0], dark[0])])
+	assert_eq(main._barks.last_bark()["trigger"], &"kill")
+
+
+func test_a_healed_undead_makes_the_healer_speak() -> void:
+	var main: MainView = _main()
+	var light: PackedInt32Array = _ids(main)
+	var dark: PackedInt32Array = _ids(main, DARK)
+	_step(main, [CombatEvent.new(CombatEvent.Kind.HEAL, light[0], dark[0])])
+	assert_eq(main._barks.last_bark()["trigger"], &"heal_undead")
+	assert_eq(main._barks.last_bark()["unit_id"], light[0])

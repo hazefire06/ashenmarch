@@ -143,3 +143,9 @@ func test_pick_with_a_different_count_for_a_key_is_an_error() -> void:
 	assert_push_error_count(0)
 	rules.pick(&"warden/move", 4)
 	assert_push_error("warden/move")
+
+
+func test_the_victory_cuts_in_and_is_not_side_gapped() -> void:
+	var rules: BarkRules = _rules()
+	rules.started(&"kill", 0.0, 3.0)
+	assert_true(rules.allow(&"victory", 1.0), "over a bark and the side gap")

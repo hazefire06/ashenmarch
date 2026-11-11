@@ -260,10 +260,10 @@ func _react_to_combat() -> Dictionary[int, Vector2]:
 
 ## Floats `text` over the unit for `seconds`, in `color`. Does nothing for a
 ## unit with no sprite or one that isn't showing.
-func show_text(unit_id: int, text: String, color: Color, seconds: float) -> void:
+func show_text(unit_id: int, text: String, color: Color, seconds: float, on_dead: bool = false) -> void:
 	var sprite: UnitSprite = _sprites.get(unit_id)
 	if sprite != null and sprite.visible:
-		sprite.show_notice(text, color, seconds)
+		sprite.show_notice(text, color, seconds, on_dead)
 
 
 # Ground orders a unit couldn't carry out: its notice, and a grey marker where

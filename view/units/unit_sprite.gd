@@ -104,6 +104,8 @@ var _facing: Vector2 = Vector2(0.0, -1.0)
 var _flash_color: Color = HIT_FLASH_COLOR
 var _flash_left: float = 0.0
 var _notice_left: float = 0.0
+## The showing notice is a bark that may stay over a dead body.
+var _notice_on_dead: bool = false
 var _paralyzed: bool = false
 var _confused: bool = false
 var _burning: bool = false
@@ -233,7 +235,11 @@ func flash(kind: CombatEvent.Kind) -> void:
 
 ## Floats text over the unit for `seconds`, in `color`, replacing any notice
 ## already showing.
-func show_notice(text: String, color: Color = NOTICE_COLOR, seconds: float = NOTICE_TIME) -> void:
+## `on_dead` lets it show over a lying body too (a bark's last word); an
+## ordinary notice never shows on one.
+func show_notice(
+	text: String, color: Color = NOTICE_COLOR, seconds: float = NOTICE_TIME, on_dead: bool = false
+) -> void:
 	if _notice == null:
 		_notice = _make_label(text, NOTICE_COLOR)
 		# Above the name label.
@@ -241,7 +247,8 @@ func show_notice(text: String, color: Color = NOTICE_COLOR, seconds: float = NOT
 		add_child(_notice)
 	_notice.text = text
 	_notice.modulate = color
-	_notice.visible = not _dead
+	_notice_on_dead = on_dead
+	_notice.visible = on_dead or not _dead
 	_notice_left = seconds
 	set_process(true)
 
@@ -544,7 +551,7 @@ func _refresh_overlays() -> void:
 	var alive: bool = not _dead
 	_ring.visible = alive and _selected
 	_label.visible = alive
-	if _notice != null and not alive:
+	if _notice != null and not alive and not _notice_on_dead:
 		_notice.visible = false
 	if _status_tag != null and not alive:
 		_status_tag.visible = false

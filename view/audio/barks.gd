@@ -16,6 +16,8 @@ const HURT_BELOW_PERCENT: int = 35
 const HURT_REARM_PERCENT: int = 50
 ## Event barks (kill, death, hurt, status) only come from units this near the focus.
 const HEAR_DISTANCE: float = SfxPlayer.CULL_DISTANCE
+## Launches whose projectile is gone are dropped this often (steps).
+const PRUNE_STEPS: int = 300
 
 ## Plays no voice while false; the text still shows.
 var enabled: bool = true
@@ -40,6 +42,10 @@ var _statuses: Dictionary[int, int] = {}
 ## Units whose death bark this step had a voice.
 var _voiced_deaths: Dictionary[int, bool] = {}
 var _last: Dictionary = {}
+## Fire arrows in flight: projectile id to the unit that launched it. The sim
+## drops a doused arrow before the view reads its FIZZLE.
+var _launched: Dictionary[int, int] = {}
+var _steps: int = 0
 
 
 func setup(
@@ -136,13 +142,15 @@ func on_formation(kind: Formations.Kind) -> void:
 ## Reads the last step's events. Call once per step, after it and before SfxPlayer's.
 func after_step() -> void:
 	_voiced_deaths.clear()
+	_steps += 1
 	for event: CombatEvent in _world.combat_events:
 		match event.kind:
 			CombatEvent.Kind.KILL:
 				var attacker: Unit = _world.get_unit(event.attacker_id)
-				if attacker != null:
-					_speak(attacker, &"kill", PackedInt32Array(), true)
 				var target: Unit = _world.get_unit(event.target_id)
+				# No crowing over friendly fire or a self-kill.
+				if attacker != null and target != null and attacker.faction != target.faction:
+					_speak(attacker, &"kill", PackedInt32Array(), true)
 				if target != null and _speak(target, &"death", PackedInt32Array(), true):
 					if _last.get("voiced", false):
 						_voiced_deaths[target.id] = true
@@ -151,38 +159,71 @@ func after_step() -> void:
 				if healed != null and healed.type.nature == UnitType.Nature.UNDEAD:
 					_speak(_world.get_unit(event.attacker_id), &"heal_undead", PackedInt32Array(), true)
 	for event: ProjectileEvent in _world.projectile_events:
-		if event.kind == ProjectileEvent.Kind.FIZZLE:
-			var projectile: Projectile = _world.get_entity(event.projectile_id) as Projectile
-			if projectile != null:
-				_speak(_world.get_unit(projectile.instigator_id), &"fizzle", PackedInt32Array(), true)
+		_on_projectile(event)
+	if _steps % PRUNE_STEPS == 0:
+		for id: int in _launched.keys():
+			if _world.get_entity(id) == null:
+				_launched.erase(id)
 	_watch_units()
 	for event: MissionEvent in _world.mission_events:
 		if event.kind == MissionEvent.Kind.WON:
 			_victory()
 
 
-# Hurt and status barks come from watching each of the viewer's units.
+func _on_projectile(event: ProjectileEvent) -> void:
+	match event.kind:
+		ProjectileEvent.Kind.LAUNCH:
+			_launched[event.projectile_id] = event.unit_id
+		ProjectileEvent.Kind.FIZZLE:
+			var thrower: int = _launched.get(event.projectile_id, -1)
+			if thrower < 0:
+				var projectile: Projectile = _world.get_entity(event.projectile_id) as Projectile
+				if projectile != null:
+					thrower = projectile.instigator_id
+			_speak(_world.get_unit(thrower), &"fizzle", PackedInt32Array(), true)
+			_launched.erase(event.projectile_id)
+		ProjectileEvent.Kind.EXPLODE, ProjectileEvent.Kind.STICK, ProjectileEvent.Kind.HIT:
+			_launched.erase(event.projectile_id)
+
+
+# Hurt and status barks come from watching each of the viewer's units. A unit's
+# first sighting only sets its state, so the wounded and burning at the start
+# say nothing; units gone or dead are forgotten.
 func _watch_units() -> void:
+	if _viewer != UnitType.Faction.LIGHT:
+		_hurt_armed.clear()
+		_statuses.clear()
+		return
+	var present: Dictionary[int, bool] = {}
 	for unit: Unit in _world.units:
 		if not unit.is_alive() or unit.faction != _viewer:
 			continue
-		var percent: int = unit.hp * 100
+		present[unit.id] = true
+		var scaled: int = unit.hp * 100
 		var max_hp: int = unit.type.max_hp
-		if percent > HURT_REARM_PERCENT * max_hp:
-			_hurt_armed[unit.id] = true
-		elif percent < HURT_BELOW_PERCENT * max_hp and _hurt_armed.get(unit.id, true):
-			if _speak(unit, &"hurt", PackedInt32Array(), true):
-				_hurt_armed[unit.id] = false
 		var bits: int = 0
 		for kind: int in StatusEffects.Kind.values():
 			if StatusEffects.has(_world, unit, kind as StatusEffects.Kind):
 				bits |= 1 << kind
-		var fresh: int = bits & ~_statuses.get(unit.id, 0)
+		if not _statuses.has(unit.id):
+			_statuses[unit.id] = bits
+			_hurt_armed[unit.id] = scaled >= HURT_BELOW_PERCENT * max_hp
+			continue
+		if scaled > HURT_REARM_PERCENT * max_hp:
+			_hurt_armed[unit.id] = true
+		elif scaled < HURT_BELOW_PERCENT * max_hp and _hurt_armed.get(unit.id, true):
+			if _speak(unit, &"hurt", PackedInt32Array(), true):
+				_hurt_armed[unit.id] = false
+		var fresh: int = bits & ~_statuses[unit.id]
 		_statuses[unit.id] = bits
 		if fresh != 0:
 			var trigger: StringName = _status_trigger(fresh)
 			if trigger != &"":
 				_speak(unit, trigger, PackedInt32Array(), true)
+	for id: int in _statuses.keys():
+		if not present.has(id):
+			_statuses.erase(id)
+			_hurt_armed.erase(id)
 
 
 static func _status_trigger(fresh: int) -> StringName:
@@ -242,6 +283,9 @@ func _speak(unit: Unit, trigger: StringName, squad: PackedInt32Array, near_only:
 		return false
 	if near_only and _distance(unit) > HEAR_DISTANCE:
 		return false
+	# Refused barks stop here, before they roll the clan chance or build lists.
+	if not rules.allow(trigger, now, squad):
+		return false
 	var clan: bool = rules.clan_turn()
 	var lines: Array[BarkLine] = []
 	var key: StringName = StringName("%s/%s" % [voice, trigger])
@@ -252,15 +296,15 @@ func _speak(unit: Unit, trigger: StringName, squad: PackedInt32Array, near_only:
 		clan = false
 		lines = _spoken_by(book.lines_for(unit.type.id, trigger), voice)
 		key = StringName("%s/%s" % [voice, trigger])
-	if lines.is_empty() or not rules.allow(trigger, now, squad):
+	if lines.is_empty():
 		return false
 	var line: BarkLine = lines[rules.pick(key, lines.size())]
 	rules.note_clan(clan)
 	var seconds: float = line.seconds(voice)
-	_units_view.show_text(unit.id, line.text, BARK_COLOR, seconds)
+	_units_view.show_text(unit.id, line.text, BARK_COLOR, seconds, true)
 	var voiced: bool = enabled and line.streams.has(voice)
 	if voiced:
-		_play(line.streams[voice], unit, trigger == &"death")
+		voiced = _play(line.streams[voice], unit, trigger == &"death")
 	rules.started(trigger, now, seconds, squad)
 	_last = {
 		"unit_id": unit.id, "line_id": line.id, "text": line.text, "trigger": trigger, "voiced": voiced,
@@ -276,8 +320,9 @@ static func _spoken_by(lines: Array[BarkLine], voice: StringName) -> Array[BarkL
 	return found
 
 
-# A free player, else (for a death) the oldest; any other bark waits.
-func _play(stream: AudioStream, unit: Unit, takes_oldest: bool) -> void:
+# A free player, else (for a death) the oldest; any other bark waits. Returns
+# whether the voice started.
+func _play(stream: AudioStream, unit: Unit, takes_oldest: bool) -> bool:
 	var slot: int = -1
 	for i: int in VOICES:
 		if not _players[i].playing:
@@ -285,7 +330,7 @@ func _play(stream: AudioStream, unit: Unit, takes_oldest: bool) -> void:
 			break
 	if slot < 0:
 		if not takes_oldest:
-			return
+			return false
 		slot = _started_at.find(_started_at.min())
 	var player: AudioStreamPlayer3D = _players[slot]
 	var at: Vector3 = _units_view.sprite_position(unit.id)
@@ -295,3 +340,4 @@ func _play(stream: AudioStream, unit: Unit, takes_oldest: bool) -> void:
 	player.position = at
 	player.play()
 	_started_at[slot] = now
+	return true
