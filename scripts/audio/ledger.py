@@ -7,6 +7,7 @@ label, hash and size, and generate.py uses a voice id only if a line here saved 
 """
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 import stat
@@ -48,8 +49,10 @@ def close() -> None:
     """Closes the append fd (the end of a run)."""
     global _open
     if _open is not None:
-        os.close(_open[1])
-        _open = None
+        fd = _open[1]
+        _open = None  # first: a failing close must not leave a dead fd cached
+        with contextlib.suppress(OSError):  # as an ExitStack callback an error here would replace the error already on its way out
+            os.close(fd)
 
 
 def _check(fd: int, name: str) -> tuple[int, int]:
@@ -60,7 +63,7 @@ def _check(fd: int, name: str) -> tuple[int, int]:
         raise LedgerError(f"{name} isn't owned by you; replace it with your own file")
     if info.st_nlink != 1:
         raise LedgerError(f"{name} has other hard links; replace it with a plain file")
-    if info.st_mode & 0o177 or not info.st_mode & 0o200:
+    if info.st_mode & 0o777 != 0o600:  # both owner bits: a write-only file would take appends and then fail to load
         raise LedgerError(f"{name} must be mode 600 (chmod 600 it); it is {info.st_mode & 0o777:o}")
     return info.st_dev, info.st_ino
 

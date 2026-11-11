@@ -9,6 +9,7 @@ import io
 import json
 import os
 import stat
+import sys
 import tempfile
 import unittest
 import urllib.request
@@ -861,6 +862,9 @@ class LedgerHardeningTest(Base):
     def test_prepare_refuses_a_file_with_looser_permissions(self) -> None:
         self._prepare_refused(lambda p: (p.write_text(""), p.chmod(0o644)), "must be mode 600")
 
+    def test_prepare_refuses_a_write_only_file(self) -> None:
+        self._prepare_refused(lambda p: (p.write_text(""), p.chmod(0o200)), "must be mode 600")
+
     def test_prepare_refuses_a_fifo(self) -> None:
         self._prepare_refused(lambda p: os.mkfifo(p), "isn't a regular file|can't be opened for appending")
 
@@ -887,6 +891,23 @@ class LedgerHardeningTest(Base):
         self.ledger_path.unlink()
         ledger.append({"kind": "sfx", "label": "b"})  # reopened, not written to the unlinked file
         self.assertEqual([e["label"] for e in ledger.load()], ["b"])
+
+    def test_a_failing_close_does_not_replace_the_paid_call_message(self) -> None:
+        # close() runs as an ExitStack callback while an InterruptedRun is on its way out.
+        self.allow_network(Fake([ElevenLabsError("no reply", may_have_charged=True)]))
+        real_close = os.close
+
+        def failing_close(fd: int) -> None:
+            real_close(fd)
+            if sys._getframe(1).f_code is ledger.close.__code__:  # only ledger.close() fails (os.close is shared with the lock files)
+                raise OSError(9, "Bad file descriptor")
+
+        with mock.patch.object(ledger.os, "close", failing_close):
+            code, _, err = self.run_main("sfx", "--cue", "hit_dry", "--max-credits", "20")
+        self.assertEqual(code, 1)
+        self.assertIn("no reply. Check the usage page", err)  # the InterruptedRun message, not the close error
+        self.assertNotIn("Bad file descriptor", err)
+        self.assertIsNone(ledger._open)
 
     def test_a_run_closes_the_fd(self) -> None:
         self.allow_network()
