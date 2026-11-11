@@ -28,8 +28,8 @@ def credits_of(value: Any) -> int:
     return value if isinstance(value, int) and not isinstance(value, bool) and value >= 0 else 0
 
 
-def clean(record: dict[str, Any]) -> dict[str, Any]:
-    return {k: v for k, v in record.items() if k in ALLOWED_FIELDS and not _unsafe(v)}
+def clean(record: dict[str, Any], allowed: frozenset[str] = ALLOWED_FIELDS) -> dict[str, Any]:
+    return {k: v for k, v in record.items() if k in allowed and not _unsafe(v)}
 
 
 def _unsafe(value: Any) -> bool:
@@ -41,19 +41,20 @@ def _unsafe(value: Any) -> bool:
 
 
 class Manifest:
-    def __init__(self, path: Path, tasks: list[dict[str, Any]] | None = None) -> None:
+    def __init__(self, path: Path, tasks: list[dict[str, Any]] | None = None, allowed: frozenset[str] = ALLOWED_FIELDS) -> None:
         self.path = path
-        self.tasks: list[dict[str, Any]] = [clean(t) for t in tasks] if tasks is not None else []
+        self.allowed = allowed  # audio keeps its own allowlist (scripts/audio/generate.py)
+        self.tasks: list[dict[str, Any]] = [clean(t, allowed) for t in tasks] if tasks is not None else []
 
     @classmethod
-    def load(cls, path: Path) -> "Manifest":
+    def load(cls, path: Path, allowed: frozenset[str] = ALLOWED_FIELDS) -> "Manifest":
         if not path.exists():
-            return cls(path)
+            return cls(path, allowed=allowed)
         try:
             data = json.loads(path.read_text(encoding="utf-8"))  # JSONDecodeError and UnicodeDecodeError are both ValueErrors
             tasks = data.get("tasks", []) if isinstance(data, dict) else None
             if isinstance(tasks, list) and all(isinstance(t, dict) for t in tasks):
-                return cls(path, tasks)  # cleans each record, and clean() recurses into a deeply nested value
+                return cls(path, tasks, allowed)  # cleans each record, and clean() recurses into a deeply nested value
         except (ValueError, RecursionError):
             pass
         # Not echoed (it is a committed file, so it could hold anything). Not "delete it" or "restore it" either: an older
@@ -66,7 +67,7 @@ class Manifest:
         return next((t for t in self.tasks if t.get("kind") == kind and t.get("label") == label), None)
 
     def upsert(self, record: dict[str, Any]) -> dict[str, Any]:
-        kept = clean(record)
+        kept = clean(record, self.allowed)
         for i, task in enumerate(self.tasks):
             if task.get("kind") == kept.get("kind") and task.get("label") == kept.get("label"):
                 self.tasks[i] = kept
@@ -79,7 +80,7 @@ class Manifest:
 
     def save(self) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        text = json.dumps({"tasks": [clean(t) for t in self.tasks]}, indent=2, sort_keys=True) + "\n"
+        text = json.dumps({"tasks": [clean(t, self.allowed) for t in self.tasks]}, indent=2, sort_keys=True) + "\n"
         part = self.path.with_name(self.path.name + ".part")
         # O_NOFOLLOW: the repo is public, so a PR could plant `manifest.json.part` as a symlink to a file of Tim's.
         fd = os.open(part, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW, 0o644)

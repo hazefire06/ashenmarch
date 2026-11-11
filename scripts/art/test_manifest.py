@@ -24,6 +24,24 @@ class CleanTest(unittest.TestCase):
         self.assertEqual(kept, {"task_id": "t1"})
 
 
+class AllowlistParameterTest(unittest.TestCase):
+    def test_the_art_manifest_still_keeps_only_art_fields(self) -> None:
+        # The default allowlist is art's: audio's fields don't leak in, and a custom allowlist is honoured everywhere.
+        record = {"kind": "k", "label": "l", "task_id": "t", "voice_id": "v", "generated_voice_id": "g", "format": "wav_32000"}
+        self.assertEqual(clean(record), {"kind": "k", "label": "l", "task_id": "t"})
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "manifest.json"
+            art = Manifest(path)
+            art.upsert(record)
+            self.assertEqual(art.tasks, [{"kind": "k", "label": "l", "task_id": "t"}])
+            audio = Manifest(path, allowed=frozenset({"kind", "label", "voice_id"}))
+            audio.upsert(record)
+            audio.save()
+            self.assertEqual(audio.tasks, [{"kind": "k", "label": "l", "voice_id": "v"}])
+            self.assertEqual(Manifest.load(path).tasks, [{"kind": "k", "label": "l"}])
+            self.assertEqual(Manifest.load(path, allowed=frozenset({"kind", "voice_id"})).tasks, [{"kind": "k", "voice_id": "v"}])
+
+
 class ManifestTest(unittest.TestCase):
     def setUp(self) -> None:
         self._tmp = tempfile.TemporaryDirectory()
