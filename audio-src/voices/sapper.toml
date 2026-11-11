@@ -9,8 +9,8 @@ trigger = "attack"
 text = "Mind yer heids, this one's a bit lively!"
 picks = {}
 
-[line.select_1]
-trigger = "select"
+[line.attack_2]
+trigger = "attack"
 text = "Stand back! Further! Further than that!"
 picks = {}
 

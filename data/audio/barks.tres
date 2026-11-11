@@ -109,9 +109,9 @@ voices = Array[StringName]([&"sapper"])
 
 [sub_resource type="Resource" id="Resource_wfoob"]
 script = ExtResource("1_gaygm")
-id = &"select_1"
+id = &"attack_2"
 unit = &"sapper"
-trigger = &"select"
+trigger = &"attack"
 text = "Stand back! Further! Further than that!"
 voices = Array[StringName]([&"sapper"])
 
