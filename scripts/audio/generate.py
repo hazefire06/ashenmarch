@@ -734,7 +734,7 @@ def show_lines(name: str, book: CueBook, layers: dict[str, Layer], files: dict[s
 def plan_text(book: CueBook, layers: dict[str, Layer], files: dict[str, VoiceFile], manifest: Manifest, fmt: str, batch: str | None,
               show: bool = False) -> str:
     names = [batch] if batch else list(BATCHES)
-    lines = [f"format: {fmt}",
+    lines = [f"format: {fmt} (sfx, loops, voices; audio-src/format.txt can set mp3_44100_128); music: {MUSIC_FORMAT} (/v1/music has no WAV)",
              "These estimates use assumed rates. The key's quota on elevenlabs.io is the real cap on spending, so set it before buying."]
     for name in names:
         lines += batch_lines(name, book, layers, files, manifest)

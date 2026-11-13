@@ -610,7 +610,12 @@ class MusicTest(Base):
 
     def test_plan_shows_the_sfx_format_not_the_music_one(self) -> None:
         _, out, _ = self.run_main("plan", "--batch", "music")
-        self.assertIn("format: wav_32000", out)
+        self.assertIn("format: wav_32000 (sfx, loops, voices;", out)
+        self.assertIn("music: mp3_48000_192", out)
+        (self.src / "format.txt").write_text("mp3_44100_128\n")
+        _, out, _ = self.run_main("plan")
+        self.assertIn("format: mp3_44100_128 (sfx, loops, voices;", out)
+        self.assertIn("music: mp3_48000_192", out)
 
     def test_music_over_the_budget_buys_nothing(self) -> None:
         fake = self.fake
