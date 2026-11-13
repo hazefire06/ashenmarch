@@ -16,6 +16,8 @@ Context7 (/websites/elevenlabs_io), pages under elevenlabs.io/docs/api-reference
   duration_seconds (0.5-30), prompt_influence (0-1), model_id
   (eleven_text_to_sound_v2 | _v3). output_format is a QUERY parameter
   (wav_32000 and mp3_44100_128 are listed). CONFIRMED, same as spec 5.1.
+- music: POST /v1/music allows only mp3_*, pcm_*, opus_*, ulaw_8000 and alaw_8000, no wav_* (a wav_32000 probe got HTTP 422,
+  2026-11-13); "auto" means mp3_48000_192 for music_v2, so music is bought as that.
 - text-to-voice/design: POST /v1/text-to-voice/design. Body voice_description,
   model_id (eleven_multilingual_ttv_v2 | eleven_ttv_v3; default is the v2, so
   we send eleven_ttv_v3 explicitly). Reply previews[].audio_base_64 and
@@ -55,7 +57,7 @@ PATHS: tuple[re.Pattern[str], ...] = tuple(re.compile(p) for p in (
     r"/v1/text-to-speech/[A-Za-z0-9]{1,64}",
     r"/v1/music",
 ))
-FORMATS = frozenset({"wav_32000", "mp3_44100_128"})
+FORMATS = frozenset({"wav_32000", "mp3_44100_128", "mp3_48000_192"})  # mp3_48000_192 is music only: /v1/music has no wav_*
 MAX_AUDIO_BYTES = 64 * 1024 * 1024
 MAX_JSON_BYTES = 32 * 1024 * 1024
 MAX_ERROR_BYTES = 64 * 1024

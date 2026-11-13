@@ -8,6 +8,7 @@ import hashlib
 import io
 import json
 import os
+import shutil
 import stat
 import sys
 import tempfile
@@ -568,7 +569,7 @@ class AbTest(Base):
 
 class MusicTest(Base):
     def test_music_buys_the_layers_takes(self) -> None:
-        fake = self.allow_network()
+        fake = self.allow_network(Fake(default=("audio/mpeg", MP3)))
         code, _, _ = self.run_main("music", "calm", "--max-credits", "1800")
         self.assertEqual(code, 0)
         self.assertEqual(len(fake.calls), 2)
@@ -576,7 +577,40 @@ class MusicTest(Base):
         self.assertEqual(path, "/v1/music")
         self.assertEqual(body["music_length_ms"], 60000)
         self.assertEqual(body["prompt"], "Sparse drone.")
-        self.assertTrue((self.raw / "music" / "calm" / "2.wav").exists())
+        self.assertTrue((self.raw / "music" / "calm" / "2.mp3").exists())
+
+    def test_music_is_bought_as_mp3_48000_192_whatever_format_txt_says(self) -> None:
+        for text in (None, "wav_32000\n", "mp3_44100_128\n"):
+            with self.subTest(format_txt=text):
+                self.manifest_path.unlink(missing_ok=True)
+                shutil.rmtree(self.raw, ignore_errors=True)
+                self.ledger_path.unlink(missing_ok=True)
+                (self.src / "format.txt").unlink(missing_ok=True)
+                if text is not None:
+                    (self.src / "format.txt").write_text(text)
+                fake = self.allow_network(Fake(default=("audio/mpeg", MP3)))
+                code, _, _ = self.run_main("music", "calm", "--max-credits", "1800")
+                self.assertEqual(code, 0)
+                self.assertEqual([c[1] for c in fake.calls], [{"output_format": "mp3_48000_192"}] * 2)
+                record = self.manifest().find("music", "music/calm/1")
+                self.assertEqual((record["status"], record["format"], record["files"]), ("DONE", "mp3_48000_192", ["music/calm/1.mp3"]))
+                self.assertEqual([line["label"] for line in self.ledger_lines()], ["music/calm/1", "music/calm/2"])
+                self.assertEqual(self.manifest().find("music", "music/calm/1")["sha256"], generate.fingerprint(MP3)["sha256"])
+
+    def test_sfx_and_voices_still_use_the_format_file_while_music_does_not(self) -> None:
+        (self.src / "format.txt").write_text("mp3_44100_128\n")
+        fake = self.allow_network(Fake(default=("audio/mpeg", MP3)))
+        self.save_voice_record("shieldman_old", "VoiceOld1")
+        self.run_main("sfx", "--cue", "hit_dry", "--max-credits", "20")
+        self.run_main("voices", "lines", "shieldman", "--voice", "shieldman_old", "--line", "select_2", "--takes", "1", "--max-credits", "100")
+        self.run_main("music", "calm", "--max-credits", "1800")
+        self.assertEqual([(c[0].split("/")[2], c[1]["output_format"]) for c in fake.calls],
+                         [("sound-generation", "mp3_44100_128"), ("text-to-speech", "mp3_44100_128"),
+                          ("music", "mp3_48000_192"), ("music", "mp3_48000_192")])
+
+    def test_plan_shows_the_sfx_format_not_the_music_one(self) -> None:
+        _, out, _ = self.run_main("plan", "--batch", "music")
+        self.assertIn("format: wav_32000", out)
 
     def test_music_over_the_budget_buys_nothing(self) -> None:
         fake = self.fake
@@ -781,7 +815,7 @@ class WriteFailureTest(Base):
         self.assertEqual(self.manifest().find("sfx", "sfx/hit_dry/1")["status"], "INTERRUPTED")
 
     def test_an_unsafe_path_found_at_write_time_is_interrupted_too(self) -> None:
-        self.allow_network()
+        self.allow_network(Fake(default=("audio/mpeg", MP3)))
         with mock.patch.object(generate, "write_file", side_effect=generate.UnsafePath("x is a symlink")):
             code, _, err = self.run_main("music", "calm", "--max-credits", "1800")
         self.assertEqual(code, 1)
@@ -1123,11 +1157,12 @@ class LedgerTest(Base):
         self.assertIn('LEDGER: Path = Path.home() / ".local" / "share" / "ashenmarch" / "purchases.jsonl"', source)
 
     def test_both_probes_print_what_they_send(self) -> None:
-        self.allow_network()
+        self.allow_network(Fake([("audio/wav", WAV), ("audio/mpeg", MP3)]))
         _, out, _ = self.run_main("probe", "--max-credits", "40")
         self.assertLess(out.index("sends: a short dry wooden knock"), out.index("probe/wav_32000: buying"))
         _, out, _ = self.run_main("probe", "--music", "--max-credits", "45")
         self.assertIn("sends:", out)
+        self.assertIn("probe/music/mp3_48000_192: buying", out)
 
 
 class PlanWordingAndShowTest(Base):
@@ -1211,22 +1246,24 @@ def json_voice_reply() -> tuple[str, bytes]:
 
 
 class ProbeMusicTest(Base):
-    def test_the_music_probe_buys_one_3_second_clip_at_wav_32000(self) -> None:
-        (self.src / "format.txt").write_text("mp3_44100_128\n")
-        fake = self.allow_network()
+    def test_the_music_probe_buys_one_3_second_clip_at_mp3_48000_192(self) -> None:
+        (self.src / "format.txt").write_text("wav_32000\n")
+        fake = self.allow_network(Fake(default=("audio/mpeg", MP3)))
         code, out, _ = self.run_main("probe", "--music", "--max-credits", "45")
         self.assertEqual(code, 0)
         path, query, body = fake.calls[0]
-        self.assertEqual((path, query), ("/v1/music", {"output_format": "wav_32000"}))
+        self.assertEqual((path, query), ("/v1/music", {"output_format": "mp3_48000_192"}))
         self.assertEqual((body["music_length_ms"], body["force_instrumental"]), (3000, True))
         self.assertIn("accepted for music", out)
-        record = self.manifest().find("probe", "probe/music/wav_32000")
-        self.assertEqual((record["status"], record["credits"]), ("DONE", 45))
-        self.assertEqual((self.src / "format.txt").read_text(), "mp3_44100_128\n")  # never rewritten
+        self.assertIn("mp3_48000_192", out)
+        self.assertIn("MP3", out)
+        record = self.manifest().find("probe", "probe/music/mp3_48000_192")
+        self.assertEqual((record["status"], record["credits"], record["format"]), ("DONE", 45, "mp3_48000_192"))
+        self.assertEqual((self.src / "format.txt").read_text(), "wav_32000\n")  # never rewritten
         self.assertFalse(self.raw.exists())
 
     def test_the_music_probe_is_not_bought_twice_and_respects_the_budget(self) -> None:
-        fake = self.allow_network()
+        fake = self.allow_network(Fake(default=("audio/mpeg", MP3)))
         code, _, _ = self.run_main("probe", "--music", "--max-credits", "44")
         self.assertEqual((code, fake.calls), (1, []))
         self.run_main("probe", "--music", "--max-credits", "45")
@@ -1235,19 +1272,43 @@ class ProbeMusicTest(Base):
         self.assertIn("already", out)
 
     def test_the_sfx_probe_and_the_music_probe_are_separate_purchases(self) -> None:
-        fake = self.allow_network()
+        fake = self.allow_network(Fake([("audio/wav", WAV), ("audio/mpeg", MP3)]))
         self.run_main("probe", "--max-credits", "40")
         self.run_main("probe", "--music", "--max-credits", "45")
         self.assertEqual([c[0] for c in fake.calls], ["/v1/sound-generation", "/v1/music"])
+        self.assertEqual([c[1]["output_format"] for c in fake.calls], ["wav_32000", "mp3_48000_192"])  # the sfx probe still probes wav_32000
         _, out, _ = self.run_main("plan", "--batch", "probe")
         self.assertIn("probe --music: 1 clip of 3 s, 1 of 1 bought, 0 credits", out)
 
-    def test_a_refused_music_format_is_reported(self) -> None:
-        self.allow_network(Fake([ElevenLabsError("ElevenLabs POST /v1/music failed: HTTP 422 output_format wav_32000 is not supported")]))
+    def test_a_refused_music_format_is_reported_without_blaming_format_txt(self) -> None:
+        self.allow_network(Fake([ElevenLabsError("ElevenLabs POST /v1/music failed: HTTP 422 output_format mp3_48000_192 is not supported")]))
         code, out, err = self.run_main("probe", "--music", "--max-credits", "45")
         self.assertEqual(code, 1)
-        self.assertIn("refused for music", out + err)
+        text = out + err
+        self.assertIn("mp3_48000_192 was refused for music", text)
+        self.assertIn("Set MUSIC_FORMAT in scripts/audio/generate.py to mp3_44100_128 and run the music probe again", text)
+        self.assertNotIn("format.txt", text)
+        self.assertEqual(self.manifest().find("probe", "probe/music/mp3_48000_192")["status"], "FAILED")
+
+    def test_a_refusal_naming_only_the_mp3_or_48000_is_still_reported(self) -> None:
+        for message in ("HTTP 422 unsupported mp3 setting", "HTTP 422 bad value 48000"):
+            with self.subTest(message=message):
+                self.manifest_path.unlink(missing_ok=True)
+                self.allow_network(Fake([ElevenLabsError(f"ElevenLabs POST /v1/music failed: {message}")]))
+                code, out, err = self.run_main("probe", "--music", "--max-credits", "45")
+                self.assertEqual(code, 1)
+                self.assertIn("was refused for music", out + err)
+
+    def test_the_old_failed_wav_music_probe_blocks_nothing(self) -> None:
+        self.seed({"kind": "probe", "label": "probe/music/wav_32000", "model": "music_v2", "format": "wav_32000", "status": "FAILED", "credits": 0})
+        _, out, _ = self.run_main("plan", "--batch", "probe")
+        self.assertIn("probe --music: 1 clip of 3 s, 0 of 1 bought, 45 credits still to buy", out)
+        self.assertNotIn("blocked", out)
+        fake = self.allow_network(Fake(default=("audio/mpeg", MP3)))
+        code, _, _ = self.run_main("probe", "--music", "--max-credits", "45")
+        self.assertEqual((code, len(fake.calls)), (0, 1))
         self.assertEqual(self.manifest().find("probe", "probe/music/wav_32000")["status"], "FAILED")
+        self.assertEqual(self.manifest().find("probe", "probe/music/mp3_48000_192")["status"], "DONE")
 
 
 class ObstacleTest(Base):

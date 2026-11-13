@@ -9,6 +9,7 @@ import json
 import math
 import os
 import shutil
+import subprocess
 import tempfile
 import unittest
 from array import array
@@ -654,6 +655,35 @@ class BuildTest(unittest.TestCase):
         for frames in (calm, war):
             step = max(abs(frames[i + 2] - frames[i]) for i in range(0, len(frames) - 2, 2))
             self.assertLessEqual(abs(frames[0] - frames[-2]), step + 1)
+
+    def test_an_mp3_music_raw_builds_when_its_record_and_ledger_line_match(self) -> None:
+        # /v1/music is bought as mp3_48000_192, so generate.py writes music/<layer>/<take>.mp3 and its record hashes that file.
+        t = self.tree
+        for layer in ("calm", "war"):
+            for take in (1, 2):
+                t.root.joinpath("audio-src", "raw", "music", layer, f"{take}.wav").unlink(missing_ok=True)
+        wav = t.root / "tone.wav"
+        ffmpeg_io.write_wav(tone(4.0, lead_s=0, channels=2), RATE, 2, wav)
+        for layer, take in (("calm", 1), ("war", 2)):
+            mp3 = t.root / "audio-src" / "raw" / "music" / layer / f"{take}.mp3"
+            mp3.parent.mkdir(parents=True, exist_ok=True)
+            if shutil.which("ffmpeg") and subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", str(wav), "-c:a", "libmp3lame", "-b:a", "192k", str(mp3)]).returncode:
+                self.skipTest("this ffmpeg has no mp3 encoder")
+            data = mp3.read_bytes()
+            label = f"music/{layer}/{take}"
+            t.manifest([{"kind": "music", "label": label, "model": "music_v2", "status": "DONE", "files": [f"{label}.mp3"], "format": "mp3_48000_192",
+                         "sha256": hashlib.sha256(data).hexdigest(), "bytes": len(data), "finished_at": 1796000000}])
+            ledger.append({"kind": "music", "label": label, "sha256": hashlib.sha256(data).hexdigest(), "bytes": len(data)})
+        code, _, err = t.build()
+        self.assertEqual(code, 0, err)
+        for name in ("calm", "war"):
+            self.assertGreater((t.root / "assets" / "audio" / "music" / f"{name}.ogg").stat().st_size, 100)
+        mp3 = t.root / "audio-src" / "raw" / "music" / "calm" / "1.mp3"
+        mp3.write_bytes(mp3.read_bytes() + b"\x00")  # a swapped file no longer matches its record
+        shutil.rmtree(t.root / "assets" / "audio")
+        code, _, err = t.build()
+        self.assertEqual(code, 1)
+        self.assertIn("hash differs", err)
 
     def test_mismatched_music_layers_are_refused_before_any_write(self) -> None:
         t = self.tree

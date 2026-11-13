@@ -3,7 +3,7 @@
 
     python3 scripts/audio/generate.py plan [--batch B] [--show]        free: what each batch would buy (--show: the text sent, and each voice id)
     python3 scripts/audio/generate.py probe --max-credits 40           paid: one 1 s sound at wav_32000
-    python3 scripts/audio/generate.py probe --music --max-credits 45   paid: one 3 s music clip at wav_32000
+    python3 scripts/audio/generate.py probe --music --max-credits 45   paid: one 3 s music clip at mp3_48000_192
     python3 scripts/audio/generate.py sfx --cue hit_flesh --max-credits 100
     python3 scripts/audio/generate.py sfx --category melee --max-credits 2000
     python3 scripts/audio/generate.py voices design shieldman --voice shieldman_old --max-credits 1000
@@ -24,7 +24,8 @@ blocks every paid command until you check the usage page on elevenlabs.io and fi
 
 Audio is written only under audio-src/raw/, as sfx/<cue>/<take>, design/<unit>/<voice>/<n>, voices/<voice>/<line>/<take>,
 ab/<model>/<line>/<take> and music/<layer>/<take>, with the extension the bytes say (.wav or .mp3). Nothing is read or
-written through a symlink. The format is wav_32000, unless audio-src/format.txt says mp3_44100_128; the probe tells which.
+written through a symlink. The format of sound effects, loops and voices is wav_32000, unless audio-src/format.txt says mp3_44100_128; the probe tells which.
+Music is always mp3_48000_192 and format.txt never governs it: /v1/music has no WAV.
 """
 from __future__ import annotations
 
@@ -73,6 +74,7 @@ PROBE_MUSIC_CREDITS = math.ceil(PROBE_MUSIC_MS / 1000 * MUSIC_CREDITS_PER_MIN / 
 PROBE_MUSIC_MODEL = "music_v2"
 DEFAULT_FORMAT = "wav_32000"
 PROBE_FORMAT = "wav_32000"
+MUSIC_FORMAT = "mp3_48000_192"  # /v1/music has no WAV (probe 2026-11-13 and the API docs); this is the API's own default for music_v2 and matches the 48 kHz mix
 LINE_TAKES = 3
 AB_TAKES = 2
 AB_UNIT = "shieldman"
@@ -621,29 +623,29 @@ def run_probe(manifest: Manifest, get_client: GetClient, max_credits: int, say: 
 
 
 def run_probe_music(manifest: Manifest, get_client: GetClient, max_credits: int, say: Say = _say) -> bool:
-    """One 3 s music clip at wav_32000, whatever format.txt says: /v1/music's output_format is unverified, and a music batch is dear.
+    """One 3 s music clip at MUSIC_FORMAT, whatever format.txt says: it never governs music, and a music batch is dear.
     Returns True if the format was accepted. Writes no audio and no format.txt."""
     _refuse_if_blocked(manifest)
-    label = f"probe/music/{PROBE_FORMAT}"
+    label = f"probe/music/{MUSIC_FORMAT}"
     if _bought(manifest.find("probe", label)):
-        say(f"nothing to buy: the music probe already ran; {PROBE_FORMAT} was accepted")
+        say(f"nothing to buy: the music probe already ran; {MUSIC_FORMAT} was accepted")
         return True
     _check_budget("the music probe needs", PROBE_MUSIC_CREDITS, max_credits)
-    client = get_client(PROBE_FORMAT)
+    client = get_client(MUSIC_FORMAT)
     prompt = "a single soft low drone"
-    record = {"kind": "probe", "label": label, "model": PROBE_MUSIC_MODEL, "format": PROBE_FORMAT, "prompt": prompt}
-    say(f"  sends: {prompt}")
-    say(f"{label}: buying ({PROBE_MUSIC_CREDITS} credits, {PROBE_MUSIC_MS} ms)")
+    record = {"kind": "probe", "label": label, "model": PROBE_MUSIC_MODEL, "format": MUSIC_FORMAT, "prompt": prompt}
+    say(f"  sends: {prompt} (as {MUSIC_FORMAT})")
+    say(f"{label}: buying ({PROBE_MUSIC_CREDITS} credits, {PROBE_MUSIC_MS} ms, {MUSIC_FORMAT})")
     try:
         data = _buy(manifest, record, lambda: client.music(prompt, PROBE_MUSIC_MS, PROBE_MUSIC_MODEL))
     except ElevenLabsError as error:  # only a definite rejection gets here
-        if any(word in str(error).lower() for word in ("format", "wav", "32000")):
-            say(f"{PROBE_FORMAT} was refused for music ({error}).")
-            say("Put mp3_44100_128 in audio-src/format.txt and every purchase will use it.")
+        if any(word in str(error).lower() for word in ("format", "wav", "mp3", "32000", "48000")):
+            say(f"{MUSIC_FORMAT} was refused for music ({error}).")
+            say("Set MUSIC_FORMAT in scripts/audio/generate.py to mp3_44100_128 and run the music probe again.")
             return False
         raise
     _done(manifest, record, PROBE_MUSIC_CREDITS, [])
-    say(f"{PROBE_FORMAT} was accepted for music: the reply is {len(data)} bytes of {'WAV' if data[:4] == b'RIFF' else 'MP3'}.")
+    say(f"{MUSIC_FORMAT} was accepted for music: the reply is {len(data)} bytes of {'WAV' if data[:4] == b'RIFF' else 'MP3'}.")
     say("Now check the usage page on elevenlabs.io: did the clip draw on your credits, as about 45?")
     return True
 
@@ -670,7 +672,7 @@ def _line(name: str, jobs: list[Job], manifest: Manifest, note: str = "") -> str
 def batch_lines(name: str, book: CueBook, layers: dict[str, Layer], files: dict[str, VoiceFile], manifest: Manifest) -> list[str]:
     if name == "probe":
         done = _bought(manifest.find("probe", f"probe/{PROBE_FORMAT}"))
-        music = _bought(manifest.find("probe", f"probe/music/{PROBE_FORMAT}"))
+        music = _bought(manifest.find("probe", f"probe/music/{MUSIC_FORMAT}"))
         return [f"probe: 1 sound of 1 s, {'1 of 1 bought' if done else '0 of 1 bought'}, {0 if done else PROBE_CREDITS} credits still to buy",
                 f"probe --music: 1 clip of {PROBE_MUSIC_MS // 1000} s, {'1 of 1 bought' if music else '0 of 1 bought'}, "
                 f"{0 if music else PROBE_MUSIC_CREDITS} credits still to buy"]
@@ -760,7 +762,7 @@ def _build_parser() -> argparse.ArgumentParser:
     plan.add_argument("--batch", choices=BATCHES)
     plan.add_argument("--show", action="store_true", help="also list each prompt, line and description still to buy, and each voice id")
     probe = paid(sub.add_parser("probe"))
-    probe.add_argument("--music", action="store_true", help="probe /v1/music instead: one 3 s clip at wav_32000 (about 45 credits)")
+    probe.add_argument("--music", action="store_true", help="probe /v1/music instead: one 3 s clip at mp3_48000_192 (about 45 credits)")
     sfx = paid(sub.add_parser("sfx"))
     which = sfx.add_mutually_exclusive_group(required=True)
     which.add_argument("--cue")
@@ -816,7 +818,7 @@ def _dispatch(args: argparse.Namespace, book: CueBook, layers: dict[str, Layer],
         layer = check_id(args.layer, "layer")
         if layer not in layers:
             raise CueError(f"no music layer {layer!r}")
-        run_jobs(manifest, get_client, raw, fmt, music_jobs(layers[layer]), args.max_credits)
+        run_jobs(manifest, get_client, raw, MUSIC_FORMAT, music_jobs(layers[layer]), args.max_credits)  # never read_format()'s: music has no WAV
     else:
         _voices(args, files, manifest, get_client, raw, fmt)
 

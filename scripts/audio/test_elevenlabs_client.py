@@ -193,6 +193,7 @@ class TransportTest(unittest.TestCase):
                 with self.assertRaisesRegex(ElevenLabsError, "unexpected query"):
                     call_with(opener, query=query)
                 opener.open.assert_not_called()
+        self.assertEqual(call_with(opener_that(returns=FakeResponse(MP3)), "/v1/music", {"output_format": "mp3_48000_192"})[1], MP3)
         self.assertEqual(call_with(opener_that(returns=FakeResponse(WAV)), "/v1/text-to-speech/Voice1")[1], WAV)
         self.assertEqual(call_with(opener_that(returns=FakeResponse(b"{}", "application/json")), "/v1/text-to-voice", {})[1], b"{}")
 
@@ -345,11 +346,18 @@ class FixRoundTest(unittest.TestCase):
                 self.assertIn("no reply", str(caught))
 
     def test_the_reply_must_match_the_requested_format(self) -> None:
-        for fmt, wrong in (("wav_32000", MP3), ("wav_32000", ID3), ("mp3_44100_128", WAV)):
+        for fmt, wrong in (("wav_32000", MP3), ("wav_32000", ID3), ("mp3_44100_128", WAV), ("mp3_48000_192", WAV)):
             with self.subTest(fmt=fmt):
                 with self.assertRaisesRegex(ElevenLabsError, "differs from the requested") as caught:
                     ElevenLabsClient(FakeTransport([("audio/mpeg", wrong)]), fmt).music("x", 5000, "m")
                 self.assertTrue(caught.exception.may_have_charged)
+
+    def test_mp3_48000_192_takes_an_mp3_reply_for_music(self) -> None:
+        for reply in (MP3, ID3):
+            with self.subTest(reply=reply[:3]):
+                transport = FakeTransport([("audio/mpeg", reply)])
+                self.assertEqual(ElevenLabsClient(transport, "mp3_48000_192").music("x", 5000, "m"), reply)
+                self.assertEqual(transport.calls[0][:2], ("/v1/music", {"output_format": "mp3_48000_192"}))
 
     def test_a_422_detail_list_gives_its_first_msg_and_never_the_input(self) -> None:
         body = json.dumps({"detail": [{"loc": ["body", "x"], "msg": f"bad {KEY} value", "type": "t", "input": "SECRETINPUT"}]}).encode()
