@@ -74,6 +74,7 @@ PROBE_MUSIC_CREDITS = math.ceil(PROBE_MUSIC_MS / 1000 * MUSIC_CREDITS_PER_MIN / 
 PROBE_MUSIC_MODEL = "music_v2"
 DEFAULT_FORMAT = "wav_32000"
 PROBE_FORMAT = "wav_32000"
+FILE_FORMATS = frozenset({"wav_32000", "mp3_44100_128"})  # what audio-src/format.txt may hold: the formats of sfx, loops and voices
 MUSIC_FORMAT = "mp3_48000_192"  # /v1/music has no WAV (probe 2026-11-13 and the API docs); this is the API's own default for music_v2 and matches the 48 kHz mix
 LINE_TAKES = 3
 AB_TAKES = 2
@@ -139,6 +140,14 @@ def extension(data: bytes) -> str:
 
 
 # ---- the manifest ---------------------------------------------------------------------------------------------------
+
+MUSIC_PROBE_FIRST = ("the music probe hasn't succeeded yet, so no music is bought. Run "
+                     "python3 scripts/audio/generate.py probe --music --max-credits 45 first.")
+
+
+def _music_probed(manifest: Manifest) -> bool:
+    return _bought(manifest.find("probe", f"probe/music/{MUSIC_FORMAT}"))
+
 
 def _bought(record: dict[str, Any] | None) -> bool:
     """Only DONE is bought. FAILED was a definite rejection (nothing charged); PENDING and INTERRUPTED block the run."""
@@ -393,8 +402,8 @@ def read_format(src: Path) -> str:
             text = handle.read(64).strip()
     except OSError:
         raise UnsafePath(f"{_shown(path)} can't be read (is it a symlink?)") from None
-    if text not in FORMATS:
-        raise UnsafePath(f"{_shown(path)} must hold {' or '.join(sorted(FORMATS))} and nothing else")
+    if text not in FILE_FORMATS:
+        raise UnsafePath(f"{_shown(path)} must hold {' or '.join(sorted(FILE_FORMATS))} and nothing else")
     return text
 
 
@@ -681,7 +690,8 @@ def batch_lines(name: str, book: CueBook, layers: dict[str, Layer], files: dict[
         return [_line(name, sfx_jobs(book, ids), manifest, f" ({SFX_CREDITS_PER_S}/s, assumed)")]
     if name == "music":
         jobs = [j for layer in layers.values() for j in music_jobs(layer)]
-        return [_line(name, jobs, manifest, f" ({MUSIC_CREDITS_PER_MIN}/min, assumed)")]
+        note = "" if _music_probed(manifest) else "; waits on the music probe (probe --music), which hasn't succeeded yet"
+        return [_line(name, jobs, manifest, f" ({MUSIC_CREDITS_PER_MIN}/min, assumed){note}")]
     units = sorted(u for u, f in files.items() if u != CLAN and f.voices)
     if name == "design":
         pairs = [(u, v) for u in units for v in files[u].voices]
@@ -818,6 +828,9 @@ def _dispatch(args: argparse.Namespace, book: CueBook, layers: dict[str, Layer],
         layer = check_id(args.layer, "layer")
         if layer not in layers:
             raise CueError(f"no music layer {layer!r}")
+        _refuse_if_blocked(manifest)
+        if not _music_probed(manifest):
+            raise BlockedError(MUSIC_PROBE_FIRST)
         run_jobs(manifest, get_client, raw, MUSIC_FORMAT, music_jobs(layers[layer]), args.max_credits)  # never read_format()'s: music has no WAV
     else:
         _voices(args, files, manifest, get_client, raw, fmt)

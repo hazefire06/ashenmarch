@@ -176,6 +176,11 @@ class Base(unittest.TestCase):
     def seed(self, *records: dict[str, Any]) -> None:
         generate.Manifest(self.manifest_path, list(records), generate.AUDIO_FIELDS).save()
 
+    def seed_music_probe(self) -> None:
+        """The music probe has succeeded: the music batch is allowed to buy."""
+        self.seed(*self.manifest().tasks, {"kind": "probe", "label": f"probe/music/{generate.MUSIC_FORMAT}", "model": "music_v2",
+                                           "format": generate.MUSIC_FORMAT, "status": "DONE", "credits": 45})
+
     def save_voice_record(self, voice: str = "shieldman_old", voice_id: str = "VoiceOld1") -> dict[str, Any]:
         record = {"kind": "voice", "label": f"voice/{voice}", "status": "DONE", "credits": 0, "voice_id": voice_id}
         self.seed(*self.manifest().tasks, record)
@@ -217,7 +222,7 @@ class PlanTest(Base):
         code, out, _ = self.run_main("plan", "--batch", "music")
         self.assertEqual(code, 0)
         self.assertIn("music", out)
-        self.assertNotIn("probe", out)
+        self.assertNotIn("probe: 1 sound", out)
         self.assertIn("1800 credits", out)  # 2 takes x 60 s at 900 per minute
 
     def test_plan_counts_lines_in_each_voice_with_the_clan_lines(self) -> None:
@@ -230,6 +235,15 @@ class PlanTest(Base):
         code, _, err = self.run_main("plan")
         self.assertEqual(code, 2)
         self.assertIn("format.txt", err)
+
+    def test_format_txt_may_not_hold_the_music_only_format(self) -> None:
+        (self.src / "format.txt").write_text("mp3_48000_192\n")
+        code, _, err = self.run_main("plan")
+        self.assertEqual(code, 2)
+        self.assertIn("mp3_44100_128 or wav_32000", err)
+        with self.assertRaises(generate.UnsafePath):
+            generate.read_format(self.src)
+        self.assertEqual(generate.FILE_FORMATS, frozenset({"wav_32000", "mp3_44100_128"}))
 
 
 class BudgetAndResumeTest(Base):
@@ -569,6 +583,7 @@ class AbTest(Base):
 
 class MusicTest(Base):
     def test_music_buys_the_layers_takes(self) -> None:
+        self.seed_music_probe()
         fake = self.allow_network(Fake(default=("audio/mpeg", MP3)))
         code, _, _ = self.run_main("music", "calm", "--max-credits", "1800")
         self.assertEqual(code, 0)
@@ -583,6 +598,7 @@ class MusicTest(Base):
         for text in (None, "wav_32000\n", "mp3_44100_128\n"):
             with self.subTest(format_txt=text):
                 self.manifest_path.unlink(missing_ok=True)
+                self.seed_music_probe()
                 shutil.rmtree(self.raw, ignore_errors=True)
                 self.ledger_path.unlink(missing_ok=True)
                 (self.src / "format.txt").unlink(missing_ok=True)
@@ -601,12 +617,41 @@ class MusicTest(Base):
         (self.src / "format.txt").write_text("mp3_44100_128\n")
         fake = self.allow_network(Fake(default=("audio/mpeg", MP3)))
         self.save_voice_record("shieldman_old", "VoiceOld1")
+        self.seed_music_probe()
         self.run_main("sfx", "--cue", "hit_dry", "--max-credits", "20")
         self.run_main("voices", "lines", "shieldman", "--voice", "shieldman_old", "--line", "select_2", "--takes", "1", "--max-credits", "100")
         self.run_main("music", "calm", "--max-credits", "1800")
         self.assertEqual([(c[0].split("/")[2], c[1]["output_format"]) for c in fake.calls],
                          [("sound-generation", "mp3_44100_128"), ("text-to-speech", "mp3_44100_128"),
                           ("music", "mp3_48000_192"), ("music", "mp3_48000_192")])
+
+    def test_music_is_refused_until_the_music_probe_has_succeeded(self) -> None:
+        fake = self.allow_network(Fake(default=("audio/mpeg", MP3)))
+        for seeded in (None, {"kind": "probe", "label": "probe/music/mp3_48000_192", "model": "music_v2", "status": "FAILED", "credits": 0},
+                       {"kind": "probe", "label": "probe/music/wav_32000", "model": "music_v2", "status": "DONE", "credits": 45}):
+            with self.subTest(seeded=seeded):
+                self.manifest_path.unlink(missing_ok=True)
+                if seeded:
+                    self.seed(seeded)
+                before = self.manifest_path.read_bytes() if self.manifest_path.exists() else None
+                code, _, err = self.run_main("music", "calm", "--max-credits", "9999")
+                self.assertEqual(code, 1)
+                self.assertIn("probe --music --max-credits 45", err)
+                self.assertEqual(fake.calls, [])
+                self.assertEqual(self.manifest_path.read_bytes() if self.manifest_path.exists() else None, before)
+                self.assertFalse(self.raw.exists())
+
+    def test_the_plan_says_music_waits_on_the_probe_until_it_succeeds(self) -> None:
+        _, out, _ = self.run_main("plan", "--batch", "music")
+        self.assertIn("waits on the music probe", out)
+        self.seed_music_probe()
+        _, out, _ = self.run_main("plan", "--batch", "music")
+        self.assertNotIn("waits on the music probe", out)
+
+    def test_sfx_loops_and_voices_are_not_gated_on_the_music_probe(self) -> None:
+        fake = self.allow_network()
+        code, _, _ = self.run_main("sfx", "--cue", "hit_dry", "--max-credits", "20")
+        self.assertEqual((code, len(fake.calls)), (0, 1))
 
     def test_plan_shows_the_sfx_format_not_the_music_one(self) -> None:
         _, out, _ = self.run_main("plan", "--batch", "music")
@@ -820,6 +865,7 @@ class WriteFailureTest(Base):
         self.assertEqual(self.manifest().find("sfx", "sfx/hit_dry/1")["status"], "INTERRUPTED")
 
     def test_an_unsafe_path_found_at_write_time_is_interrupted_too(self) -> None:
+        self.seed_music_probe()
         self.allow_network(Fake(default=("audio/mpeg", MP3)))
         with mock.patch.object(generate, "write_file", side_effect=generate.UnsafePath("x is a symlink")):
             code, _, err = self.run_main("music", "calm", "--max-credits", "1800")
@@ -1166,8 +1212,7 @@ class LedgerTest(Base):
         _, out, _ = self.run_main("probe", "--max-credits", "40")
         self.assertLess(out.index("sends: a short dry wooden knock"), out.index("probe/wav_32000: buying"))
         _, out, _ = self.run_main("probe", "--music", "--max-credits", "45")
-        self.assertIn("sends:", out)
-        self.assertIn("probe/music/mp3_48000_192: buying", out)
+        self.assertLess(out.index("sends: a single soft low drone"), out.index("probe/music/mp3_48000_192: buying"))
 
 
 class PlanWordingAndShowTest(Base):

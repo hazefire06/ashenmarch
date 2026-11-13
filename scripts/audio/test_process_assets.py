@@ -658,6 +658,8 @@ class BuildTest(unittest.TestCase):
 
     def test_an_mp3_music_raw_builds_when_its_record_and_ledger_line_match(self) -> None:
         # /v1/music is bought as mp3_48000_192, so generate.py writes music/<layer>/<take>.mp3 and its record hashes that file.
+        if not shutil.which("ffmpeg"):
+            self.skipTest("ffmpeg needed")
         t = self.tree
         for layer in ("calm", "war"):
             for take in (1, 2):
@@ -667,7 +669,7 @@ class BuildTest(unittest.TestCase):
         for layer, take in (("calm", 1), ("war", 2)):
             mp3 = t.root / "audio-src" / "raw" / "music" / layer / f"{take}.mp3"
             mp3.parent.mkdir(parents=True, exist_ok=True)
-            if shutil.which("ffmpeg") and subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", str(wav), "-c:a", "libmp3lame", "-b:a", "192k", str(mp3)]).returncode:
+            if subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", str(wav), "-c:a", "libmp3lame", "-b:a", "192k", str(mp3)]).returncode:
                 self.skipTest("this ffmpeg has no mp3 encoder")
             data = mp3.read_bytes()
             label = f"music/{layer}/{take}"
