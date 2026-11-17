@@ -33,8 +33,8 @@ const BOUNCE_FULL_SPEED: int = 300
 const GROAN_RADIUS: float = 40.0
 const GROAN_GAP_TICKS: int = 90
 const GROAN_CHANCE: float = 0.03
-## ...and only with a unit of another side within this many meters: the dead
-## are heard as they close on the living, not wherever the camera happens to look.
+## A groaner also needs a living unit of another side within this many meters:
+## the dead are heard as they close on the living, not wherever the camera looks.
 const GROAN_NEAR: float = 20.0
 ## Tuned for a listener on the ground at the focus, not up with the camera.
 const UNIT_SIZE: float = 12.0
