@@ -147,10 +147,10 @@ These facts were checked on 2026-11-05 and 2026-11-09 against elevenlabs.io docs
 - **Key.** A dedicated `ashenmarch` key, set up by Tim:
   - **Scope restriction:** sound effects, text to speech, voice design, and music. Saving a designed voice may also need voices write access, which is unconfirmed.
   - **Credit quota:** set to the next batch's estimate and raised batch by batch. This is the real spending control. The script's guards prevent mistakes, but Claude writes and runs that script, so they aren't a security boundary.
-- **Formats.**
-  - Download `wav_32000` where the plan allows it, else `mp3_44100_128`.
-  - The docs gate only 44.1 kHz PCM/WAV (Pro) and MP3 192 (Creator), so 32 kHz is probably open on Starter. The probe (§11, step 5) settles it.
-  - 32 kHz keeps everything up to 16 kHz with no MP3 artifacts on sharp hits.
+- **Formats** (settled by the probes on 2026-11-16, §11 step 5):
+  - Sound effects, loops and voices download as `wav_32000`. The SFX probe was accepted on Starter. `audio-src/format.txt` can switch them to `mp3_44100_128`, and nothing needs it.
+  - Music downloads as `mp3_48000_192`, whatever `format.txt` says. `/v1/music` has no WAV format: `wav_32000` got an HTTP 422, and the docs list only MP3, PCM, Opus and μ-law/A-law. `mp3_48000_192` is the API's own default for `music_v2`, it matches the 48 kHz mix, and the music probe was accepted on Starter. A music batch refuses to buy until that probe has succeeded.
+  - 32 kHz keeps everything up to 16 kHz with no MP3 artifacts on sharp hits. Music's MP3 is encoded once more, to Ogg; at 192 kbps under a game mix that isn't heard.
   - On Web, the rate costs nothing: every sound is resampled to the browser's rate.
 - **Sound effects:**
   - `POST /v1/sound-generation`, with `text`, `duration_seconds` (0.5 to 30), `prompt_influence`, `loop` and `model_id`. The model is `eleven_text_to_sound_v2` or `_v3`, and v3 makes sounds that loop.
@@ -170,7 +170,7 @@ These facts were checked on 2026-11-05 and 2026-11-09 against elevenlabs.io docs
 
 ### 5.2 Credits
 
-Tim has a 90,000-credit balance, and Starter adds about 30,000 a month. The rates below are assumed and flagged; `generate.py plan` prints each batch's estimate before anything is bought.
+Tim had a 90,000-credit balance on 2026-11-09, and 73,000 available on 2026-11-16, after the probes. Starter adds about 30,000 a month. The rates below are assumed and flagged; `generate.py plan` prints each batch's estimate before anything is bought.
 
 | Batch | Basis | Credits |
 |---|---|---|

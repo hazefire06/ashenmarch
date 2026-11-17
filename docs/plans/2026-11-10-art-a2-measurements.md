@@ -48,6 +48,30 @@ Tim played a skirmish in Chrome on the same synthetic build, with `output_latenc
 
 **Decision:** streaming stands, so the fallback options in spec §4.3.3 aren't needed. `[playback]` in `cues.toml` is unchanged.
 
+## Step 5: the probes (Task 19)
+
+Tim ran both probes in Terminal.app, with the `ashenmarch` key (scoped, quota 100).
+
+**First attempt (2026-11-13). Nothing was charged:**
+- **SFX probe:** HTTP 401 `invalid_api_key`, meaning the key value itself was wrong. A missing scope returns `missing_permissions` instead. Tim made a new key.
+- **Music probe:** HTTP 422. `wav_32000` isn't an allowed `output_format` for `/v1/music`. This check comes before the key check.
+- Both are recorded FAILED, at 0 credits.
+
+**The docs** (elevenlabs.io, through Context7, 2026-11-13):
+- `/v1/music` allows only `mp3_*`, `pcm_*`, `opus_48000_*`, `ulaw_8000` and `alaw_8000`, and its `auto` means `mp3_48000_192` for v2 models.
+- `/v1/sound-generation` and `/v1/text-to-speech` allow `wav_8000` to `wav_48000`. WAV and PCM at 44.1 kHz and above need Pro.
+
+**The decision:**
+- Music buys `mp3_48000_192`, and everything else stays `wav_32000` (commits e5ee2d9, 0653415, 74b654b; security-reviewed).
+- `format.txt` was not written.
+
+**Second attempt (2026-11-16), with the new key. Both accepted:**
+- `probe/wav_32000`: DONE. The reply passed the WAV check (RIFF header and size).
+- `probe/music/mp3_48000_192`: DONE. The reply passed the MP3 check.
+- Assumed cost: 40 + 45 = 85 credits.
+- Tim's account showed 73,000 credits available after the probes. The spec's 90,000 was from 2026-11-09. A key capped at 100 credits can't account for the gap.
+- Still to record: what the usage page shows these two calls cost, and whether in credits or dollars.
+
 ## Tooling
 
 Homebrew's ffmpeg has no libvorbis; its native `vorbis` encoder is experimental. Tim installed `vorbis-tools` (`oggenc` 1.4.3) on 2026-11-10, so `process.py` encodes Ogg Vorbis with `oggenc`. The synthetic Oggs above used ffmpeg's native encoder at 96 kbps. Their compressed sizes are therefore only indicative, but the decoded sizes are exact.

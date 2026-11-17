@@ -1,0 +1,35 @@
+{
+  "tasks": [
+    {
+      "credits": 40,
+      "files": [],
+      "finished_at": 1794881440,
+      "format": "wav_32000",
+      "kind": "probe",
+      "label": "probe/wav_32000",
+      "model": "eleven_text_to_sound_v2",
+      "status": "DONE"
+    },
+    {
+      "created_at": 1794590992,
+      "credits": 0,
+      "format": "wav_32000",
+      "kind": "probe",
+      "label": "probe/music/wav_32000",
+      "model": "music_v2",
+      "prompt": "a single soft low drone",
+      "status": "FAILED"
+    },
+    {
+      "credits": 45,
+      "files": [],
+      "finished_at": 1794881510,
+      "format": "mp3_48000_192",
+      "kind": "probe",
+      "label": "probe/music/mp3_48000_192",
+      "model": "music_v2",
+      "prompt": "a single soft low drone",
+      "status": "DONE"
+    }
+  ]
+}
