@@ -88,6 +88,18 @@ The build was the worktree at 8518e61 (every cue picked, Riverside's music built
 
 **Still to judge by ear:** the beds against the calm music at a mission's start, now that the groans and marching are gone.
 
+## Step 7: Tim's second Riverside listen (2026-11-17)
+
+The build was the worktree at 9b029d3, then c8e2cca and 53f85c2 after each fix, with `make run` on this Mac at tier 2. Tim confirmed the start was quiet and the beds sat well against the calm music; the bus defaults stay as they are.
+
+**What he heard, and the causes (headless probes, dummy audio):**
+- **The march petered out slowly and wasn't tied to the men moving.** In a scripted 30 m move, all 14 started together and the march was at full level in about 1.5 s. But the squad reached its formation spots over about 7 s (14 still moving at 28.5 s, 2 at 31.5 s, none at 36 s), and one straggler walked alone for the last 4.5 s. At sqrt(movers / 12) the last one or two held the march at 0.29 to 0.41 (-11 to -8 dB). The beds' 1.5 a second ease then took about 2.5 s more to silence.
+- **Combat music didn't start in combat.** The opening fight is two or three longbows shooting `field_patrol_w` from range, and the patrol died before reaching melee. Counted fighters stayed at 1 to 3 from the first arrow at 13 s, and reached the threshold of 4 only when a sapper joined at 35 s. Combat came in at 37 s. A 6-against-6 melee on a flat field counted 12 on contact, so melee was never the problem.
+
+**Changes:**
+- The march level is movers / 12, and the march eases at 4 a second (the beds stay at 1.5), commit c8e2cca. In the same probe it drops to -15 dB within half a second of most men stopping, plays one straggler at -22 dB, and is silent half a second after the last man stops. Tim confirmed the march now stops with the squad.
+- `Music.COMBAT_IN_UNITS` went from 4 to 2 (held 1.5 s; going out is unchanged), commit 53f85c2. In the same probe combat comes in at 14.6 s, holds through the lulls in the shooting, and fades 10 s after the last shot. Tim approved it.
+
 ## Tooling
 
 Homebrew's ffmpeg has no libvorbis; its native `vorbis` encoder is experimental. Tim installed `vorbis-tools` (`oggenc` 1.4.3) on 2026-11-10, so `process.py` encodes Ogg Vorbis with `oggenc`. The synthetic Oggs above used ffmpeg's native encoder at 96 kbps. Their compressed sizes are therefore only indicative, but the decoded sizes are exact.
