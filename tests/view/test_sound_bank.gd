@@ -103,5 +103,5 @@ func _missing(bank: SoundBank, ids: Array[StringName]) -> Array[StringName]:
 
 func _assert_all_have_streams(bank: SoundBank, ids: Array[StringName]) -> void:
 	assert_gt(ids.size(), 50, "the map and code name plenty of cues")
-	for id: StringName in ids:
-		assert_true(bank.has(id), "cue %s is named but the bank has no stream for it" % id)
+	# _missing is the check test_the_named_cue_check_names_a_cue_with_no_stream proves can fail.
+	assert_eq(_missing(bank, ids), [], "these cues are named but the bank has no stream for them")

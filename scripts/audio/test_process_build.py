@@ -77,7 +77,7 @@ class BuildTest(unittest.TestCase):
                          ("music", "Music", True, "stream"))
         self.assertEqual(music["files"], [])
 
-    def test_the_committed_book_builds_(self) -> None:
+    def test_the_committed_book_builds_every_cue_and_line(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             out = Path(tmp) / "bank.json"
             self.assertEqual(process.write_sidecar(out), 0)
