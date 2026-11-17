@@ -30,6 +30,546 @@
       "model": "music_v2",
       "prompt": "a single soft low drone",
       "status": "DONE"
+    },
+    {
+      "bytes": 87118,
+      "credits": 28,
+      "files": [
+        "sfx/order_ack/1.wav"
+      ],
+      "finished_at": 1794881680,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/order_ack/1",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A short rattle of buckles, mail and a sword hilt as a soldier settles and nods, brief and crisp. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "eefe008bafc4eecd2c24cd4f3529156151d242817daf86aa5799e542cf6d6865",
+      "status": "DONE"
+    },
+    {
+      "bytes": 87118,
+      "credits": 28,
+      "files": [
+        "sfx/order_ack/2.wav"
+      ],
+      "finished_at": 1794881681,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/order_ack/2",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A short rattle of buckles, mail and a sword hilt as a soldier settles and nods, brief and crisp. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "9c8a28f4df3cd63e9c8272b1ab2c909d9fcb2b045f74bfb17d40cf28dc7855e1",
+      "status": "DONE"
+    },
+    {
+      "bytes": 87118,
+      "credits": 28,
+      "files": [
+        "sfx/order_ack/3.wav"
+      ],
+      "finished_at": 1794881682,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/order_ack/3",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A short rattle of buckles, mail and a sword hilt as a soldier settles and nods, brief and crisp. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "0bbe84c937cda06d24539ff62b2fb7fd7e3f0397faa76d896f0cabd91466acb2",
+      "status": "DONE"
+    },
+    {
+      "bytes": 87118,
+      "credits": 28,
+      "files": [
+        "sfx/order_ack/4.wav"
+      ],
+      "finished_at": 1794881683,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/order_ack/4",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A short rattle of buckles, mail and a sword hilt as a soldier settles and nods, brief and crisp. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "81f7a82c20d87611fb231cedfbf8da6c9304ae46174d8b6d072cbc6d8622333e",
+      "status": "DONE"
+    },
+    {
+      "bytes": 87118,
+      "credits": 28,
+      "files": [
+        "sfx/order_ack/5.wav"
+      ],
+      "finished_at": 1794881684,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/order_ack/5",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A short rattle of buckles, mail and a sword hilt as a soldier settles and nods, brief and crisp. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "c6f8b536d71fba93685ce1b4764e45f2dbe81ee23d09522d2c7d671ce70d9190",
+      "status": "DONE"
+    },
+    {
+      "bytes": 87118,
+      "credits": 28,
+      "files": [
+        "sfx/order_ack/6.wav"
+      ],
+      "finished_at": 1794881685,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/order_ack/6",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A short rattle of buckles, mail and a sword hilt as a soldier settles and nods, brief and crisp. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "e437412729ba7498ddecb370aa6233df51378d1a02bd03ca4ec31e59a9fe24df",
+      "status": "DONE"
+    },
+    {
+      "bytes": 61518,
+      "credits": 20,
+      "files": [
+        "sfx/ui_click/1.wav"
+      ],
+      "finished_at": 1794881687,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/ui_click/1",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A small wooden button peg pressed, a single short dry tick of wood on wood. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "8004884c8b2bbf53939f4585c4b50b27e0dfbb502764c117834f7f3b18462183",
+      "status": "DONE"
+    },
+    {
+      "bytes": 61518,
+      "credits": 20,
+      "files": [
+        "sfx/ui_click/2.wav"
+      ],
+      "finished_at": 1794881688,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/ui_click/2",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A small wooden button peg pressed, a single short dry tick of wood on wood. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "dfebe3a818a9d0ad1c7038c6ff2ecfa0ab1ea8e2e6d8b663214951014f6236da",
+      "status": "DONE"
+    },
+    {
+      "bytes": 61518,
+      "credits": 20,
+      "files": [
+        "sfx/ui_click/3.wav"
+      ],
+      "finished_at": 1794881689,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/ui_click/3",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A small wooden button peg pressed, a single short dry tick of wood on wood. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "92de4ac7e48d81633d5e3b49eab873a685043345e2b880f94d7b3f409937d873",
+      "status": "DONE"
+    },
+    {
+      "bytes": 61518,
+      "credits": 20,
+      "files": [
+        "sfx/ui_click/4.wav"
+      ],
+      "finished_at": 1794881690,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/ui_click/4",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A small wooden button peg pressed, a single short dry tick of wood on wood. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "145da0e8b56fee63cecd3df29416daea1c91884082e9a413776d73d780cf83ab",
+      "status": "DONE"
+    },
+    {
+      "bytes": 61518,
+      "credits": 20,
+      "files": [
+        "sfx/ui_click/5.wav"
+      ],
+      "finished_at": 1794881691,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/ui_click/5",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A small wooden button peg pressed, a single short dry tick of wood on wood. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "da8cb217330887144b626fd1f8903b31757b92111f7c7a333824ae87331cbb21",
+      "status": "DONE"
+    },
+    {
+      "bytes": 61518,
+      "credits": 20,
+      "files": [
+        "sfx/ui_click/6.wav"
+      ],
+      "finished_at": 1794881693,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/ui_click/6",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A small wooden button peg pressed, a single short dry tick of wood on wood. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "d16aace727c285a1041128ef08d86f95b2bb2d7d9caa3c75a15bb2e1c757a526",
+      "status": "DONE"
+    },
+    {
+      "bytes": 76878,
+      "credits": 24,
+      "files": [
+        "sfx/ui_deny/1.wav"
+      ],
+      "finished_at": 1794881694,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/ui_deny/1",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A dull wooden thunk of a closed door, short and flat, with a faint rattle of a latch. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "d2aca37ce74c7c14b93ecf61af658de7828926d013794e481e296495112df89d",
+      "status": "DONE"
+    },
+    {
+      "bytes": 76878,
+      "credits": 24,
+      "files": [
+        "sfx/ui_deny/2.wav"
+      ],
+      "finished_at": 1794881709,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/ui_deny/2",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A dull wooden thunk of a closed door, short and flat, with a faint rattle of a latch. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "9c542772c3e5b49fc1c1fabd3d7c24aaac1749032209e6db9af6ee4d1f3ae2d5",
+      "status": "DONE"
+    },
+    {
+      "bytes": 76878,
+      "credits": 24,
+      "files": [
+        "sfx/ui_deny/3.wav"
+      ],
+      "finished_at": 1794881711,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/ui_deny/3",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A dull wooden thunk of a closed door, short and flat, with a faint rattle of a latch. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "0dbc0fe184f5e625b68fc99b451e21a64b04b14551d7e7e5671a7bb7faac6a14",
+      "status": "DONE"
+    },
+    {
+      "bytes": 76878,
+      "credits": 24,
+      "files": [
+        "sfx/ui_deny/4.wav"
+      ],
+      "finished_at": 1794881712,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/ui_deny/4",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A dull wooden thunk of a closed door, short and flat, with a faint rattle of a latch. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "5632e84b6f892cd7130d1f738826eccda4e36b793b4be73d862322bcbb71056f",
+      "status": "DONE"
+    },
+    {
+      "bytes": 76878,
+      "credits": 24,
+      "files": [
+        "sfx/ui_deny/5.wav"
+      ],
+      "finished_at": 1794881713,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/ui_deny/5",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A dull wooden thunk of a closed door, short and flat, with a faint rattle of a latch. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "0d7a48856faab0b54b85fae2152406669b86902c0a7e9b1de83c23249a2dc88f",
+      "status": "DONE"
+    },
+    {
+      "bytes": 76878,
+      "credits": 24,
+      "files": [
+        "sfx/ui_deny/6.wav"
+      ],
+      "finished_at": 1794881717,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/ui_deny/6",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A dull wooden thunk of a closed door, short and flat, with a faint rattle of a latch. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "6d8b001bc346c82fe2b3eb9be75031308f0242feaaf0ae4f13099f5991f630ca",
+      "status": "DONE"
+    },
+    {
+      "bytes": 87118,
+      "credits": 28,
+      "files": [
+        "sfx/ui_formation/1.wav"
+      ],
+      "finished_at": 1794881719,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/ui_formation/1",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "Several spear shafts and boots shifting into line, a quick clatter of wood and a short scuff of feet. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "a1c50d804509925b864b5f63df863cd53ec41ad22b40faa827459ea6ab9a1f77",
+      "status": "DONE"
+    },
+    {
+      "bytes": 87118,
+      "credits": 28,
+      "files": [
+        "sfx/ui_formation/2.wav"
+      ],
+      "finished_at": 1794881720,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/ui_formation/2",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "Several spear shafts and boots shifting into line, a quick clatter of wood and a short scuff of feet. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "6d3bd025013f80902005159b4ef5c5ddb2824c5f0fd0bc8791a018a9c084ab3c",
+      "status": "DONE"
+    },
+    {
+      "bytes": 87118,
+      "credits": 28,
+      "files": [
+        "sfx/ui_formation/3.wav"
+      ],
+      "finished_at": 1794881721,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/ui_formation/3",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "Several spear shafts and boots shifting into line, a quick clatter of wood and a short scuff of feet. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "681fdfcf23240ee31ecc637faa0f4de75d0e4a7b0f00c29647037964e0a511f6",
+      "status": "DONE"
+    },
+    {
+      "bytes": 87118,
+      "credits": 28,
+      "files": [
+        "sfx/ui_formation/4.wav"
+      ],
+      "finished_at": 1794881722,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/ui_formation/4",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "Several spear shafts and boots shifting into line, a quick clatter of wood and a short scuff of feet. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "1cf0a878487e11b3fd279ba0c3ddf85d292d704a0b767075db8b8c2dde1b87c6",
+      "status": "DONE"
+    },
+    {
+      "bytes": 87118,
+      "credits": 28,
+      "files": [
+        "sfx/ui_formation/5.wav"
+      ],
+      "finished_at": 1794881723,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/ui_formation/5",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "Several spear shafts and boots shifting into line, a quick clatter of wood and a short scuff of feet. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "98c3651b0e265ee709acd77869118faa26c97f10141ebc52fc678244372f64d8",
+      "status": "DONE"
+    },
+    {
+      "bytes": 87118,
+      "credits": 28,
+      "files": [
+        "sfx/ui_formation/6.wav"
+      ],
+      "finished_at": 1794881724,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/ui_formation/6",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "Several spear shafts and boots shifting into line, a quick clatter of wood and a short scuff of feet. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "c9fb6bc520b0d5ee5e1e015b91a0fb6a392a74afaa77ed1204dc57c32908c1a4",
+      "status": "DONE"
+    },
+    {
+      "bytes": 76878,
+      "credits": 24,
+      "files": [
+        "sfx/ui_group/1.wav"
+      ],
+      "finished_at": 1794881726,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/ui_group/1",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A heavy iron key turned in a lock, a dull click and a short metal clunk. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "501dea7eae44382deb35e68ec471234e8402f9c5f4ed506376e832a6517d23fa",
+      "status": "DONE"
+    },
+    {
+      "bytes": 76878,
+      "credits": 24,
+      "files": [
+        "sfx/ui_group/2.wav"
+      ],
+      "finished_at": 1794881727,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/ui_group/2",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A heavy iron key turned in a lock, a dull click and a short metal clunk. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "b95f8cd7df9078afd6fdc84f0271283401aebd9cedc59900f7a12ef008e323f5",
+      "status": "DONE"
+    },
+    {
+      "bytes": 76878,
+      "credits": 24,
+      "files": [
+        "sfx/ui_group/3.wav"
+      ],
+      "finished_at": 1794881728,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/ui_group/3",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A heavy iron key turned in a lock, a dull click and a short metal clunk. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "7fe1adc4911a8985018fdff9756c4fa83c33da351e1ce0e1d63d2bd0703847be",
+      "status": "DONE"
+    },
+    {
+      "bytes": 76878,
+      "credits": 24,
+      "files": [
+        "sfx/ui_group/4.wav"
+      ],
+      "finished_at": 1794881729,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/ui_group/4",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A heavy iron key turned in a lock, a dull click and a short metal clunk. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "e38713573296dcfe5ad598eb8ddba4b0634d6822a4e91d0f38423bae2f974f53",
+      "status": "DONE"
+    },
+    {
+      "bytes": 76878,
+      "credits": 24,
+      "files": [
+        "sfx/ui_group/5.wav"
+      ],
+      "finished_at": 1794881730,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/ui_group/5",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A heavy iron key turned in a lock, a dull click and a short metal clunk. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "fde646ae5f88a863273b19d7fce164f2f1347c3b765ac5d7195fb65ae0fbbd9d",
+      "status": "DONE"
+    },
+    {
+      "bytes": 76878,
+      "credits": 24,
+      "files": [
+        "sfx/ui_group/6.wav"
+      ],
+      "finished_at": 1794881731,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/ui_group/6",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A heavy iron key turned in a lock, a dull click and a short metal clunk. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "c0f43a132a4abb5428b0e088251de1d362cb3c8b0d9e4a1b3cd88bd80a8fc52e",
+      "status": "DONE"
+    },
+    {
+      "bytes": 61518,
+      "credits": 20,
+      "files": [
+        "sfx/ui_select/1.wav"
+      ],
+      "finished_at": 1794881733,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/ui_select/1",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A leather strap tightened over a buckle, a short crisp creak and a soft metal clink. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "2ed2d3ac9857213c7343b72a4a5ce229652a061e7787c99e22ac7d4cf98910e4",
+      "status": "DONE"
+    },
+    {
+      "bytes": 61518,
+      "credits": 20,
+      "files": [
+        "sfx/ui_select/2.wav"
+      ],
+      "finished_at": 1794881734,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/ui_select/2",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A leather strap tightened over a buckle, a short crisp creak and a soft metal clink. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "69ac58f85ac9c2f9f9c8539452ac168349f36025863562900d7bf465c9dde452",
+      "status": "DONE"
+    },
+    {
+      "bytes": 61518,
+      "credits": 20,
+      "files": [
+        "sfx/ui_select/3.wav"
+      ],
+      "finished_at": 1794881735,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/ui_select/3",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A leather strap tightened over a buckle, a short crisp creak and a soft metal clink. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "0d2410c9c720ada2ea81274aff60859528a7076cd75d314eb3948af74a1505e5",
+      "status": "DONE"
+    },
+    {
+      "bytes": 61518,
+      "credits": 20,
+      "files": [
+        "sfx/ui_select/4.wav"
+      ],
+      "finished_at": 1794881736,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/ui_select/4",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A leather strap tightened over a buckle, a short crisp creak and a soft metal clink. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "63adcb33e97806f849ad55dec53f42ef7edb2440e5ca4e1d777b179d14b7818d",
+      "status": "DONE"
+    },
+    {
+      "bytes": 61518,
+      "credits": 20,
+      "files": [
+        "sfx/ui_select/5.wav"
+      ],
+      "finished_at": 1794881737,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/ui_select/5",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A leather strap tightened over a buckle, a short crisp creak and a soft metal clink. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "9ef0c080b01654ae43d6196b34d45d6f5391732f214c6659ef273ee5a8401ca2",
+      "status": "DONE"
+    },
+    {
+      "bytes": 61518,
+      "credits": 20,
+      "files": [
+        "sfx/ui_select/6.wav"
+      ],
+      "finished_at": 1794881738,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/ui_select/6",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A leather strap tightened over a buckle, a short crisp creak and a soft metal clink. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "26e64a1725912a79e59cf8ba4ebc8648d5e7e425ca1ae7bb3002b32cbba56880",
+      "status": "DONE"
     }
   ]
 }

@@ -1,506 +1,516 @@
 [gd_resource type="Resource" script_class="SoundBank" format=3]
 
-[ext_resource type="Script" path="res://view/audio/sound_cue.gd" id="1_s2fju"]
-[ext_resource type="AudioStream" path="res://assets/audio/sfx/sword_hit.wav" id="2_7kifr"]
-[ext_resource type="AudioStream" path="res://assets/audio/sfx/shield_block.wav" id="3_gg4jp"]
-[ext_resource type="AudioStream" path="res://assets/audio/sfx/heal.wav" id="4_ii3yv"]
-[ext_resource type="AudioStream" path="res://assets/audio/sfx/bow_release.wav" id="5_r7xlo"]
-[ext_resource type="AudioStream" path="res://assets/audio/sfx/grenade_bounce.wav" id="6_lqsaf"]
-[ext_resource type="AudioStream" path="res://assets/audio/sfx/arrow_impact.wav" id="7_uw11l"]
-[ext_resource type="AudioStream" path="res://assets/audio/sfx/explosion.wav" id="8_7ru6g"]
-[ext_resource type="AudioStream" path="res://assets/audio/sfx/gas_hiss.wav" id="9_rbjxk"]
-[ext_resource type="AudioStream" path="res://assets/audio/sfx/fire_ignite.wav" id="10_2sadd"]
-[ext_resource type="AudioStream" path="res://assets/audio/sfx/ui_click.wav" id="11_gdxse"]
-[ext_resource type="AudioStream" path="res://assets/audio/sfx/lightning.wav" id="12_j8m74"]
-[ext_resource type="AudioStream" path="res://assets/audio/sfx/death.wav" id="13_mv3sf"]
-[ext_resource type="AudioStream" path="res://assets/audio/sfx/order_deny.wav" id="14_n46y7"]
-[ext_resource type="AudioStream" path="res://assets/audio/sfx/order_ack.wav" id="15_sei3t"]
-[ext_resource type="AudioStream" path="res://assets/audio/sfx/rain_loop.wav" id="16_da57c"]
-[ext_resource type="AudioStream" path="res://assets/audio/sfx/fire_loop.wav" id="17_46htt"]
-[ext_resource type="Script" path="res://view/audio/sound_bank.gd" id="18_8pmpq"]
+[ext_resource type="Script" path="res://view/audio/sound_cue.gd" id="1_r7xlo"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/sword_hit.wav" id="2_lqsaf"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/shield_block.wav" id="3_uw11l"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/heal.wav" id="4_7ru6g"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/bow_release.wav" id="5_rbjxk"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/grenade_bounce.wav" id="6_2sadd"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/arrow_impact.wav" id="7_gdxse"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/explosion.wav" id="8_j8m74"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/gas_hiss.wav" id="9_mv3sf"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/fire_ignite.wav" id="10_n46y7"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/ui_click.wav" id="11_sei3t"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/lightning.wav" id="12_da57c"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/death.wav" id="13_46htt"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/ui_click_5.wav" id="14_8pmpq"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/ui_select_6.wav" id="15_f5jwi"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/ui_formation_1.wav" id="16_vim1x"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/ui_group_5.wav" id="17_4usny"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/ui_deny_5.wav" id="18_xfp70"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/order_ack_4.wav" id="19_8c2j0"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/rain_loop.wav" id="20_7h2cj"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/fire_loop.wav" id="21_nkhbh"]
+[ext_resource type="Script" path="res://view/audio/sound_bank.gd" id="22_gul8s"]
 
-[sub_resource type="Resource" id="Resource_f5jwi"]
-script = ExtResource("1_s2fju")
+[sub_resource type="Resource" id="Resource_fr0a0"]
+script = ExtResource("1_r7xlo")
 id = &"swing_blade"
 category = &"melee"
 
-[sub_resource type="Resource" id="Resource_vim1x"]
-script = ExtResource("1_s2fju")
+[sub_resource type="Resource" id="Resource_tqfst"]
+script = ExtResource("1_r7xlo")
 id = &"swing_heavy"
 category = &"melee"
 
-[sub_resource type="Resource" id="Resource_4usny"]
-script = ExtResource("1_s2fju")
+[sub_resource type="Resource" id="Resource_1s214"]
+script = ExtResource("1_r7xlo")
 id = &"swing_staff"
 category = &"melee"
 
-[sub_resource type="Resource" id="Resource_xfp70"]
-script = ExtResource("1_s2fju")
+[sub_resource type="Resource" id="Resource_jk2hk"]
+script = ExtResource("1_r7xlo")
 id = &"swing_claw"
 category = &"melee"
 
-[sub_resource type="Resource" id="Resource_8c2j0"]
-script = ExtResource("1_s2fju")
+[sub_resource type="Resource" id="Resource_hp3oj"]
+script = ExtResource("1_r7xlo")
 id = &"swing_stomp"
 category = &"melee"
 
-[sub_resource type="Resource" id="Resource_7h2cj"]
-script = ExtResource("1_s2fju")
+[sub_resource type="Resource" id="Resource_vg1ug"]
+script = ExtResource("1_r7xlo")
 id = &"hit_flesh"
 category = &"melee"
-streams = Array[AudioStream]([ExtResource("2_7kifr")])
+streams = Array[AudioStream]([ExtResource("2_lqsaf")])
 level_db = -9.0
 file_bytes = 2007
 
-[sub_resource type="Resource" id="Resource_nkhbh"]
-script = ExtResource("1_s2fju")
+[sub_resource type="Resource" id="Resource_bc1vq"]
+script = ExtResource("1_r7xlo")
 id = &"hit_dry"
 category = &"melee"
-streams = Array[AudioStream]([ExtResource("2_7kifr")])
+streams = Array[AudioStream]([ExtResource("2_lqsaf")])
 level_db = -9.0
 file_bytes = 2007
 
-[sub_resource type="Resource" id="Resource_gul8s"]
-script = ExtResource("1_s2fju")
+[sub_resource type="Resource" id="Resource_u7lm5"]
+script = ExtResource("1_r7xlo")
 id = &"block_shield"
 category = &"melee"
-streams = Array[AudioStream]([ExtResource("3_gg4jp")])
+streams = Array[AudioStream]([ExtResource("3_uw11l")])
 level_db = -9.0
 file_bytes = 2183
 
-[sub_resource type="Resource" id="Resource_fr0a0"]
-script = ExtResource("1_s2fju")
+[sub_resource type="Resource" id="Resource_jja0c"]
+script = ExtResource("1_r7xlo")
 id = &"heal"
 category = &"melee"
-streams = Array[AudioStream]([ExtResource("4_ii3yv")])
+streams = Array[AudioStream]([ExtResource("4_7ru6g")])
 level_db = -6.0
 file_bytes = 4879
-
-[sub_resource type="Resource" id="Resource_tqfst"]
-script = ExtResource("1_s2fju")
-id = &"heal_sear"
-category = &"melee"
-streams = Array[AudioStream]([ExtResource("4_ii3yv")])
-level_db = -6.0
-file_bytes = 4879
-
-[sub_resource type="Resource" id="Resource_1s214"]
-script = ExtResource("1_s2fju")
-id = &"bow_release"
-category = &"projectile"
-streams = Array[AudioStream]([ExtResource("5_r7xlo")])
-level_db = -10.0
-file_bytes = 2647
-
-[sub_resource type="Resource" id="Resource_jk2hk"]
-script = ExtResource("1_s2fju")
-id = &"bow_release_fire"
-category = &"projectile"
-streams = Array[AudioStream]([ExtResource("5_r7xlo")])
-level_db = -10.0
-file_bytes = 2647
-
-[sub_resource type="Resource" id="Resource_hp3oj"]
-script = ExtResource("1_s2fju")
-id = &"throw_bottle"
-category = &"projectile"
-streams = Array[AudioStream]([ExtResource("6_lqsaf")])
-level_db = -10.0
-file_bytes = 1215
-
-[sub_resource type="Resource" id="Resource_vg1ug"]
-script = ExtResource("1_s2fju")
-id = &"throw_herb"
-category = &"projectile"
-
-[sub_resource type="Resource" id="Resource_bc1vq"]
-script = ExtResource("1_s2fju")
-id = &"throw_heavy"
-category = &"projectile"
-streams = Array[AudioStream]([ExtResource("6_lqsaf")])
-level_db = -10.0
-file_bytes = 1215
-
-[sub_resource type="Resource" id="Resource_u7lm5"]
-script = ExtResource("1_s2fju")
-id = &"lightning_charge"
-category = &"projectile"
-
-[sub_resource type="Resource" id="Resource_jja0c"]
-script = ExtResource("1_s2fju")
-id = &"arrow_thunk"
-category = &"projectile"
-streams = Array[AudioStream]([ExtResource("7_uw11l")])
-level_db = -12.0
-file_bytes = 1479
 
 [sub_resource type="Resource" id="Resource_0iqra"]
-script = ExtResource("1_s2fju")
-id = &"arrow_splash"
-category = &"projectile"
-streams = Array[AudioStream]([ExtResource("7_uw11l")])
-level_db = -12.0
-file_bytes = 1479
+script = ExtResource("1_r7xlo")
+id = &"heal_sear"
+category = &"melee"
+streams = Array[AudioStream]([ExtResource("4_7ru6g")])
+level_db = -6.0
+file_bytes = 4879
 
 [sub_resource type="Resource" id="Resource_m2paq"]
-script = ExtResource("1_s2fju")
-id = &"arrow_flesh"
+script = ExtResource("1_r7xlo")
+id = &"bow_release"
 category = &"projectile"
-streams = Array[AudioStream]([ExtResource("7_uw11l")])
-level_db = -12.0
-file_bytes = 1479
+streams = Array[AudioStream]([ExtResource("5_rbjxk")])
+level_db = -10.0
+file_bytes = 2647
 
 [sub_resource type="Resource" id="Resource_f4igh"]
-script = ExtResource("1_s2fju")
-id = &"thud_flesh"
+script = ExtResource("1_r7xlo")
+id = &"bow_release_fire"
 category = &"projectile"
-streams = Array[AudioStream]([ExtResource("6_lqsaf")])
+streams = Array[AudioStream]([ExtResource("5_rbjxk")])
 level_db = -10.0
-file_bytes = 1215
+file_bytes = 2647
 
 [sub_resource type="Resource" id="Resource_1h5gw"]
-script = ExtResource("1_s2fju")
-id = &"bottle_clink"
+script = ExtResource("1_r7xlo")
+id = &"throw_bottle"
 category = &"projectile"
-streams = Array[AudioStream]([ExtResource("6_lqsaf")])
+streams = Array[AudioStream]([ExtResource("6_2sadd")])
 level_db = -10.0
 file_bytes = 1215
 
 [sub_resource type="Resource" id="Resource_hbuc8"]
-script = ExtResource("1_s2fju")
-id = &"explosion_small"
+script = ExtResource("1_r7xlo")
+id = &"throw_herb"
 category = &"projectile"
-streams = Array[AudioStream]([ExtResource("8_7ru6g")])
-file_bytes = 12911
 
 [sub_resource type="Resource" id="Resource_8y6ii"]
-script = ExtResource("1_s2fju")
-id = &"explosion_large"
+script = ExtResource("1_r7xlo")
+id = &"throw_heavy"
 category = &"projectile"
-streams = Array[AudioStream]([ExtResource("8_7ru6g")])
-max_voices = 2
-file_bytes = 12911
+streams = Array[AudioStream]([ExtResource("6_2sadd")])
+level_db = -10.0
+file_bytes = 1215
 
 [sub_resource type="Resource" id="Resource_136j5"]
-script = ExtResource("1_s2fju")
-id = &"explosion_water"
+script = ExtResource("1_r7xlo")
+id = &"lightning_charge"
 category = &"projectile"
-streams = Array[AudioStream]([ExtResource("8_7ru6g")])
-file_bytes = 12911
 
 [sub_resource type="Resource" id="Resource_1x5fc"]
-script = ExtResource("1_s2fju")
-id = &"gas_burst"
+script = ExtResource("1_r7xlo")
+id = &"arrow_thunk"
 category = &"projectile"
-streams = Array[AudioStream]([ExtResource("8_7ru6g")])
-max_voices = 2
-file_bytes = 12911
+streams = Array[AudioStream]([ExtResource("7_gdxse")])
+level_db = -12.0
+file_bytes = 1479
 
 [sub_resource type="Resource" id="Resource_vmhwh"]
-script = ExtResource("1_s2fju")
-id = &"fizzle_hiss"
+script = ExtResource("1_r7xlo")
+id = &"arrow_splash"
 category = &"projectile"
-streams = Array[AudioStream]([ExtResource("9_rbjxk")])
-level_db = -6.0
-file_bytes = 7543
+streams = Array[AudioStream]([ExtResource("7_gdxse")])
+level_db = -12.0
+file_bytes = 1479
 
 [sub_resource type="Resource" id="Resource_4qxcb"]
-script = ExtResource("1_s2fju")
-id = &"fizzle_water"
+script = ExtResource("1_r7xlo")
+id = &"arrow_flesh"
 category = &"projectile"
-streams = Array[AudioStream]([ExtResource("9_rbjxk")])
-level_db = -6.0
-file_bytes = 7543
+streams = Array[AudioStream]([ExtResource("7_gdxse")])
+level_db = -12.0
+file_bytes = 1479
 
 [sub_resource type="Resource" id="Resource_pldpc"]
-script = ExtResource("1_s2fju")
-id = &"satchel_thud"
+script = ExtResource("1_r7xlo")
+id = &"thud_flesh"
 category = &"projectile"
-streams = Array[AudioStream]([ExtResource("6_lqsaf")])
+streams = Array[AudioStream]([ExtResource("6_2sadd")])
 level_db = -10.0
 file_bytes = 1215
 
 [sub_resource type="Resource" id="Resource_yp0eu"]
-script = ExtResource("1_s2fju")
-id = &"fire_whoomp"
+script = ExtResource("1_r7xlo")
+id = &"bottle_clink"
 category = &"projectile"
-streams = Array[AudioStream]([ExtResource("10_2sadd")])
-level_db = -6.0
-file_bytes = 5759
+streams = Array[AudioStream]([ExtResource("6_2sadd")])
+level_db = -10.0
+file_bytes = 1215
 
 [sub_resource type="Resource" id="Resource_h6ueu"]
-script = ExtResource("1_s2fju")
-id = &"grab"
+script = ExtResource("1_r7xlo")
+id = &"explosion_small"
 category = &"projectile"
-streams = Array[AudioStream]([ExtResource("11_gdxse")])
-level_db = -10.0
-file_bytes = 775
+streams = Array[AudioStream]([ExtResource("8_j8m74")])
+file_bytes = 12911
 
 [sub_resource type="Resource" id="Resource_bgxmu"]
-script = ExtResource("1_s2fju")
-id = &"thunder"
+script = ExtResource("1_r7xlo")
+id = &"explosion_large"
 category = &"projectile"
-streams = Array[AudioStream]([ExtResource("12_j8m74")])
+streams = Array[AudioStream]([ExtResource("8_j8m74")])
 max_voices = 2
-file_bytes = 9335
+file_bytes = 12911
 
 [sub_resource type="Resource" id="Resource_diwn6"]
-script = ExtResource("1_s2fju")
-id = &"gas_release"
+script = ExtResource("1_r7xlo")
+id = &"explosion_water"
 category = &"projectile"
-streams = Array[AudioStream]([ExtResource("9_rbjxk")])
+streams = Array[AudioStream]([ExtResource("8_j8m74")])
+file_bytes = 12911
+
+[sub_resource type="Resource" id="Resource_yxymc"]
+script = ExtResource("1_r7xlo")
+id = &"gas_burst"
+category = &"projectile"
+streams = Array[AudioStream]([ExtResource("8_j8m74")])
+max_voices = 2
+file_bytes = 12911
+
+[sub_resource type="Resource" id="Resource_lsjfb"]
+script = ExtResource("1_r7xlo")
+id = &"fizzle_hiss"
+category = &"projectile"
+streams = Array[AudioStream]([ExtResource("9_mv3sf")])
 level_db = -6.0
 file_bytes = 7543
 
-[sub_resource type="Resource" id="Resource_yxymc"]
-script = ExtResource("1_s2fju")
-id = &"death_shieldman"
-category = &"death"
-streams = Array[AudioStream]([ExtResource("13_mv3sf")])
-level_db = -6.0
-file_bytes = 4415
-
-[sub_resource type="Resource" id="Resource_lsjfb"]
-script = ExtResource("1_s2fju")
-id = &"death_reaver"
-category = &"death"
-streams = Array[AudioStream]([ExtResource("13_mv3sf")])
-level_db = -6.0
-file_bytes = 4415
-
 [sub_resource type="Resource" id="Resource_a4aw3"]
-script = ExtResource("1_s2fju")
-id = &"death_longbow"
-category = &"death"
-streams = Array[AudioStream]([ExtResource("13_mv3sf")])
+script = ExtResource("1_r7xlo")
+id = &"fizzle_water"
+category = &"projectile"
+streams = Array[AudioStream]([ExtResource("9_mv3sf")])
 level_db = -6.0
-file_bytes = 4415
+file_bytes = 7543
 
 [sub_resource type="Resource" id="Resource_mlt2x"]
-script = ExtResource("1_s2fju")
-id = &"death_sapper"
-category = &"death"
-streams = Array[AudioStream]([ExtResource("13_mv3sf")])
-level_db = -6.0
-file_bytes = 4415
+script = ExtResource("1_r7xlo")
+id = &"satchel_thud"
+category = &"projectile"
+streams = Array[AudioStream]([ExtResource("6_2sadd")])
+level_db = -10.0
+file_bytes = 1215
 
 [sub_resource type="Resource" id="Resource_jwf6u"]
-script = ExtResource("1_s2fju")
-id = &"death_warden"
-category = &"death"
-streams = Array[AudioStream]([ExtResource("13_mv3sf")])
+script = ExtResource("1_r7xlo")
+id = &"fire_whoomp"
+category = &"projectile"
+streams = Array[AudioStream]([ExtResource("10_n46y7")])
 level_db = -6.0
-file_bytes = 4415
+file_bytes = 5759
 
 [sub_resource type="Resource" id="Resource_wt1u1"]
-script = ExtResource("1_s2fju")
-id = &"death_villager"
-category = &"death"
-streams = Array[AudioStream]([ExtResource("13_mv3sf")])
-level_db = -6.0
-file_bytes = 4415
+script = ExtResource("1_r7xlo")
+id = &"grab"
+category = &"projectile"
+streams = Array[AudioStream]([ExtResource("11_sei3t")])
+level_db = -10.0
+file_bytes = 775
 
 [sub_resource type="Resource" id="Resource_cf8yt"]
-script = ExtResource("1_s2fju")
-id = &"death_husk"
-category = &"death"
-streams = Array[AudioStream]([ExtResource("13_mv3sf")])
-level_db = -6.0
-file_bytes = 4415
+script = ExtResource("1_r7xlo")
+id = &"thunder"
+category = &"projectile"
+streams = Array[AudioStream]([ExtResource("12_da57c")])
+max_voices = 2
+file_bytes = 9335
 
 [sub_resource type="Resource" id="Resource_yyvqe"]
-script = ExtResource("1_s2fju")
-id = &"death_ripper"
-category = &"death"
-streams = Array[AudioStream]([ExtResource("13_mv3sf")])
+script = ExtResource("1_r7xlo")
+id = &"gas_release"
+category = &"projectile"
+streams = Array[AudioStream]([ExtResource("9_mv3sf")])
 level_db = -6.0
-file_bytes = 4415
+file_bytes = 7543
 
 [sub_resource type="Resource" id="Resource_cibdf"]
-script = ExtResource("1_s2fju")
-id = &"death_blightbag"
+script = ExtResource("1_r7xlo")
+id = &"death_shieldman"
 category = &"death"
-streams = Array[AudioStream]([ExtResource("13_mv3sf")])
+streams = Array[AudioStream]([ExtResource("13_46htt")])
 level_db = -6.0
 file_bytes = 4415
 
 [sub_resource type="Resource" id="Resource_tbpgn"]
-script = ExtResource("1_s2fju")
-id = &"death_drifter"
+script = ExtResource("1_r7xlo")
+id = &"death_reaver"
 category = &"death"
-streams = Array[AudioStream]([ExtResource("13_mv3sf")])
+streams = Array[AudioStream]([ExtResource("13_46htt")])
 level_db = -6.0
 file_bytes = 4415
 
 [sub_resource type="Resource" id="Resource_vqjlk"]
-script = ExtResource("1_s2fju")
-id = &"death_stormcaller"
+script = ExtResource("1_r7xlo")
+id = &"death_longbow"
 category = &"death"
-streams = Array[AudioStream]([ExtResource("13_mv3sf")])
+streams = Array[AudioStream]([ExtResource("13_46htt")])
 level_db = -6.0
 file_bytes = 4415
 
 [sub_resource type="Resource" id="Resource_fuw6h"]
-script = ExtResource("1_s2fju")
+script = ExtResource("1_r7xlo")
+id = &"death_sapper"
+category = &"death"
+streams = Array[AudioStream]([ExtResource("13_46htt")])
+level_db = -6.0
+file_bytes = 4415
+
+[sub_resource type="Resource" id="Resource_avd2k"]
+script = ExtResource("1_r7xlo")
+id = &"death_warden"
+category = &"death"
+streams = Array[AudioStream]([ExtResource("13_46htt")])
+level_db = -6.0
+file_bytes = 4415
+
+[sub_resource type="Resource" id="Resource_uubna"]
+script = ExtResource("1_r7xlo")
+id = &"death_villager"
+category = &"death"
+streams = Array[AudioStream]([ExtResource("13_46htt")])
+level_db = -6.0
+file_bytes = 4415
+
+[sub_resource type="Resource" id="Resource_3t7av"]
+script = ExtResource("1_r7xlo")
+id = &"death_husk"
+category = &"death"
+streams = Array[AudioStream]([ExtResource("13_46htt")])
+level_db = -6.0
+file_bytes = 4415
+
+[sub_resource type="Resource" id="Resource_pw7uf"]
+script = ExtResource("1_r7xlo")
+id = &"death_ripper"
+category = &"death"
+streams = Array[AudioStream]([ExtResource("13_46htt")])
+level_db = -6.0
+file_bytes = 4415
+
+[sub_resource type="Resource" id="Resource_0g573"]
+script = ExtResource("1_r7xlo")
+id = &"death_blightbag"
+category = &"death"
+streams = Array[AudioStream]([ExtResource("13_46htt")])
+level_db = -6.0
+file_bytes = 4415
+
+[sub_resource type="Resource" id="Resource_iuyaj"]
+script = ExtResource("1_r7xlo")
+id = &"death_drifter"
+category = &"death"
+streams = Array[AudioStream]([ExtResource("13_46htt")])
+level_db = -6.0
+file_bytes = 4415
+
+[sub_resource type="Resource" id="Resource_bf341"]
+script = ExtResource("1_r7xlo")
+id = &"death_stormcaller"
+category = &"death"
+streams = Array[AudioStream]([ExtResource("13_46htt")])
+level_db = -6.0
+file_bytes = 4415
+
+[sub_resource type="Resource" id="Resource_wb15n"]
+script = ExtResource("1_r7xlo")
 id = &"groan_husk"
 category = &"groan"
 
-[sub_resource type="Resource" id="Resource_avd2k"]
-script = ExtResource("1_s2fju")
+[sub_resource type="Resource" id="Resource_f05h5"]
+script = ExtResource("1_r7xlo")
 id = &"groan_ripper"
 category = &"groan"
 
-[sub_resource type="Resource" id="Resource_uubna"]
-script = ExtResource("1_s2fju")
+[sub_resource type="Resource" id="Resource_qbp7p"]
+script = ExtResource("1_r7xlo")
 id = &"groan_blightbag"
 category = &"groan"
 
-[sub_resource type="Resource" id="Resource_3t7av"]
-script = ExtResource("1_s2fju")
+[sub_resource type="Resource" id="Resource_ndl8c"]
+script = ExtResource("1_r7xlo")
 id = &"groan_drifter"
 category = &"groan"
 
-[sub_resource type="Resource" id="Resource_pw7uf"]
-script = ExtResource("1_s2fju")
+[sub_resource type="Resource" id="Resource_f7dtj"]
+script = ExtResource("1_r7xlo")
 id = &"groan_stormcaller"
 category = &"groan"
 
-[sub_resource type="Resource" id="Resource_0g573"]
-script = ExtResource("1_s2fju")
+[sub_resource type="Resource" id="Resource_noq8n"]
+script = ExtResource("1_r7xlo")
 id = &"ui_click"
 category = &"ui"
-streams = Array[AudioStream]([ExtResource("11_gdxse")])
+streams = Array[AudioStream]([ExtResource("14_8pmpq")])
 bus = &"Interface"
 level_db = -10.0
-file_bytes = 775
+file_bytes = 1703
 
-[sub_resource type="Resource" id="Resource_iuyaj"]
-script = ExtResource("1_s2fju")
+[sub_resource type="Resource" id="Resource_dm008"]
+script = ExtResource("1_r7xlo")
 id = &"ui_select"
 category = &"ui"
+streams = Array[AudioStream]([ExtResource("15_f5jwi")])
 bus = &"Interface"
 level_db = -10.0
+file_bytes = 6607
 
-[sub_resource type="Resource" id="Resource_bf341"]
-script = ExtResource("1_s2fju")
+[sub_resource type="Resource" id="Resource_t7n7a"]
+script = ExtResource("1_r7xlo")
 id = &"ui_formation"
 category = &"ui"
+streams = Array[AudioStream]([ExtResource("16_vim1x")])
 bus = &"Interface"
 level_db = -10.0
+file_bytes = 7375
 
-[sub_resource type="Resource" id="Resource_wb15n"]
-script = ExtResource("1_s2fju")
+[sub_resource type="Resource" id="Resource_a7n6p"]
+script = ExtResource("1_r7xlo")
 id = &"ui_group"
 category = &"ui"
+streams = Array[AudioStream]([ExtResource("17_4usny")])
 bus = &"Interface"
 level_db = -10.0
+file_bytes = 4167
 
-[sub_resource type="Resource" id="Resource_f05h5"]
-script = ExtResource("1_s2fju")
+[sub_resource type="Resource" id="Resource_cgjt3"]
+script = ExtResource("1_r7xlo")
 id = &"ui_deny"
 category = &"ui"
-streams = Array[AudioStream]([ExtResource("14_n46y7")])
+streams = Array[AudioStream]([ExtResource("18_xfp70")])
 bus = &"Interface"
 level_db = -6.0
-file_bytes = 2007
+file_bytes = 5567
 
-[sub_resource type="Resource" id="Resource_qbp7p"]
-script = ExtResource("1_s2fju")
+[sub_resource type="Resource" id="Resource_tbc5q"]
+script = ExtResource("1_r7xlo")
 id = &"order_ack"
 category = &"ui"
-streams = Array[AudioStream]([ExtResource("15_sei3t")])
+streams = Array[AudioStream]([ExtResource("19_8c2j0")])
 bus = &"Interface"
 level_db = -8.0
-file_bytes = 1479
+file_bytes = 9215
 
-[sub_resource type="Resource" id="Resource_ndl8c"]
-script = ExtResource("1_s2fju")
+[sub_resource type="Resource" id="Resource_clh4e"]
+script = ExtResource("1_r7xlo")
 id = &"march_grass"
 category = &"march"
 bus = &"Ambient"
 loop = true
 playback = 1
 
-[sub_resource type="Resource" id="Resource_f7dtj"]
-script = ExtResource("1_s2fju")
+[sub_resource type="Resource" id="Resource_0p03a"]
+script = ExtResource("1_r7xlo")
 id = &"march_sand"
 category = &"march"
 bus = &"Ambient"
 loop = true
 playback = 1
 
-[sub_resource type="Resource" id="Resource_noq8n"]
-script = ExtResource("1_s2fju")
+[sub_resource type="Resource" id="Resource_wfg0u"]
+script = ExtResource("1_r7xlo")
 id = &"march_rock"
 category = &"march"
 bus = &"Ambient"
 loop = true
 playback = 1
 
-[sub_resource type="Resource" id="Resource_dm008"]
-script = ExtResource("1_s2fju")
+[sub_resource type="Resource" id="Resource_yibqy"]
+script = ExtResource("1_r7xlo")
 id = &"march_water"
 category = &"march"
 bus = &"Ambient"
 loop = true
 playback = 1
 
-[sub_resource type="Resource" id="Resource_t7n7a"]
-script = ExtResource("1_s2fju")
+[sub_resource type="Resource" id="Resource_gg6r1"]
+script = ExtResource("1_r7xlo")
 id = &"bed_outdoor"
 category = &"bed"
 bus = &"Ambient"
 loop = true
 playback = 1
 
-[sub_resource type="Resource" id="Resource_a7n6p"]
-script = ExtResource("1_s2fju")
+[sub_resource type="Resource" id="Resource_laah5"]
+script = ExtResource("1_r7xlo")
 id = &"bed_rain"
 category = &"bed"
-streams = Array[AudioStream]([ExtResource("16_da57c")])
+streams = Array[AudioStream]([ExtResource("20_7h2cj")])
 bus = &"Ambient"
 level_db = -4.0
 loop = true
 playback = 1
 file_bytes = 36127
 
-[sub_resource type="Resource" id="Resource_cgjt3"]
-script = ExtResource("1_s2fju")
+[sub_resource type="Resource" id="Resource_uswd1"]
+script = ExtResource("1_r7xlo")
 id = &"bed_snow"
 category = &"bed"
 bus = &"Ambient"
 loop = true
 playback = 1
 
-[sub_resource type="Resource" id="Resource_tbc5q"]
-script = ExtResource("1_s2fju")
+[sub_resource type="Resource" id="Resource_vc2mb"]
+script = ExtResource("1_r7xlo")
 id = &"bed_fire"
 category = &"bed"
-streams = Array[AudioStream]([ExtResource("17_46htt")])
+streams = Array[AudioStream]([ExtResource("21_nkhbh")])
 bus = &"Ambient"
 level_db = -4.0
 loop = true
 playback = 1
 file_bytes = 27191
 
-[sub_resource type="Resource" id="Resource_clh4e"]
-script = ExtResource("1_s2fju")
+[sub_resource type="Resource" id="Resource_54ei2"]
+script = ExtResource("1_r7xlo")
 id = &"bed_water"
 category = &"bed"
 bus = &"Ambient"
 loop = true
 playback = 1
 
-[sub_resource type="Resource" id="Resource_0p03a"]
-script = ExtResource("1_s2fju")
+[sub_resource type="Resource" id="Resource_juvs4"]
+script = ExtResource("1_r7xlo")
 id = &"bed_gas"
 category = &"bed"
 bus = &"Ambient"
 loop = true
 playback = 1
 
-[sub_resource type="Resource" id="Resource_wfg0u"]
-script = ExtResource("1_s2fju")
+[sub_resource type="Resource" id="Resource_6yajw"]
+script = ExtResource("1_r7xlo")
 id = &"music_riverside_calm"
 category = &"music"
 bus = &"Music"
@@ -509,8 +519,8 @@ max_voices = 1
 loop = true
 playback = 1
 
-[sub_resource type="Resource" id="Resource_yibqy"]
-script = ExtResource("1_s2fju")
+[sub_resource type="Resource" id="Resource_3nmgj"]
+script = ExtResource("1_r7xlo")
 id = &"music_riverside_combat"
 category = &"music"
 bus = &"Music"
@@ -520,5 +530,5 @@ loop = true
 playback = 1
 
 [resource]
-script = ExtResource("18_8pmpq")
-cues = Array[ExtResource("1_s2fju")]([SubResource("Resource_f5jwi"), SubResource("Resource_vim1x"), SubResource("Resource_4usny"), SubResource("Resource_xfp70"), SubResource("Resource_8c2j0"), SubResource("Resource_7h2cj"), SubResource("Resource_nkhbh"), SubResource("Resource_gul8s"), SubResource("Resource_fr0a0"), SubResource("Resource_tqfst"), SubResource("Resource_1s214"), SubResource("Resource_jk2hk"), SubResource("Resource_hp3oj"), SubResource("Resource_vg1ug"), SubResource("Resource_bc1vq"), SubResource("Resource_u7lm5"), SubResource("Resource_jja0c"), SubResource("Resource_0iqra"), SubResource("Resource_m2paq"), SubResource("Resource_f4igh"), SubResource("Resource_1h5gw"), SubResource("Resource_hbuc8"), SubResource("Resource_8y6ii"), SubResource("Resource_136j5"), SubResource("Resource_1x5fc"), SubResource("Resource_vmhwh"), SubResource("Resource_4qxcb"), SubResource("Resource_pldpc"), SubResource("Resource_yp0eu"), SubResource("Resource_h6ueu"), SubResource("Resource_bgxmu"), SubResource("Resource_diwn6"), SubResource("Resource_yxymc"), SubResource("Resource_lsjfb"), SubResource("Resource_a4aw3"), SubResource("Resource_mlt2x"), SubResource("Resource_jwf6u"), SubResource("Resource_wt1u1"), SubResource("Resource_cf8yt"), SubResource("Resource_yyvqe"), SubResource("Resource_cibdf"), SubResource("Resource_tbpgn"), SubResource("Resource_vqjlk"), SubResource("Resource_fuw6h"), SubResource("Resource_avd2k"), SubResource("Resource_uubna"), SubResource("Resource_3t7av"), SubResource("Resource_pw7uf"), SubResource("Resource_0g573"), SubResource("Resource_iuyaj"), SubResource("Resource_bf341"), SubResource("Resource_wb15n"), SubResource("Resource_f05h5"), SubResource("Resource_qbp7p"), SubResource("Resource_ndl8c"), SubResource("Resource_f7dtj"), SubResource("Resource_noq8n"), SubResource("Resource_dm008"), SubResource("Resource_t7n7a"), SubResource("Resource_a7n6p"), SubResource("Resource_cgjt3"), SubResource("Resource_tbc5q"), SubResource("Resource_clh4e"), SubResource("Resource_0p03a"), SubResource("Resource_wfg0u"), SubResource("Resource_yibqy")])
+script = ExtResource("22_gul8s")
+cues = Array[ExtResource("1_r7xlo")]([SubResource("Resource_fr0a0"), SubResource("Resource_tqfst"), SubResource("Resource_1s214"), SubResource("Resource_jk2hk"), SubResource("Resource_hp3oj"), SubResource("Resource_vg1ug"), SubResource("Resource_bc1vq"), SubResource("Resource_u7lm5"), SubResource("Resource_jja0c"), SubResource("Resource_0iqra"), SubResource("Resource_m2paq"), SubResource("Resource_f4igh"), SubResource("Resource_1h5gw"), SubResource("Resource_hbuc8"), SubResource("Resource_8y6ii"), SubResource("Resource_136j5"), SubResource("Resource_1x5fc"), SubResource("Resource_vmhwh"), SubResource("Resource_4qxcb"), SubResource("Resource_pldpc"), SubResource("Resource_yp0eu"), SubResource("Resource_h6ueu"), SubResource("Resource_bgxmu"), SubResource("Resource_diwn6"), SubResource("Resource_yxymc"), SubResource("Resource_lsjfb"), SubResource("Resource_a4aw3"), SubResource("Resource_mlt2x"), SubResource("Resource_jwf6u"), SubResource("Resource_wt1u1"), SubResource("Resource_cf8yt"), SubResource("Resource_yyvqe"), SubResource("Resource_cibdf"), SubResource("Resource_tbpgn"), SubResource("Resource_vqjlk"), SubResource("Resource_fuw6h"), SubResource("Resource_avd2k"), SubResource("Resource_uubna"), SubResource("Resource_3t7av"), SubResource("Resource_pw7uf"), SubResource("Resource_0g573"), SubResource("Resource_iuyaj"), SubResource("Resource_bf341"), SubResource("Resource_wb15n"), SubResource("Resource_f05h5"), SubResource("Resource_qbp7p"), SubResource("Resource_ndl8c"), SubResource("Resource_f7dtj"), SubResource("Resource_noq8n"), SubResource("Resource_dm008"), SubResource("Resource_t7n7a"), SubResource("Resource_a7n6p"), SubResource("Resource_cgjt3"), SubResource("Resource_tbc5q"), SubResource("Resource_clh4e"), SubResource("Resource_0p03a"), SubResource("Resource_wfg0u"), SubResource("Resource_yibqy"), SubResource("Resource_gg6r1"), SubResource("Resource_laah5"), SubResource("Resource_uswd1"), SubResource("Resource_vc2mb"), SubResource("Resource_54ei2"), SubResource("Resource_juvs4"), SubResource("Resource_6yajw"), SubResource("Resource_3nmgj")])

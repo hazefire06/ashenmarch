@@ -391,7 +391,7 @@ duration_s = 0.5
 bus = "Interface"
 level_db = -10.0
 placeholder = "res://assets/audio/sfx/ui_click.wav"
-picks = []
+picks = [5]
 
 [cue.ui_select]
 category = "ui"
@@ -399,7 +399,7 @@ prompt = "A leather strap tightened over a buckle, a short crisp creak and a sof
 duration_s = 0.5
 bus = "Interface"
 level_db = -10.0
-picks = []
+picks = [6]
 
 [cue.ui_formation]
 category = "ui"
@@ -407,7 +407,7 @@ prompt = "Several spear shafts and boots shifting into line, a quick clatter of 
 duration_s = 0.7
 bus = "Interface"
 level_db = -10.0
-picks = []
+picks = [1]
 
 [cue.ui_group]
 category = "ui"
@@ -415,7 +415,7 @@ prompt = "A heavy iron key turned in a lock, a dull click and a short metal clun
 duration_s = 0.6
 bus = "Interface"
 level_db = -10.0
-picks = []
+picks = [5]
 
 [cue.ui_deny]
 category = "ui"
@@ -424,7 +424,7 @@ duration_s = 0.6
 bus = "Interface"
 level_db = -6.0
 placeholder = "res://assets/audio/sfx/order_deny.wav"
-picks = []
+picks = [5]
 
 [cue.order_ack]
 category = "ui"
@@ -433,7 +433,7 @@ duration_s = 0.7
 bus = "Interface"
 level_db = -8.0
 placeholder = "res://assets/audio/sfx/order_ack.wav"
-picks = []
+picks = [4]
 
 [cue.march_grass]
 category = "march"
