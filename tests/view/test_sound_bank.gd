@@ -59,8 +59,7 @@ const CODE_NAMED: Array[StringName] = [
 ]
 
 
-# Every one-shot and loop the map and the code name has a stream. The music cues are not here: music is
-# bought in its own batch.
+# Every one-shot, loop and music layer the map and the code name has a stream.
 func test_every_named_cue_has_a_stream() -> void:
 	_assert_all_have_streams(SoundBank.shared(), _named_cues())
 
@@ -88,6 +87,12 @@ func _named_cues() -> Array[StringName]:
 		for id: StringName in [p.launch, p.stick, p.hit, p.bounce]:
 			if id != &"":
 				ids[id] = true
+	var pairs: Array[MusicPair] = map.music.duplicate()
+	if map.default_music != null:
+		pairs.append(map.default_music)
+	for pair: MusicPair in pairs:
+		ids[pair.calm] = true
+		ids[pair.combat] = true
 	var out: Array[StringName] = []
 	out.assign(ids.keys())
 	return out

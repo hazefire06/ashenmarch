@@ -9,7 +9,7 @@ Key of D minor, 84 beats per minute, 4/4, steady tempo throughout."""
 length_s = 110
 model = "music_v2"
 takes = 3
-picks = []
+picks = [1]
 
 [layer.riverside_combat]
 prompt = """
@@ -18,4 +18,4 @@ Key of D minor, 84 beats per minute, 4/4, steady tempo throughout."""
 length_s = 110
 model = "music_v2"
 takes = 3
-picks = []
+picks = [2]

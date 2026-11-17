@@ -5280,6 +5280,96 @@
       "prompt": "A shallow creek running over stones, a constant bright burbling and trickle of water, steady and even. realistic close foley, grounded and gritty, a single sound effect",
       "sha256": "544da642b45fb0b1f47d279d5959f545f93f74ba749a2951687003bc60b559f2",
       "status": "DONE"
+    },
+    {
+      "bytes": 2641004,
+      "credits": 1650,
+      "files": [
+        "music/riverside_calm/1.mp3"
+      ],
+      "finished_at": 1794938455,
+      "format": "mp3_48000_192",
+      "kind": "music",
+      "label": "music/riverside_calm/1",
+      "model": "music_v2",
+      "prompt": "Sparse, brooding instrumental music for a quiet ruined village by a creek at dusk, played by a small rough acoustic folk ensemble. A low sustained drone, a slow soft frame drum pulse, and a single lone fiddle or highland pipes playing a thin mournful melody with long silences between phrases. Cold, patient and uneasy, raw and close, like players around a fire.\nKey of D minor, 84 beats per minute, 4/4, steady tempo throughout.",
+      "sha256": "fdfc3da468ca219b450f101648309463eddf5ee01e645bd9a43ce0a27313b133",
+      "status": "DONE"
+    },
+    {
+      "bytes": 2641004,
+      "credits": 1650,
+      "files": [
+        "music/riverside_calm/2.mp3"
+      ],
+      "finished_at": 1794938465,
+      "format": "mp3_48000_192",
+      "kind": "music",
+      "label": "music/riverside_calm/2",
+      "model": "music_v2",
+      "prompt": "Sparse, brooding instrumental music for a quiet ruined village by a creek at dusk, played by a small rough acoustic folk ensemble. A low sustained drone, a slow soft frame drum pulse, and a single lone fiddle or highland pipes playing a thin mournful melody with long silences between phrases. Cold, patient and uneasy, raw and close, like players around a fire.\nKey of D minor, 84 beats per minute, 4/4, steady tempo throughout.",
+      "sha256": "bca30c533dd235ae3acd3972eb20dfa34fdb1cb5cb74763a95fd4d380abb1829",
+      "status": "DONE"
+    },
+    {
+      "bytes": 2641004,
+      "credits": 1650,
+      "files": [
+        "music/riverside_calm/3.mp3"
+      ],
+      "finished_at": 1794938476,
+      "format": "mp3_48000_192",
+      "kind": "music",
+      "label": "music/riverside_calm/3",
+      "model": "music_v2",
+      "prompt": "Sparse, brooding instrumental music for a quiet ruined village by a creek at dusk, played by a small rough acoustic folk ensemble. A low sustained drone, a slow soft frame drum pulse, and a single lone fiddle or highland pipes playing a thin mournful melody with long silences between phrases. Cold, patient and uneasy, raw and close, like players around a fire.\nKey of D minor, 84 beats per minute, 4/4, steady tempo throughout.",
+      "sha256": "22964a9dbbfcbe7ca71ece5aa7928386cfe1d598836f8980070218179c976b43",
+      "status": "DONE"
+    },
+    {
+      "bytes": 2641004,
+      "credits": 1650,
+      "files": [
+        "music/riverside_combat/1.mp3"
+      ],
+      "finished_at": 1794938656,
+      "format": "mp3_48000_192",
+      "kind": "music",
+      "label": "music/riverside_combat/1",
+      "model": "music_v2",
+      "prompt": "Tense, urgent instrumental music for a skirmish against the walking dead, played by a small rough acoustic folk band. The same low drone now driving, heavy frame drums and a deep war drum hitting hard on the beat, rough sawing fiddle and skirling highland pipes playing a harsher, faster version of a mournful melody. Gritty, pressing and physical, raw and close.\nKey of D minor, 84 beats per minute, 4/4, steady tempo throughout.",
+      "sha256": "23d7eff40932e8fe120e4c9d3cc7c6b44b3897aec6d393bd33d5d2223f9fab44",
+      "status": "DONE"
+    },
+    {
+      "bytes": 2641004,
+      "credits": 1650,
+      "files": [
+        "music/riverside_combat/2.mp3"
+      ],
+      "finished_at": 1794938665,
+      "format": "mp3_48000_192",
+      "kind": "music",
+      "label": "music/riverside_combat/2",
+      "model": "music_v2",
+      "prompt": "Tense, urgent instrumental music for a skirmish against the walking dead, played by a small rough acoustic folk band. The same low drone now driving, heavy frame drums and a deep war drum hitting hard on the beat, rough sawing fiddle and skirling highland pipes playing a harsher, faster version of a mournful melody. Gritty, pressing and physical, raw and close.\nKey of D minor, 84 beats per minute, 4/4, steady tempo throughout.",
+      "sha256": "4bf9181c83bdb58e61ac645f4c95a210706a7381ee7a42f10b9b677832f5c3d1",
+      "status": "DONE"
+    },
+    {
+      "bytes": 2641004,
+      "credits": 1650,
+      "files": [
+        "music/riverside_combat/3.mp3"
+      ],
+      "finished_at": 1794938674,
+      "format": "mp3_48000_192",
+      "kind": "music",
+      "label": "music/riverside_combat/3",
+      "model": "music_v2",
+      "prompt": "Tense, urgent instrumental music for a skirmish against the walking dead, played by a small rough acoustic folk band. The same low drone now driving, heavy frame drums and a deep war drum hitting hard on the beat, rough sawing fiddle and skirling highland pipes playing a harsher, faster version of a mournful melody. Gritty, pressing and physical, raw and close.\nKey of D minor, 84 beats per minute, 4/4, steady tempo throughout.",
+      "sha256": "1ee509f9a1c8f5d9843163ed8ba050e797a285e12857dc2eebba47df82dc11d2",
+      "status": "DONE"
     }
   ]
 }
