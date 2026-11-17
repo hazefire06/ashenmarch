@@ -154,14 +154,20 @@ func test_marching_picks_the_ground_by_majority() -> void:
 		assert_eq(others, 0.0, "only one ground plays for " + str(pair[0]))
 
 
-func test_a_submerged_husk_makes_no_march_for_the_light_side() -> void:
-	var world: World = _world("3")
+# The march loops are men in boots. Riverside's camera opens on seven patrolling Husks, and they marched
+# the whole time the squad stood still.
+func test_undead_make_no_march_for_either_side() -> void:
+	var world: World = _world(".")
 	var beds: Ambience = _ambience(world, Vector3(50, 0, 50))
-	_mover(world, &"husk", DARK, 50, 50)
+	for i: int in 7:
+		_mover(world, &"husk", DARK, 45 + i, 50)
 	beds.after_step()
-	assert_eq(beds.targets()[&"march_water"], 0.0, "unseen")
+	assert_eq(beds.targets()[&"march_grass"], 0.0, "seen, near, moving, and undead")
 	beds.set_viewer(DARK)
-	assert_gt(beds.targets()[&"march_water"], 0.0, "the Dark side hears its own")
+	assert_eq(beds.targets()[&"march_grass"], 0.0, "not even for their own side")
+	_mover(world, &"shieldman", LIGHT, 50, 52)
+	beds.after_step()
+	assert_gt(beds.targets()[&"march_grass"], 0.0, "a living mover marches, whoever is listening")
 
 
 func test_a_silent_loop_stops_its_player() -> void:

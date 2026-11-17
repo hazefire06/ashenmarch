@@ -500,7 +500,7 @@ It uses ffmpeg, checked before it starts as `render_sprites.py` does. It:
   - per-type fallbacks.
 - **No leaks:** a submerged Husk's swing and death are silent, a hit on a seen unit plays, and explosions and bolts are always heard. The viewer follows `side_changed`.
 - **Caps:** each cue's concurrent cap, as well as the existing per-tick caps. When the pool is full, the oldest voice is cut.
-- **Ambience and marching:** targets from rain and snow, from fire and water near the focus, and from gas. Marching level and ground follow the visible movers.
+- **Ambience and marching:** targets from rain and snow, from fire and water near the focus, and from gas. Marching level and ground follow the visible living movers: the loops are men in boots, so the undead make none (added at Tim's Riverside listen, 2026-11-17, when the Husk patrol in front of the opening camera marched nonstop).
 - **Music:** hysteresis in and out, and the fades.
 - **Barks:**
   - the shuffle bag;

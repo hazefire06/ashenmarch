@@ -2,7 +2,7 @@ class_name Ambience
 extends Node
 ## The beds under a battle and the march of the units on it: outdoor air, rain,
 ## snow, fire, water and gas near the camera's focus, and one of four marching
-## loops under the visible movers, by the ground they cross. Every loop is its
+## loops under the visible living movers, by the ground they cross. Every loop is its
 ## own player on its cue's bus; each eases toward its level, and stops when it
 ## has faded out, so a still, clear field costs nothing. A loop with no stream
 ## yet stays silent (the bank warns once).
@@ -151,12 +151,15 @@ func _gas_near(focus: Vector2) -> float:
 	return mini(near, 2) / 2.0
 
 
-## The march: how many visible movers are near, and what they walk on.
+## The march: how many visible living movers are near, and what they walk on.
+## The loops are men in boots, so the undead make none.
 func _march(focus: Vector2) -> void:
 	var count: int = 0
 	var votes: Dictionary[StringName, int] = {}
 	for unit: Unit in _world.units:
 		if unit.state != Unit.State.MOVING or not unit.is_alive():
+			continue
+		if unit.type.nature != UnitType.Nature.LIVING:
 			continue
 		if Vector2(unit.x, unit.z).distance_to(focus * M) > MARCH_RADIUS * M:
 			continue
