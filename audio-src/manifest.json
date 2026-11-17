@@ -570,6 +570,906 @@
       "prompt": "A leather strap tightened over a buckle, a short crisp creak and a soft metal clink. realistic close foley, grounded and gritty, a single sound effect",
       "sha256": "26e64a1725912a79e59cf8ba4ebc8648d5e7e425ca1ae7bb3002b32cbba56880",
       "status": "DONE"
+    },
+    {
+      "bytes": 102478,
+      "credits": 32,
+      "files": [
+        "sfx/block_shield/1.wav"
+      ],
+      "finished_at": 1794882993,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/block_shield/1",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A sword edge striking a wooden shield with an iron rim, a hard clack, a dull wooden knock and a brief ring of metal. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "585301e870eb5be7a90f2c5df7aa98a65ebab425a7d5b9217869a1dab6d81ba1",
+      "status": "DONE"
+    },
+    {
+      "bytes": 102478,
+      "credits": 32,
+      "files": [
+        "sfx/block_shield/2.wav"
+      ],
+      "finished_at": 1794882995,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/block_shield/2",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A sword edge striking a wooden shield with an iron rim, a hard clack, a dull wooden knock and a brief ring of metal. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "720e44b90fc485e20c8954cc9b46850c9cbb21f0a4b38ed35ded29b25e992c0f",
+      "status": "DONE"
+    },
+    {
+      "bytes": 102478,
+      "credits": 32,
+      "files": [
+        "sfx/block_shield/3.wav"
+      ],
+      "finished_at": 1794882996,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/block_shield/3",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A sword edge striking a wooden shield with an iron rim, a hard clack, a dull wooden knock and a brief ring of metal. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "91926dfcc4f2b6964336d1370fac4d558b2c87517c16fef0b6740554aded1be3",
+      "status": "DONE"
+    },
+    {
+      "bytes": 102478,
+      "credits": 32,
+      "files": [
+        "sfx/block_shield/4.wav"
+      ],
+      "finished_at": 1794882997,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/block_shield/4",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A sword edge striking a wooden shield with an iron rim, a hard clack, a dull wooden knock and a brief ring of metal. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "f0f2f88a8180f9d95752bf6feb9707884ffa2389a1d607ea7502d16cdb85de2f",
+      "status": "DONE"
+    },
+    {
+      "bytes": 102478,
+      "credits": 32,
+      "files": [
+        "sfx/block_shield/5.wav"
+      ],
+      "finished_at": 1794882998,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/block_shield/5",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A sword edge striking a wooden shield with an iron rim, a hard clack, a dull wooden knock and a brief ring of metal. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "6170092983bba72d40ca5e5c5e4492f94e4e1f4264a96b43fb1c6d0a2cebbd3e",
+      "status": "DONE"
+    },
+    {
+      "bytes": 102478,
+      "credits": 32,
+      "files": [
+        "sfx/block_shield/6.wav"
+      ],
+      "finished_at": 1794882999,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/block_shield/6",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A sword edge striking a wooden shield with an iron rim, a hard clack, a dull wooden knock and a brief ring of metal. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "24d14910452b845d80273cb3e1a96e04ac45a1e5eac96a2620ffbf53d3babafc",
+      "status": "DONE"
+    },
+    {
+      "bytes": 189518,
+      "credits": 60,
+      "files": [
+        "sfx/heal/1.wav"
+      ],
+      "finished_at": 1794883002,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/heal/1",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "Crushed herbs pressed to a wound, a soft green rustle, a gentle wet squeeze and a low warm breath, calm and quiet. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "9025a484e45f1c96849525e29c7e68803d9e6fe0c3ea638e026027a8314b5cbf",
+      "status": "DONE"
+    },
+    {
+      "bytes": 189518,
+      "credits": 60,
+      "files": [
+        "sfx/heal/2.wav"
+      ],
+      "finished_at": 1794883003,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/heal/2",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "Crushed herbs pressed to a wound, a soft green rustle, a gentle wet squeeze and a low warm breath, calm and quiet. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "f3d061444e2408fc39f6b7c8199a8ecf7003181d7c4f31966a5b6f72ef791d8f",
+      "status": "DONE"
+    },
+    {
+      "bytes": 189518,
+      "credits": 60,
+      "files": [
+        "sfx/heal/3.wav"
+      ],
+      "finished_at": 1794883004,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/heal/3",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "Crushed herbs pressed to a wound, a soft green rustle, a gentle wet squeeze and a low warm breath, calm and quiet. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "b905277fb98f43d18ef9692cfe7f48e8d538bc123d92b510a367ddbb0e99c593",
+      "status": "DONE"
+    },
+    {
+      "bytes": 189518,
+      "credits": 60,
+      "files": [
+        "sfx/heal/4.wav"
+      ],
+      "finished_at": 1794883005,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/heal/4",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "Crushed herbs pressed to a wound, a soft green rustle, a gentle wet squeeze and a low warm breath, calm and quiet. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "2c29ba5f2d987f03185f804122ca930ba4b372aa1ee145bcb74c113827d54a3d",
+      "status": "DONE"
+    },
+    {
+      "bytes": 189518,
+      "credits": 60,
+      "files": [
+        "sfx/heal/5.wav"
+      ],
+      "finished_at": 1794883006,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/heal/5",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "Crushed herbs pressed to a wound, a soft green rustle, a gentle wet squeeze and a low warm breath, calm and quiet. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "92b8d7991dd7faf5b483d48c7f0728ee89e484d78faaa8c593168b35c34a0811",
+      "status": "DONE"
+    },
+    {
+      "bytes": 189518,
+      "credits": 60,
+      "files": [
+        "sfx/heal/6.wav"
+      ],
+      "finished_at": 1794883007,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/heal/6",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "Crushed herbs pressed to a wound, a soft green rustle, a gentle wet squeeze and a low warm breath, calm and quiet. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "a7f58e6eebd3bdc3a133d88e5ed4e4c99447d2d931862678be4394bb7941831d",
+      "status": "DONE"
+    },
+    {
+      "bytes": 189518,
+      "credits": 60,
+      "files": [
+        "sfx/heal_sear/1.wav"
+      ],
+      "finished_at": 1794883009,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/heal_sear/1",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "Healing herbs burning dead flesh, a harsh sizzling hiss and crackle like water on a hot pan, with a dry rattling gasp. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "73c763e2942117f7da9c35ad08ea823ded2b4b39faecfd0b03ccb524d1f5da58",
+      "status": "DONE"
+    },
+    {
+      "bytes": 189518,
+      "credits": 60,
+      "files": [
+        "sfx/heal_sear/2.wav"
+      ],
+      "finished_at": 1794883010,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/heal_sear/2",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "Healing herbs burning dead flesh, a harsh sizzling hiss and crackle like water on a hot pan, with a dry rattling gasp. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "30f6f4cc81a76749533ec170dd520759557ea92d10b1d8b5afcb53a9f36d65d8",
+      "status": "DONE"
+    },
+    {
+      "bytes": 189518,
+      "credits": 60,
+      "files": [
+        "sfx/heal_sear/3.wav"
+      ],
+      "finished_at": 1794883011,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/heal_sear/3",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "Healing herbs burning dead flesh, a harsh sizzling hiss and crackle like water on a hot pan, with a dry rattling gasp. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "17288e86d9f2ac9b490855a259f69674005a8371f7ae492f9308e0bb6efe121b",
+      "status": "DONE"
+    },
+    {
+      "bytes": 189518,
+      "credits": 60,
+      "files": [
+        "sfx/heal_sear/4.wav"
+      ],
+      "finished_at": 1794883012,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/heal_sear/4",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "Healing herbs burning dead flesh, a harsh sizzling hiss and crackle like water on a hot pan, with a dry rattling gasp. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "3275875857e4695808bdb609379088ef56ae455f879983920e85fe3e5e2f4b36",
+      "status": "DONE"
+    },
+    {
+      "bytes": 189518,
+      "credits": 60,
+      "files": [
+        "sfx/heal_sear/5.wav"
+      ],
+      "finished_at": 1794883013,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/heal_sear/5",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "Healing herbs burning dead flesh, a harsh sizzling hiss and crackle like water on a hot pan, with a dry rattling gasp. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "68d48da7fc2fc5cc071c72965266e3f0afb0dbc821dd2e54efa94d378fae28a6",
+      "status": "DONE"
+    },
+    {
+      "bytes": 189518,
+      "credits": 60,
+      "files": [
+        "sfx/heal_sear/6.wav"
+      ],
+      "finished_at": 1794883014,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/heal_sear/6",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "Healing herbs burning dead flesh, a harsh sizzling hiss and crackle like water on a hot pan, with a dry rattling gasp. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "25f8ae6ac7bed504446b3cfa14259ce7b097c6bbe64397a24d5506e32b04d31b",
+      "status": "DONE"
+    },
+    {
+      "bytes": 87118,
+      "credits": 28,
+      "files": [
+        "sfx/hit_dry/1.wav"
+      ],
+      "finished_at": 1794883016,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/hit_dry/1",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A blow landing on a long dead body, a dry papery crunch of old bone and leathery hide, then silence. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "6c3bb66292fa410e5dd03ab0bed622b48be4d71dbc2c63fcdf344cec7ecdde39",
+      "status": "DONE"
+    },
+    {
+      "bytes": 87118,
+      "credits": 28,
+      "files": [
+        "sfx/hit_dry/2.wav"
+      ],
+      "finished_at": 1794883017,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/hit_dry/2",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A blow landing on a long dead body, a dry papery crunch of old bone and leathery hide, then silence. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "c1429621937c3a1e154de4a02fdf87fe656add418052e7d1a40d5587b0861eb5",
+      "status": "DONE"
+    },
+    {
+      "bytes": 87118,
+      "credits": 28,
+      "files": [
+        "sfx/hit_dry/3.wav"
+      ],
+      "finished_at": 1794883018,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/hit_dry/3",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A blow landing on a long dead body, a dry papery crunch of old bone and leathery hide, then silence. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "eb1ceea38014a15cbab58fe14a355ecaa46e2d2eafc574e96deb6230e43db194",
+      "status": "DONE"
+    },
+    {
+      "bytes": 87118,
+      "credits": 28,
+      "files": [
+        "sfx/hit_dry/4.wav"
+      ],
+      "finished_at": 1794883019,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/hit_dry/4",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A blow landing on a long dead body, a dry papery crunch of old bone and leathery hide, then silence. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "74f5303e1412c0f6c161304d0102db4dc8149ea81a3d961c7699c44e2e7411e5",
+      "status": "DONE"
+    },
+    {
+      "bytes": 87118,
+      "credits": 28,
+      "files": [
+        "sfx/hit_dry/5.wav"
+      ],
+      "finished_at": 1794883020,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/hit_dry/5",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A blow landing on a long dead body, a dry papery crunch of old bone and leathery hide, then silence. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "6b489e736d69c96971a31aa8e8966724f34df15074bdae8bab03cb8ba335b6e4",
+      "status": "DONE"
+    },
+    {
+      "bytes": 87118,
+      "credits": 28,
+      "files": [
+        "sfx/hit_dry/6.wav"
+      ],
+      "finished_at": 1794883021,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/hit_dry/6",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A blow landing on a long dead body, a dry papery crunch of old bone and leathery hide, then silence. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "e936093be2ac64b3e5f44f3c7cc3d0e9a1247a8f047b0a6a6a16e0f7b1bbd464",
+      "status": "DONE"
+    },
+    {
+      "bytes": 87118,
+      "credits": 28,
+      "files": [
+        "sfx/hit_flesh/1.wav"
+      ],
+      "finished_at": 1794883024,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/hit_flesh/1",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A sword blow landing on a living body, a wet meaty chop with a muffled thud and a hard breath of air forced out of the body. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "b78c98856a608da75fcd487e8787c5bf21b8770961324fe3a549c9b9302b20e7",
+      "status": "DONE"
+    },
+    {
+      "bytes": 87118,
+      "credits": 28,
+      "files": [
+        "sfx/hit_flesh/2.wav"
+      ],
+      "finished_at": 1794883025,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/hit_flesh/2",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A sword blow landing on a living body, a wet meaty chop with a muffled thud and a hard breath of air forced out of the body. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "4853f3ff78d160f1733510e5627d5e889d0859568883d605a73807fc14c8c127",
+      "status": "DONE"
+    },
+    {
+      "bytes": 87118,
+      "credits": 28,
+      "files": [
+        "sfx/hit_flesh/3.wav"
+      ],
+      "finished_at": 1794883026,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/hit_flesh/3",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A sword blow landing on a living body, a wet meaty chop with a muffled thud and a hard breath of air forced out of the body. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "dd54016f7a062588a504c0818865d6fca051694398766b878c7de35a36cc504f",
+      "status": "DONE"
+    },
+    {
+      "bytes": 87118,
+      "credits": 28,
+      "files": [
+        "sfx/hit_flesh/4.wav"
+      ],
+      "finished_at": 1794883027,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/hit_flesh/4",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A sword blow landing on a living body, a wet meaty chop with a muffled thud and a hard breath of air forced out of the body. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "ba374d583ab0d6e5dec5f650e2095a7ce5208954f0551535ceb3b5eaac2f98d4",
+      "status": "DONE"
+    },
+    {
+      "bytes": 87118,
+      "credits": 28,
+      "files": [
+        "sfx/hit_flesh/5.wav"
+      ],
+      "finished_at": 1794883029,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/hit_flesh/5",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A sword blow landing on a living body, a wet meaty chop with a muffled thud and a hard breath of air forced out of the body. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "8f205482bfb71c2a44d67a7af35e109484516083ec297b9712c64605c5a9a482",
+      "status": "DONE"
+    },
+    {
+      "bytes": 87118,
+      "credits": 28,
+      "files": [
+        "sfx/hit_flesh/6.wav"
+      ],
+      "finished_at": 1794883031,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/hit_flesh/6",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A sword blow landing on a living body, a wet meaty chop with a muffled thud and a hard breath of air forced out of the body. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "15a1bfd90d627462f73c2fafaa88f1d4ac55dae60a2f25749284e42eea9e0cff",
+      "status": "DONE"
+    },
+    {
+      "bytes": 76878,
+      "credits": 24,
+      "files": [
+        "sfx/swing_blade/1.wav"
+      ],
+      "finished_at": 1794883033,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/swing_blade/1",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A one-handed steel sword cut through the air, a quick thin whoosh with a faint ring of the edge, ending in clean open air. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "5400eb0f55d492ac155091d5dcdb9f05203dbbb7595f098b6e689d2766ecd7bb",
+      "status": "DONE"
+    },
+    {
+      "bytes": 76878,
+      "credits": 24,
+      "files": [
+        "sfx/swing_blade/2.wav"
+      ],
+      "finished_at": 1794883034,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/swing_blade/2",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A one-handed steel sword cut through the air, a quick thin whoosh with a faint ring of the edge, ending in clean open air. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "2d470533c372c0dc15e10d685ec6d9150fe73354043ba7bce94a9bb80f9d9b6f",
+      "status": "DONE"
+    },
+    {
+      "bytes": 76878,
+      "credits": 24,
+      "files": [
+        "sfx/swing_blade/3.wav"
+      ],
+      "finished_at": 1794883035,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/swing_blade/3",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A one-handed steel sword cut through the air, a quick thin whoosh with a faint ring of the edge, ending in clean open air. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "76ec3fb83eaa57590a6874728288139a53e4b26e611ef22d7c77cfbb678aebdf",
+      "status": "DONE"
+    },
+    {
+      "bytes": 76878,
+      "credits": 24,
+      "files": [
+        "sfx/swing_blade/4.wav"
+      ],
+      "finished_at": 1794883036,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/swing_blade/4",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A one-handed steel sword cut through the air, a quick thin whoosh with a faint ring of the edge, ending in clean open air. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "6579d689a0aae916c2d42cd5835aacde35b4949e943c44fe62c3833a34e56613",
+      "status": "DONE"
+    },
+    {
+      "bytes": 76878,
+      "credits": 24,
+      "files": [
+        "sfx/swing_blade/5.wav"
+      ],
+      "finished_at": 1794883037,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/swing_blade/5",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A one-handed steel sword cut through the air, a quick thin whoosh with a faint ring of the edge, ending in clean open air. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "7d513f6606b7792f67688863691182eca0ee8390b2f7054d22b1e1ece80630ff",
+      "status": "DONE"
+    },
+    {
+      "bytes": 76878,
+      "credits": 24,
+      "files": [
+        "sfx/swing_blade/6.wav"
+      ],
+      "finished_at": 1794883038,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/swing_blade/6",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A one-handed steel sword cut through the air, a quick thin whoosh with a faint ring of the edge, ending in clean open air. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "430639254e73baf4d61c58fe5f71800d02a81a4661000a5df2577cc93f044b34",
+      "status": "DONE"
+    },
+    {
+      "bytes": 61518,
+      "credits": 20,
+      "files": [
+        "sfx/swing_claw/1.wav"
+      ],
+      "finished_at": 1794883040,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/swing_claw/1",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A bony clawed hand raking the air, a short dry scratchy swish with a rasp of brittle nails, ending in clean open air. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "4a23ae76ae3be5a9d676997a8bd935f1aabdf0ae785e0a63f4147c1fe96fa482",
+      "status": "DONE"
+    },
+    {
+      "bytes": 61518,
+      "credits": 20,
+      "files": [
+        "sfx/swing_claw/2.wav"
+      ],
+      "finished_at": 1794883041,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/swing_claw/2",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A bony clawed hand raking the air, a short dry scratchy swish with a rasp of brittle nails, ending in clean open air. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "5c218b7e883a597d2a1ee5dec50eb7aca1f4ec8fd6cb73140469eba26409a7cc",
+      "status": "DONE"
+    },
+    {
+      "bytes": 61518,
+      "credits": 20,
+      "files": [
+        "sfx/swing_claw/3.wav"
+      ],
+      "finished_at": 1794883042,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/swing_claw/3",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A bony clawed hand raking the air, a short dry scratchy swish with a rasp of brittle nails, ending in clean open air. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "289c855aad66b03504892658c916baca94fa5800bc0913f66f6bf6186461fea4",
+      "status": "DONE"
+    },
+    {
+      "bytes": 61518,
+      "credits": 20,
+      "files": [
+        "sfx/swing_claw/4.wav"
+      ],
+      "finished_at": 1794883043,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/swing_claw/4",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A bony clawed hand raking the air, a short dry scratchy swish with a rasp of brittle nails, ending in clean open air. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "9ce187e4676d5d76130ffc388b744643384daaf5387b2fc79596386d46906758",
+      "status": "DONE"
+    },
+    {
+      "bytes": 61518,
+      "credits": 20,
+      "files": [
+        "sfx/swing_claw/5.wav"
+      ],
+      "finished_at": 1794883044,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/swing_claw/5",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A bony clawed hand raking the air, a short dry scratchy swish with a rasp of brittle nails, ending in clean open air. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "421cd89debabc6e0573ba8acc9dbadfd0aae73dcb310563341975aa897f99faf",
+      "status": "DONE"
+    },
+    {
+      "bytes": 61518,
+      "credits": 20,
+      "files": [
+        "sfx/swing_claw/6.wav"
+      ],
+      "finished_at": 1794883045,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/swing_claw/6",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A bony clawed hand raking the air, a short dry scratchy swish with a rasp of brittle nails, ending in clean open air. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "0f9daa97a5b962aad9a4dcf3303422b770a33adf853a0a8dd90d3af5578bcf9b",
+      "status": "DONE"
+    },
+    {
+      "bytes": 112718,
+      "credits": 36,
+      "files": [
+        "sfx/swing_heavy/1.wav"
+      ],
+      "finished_at": 1794883046,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/swing_heavy/1",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A heavy two-handed blade swung hard in a wide arc, a deep low whoosh with a rough drag of air and a creak of leather grip, ending in clean open air. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "3399e4858ee7cb8f70bf3205e5fb0022f455277d1821cf092fb8f298a5790e9c",
+      "status": "DONE"
+    },
+    {
+      "bytes": 112718,
+      "credits": 36,
+      "files": [
+        "sfx/swing_heavy/2.wav"
+      ],
+      "finished_at": 1794883047,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/swing_heavy/2",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A heavy two-handed blade swung hard in a wide arc, a deep low whoosh with a rough drag of air and a creak of leather grip, ending in clean open air. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "eb8a2fe5beaccd5533cbb55787945de9660803505a195c83ef6d120c5bc2b218",
+      "status": "DONE"
+    },
+    {
+      "bytes": 112718,
+      "credits": 36,
+      "files": [
+        "sfx/swing_heavy/3.wav"
+      ],
+      "finished_at": 1794883049,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/swing_heavy/3",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A heavy two-handed blade swung hard in a wide arc, a deep low whoosh with a rough drag of air and a creak of leather grip, ending in clean open air. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "0bdd50d3b112a89112a7c8869b1c4be3613f3947771afd4f57d657805bc8cbe7",
+      "status": "DONE"
+    },
+    {
+      "bytes": 112718,
+      "credits": 36,
+      "files": [
+        "sfx/swing_heavy/4.wav"
+      ],
+      "finished_at": 1794883050,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/swing_heavy/4",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A heavy two-handed blade swung hard in a wide arc, a deep low whoosh with a rough drag of air and a creak of leather grip, ending in clean open air. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "9b4eb48e9ef5f2e62a54ffa3d3cde6b6043d8ac384ddc301205be339dac62a7f",
+      "status": "DONE"
+    },
+    {
+      "bytes": 112718,
+      "credits": 36,
+      "files": [
+        "sfx/swing_heavy/5.wav"
+      ],
+      "finished_at": 1794883051,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/swing_heavy/5",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A heavy two-handed blade swung hard in a wide arc, a deep low whoosh with a rough drag of air and a creak of leather grip, ending in clean open air. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "151ca377202a5b85c69a12e1971ce7738903a055d5a0b66c4f5a6511c2f41ed0",
+      "status": "DONE"
+    },
+    {
+      "bytes": 112718,
+      "credits": 36,
+      "files": [
+        "sfx/swing_heavy/6.wav"
+      ],
+      "finished_at": 1794883052,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/swing_heavy/6",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A heavy two-handed blade swung hard in a wide arc, a deep low whoosh with a rough drag of air and a creak of leather grip, ending in clean open air. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "29db7975ebeecf18d8ead4a5e7c31e4e4310e2fde1a9ba6da8b6e4a15d061b7d",
+      "status": "DONE"
+    },
+    {
+      "bytes": 87118,
+      "credits": 28,
+      "files": [
+        "sfx/swing_staff/1.wav"
+      ],
+      "finished_at": 1794883054,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/swing_staff/1",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A long wooden staff swung round, a soft hollow whoosh with a dry creak of timber, ending in clean open air. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "22ab1eabdcf6aae4ae7702013d416564820f792deae0ac735011abae24e216cf",
+      "status": "DONE"
+    },
+    {
+      "bytes": 87118,
+      "credits": 28,
+      "files": [
+        "sfx/swing_staff/2.wav"
+      ],
+      "finished_at": 1794883055,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/swing_staff/2",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A long wooden staff swung round, a soft hollow whoosh with a dry creak of timber, ending in clean open air. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "9a96cfc61b11d1f0cc893b578b244f661db6f8e8e47aa73b4898027d1a6aea82",
+      "status": "DONE"
+    },
+    {
+      "bytes": 87118,
+      "credits": 28,
+      "files": [
+        "sfx/swing_staff/3.wav"
+      ],
+      "finished_at": 1794883056,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/swing_staff/3",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A long wooden staff swung round, a soft hollow whoosh with a dry creak of timber, ending in clean open air. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "6ae82857b1b012fee2588adf0aeffd6d9bd95142d7a487e185afeed6d6fe78b5",
+      "status": "DONE"
+    },
+    {
+      "bytes": 87118,
+      "credits": 28,
+      "files": [
+        "sfx/swing_staff/4.wav"
+      ],
+      "finished_at": 1794883057,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/swing_staff/4",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A long wooden staff swung round, a soft hollow whoosh with a dry creak of timber, ending in clean open air. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "d79312b855fc711110b3eec9bfe2d6668fa0fd7196345fe1663620e1a0771981",
+      "status": "DONE"
+    },
+    {
+      "bytes": 87118,
+      "credits": 28,
+      "files": [
+        "sfx/swing_staff/5.wav"
+      ],
+      "finished_at": 1794883058,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/swing_staff/5",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A long wooden staff swung round, a soft hollow whoosh with a dry creak of timber, ending in clean open air. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "bb0c3bc3b9ccbcaba447b3eea39ae1aaaf5b6274b07f73d26715e897de8c5da0",
+      "status": "DONE"
+    },
+    {
+      "bytes": 87118,
+      "credits": 28,
+      "files": [
+        "sfx/swing_staff/6.wav"
+      ],
+      "finished_at": 1794883059,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/swing_staff/6",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A long wooden staff swung round, a soft hollow whoosh with a dry creak of timber, ending in clean open air. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "bafb73dc9a00c0e6a692d7bfef8939b58639c1b5faea727f9ffd00a8b0b1f6c3",
+      "status": "DONE"
+    },
+    {
+      "bytes": 102478,
+      "credits": 32,
+      "files": [
+        "sfx/swing_stomp/1.wav"
+      ],
+      "finished_at": 1794883061,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/swing_stomp/1",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A huge boot lifted and driven down, a heavy rush of air then a dull ground thump on bare earth. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "fb32f4feb636b00b5815203c0ed94bb9295d93409bb1ec1455fc102431610776",
+      "status": "DONE"
+    },
+    {
+      "bytes": 102478,
+      "credits": 32,
+      "files": [
+        "sfx/swing_stomp/2.wav"
+      ],
+      "finished_at": 1794883063,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/swing_stomp/2",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A huge boot lifted and driven down, a heavy rush of air then a dull ground thump on bare earth. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "0b725978bf3de5db717b95803e733fefeedf7d5fa0c44ff208b5fb0ea1299b2f",
+      "status": "DONE"
+    },
+    {
+      "bytes": 102478,
+      "credits": 32,
+      "files": [
+        "sfx/swing_stomp/3.wav"
+      ],
+      "finished_at": 1794883064,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/swing_stomp/3",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A huge boot lifted and driven down, a heavy rush of air then a dull ground thump on bare earth. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "6af44936f5b22926ceb478d0374e50cafd93eb453346a29143383d9814d413c4",
+      "status": "DONE"
+    },
+    {
+      "bytes": 102478,
+      "credits": 32,
+      "files": [
+        "sfx/swing_stomp/4.wav"
+      ],
+      "finished_at": 1794883065,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/swing_stomp/4",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A huge boot lifted and driven down, a heavy rush of air then a dull ground thump on bare earth. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "147bce9e771f26b81c5f5036304e0bb3d3db7e4affa94dd06540d53c67b32848",
+      "status": "DONE"
+    },
+    {
+      "bytes": 102478,
+      "credits": 32,
+      "files": [
+        "sfx/swing_stomp/5.wav"
+      ],
+      "finished_at": 1794883066,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/swing_stomp/5",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A huge boot lifted and driven down, a heavy rush of air then a dull ground thump on bare earth. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "d4644d7d032496b5b125ba8ebfa046a8864222658639715b3a2ee419bf036baa",
+      "status": "DONE"
+    },
+    {
+      "bytes": 102478,
+      "credits": 32,
+      "files": [
+        "sfx/swing_stomp/6.wav"
+      ],
+      "finished_at": 1794883068,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/swing_stomp/6",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A huge boot lifted and driven down, a heavy rush of air then a dull ground thump on bare earth. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "211cbc9dc225402f0b4f29b80f5d8b0397da3aa6688bef1b6fd2a92cc6c4b943",
+      "status": "DONE"
     }
   ]
 }

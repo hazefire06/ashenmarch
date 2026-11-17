@@ -30,31 +30,31 @@ music = "stream"
 category = "melee"
 prompt = "A one-handed steel sword cut through the air, a quick thin whoosh with a faint ring of the edge, ending in clean open air."
 duration_s = 0.6
-picks = []
+picks = [1, 4, 6]
 
 [cue.swing_heavy]
 category = "melee"
 prompt = "A heavy two-handed blade swung hard in a wide arc, a deep low whoosh with a rough drag of air and a creak of leather grip, ending in clean open air."
 duration_s = 0.9
-picks = []
+picks = [2, 4, 6]
 
 [cue.swing_staff]
 category = "melee"
 prompt = "A long wooden staff swung round, a soft hollow whoosh with a dry creak of timber, ending in clean open air."
 duration_s = 0.7
-picks = []
+picks = [1, 3, 5]
 
 [cue.swing_claw]
 category = "melee"
 prompt = "A bony clawed hand raking the air, a short dry scratchy swish with a rasp of brittle nails, ending in clean open air."
 duration_s = 0.5
-picks = []
+picks = [1, 2, 4, 6]
 
 [cue.swing_stomp]
 category = "melee"
 prompt = "A huge boot lifted and driven down, a heavy rush of air then a dull ground thump on bare earth."
 duration_s = 0.8
-picks = []
+picks = [2, 3, 5]
 
 [cue.hit_flesh]
 category = "melee"
@@ -62,7 +62,7 @@ prompt = "A sword blow landing on a living body, a wet meaty chop with a muffled
 duration_s = 0.7
 level_db = -9.0
 placeholder = "res://assets/audio/sfx/sword_hit.wav"
-picks = []
+picks = [1, 4, 6]
 
 [cue.hit_dry]
 category = "melee"
@@ -70,7 +70,7 @@ prompt = "A blow landing on a long dead body, a dry papery crunch of old bone an
 duration_s = 0.7
 level_db = -9.0
 placeholder = "res://assets/audio/sfx/sword_hit.wav"
-picks = []
+picks = [4]
 
 [cue.block_shield]
 category = "melee"
@@ -78,7 +78,7 @@ prompt = "A sword edge striking a wooden shield with an iron rim, a hard clack, 
 duration_s = 0.8
 level_db = -9.0
 placeholder = "res://assets/audio/sfx/shield_block.wav"
-picks = []
+picks = [2, 6]
 
 [cue.heal]
 category = "melee"
@@ -86,7 +86,7 @@ prompt = "Crushed herbs pressed to a wound, a soft green rustle, a gentle wet sq
 duration_s = 1.5
 level_db = -6.0
 placeholder = "res://assets/audio/sfx/heal.wav"
-picks = []
+picks = [1, 4]
 
 [cue.heal_sear]
 category = "melee"
@@ -94,7 +94,7 @@ prompt = "Healing herbs burning dead flesh, a harsh sizzling hiss and crackle li
 duration_s = 1.5
 level_db = -6.0
 placeholder = "res://assets/audio/sfx/heal.wav"
-picks = []
+picks = [1, 4]
 
 [cue.bow_release]
 category = "projectile"

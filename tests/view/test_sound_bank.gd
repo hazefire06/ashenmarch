@@ -38,8 +38,10 @@ func test_the_committed_bank_holds_every_cue_with_its_placeholder() -> void:
 	# The 64 cues of the cue book, plus the two Riverside music layers.
 	assert_eq(bank.ids().size(), 66)
 	assert_true(bank.has(&"hit_flesh"))
-	assert_false(bank.has(&"swing_claw"), "declared, but no placeholder to play")
+	# swing_claw never had a placeholder: its streams are its picked takes (melee batch). A declared cue with
+	# nothing to play is pinned by the fixture test above, so this doesn't depend on what is bought yet.
 	assert_true(bank.declares(&"swing_claw"))
+	assert_true(bank.has(&"swing_claw"), "no placeholder, but picked takes to play")
 	var rain: SoundCue = bank.cue(&"bed_rain")
 	assert_eq((rain.streams[0] as AudioStreamWAV).loop_mode, AudioStreamWAV.LOOP_FORWARD)
 	assert_eq(rain.playback, AudioServer.PLAYBACK_TYPE_STREAM)
