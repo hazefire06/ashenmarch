@@ -126,7 +126,7 @@ func test_marching_follows_the_seen_movers_and_their_ground() -> void:
 	for i: int in 3:
 		_mover(world, &"shieldman", LIGHT, 45 + i, 50)
 	beds.after_step()
-	assert_almost_eq(beds.targets()[&"march_sand"], 0.5, 0.001, "3 movers")
+	assert_almost_eq(beds.targets()[&"march_sand"], 0.25, 0.001, "3 movers: a quarter of a full column")
 	assert_eq(beds.targets()[&"march_grass"], 0.0)
 	for i: int in 9:
 		_mover(world, &"shieldman", LIGHT, 45 + i, 52)
@@ -152,6 +152,42 @@ func test_marching_picks_the_ground_by_majority() -> void:
 			if id != pair[1]:
 				others += beds.targets()[id]
 		assert_eq(others, 0.0, "only one ground plays for " + str(pair[0]))
+
+
+# Tim's second Riverside listen: a squad reaches its formation spots over about 7 s, and the last one or two
+# walking alone kept the march at -8 to -11 dB, so it trailed on after the squad had visibly stopped.
+func test_a_lone_straggler_is_barely_heard() -> void:
+	var world: World = _world(".")
+	var beds: Ambience = _ambience(world, Vector3(50, 0, 50))
+	var squad: Array[Unit] = []
+	for i: int in 12:
+		squad.append(_mover(world, &"shieldman", LIGHT, 44 + i, 50))
+	beds.after_step()
+	assert_almost_eq(beds.targets()[&"march_grass"], 1.0, 0.001, "the column")
+	for i: int in 11:
+		squad[i].state = Unit.State.IDLE
+	beds.after_step()
+	assert_almost_eq(beds.targets()[&"march_grass"], 1.0 / 12.0, 0.001, "one straggler: -22 dB")
+
+
+# The beds ease gently, but the march follows the boots: it is silent about a second after the last step.
+func test_the_march_stops_soon_after_the_last_step() -> void:
+	var world: World = _world(".")
+	var beds: Ambience = _ambience(world, Vector3(50, 0, 50))
+	var squad: Array[Unit] = []
+	for i: int in 12:
+		squad.append(_mover(world, &"shieldman", LIGHT, 44 + i, 50))
+	beds.after_step()
+	for i: int in 30:
+		beds._process(0.1)
+	var march: AudioStreamPlayer = beds._players[&"march_grass"]
+	assert_true(march.playing, "marching")
+	for unit: Unit in squad:
+		unit.state = Unit.State.IDLE
+	beds.after_step()
+	for i: int in 15:
+		beds._process(0.1)
+	assert_false(march.playing, "silent 1.5 s after the squad stops")
 
 
 # The march loops are men in boots. Riverside's camera opens on seven patrolling Husks, and they marched

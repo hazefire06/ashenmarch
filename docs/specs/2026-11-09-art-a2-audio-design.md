@@ -292,7 +292,7 @@ Never touched: `sim/`, `data/units/`, `data/missions/`.
   - outdoor always on, ducked under heavy rain.
 - **Marching:**
   - Count the moving units the viewer can see within about 40 m of the focus.
-  - Level is about √(n / 12), capped at 1.
+  - Level is n / 12, capped at 1, and the march eases faster than the beds (4 a second against 1.5), so it stops about a second after the last step. Changed 2026-11-17 from √(n / 12) at Tim's second Riverside listen: a squad reaches its spots over about 7 s, and the last one or two walking alone kept the march at -8 to -11 dB after the squad had visibly stopped.
   - Ground is the majority under the movers. Water depth 1 or more counts as water, and brush and wood count as grass.
   - Crossfade between the ground loops.
   - This replaces per-unit footsteps.

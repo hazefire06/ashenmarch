@@ -20,8 +20,10 @@ const WATER_SPACING: float = 5.0
 const MARCH_RADIUS: float = 40.0
 ## Movers at which the march is at full level.
 const MARCH_FULL: float = 12.0
-## How fast a loop eases toward its level, per second.
+## How fast a bed eases toward its level, per second.
 const EASE_RATE: float = 1.5
+## The march eases faster: it follows the boots, silent about a second after the last step.
+const MARCH_EASE_RATE: float = 4.0
 const SILENT_DB: float = -60.0
 const M: float = 1000.0
 
@@ -80,9 +82,10 @@ func targets() -> Dictionary[StringName, float]:
 func _process(delta: float) -> void:
 	if _world == null:
 		return
-	var blend: float = 1.0 - exp(-EASE_RATE * delta)
+	var bed_blend: float = 1.0 - exp(-EASE_RATE * delta)
+	var march_blend: float = 1.0 - exp(-MARCH_EASE_RATE * delta)
 	for id: StringName in _players:
-		_levels[id] = lerpf(_levels[id], _targets[id], blend)
+		_levels[id] = lerpf(_levels[id], _targets[id], march_blend if id in MARCHES else bed_blend)
 		_drive(_players[id], _levels[id], id)
 
 
@@ -152,7 +155,9 @@ func _gas_near(focus: Vector2) -> float:
 
 
 ## The march: how many visible living movers are near, and what they walk on.
-## The loops are men in boots, so the undead make none.
+## The loops are men in boots, so the undead make none. The level is the share
+## of a full column, not its square root: the loop is a group, and one or two
+## stragglers reaching their spots shouldn't sound like a squad still marching.
 func _march(focus: Vector2) -> void:
 	var count: int = 0
 	var votes: Dictionary[StringName, int] = {}
@@ -168,7 +173,7 @@ func _march(focus: Vector2) -> void:
 		count += 1
 		var ground: StringName = _ground_under(unit)
 		votes[ground] = votes.get(ground, 0) + 1
-	var level: float = minf(sqrt(count / MARCH_FULL), 1.0)
+	var level: float = minf(count / MARCH_FULL, 1.0)
 	var best: StringName = &""
 	var best_votes: int = 0
 	for id: StringName in MARCHES:

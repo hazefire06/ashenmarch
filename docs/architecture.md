@@ -2281,9 +2281,9 @@ Designed in `docs/specs/2026-11-09-art-a2-audio-design.md`; Web facts in `docs/p
 - **UI:** `UiSounds` clicks every button; `SfxPlayer` plays `ui_select`, `ui_formation`, `ui_group`, `ui_deny` and the order tone from the selection controller's signals. `order_given` carries the ordered ids and an `OrderKind`.
 
 ### Beds and marching
-- **`Ambience`** runs 10 streamed loops on the Ambient bus. Each eases toward its target (rate 1.5 a second) and stops once faded out.
+- **`Ambience`** runs 10 streamed loops on the Ambient bus. Each eases toward its target (the beds at 1.5 a second, the march at 4) and stops once faded out.
   - **Beds:** `bed_outdoor` always on, ducked 60% under full rain; `bed_rain` and `bed_snow` from the weather; `bed_fire` from burning cells within 50 m of the focus (full at 150); `bed_water` from a 7 x 7 grid of samples 5 m apart; `bed_gas` from clouds within 30 m (plus their radius).
-  - **Marching:** `march_grass`, `march_sand`, `march_rock` or `march_water`, the ground under most of the movers. Level is the square root of (movers / 12), capped at 1. Water depth 1 or more counts as water; brush and wood count as grass.
+  - **Marching:** `march_grass`, `march_sand`, `march_rock` or `march_water`, the ground under most of the movers. Level is movers / 12, capped at 1 (one straggler is -22 dB), and the march eases at 4 a second, so it stops about a second after the last step. It was √(movers / 12) until Tim's second listen (2026-11-17): the last men reaching their spots kept it at -8 to -11 dB after the squad had stopped. Water depth 1 or more counts as water; brush and wood count as grass.
 - **Only living movers count, and only those the viewer can see within 40 m of the focus** (changed 2026-11-17, same listen). The loops are men in boots, so the undead make none. Why: the same Husk patrol marched nonstop while the squad stood still.
 
 ### Music
