@@ -383,6 +383,7 @@ func test_seen_undead_near_the_focus_groan_now_and_then() -> void:
 	sfx.groan_chance = SfxPlayer.GROAN_CHANCE
 	sfx.seed_rng(3)
 	_spawn(world, &"husk", DARK, 25, 15)
+	_spawn(world, &"shieldman", LIGHT, 10, 15)  # 15 m off: close enough to groan at, too far to fight
 	var groans: int = 0
 	for i: int in 600:
 		_quiet_step(world)
@@ -397,6 +398,8 @@ func test_a_submerged_husk_never_groans() -> void:
 	var sfx: SfxPlayer = _player(world)
 	sfx.groan_chance = 1.0
 	_submerged_husk(world)
+	# 12.5 m from the husk: near enough for it to groan at, beyond its 4 m reveal radius.
+	_spawn(world, &"shieldman", LIGHT, 12.5, 25)
 	var groans: int = 0
 	for i: int in 300:
 		_quiet_step(world)
@@ -407,6 +410,26 @@ func test_a_submerged_husk_never_groans() -> void:
 	_quiet_step(world)
 	sfx.after_step()
 	assert_eq(_cues(sfx), [&"groan_husk"] as Array[StringName], "its own side hears it")
+
+
+# Riverside's camera opens on a Husk patrol across the creek, 70 m from the squads: near the focus is not
+# enough, the dead groan as they close on the living.
+func test_undead_groan_only_near_a_unit_of_the_other_side() -> void:
+	var world: World = _world()
+	var sfx: SfxPlayer = _player(world)
+	sfx.groan_chance = 1.0
+	_spawn(world, &"husk", DARK, 25, 15)
+	_spawn(world, &"shieldman", LIGHT, 2, 15)  # 23 m off
+	var groans: int = 0
+	for i: int in 120:
+		_quiet_step(world)
+		sfx.after_step()
+		groans += _cues(sfx).count(&"groan_husk")
+	assert_eq(groans, 0, "seen and near the focus, but no enemy within %s m" % SfxPlayer.GROAN_NEAR)
+	_spawn(world, &"reaver", LIGHT, 8, 15)  # 17 m off
+	_quiet_step(world)
+	sfx.after_step()
+	assert_eq(_cues(sfx), [&"groan_husk"] as Array[StringName], "a living enemy within reach")
 
 
 func test_cant_reach_denies_only_for_the_viewers_units() -> void:

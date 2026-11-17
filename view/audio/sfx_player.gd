@@ -33,6 +33,9 @@ const BOUNCE_FULL_SPEED: int = 300
 const GROAN_RADIUS: float = 40.0
 const GROAN_GAP_TICKS: int = 90
 const GROAN_CHANCE: float = 0.03
+## ...and only with a unit of another side within this many meters: the dead
+## are heard as they close on the living, not wherever the camera happens to look.
+const GROAN_NEAR: float = 20.0
 ## Tuned for a listener on the ground at the focus, not up with the camera.
 const UNIT_SIZE: float = 12.0
 
@@ -326,7 +329,7 @@ func _play_hit(target: Unit, at: Vector3) -> void:
 		play_at(StringName(HIT_PREFIX + sound.body), at)
 
 
-## One seen undead near the focus groans now and then.
+## One seen undead near the focus, with the other side close, groans now and then.
 func _groan() -> void:
 	if _camera == null or _world.tick - _last_groan < GROAN_GAP_TICKS:
 		return
@@ -342,7 +345,7 @@ func _groan() -> void:
 		if Vector2(at.x - focus.x, at.z - focus.z).length() > GROAN_RADIUS:
 			continue
 		var cue: StringName = map.groan_cue(unit.type, bank)
-		if cue != &"" and _heard(unit):
+		if cue != &"" and _heard(unit) and _near_another_side(unit):
 			groaners.append(unit)
 			cues.append(cue)
 	if groaners.is_empty():
@@ -355,6 +358,17 @@ func _groan() -> void:
 
 func _heard(unit: Unit) -> bool:
 	return Visibility.seen_by(_world, unit, _viewer)
+
+
+## A living unit of another side stands within GROAN_NEAR of this one.
+func _near_another_side(unit: Unit) -> bool:
+	var reach: float = GROAN_NEAR * World.UNITS_PER_METER
+	for other: Unit in _world.units:
+		if other.faction == unit.faction or not other.is_alive():
+			continue
+		if Vector2(other.x - unit.x, other.z - unit.z).length() <= reach:
+			return true
+	return false
 
 
 static func _close(a: Unit, b: Unit) -> bool:

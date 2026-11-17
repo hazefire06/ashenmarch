@@ -226,7 +226,7 @@ Each sound is a cue in `audio-src/cues.toml`. **Per type** means one cue per uni
 
 **Derived in the view**
 - **A new gas cloud:** `gas_release`.
-- **Undead groans:** `groan_<type>` (per type, falling back to `groan_undead`), from seen undead near the focus, picked by a view-only RNG and rate-limited.
+- **Undead groans:** `groan_<type>` (per type, falling back to `groan_undead`), from seen undead near the focus that have a unit of the other side within 20 m, picked by a view-only RNG and rate-limited. The 20 m rule was added at Tim's first Riverside listen (2026-11-17): the opening camera looks at a Husk patrol across the creek, 70 m from the squads, and they groaned from the first second.
 - **Marching loops,** by ground: `march_grass` (grass, brush, wood), `march_sand`, `march_rock` and `march_water` (water depth 1 or more).
 - **Beds:**
   - `bed_outdoor`, always on and low;
