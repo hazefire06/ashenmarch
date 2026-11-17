@@ -71,12 +71,12 @@ def _exists(root: Path, res_path: str, what: str) -> str:
 
 
 def _cue_files(cue: cuebook.Cue, root: Path) -> list[str]:
-    """Its picked assets once it has picks, else its placeholder, else nothing."""
+    """Its picked assets, or nothing while it has no picks (the bank declares it without streams)."""
     if cue.picks:
         if cue.loop:
             return [_exists(root, LOOP_FILE.format(cue=cue.id), cue.id)]
         return [_exists(root, SFX_FILE.format(cue=cue.id, pick=n), cue.id) for n in cue.picks]
-    return [cue.placeholder] if cue.placeholder is not None else []
+    return []
 
 
 def _line_entries(voices_dir: Path, root: Path) -> list[dict[str, object]]:
@@ -271,8 +271,7 @@ def build(
         for asset in plan:
             if assets.ensure_import(root / asset.dest, assets.import_params(asset)):
                 cuebook.emit(f"wrote {asset.dest}.import")
-        placeholders = {c.placeholder for c in cuebook.load_cues(cues_path).cues.values() if c.placeholder}
-        for orphan in assets.orphans(root, plan, placeholders):
+        for orphan in assets.orphans(root, plan):
             cuebook.emit(f"orphaned: {cuebook.printable(orphan)} (no current pick makes it; delete it if it is stale)")
     except (CueError, UnsafePath, ToolMissing, AudioError, OSError) as err:
         cuebook.emit(f"process.py build: {err}", file=sys.stderr)

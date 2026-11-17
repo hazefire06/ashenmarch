@@ -45,14 +45,12 @@ def sidecar_of(book: str, music: str = MUSIC, files: tuple[str, ...] = ()) -> di
 
 
 class BuildTest(unittest.TestCase):
-    def test_build_uses_picks_else_the_placeholder_else_nothing(self) -> None:
+    def test_build_uses_picks_else_nothing(self) -> None:
         book = (
-            cue("hit_a", "melee", 'placeholder = "res://assets/audio/sfx/sword_hit.wav"')
-            + cue("hit_b", "melee")
+            cue("hit_b", "melee")
             + cue("hit_c", "melee", "takes = 6\npicks = [2, 5]")
         )
         cues = sidecar_of(book, files=("assets/audio/sfx/hit_c_2.wav", "assets/audio/sfx/hit_c_5.wav"))
-        self.assertEqual(cues["hit_a"]["files"], ["res://assets/audio/sfx/sword_hit.wav"])
         self.assertEqual(cues["hit_b"]["files"], [])
         self.assertEqual(cues["hit_c"]["files"], [
             "res://assets/audio/sfx/hit_c_2.wav", "res://assets/audio/sfx/hit_c_5.wav"])
@@ -79,7 +77,7 @@ class BuildTest(unittest.TestCase):
                          ("music", "Music", True, "stream"))
         self.assertEqual(music["files"], [])
 
-    def test_the_committed_book_builds_with_a_file_for_every_placeholder(self) -> None:
+    def test_the_committed_book_builds_(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             out = Path(tmp) / "bank.json"
             self.assertEqual(process.write_sidecar(out), 0)

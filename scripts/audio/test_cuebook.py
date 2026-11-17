@@ -99,13 +99,6 @@ class CommittedBookTest(unittest.TestCase):
         for cue in book.cues.values():
             self.assertEqual(cue.loop, cue.category in cuebook.LOOP_CATEGORIES, cue.id)
 
-    def test_every_committed_placeholder_file_exists(self) -> None:
-        book = cuebook.load_cues(ROOT / "audio-src" / "cues.toml")
-        for cue in book.cues.values():
-            if cue.placeholder is not None:
-                rel = cue.placeholder.removeprefix("res://")
-                self.assertTrue((ROOT / rel).is_file(), cue.id)
-
     def test_the_loops_all_share_one_shape(self) -> None:
         book = cuebook.load_cues(ROOT / "audio-src" / "cues.toml")
         loops = [c for c in book.cues.values() if c.loop]
@@ -124,10 +117,6 @@ class CommittedBookTest(unittest.TestCase):
                 self.assertEqual(c.bus, "Interface", c.id)
         for cue_id in ("ui_click", "ui_select", "ui_formation", "ui_group"):
             self.assertEqual(book.cues[cue_id].level_db, -10.0, cue_id)
-
-    def test_bed_gas_has_no_one_shot_placeholder(self) -> None:
-        book = cuebook.load_cues(ROOT / "audio-src" / "cues.toml")
-        self.assertIsNone(book.cues["bed_gas"].placeholder)
 
     def test_every_prompt_is_non_empty_and_says_what_to_play(self) -> None:
         book = cuebook.load_cues(ROOT / "audio-src" / "cues.toml")
@@ -328,14 +317,9 @@ class RefusalTest(unittest.TestCase):
                     book_from(cue_with(f"picks = {bad}"))
         self.assertEqual(book_from(cue_with("picks = [1, 6]")).cues["swing_blade"].picks, (1, 6))
 
-    def test_a_placeholder_must_be_an_old_sfx_file(self) -> None:
-        for bad in ("res://data/x.tres", "res://assets/audio/sfx/../x.wav", "res://assets/audio/sfx/X.wav",
-                    "res://assets/audio/sfx/a/b.wav", "assets/audio/sfx/x.wav", "res://assets/audio/sfx/x.ogg"):
-            with self.subTest(bad=bad):
-                with self.assertRaises(CueError):
-                    book_from(cue_with(f'placeholder = "{bad}"'))
-        got = book_from(cue_with('placeholder = "res://assets/audio/sfx/sword_hit.wav"'))
-        self.assertEqual(got.cues["swing_blade"].placeholder, "res://assets/audio/sfx/sword_hit.wav")
+    def test_the_retired_placeholder_key_is_refused_like_any_unknown_key(self) -> None:
+        with self.assertRaisesRegex(CueError, "placeholder"):
+            book_from(cue_with('placeholder = "res://assets/audio/sfx/sword_hit.wav"'))
 
     def test_loop_and_category_must_agree(self) -> None:
         with self.assertRaises(CueError):
@@ -382,7 +366,7 @@ class DefaultsTest(unittest.TestCase):
         self.assertEqual((cue.variants, cue.takes, cue.bus), (3, 6, "Effects"))
         self.assertEqual((cue.level_db, cue.max_voices, cue.pitch_spread), (0.0, 3, 0.06))
         self.assertEqual((cue.model, cue.prompt_influence), ("eleven_text_to_sound_v2", 0.5))
-        self.assertEqual((cue.loop, cue.placeholder, cue.picks), (False, None, ()))
+        self.assertEqual((cue.loop, cue.picks), (False, ()))
 
     def test_a_cue_overrides_a_default(self) -> None:
         cue = book_from(cue_with("takes = 4\nlevel_db = -6")).cues["swing_blade"]

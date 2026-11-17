@@ -17,7 +17,6 @@ from dataclasses import dataclass
 from pathlib import Path
 
 ID: re.Pattern[str] = re.compile(r"[a-z0-9_]+")
-PLACEHOLDER: re.Pattern[str] = re.compile(r"res://assets/audio/sfx/[a-z0-9_]+\.wav")
 
 CATEGORIES: tuple[str, ...] = ("melee", "projectile", "death", "groan", "ui", "march", "bed", "music")
 LOOP_CATEGORIES: tuple[str, ...] = ("march", "bed", "music")
@@ -37,7 +36,7 @@ VOCAL_CATEGORIES: tuple[str, ...] = ("death", "groan")  # these take the vocal s
 DEFAULT_KEYS: tuple[str, ...] = (
     "variants", "takes", "bus", "level_db", "max_voices", "pitch_spread", "model", "prompt_influence",
 )
-CUE_KEYS: frozenset[str] = frozenset(DEFAULT_KEYS) | {"category", "prompt", "duration_s", "loop", "placeholder", "picks"}
+CUE_KEYS: frozenset[str] = frozenset(DEFAULT_KEYS) | {"category", "prompt", "duration_s", "loop", "picks"}
 LAYER_KEYS: frozenset[str] = frozenset({"prompt", "length_s", "model", "takes", "picks"})
 
 FORMATION_NAMES: tuple[str, ...] = (  # Formations.Kind, lowercased
@@ -85,7 +84,6 @@ class Cue:
     pitch_spread: float
     model: str
     prompt_influence: float
-    placeholder: str | None
     picks: tuple[int, ...]
 
 
@@ -345,9 +343,6 @@ def _cue(cue_id: str, body: dict[str, object], defaults: dict[str, object]) -> C
         raise CueError(f"{where}: loop must be true or false")
     if loop != (category in LOOP_CATEGORIES):
         raise CueError(f"{where}: {category} cues {'must' if category in LOOP_CATEGORIES else 'must not'} loop")
-    placeholder = body.get("placeholder")
-    if placeholder is not None and (not isinstance(placeholder, str) or PLACEHOLDER.fullmatch(placeholder) is None):
-        raise CueError(f"{where}: placeholder must be res://assets/audio/sfx/<name>.wav")
     merged = {**defaults, **{k: v for k, v in body.items() if k in DEFAULT_KEYS}}
     _check_variants(merged, where)
     model = _text(merged, "model", where)
@@ -368,7 +363,6 @@ def _cue(cue_id: str, body: dict[str, object], defaults: dict[str, object]) -> C
         pitch_spread=_number(merged, "pitch_spread", where, 0.0, 0.5),
         model=model,
         prompt_influence=_number(merged, "prompt_influence", where, 0.0, 1.0),
-        placeholder=placeholder,
         picks=_picks(body, takes, where),
     )
 

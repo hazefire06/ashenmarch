@@ -1996,7 +1996,7 @@ The commander, ADVANCE, MEDIC and the skirmish rules draw no random numbers; `ma
 - **Myth II's layout for two keys** (Tim's call; see `docs/controls-myth2.md`): H centers the camera on the selection (it glides there, and moving the camera by hand stops it), and Stop moved to Space. The bar has a Center button.
 
 ### Sound (`view/audio/`, `assets/audio/sfx/`)
-- **Sixteen original placeholder effects,** synthesized by `scripts/gen_sfx.py` (`make sfx`): stdlib only, deterministic, 571 KB of 22 kHz mono WAVs. Nobody has auditioned them yet.
+- **Bought sounds,** built from the picked ElevenLabs takes in `audio-src/` by `make audio-build` (one-shots `<cue>_<take>.wav` in `assets/audio/sfx/`, loops in `assets/audio/loop/`). The Phase 10 synthesized placeholders are retired.
 - **Buses:** Master, Effects, Ambient, Interface (`default_bus_layout.tres`).
 - **`SfxPlayer`** turns `combat_events`, `projectile_events` and new gas clouds into positional sounds.
   - It uses a 24-voice pool and caps each sound at 3 and all sounds at 8 a tick.

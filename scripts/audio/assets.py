@@ -332,9 +332,9 @@ def _render(asset: Asset) -> tuple[array, int, int]:
         raise AudioError(f"{asset.what}: {err}") from None
 
 
-def orphans(root: Path, plan: list[Asset], placeholders: set[str]) -> list[str]:
-    """Audio files under assets/audio/ that no current pick makes and no cue names as its placeholder. Reported, never deleted."""
-    made = {a.dest for a in plan} | {p.removeprefix("res://") for p in placeholders}
+def orphans(root: Path, plan: list[Asset]) -> list[str]:
+    """Audio files under assets/audio/ that no current pick makes. Reported, never deleted."""
+    made = {a.dest for a in plan}
     folder = root / "assets" / "audio"
     found: list[str] = []
     if folder.is_dir():
