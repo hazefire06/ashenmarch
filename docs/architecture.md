@@ -1996,15 +1996,10 @@ The commander, ADVANCE, MEDIC and the skirmish rules draw no random numbers; `ma
 - **Myth II's layout for two keys** (Tim's call; see `docs/controls-myth2.md`): H centers the camera on the selection (it glides there, and moving the camera by hand stops it), and Stop moved to Space. The bar has a Center button.
 
 ### Sound (`view/audio/`, `assets/audio/sfx/`)
-- **Bought sounds,** built from the picked ElevenLabs takes in `audio-src/` by `make audio-build` (one-shots `<cue>_<take>.wav` in `assets/audio/sfx/`, loops in `assets/audio/loop/`). The Phase 10 synthesized placeholders are retired.
-- **Buses:** Master, Effects, Ambient, Interface (`default_bus_layout.tres`).
-- **`SfxPlayer`** turns `combat_events`, `projectile_events` and new gas clouds into positional sounds.
-  - It uses a 24-voice pool and caps each sound at 3 and all sounds at 8 a tick.
-  - Melee sounds play only for blows between units within 4 m (farther, the arrow or blast has its own sound).
-  - Nothing more than 160 m from the camera's focus plays.
-- **`Ambience`:** rain and fire beds follow the weather and the number of burning cells.
-- **`UiSounds`:** a click for every button added to the tree, wherever.
-- **Order acknowledgement** via `SelectionController.order_given`.
+Phase 10 introduced the first sound, all of it since extended or replaced by track A2: see "Sound (track A2)" below.
+- **16 synthesized placeholder WAVs** (`scripts/gen_sfx.py`), so the game had sound before any was bought. Retired in A2.
+- **`SfxPlayer`:** a 24-voice positional pool fed by `combat_events`, `projectile_events` and new gas clouds, capped at 3 a sound and 8 a tick, with melee only between units within 4 m and a 160 m cull from the camera's focus.
+- **Rain and fire beds, a click on every button, and a tone on every order** (`Ambience`, `UiSounds`, `SelectionController.order_given`).
 
 ### Performance
 - **`make bench`** (windowed) stages the target. Its load lives in `scripts/bench_scenario.gd`:
@@ -2249,3 +2244,94 @@ For whoever buys the next unit.
 - **Herb-plant strikes run late.** Striking a herb plant plays a unit's errand clip (`cast`, else `place`) with its melee wind-up. The Warden's `cast` needs about 5x and the Ripper's `place` about 6x there, so at the animator's 4x cap the strike shows 0.1 to 0.2 s after the sim's. The timing test covers the attack, ranged, heal and pick-up paths, not this one; trimming those two clips' heads would fix it.
 - Direction hysteresis and two-elevation renders only if the in-engine check needs them; MultiMesh only if profiling does.
 - **Not checked:** the art running on Windows (its export carries the same S3TC sheets, but it hasn't been run since A4). Web ran in Chrome only.
+
+## Sound (track A2)
+
+Designed in `docs/specs/2026-11-09-art-a2-audio-design.md`; Web facts in `docs/plans/2026-11-10-art-a2-measurements.md`. It replaced Phase 10's placeholders and extended its nodes: there is no `AudioDirector`. All code is `view/audio/`; `sim/` and `data/units/` are untouched.
+
+### Pipeline (offline)
+- `audio-src/cues.toml` is the cue book: 64 cues (54 one-shots, 4 march loops, 6 beds), each with a category, prompt, duration, variants, bus, `level_db`, `max_voices` and `picks`. `[style]` is appended to every prompt and `[playback]` sets each category to `sample` or `stream`. Ids match `[a-z0-9_]+` because they become file names.
+- `audio-src/voices/<unit>.toml` holds a unit's voice descriptions and its lines (id, trigger, text, picks); `_clan.toml` holds the clan-wide lines. `audio-src/music/prompts.toml` holds the two Riverside layers.
+- **Only `scripts/audio/generate.py` spends** (`plan` is free). Tim runs every paid command himself. The ElevenLabs key is scoped and quota-capped, and lives in `~/.config/ashenmarch/secrets.env`, never in the repo. `audio-src/manifest.json` keeps allowlisted fields, so a rerun never re-buys.
+- **Formats:** SFX, loops and voices are bought as `wav_32000`; music as `mp3_48000_192`, because `/v1/music` has no WAV output. The music batch refuses until the music probe has succeeded (it did, 2026-11-16).
+- `scripts/audio/process.py` (free; ffmpeg and `oggenc`) trims, levels and converts, writes an audition page per batch, and applies Tim's picks to `cues.toml` without touching anything else in it.
+  - **Loudness:** one-shots are peak-normalised; beds, marching loops and music go to -23 LUFS; barks to -18 LUFS (`scripts/audio/assets.py`).
+  - **Loops:** the generator has no loop option, so `process.py` crossfades each loop's tail into its head (1 s, equal power). The two music layers are cut to one length first.
+  - **Files:** one-shots are mono WAV imported QOA-compressed; loops and music are Ogg Vorbis.
+- **`make audio-build`** (free) writes the picked takes to `assets/audio/` (`sfx/`, `loop/`, `music/`) and runs `scripts/audio/build_sound_bank.gd`, which writes `data/audio/sound_bank.tres` and `data/audio/barks.tres`. Both are generated; never hand-edit them. `make test-audio` runs the Python tests with no network.
+- **What is bought (2026-11-17):** every one of the 64 cues has picks, and Riverside's two music layers (calm take 1, combat take 2: 110 s takes built into 109.04 s Ogg loops with a 1 s loop crossfade). `gen_sfx.py` and the Phase 10 placeholders are gone. **No bark line is voiced yet.**
+- **Synthetic audio for Web measurement:** `make audio-synthetic` builds a bank of tones and noise in git-ignored `assets/audio/synthetic/`. `make audio-synthetic-clean` undoes it, and must run before any export.
+
+### The bank, the map and the buses
+- **`SoundBank`** (`data/audio/sound_bank.tres`) holds a `SoundCue` per id: its variant streams, bus, `level_db`, `pitch_spread`, `max_voices`, `loop`, playback type and file bytes. One shared instance is loaded once and never freed, so no stream registers twice. A cue the game asks for and the bank lacks plays nothing and warns once.
+- **`SoundMap`** (`data/audio/sound_map.tres`, by hand) says who makes which cue, because `UnitType` has no weapon class:
+  - per unit type: weapon class (`blade`, `heavy`, `staff`, `claw`, `stomp`), body (`flesh` or `dry`), death cue, groan cue and voices;
+  - per projectile id: launch, stick, hit and bounce cues;
+  - per map id: the music pair; `default_music` is Riverside's pair.
+  - A type with no entry falls back to `_living` or `_undead`.
+- **Buses** (`default_bus_layout.tres`): Master, Effects, Ambient, Interface, Music and Voice, all sending to Master with no effects. Default volumes in `VOLUMES_DEFAULT` (percent): Master 80, Effects 100, Ambient 100, Interface 100, Music 70, Voice 100. Settings builds a slider for each.
+
+### What plays, and who hears it
+- **`SfxPlayer`** keeps Phase 10's 24-voice pool, 3 a sound and 8 a tick, 4 m melee reach and 160 m cull. A2 adds:
+  - the cue's own `max_voices`, so five satchels in a chain don't stack five full blasts;
+  - variant and pitch jitter from a view-only RNG that tests can seed (`seed_rng`);
+  - bounce level by speed, and explosion cue by `radius`, water and projectile id.
+- **Visibility.** A sound a unit makes plays only if `Visibility.seen_by(world, unit, viewer)`: the attacker for swings and misses, the target for hits, blocks and heals, the dying unit for deaths, the shooter for launches, the groaner for groans. A Husk hidden in deep water is silent. Impacts, blasts, bolts, fire and gas are always heard. `set_viewer` follows `side_changed`, and the player's faction in a skirmish.
+- **The listener** is an `AudioListener3D` at the camera's ground focus, turned to the camera's yaw, so loudness follows distance over the ground, not the zoom. `UNIT_SIZE` is 12 m.
+- **Groans** (changed 2026-11-17 at Tim's first Riverside listen): a seen undead within 40 m of the focus that also has a living unit of another side within 20 m (`SfxPlayer.GROAN_NEAR`). At most one per 90 ticks, then 3% a tick. Why: Riverside's opening camera looks at a Husk patrol 13-27 m from the focus and about 70 m from the squads, and it groaned from the first second.
+- **UI:** `UiSounds` clicks every button; `SfxPlayer` plays `ui_select`, `ui_formation`, `ui_group`, `ui_deny` and the order tone from the selection controller's signals. `order_given` carries the ordered ids and an `OrderKind`.
+
+### Beds and marching
+- **`Ambience`** runs 10 streamed loops on the Ambient bus. Each eases toward its target (rate 1.5 a second) and stops once faded out.
+  - **Beds:** `bed_outdoor` always on, ducked 60% under full rain; `bed_rain` and `bed_snow` from the weather; `bed_fire` from burning cells within 50 m of the focus (full at 150); `bed_water` from a 7 x 7 grid of samples 5 m apart; `bed_gas` from clouds within 30 m (plus their radius).
+  - **Marching:** `march_grass`, `march_sand`, `march_rock` or `march_water`, the ground under most of the movers. Level is the square root of (movers / 12), capped at 1. Water depth 1 or more counts as water; brush and wood count as grass.
+- **Only living movers count, and only those the viewer can see within 40 m of the focus** (changed 2026-11-17, same listen). The loops are men in boots, so the undead make none. Why: the same Husk patrol marched nonstop while the squad stood still.
+
+### Music
+- **`Music`** (`view/audio/music.gd`) runs two streamed players on the Music bus, calm and combat. They start together and loop in step; only their volumes move.
+- **Combat:** it counts the units the viewer can see attacking or shooting, either side. Combat comes in at 4 or more held 1.5 s (fade in 2 s), and goes out at 1 or fewer held 10 s (fade out 6 s). The constants are in `music.gd`.
+- **Which pair:** `SoundMap.music_for(map_id)`. No map has a pair of its own, so The Ford and Old Mill play Riverside's for now.
+
+### Barks
+- **Text first.** `Barks` floats each line over the speaker in `BARK_COLOR` for about as long as it takes to say (`BarkLine.estimate_seconds`: 14 characters a second plus 0.4 s), and plays its voice only if the line has one. With no voice bought, barks are text only. Light side only.
+- **Triggers:** select, annoyed, move, attack, special, retreat, formation, kill, hurt, death, status (burning, paralyzed, confused), heal on undead, fizzle and victory.
+  - Hurt fires when HP first drops below 35% and re-arms above 50%. Kill, hurt, death and status come only from units within 160 m of the focus.
+  - The speaker is the selected or ordered unit nearest the focus.
+- **Rules (`BarkRules`, pure):**
+  - the same squad ordered again within 5 s gets only the tone;
+  - select has a 10 s cooldown; formation 8 s; status and annoyed 6 s; special 3 s;
+  - kill, hurt and death share a 4 s side-wide gap;
+  - one bark at a time; only a death or the victory cuts in;
+  - a unit selected 4 times within 3 s is annoyed;
+  - about 1 line in 10 is a clan line, never two in a row;
+  - a shuffle bag per voice and trigger: no line repeats until all have played.
+- **Voices:** 3 players on the Voice bus, 3D at the speaker. A voiced death line replaces the death cry. The Shieldman has two voices (`shieldman_old`, `shieldman_young`), chosen by unit id; the other four have one each.
+- **Lines:** the Shieldman has 37, the clan 5; the Reaver, Longbow, Sapper and Warden have only a few starting lines each. No line is voiced.
+
+### Web: registration, streaming, budget
+Facts below are from Godot 4.7.2's source and `docs/plans/2026-11-10-art-a2-measurements.md`, measured on this Mac in Chrome with synthetic audio (2026-11-10).
+- **One-shots are samples, registered once at mission load.** `SoundRegistry.load_for` registers every non-loop cue except the death and groan of types the launch doesn't bring (from `MissionLaunch.unit_types()`), plus those types' voiced barks. A registered sample is never released in 4.7.2 and costs about 0.38 MB a second decoded, so each stream registers once per session.
+- **Loops stream.** Beds, marching and music use `PLAYBACK_TYPE_STREAM`, so they cost no decoded memory and loop through Godot's own mixer. `audio/driver/output_latency.web` is 200 ms (the default is 50).
+  - Under the budget scenario's load, no main-thread task during play exceeded 57 ms against 200 ms of buffer; the longest was 259 ms, at mission load. Tim heard the streamed drone, the beds and the 3D panning on Web and reported no dropouts.
+- **Chrome's `measureUserAgentSpecificMemory` doesn't count Web Audio's decoded buffers** (`js_wasm` rose 6 MB against a computed 195 MB). So `BudgetRun.AUDIO_IN_TAB` is false, and the tab verdict adds the computed decoded size.
+- **Audio has its own cap: 270 MB in a 1,000 MB tab** (`AudioBudget.CAP_MB`). Audio is decoded + 2 x files + a per-play allowance (the 27 longest variants, one per voice: 24 SFX and 3 bark). The budget line carries `audio`, `audio_cap`, `decoded`, `files`, `play`, `mix`, `audio_load` and `audio_in_tab`.
+- **Stand-ins.** A budget run registers silent stand-ins, sized by the text, for lines with no voice, so it measures the finished bank. Normal play registers none.
+- **Synthetic result:** audio 249 MB of 270 and tab 586 MB of 1,000 (PASS), at a 48,000 Hz mix, with 397 ms of registration. It used synthetic audio, so it checks the method, not the bought bank.
+- **The line with the real bought bank has not been measured.** It comes from the gate's budget run (Task 24 Step 1), which hasn't run yet.
+
+### Decisions
+- **No `AudioDirector`** (Tim's prompt): the existing nodes carried it. `Music` and `Barks` sit beside them.
+- **No meta streams** (forced): `AudioStreamRandomizer` and `AudioStreamInteractive` can't be sampled on Web and fall back to main-thread mixing. `SfxPlayer` picks variants itself and music is two plain players.
+- **Music is bought as MP3** (forced): `/v1/music` has no WAV format. It is encoded once more to Ogg.
+- **Barks are text first** (Tim): all five light units bark as text, and voices follow. The PR stays open until all five are voiced.
+- **Streaming stands** (Tim, 2026-11-10): sampling the loops, the fallback, was not needed.
+- **Groans and marching changed at the first listen** (2026-11-17; see above).
+
+### Not yet
+- **Voices:** the Shieldman's (Task 23) and the other four's (Task 25). No bark line is voiced.
+- **The Web budget line with the bought bank** (the gate's budget run), and the final one with no stand-ins.
+- **Music for The Ford and Old Mill:** they play Riverside's pair. Skirmish, the menus and the victory and defeat stingers have none.
+- **Audition page:** it has no in-step calm-over-combat player for music. The crossfade previews were rendered by hand with ffmpeg.
+- **ElevenLabs credit rates in `generate.py`** are still assumed: Tim hasn't reported the key's real usage.
+- **Ambience against music** at a mission's start is unjudged since the groan and march fixes.
+- **No bus effects** (reverb, filters): Web's sample playback ignores them.
