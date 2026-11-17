@@ -3450,6 +3450,1446 @@
       "prompt": "A sharp lightning bolt striking close, a bright electric crack followed by a deep tearing thunder roll fading into the distance. realistic close foley, grounded and gritty, a single sound effect",
       "sha256": "0809ab43cfa707a145a2870add996dd9fb1fd75cc91705180f8693dc6fba793e",
       "status": "DONE"
+    },
+    {
+      "bytes": 281678,
+      "credits": 88,
+      "files": [
+        "sfx/death_blightbag/1.wav"
+      ],
+      "finished_at": 1794889250,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/death_blightbag/1",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A bloated gas-filled corpse collapsing, a long wet groan, a slow leaking sputter and a heavy flop onto the ground. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "5564b51f4699232cdcb7d2ca5ed49102311c5880c93111273722cec375bccf86",
+      "status": "DONE"
+    },
+    {
+      "bytes": 281678,
+      "credits": 88,
+      "files": [
+        "sfx/death_blightbag/2.wav"
+      ],
+      "finished_at": 1794889252,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/death_blightbag/2",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A bloated gas-filled corpse collapsing, a long wet groan, a slow leaking sputter and a heavy flop onto the ground. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "05ec592db2eea8ad84526efa6e45c7359f17567d59b9ccd918c1ac463147ef31",
+      "status": "DONE"
+    },
+    {
+      "bytes": 281678,
+      "credits": 88,
+      "files": [
+        "sfx/death_blightbag/3.wav"
+      ],
+      "finished_at": 1794889253,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/death_blightbag/3",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A bloated gas-filled corpse collapsing, a long wet groan, a slow leaking sputter and a heavy flop onto the ground. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "d232bd18b0cb8f0641da01fa36eb87cd858593321c0c3d03f48ff16d0783044f",
+      "status": "DONE"
+    },
+    {
+      "bytes": 281678,
+      "credits": 88,
+      "files": [
+        "sfx/death_blightbag/4.wav"
+      ],
+      "finished_at": 1794889254,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/death_blightbag/4",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A bloated gas-filled corpse collapsing, a long wet groan, a slow leaking sputter and a heavy flop onto the ground. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "4b6db8fee853ff20f3ba22448bcec9f4fc9399a5eebd553f68a1ba2244b17336",
+      "status": "DONE"
+    },
+    {
+      "bytes": 281678,
+      "credits": 88,
+      "files": [
+        "sfx/death_blightbag/5.wav"
+      ],
+      "finished_at": 1794889256,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/death_blightbag/5",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A bloated gas-filled corpse collapsing, a long wet groan, a slow leaking sputter and a heavy flop onto the ground. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "fe69257e229e904788f4d912ea78a5c230d999afc15af151c3d409122892b69c",
+      "status": "DONE"
+    },
+    {
+      "bytes": 281678,
+      "credits": 88,
+      "files": [
+        "sfx/death_blightbag/6.wav"
+      ],
+      "finished_at": 1794889257,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/death_blightbag/6",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A bloated gas-filled corpse collapsing, a long wet groan, a slow leaking sputter and a heavy flop onto the ground. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "b93b102e6c8f32df7140a0fc368be08be2e0b937771487c606395e3c53e7b786",
+      "status": "DONE"
+    },
+    {
+      "bytes": 281678,
+      "credits": 88,
+      "files": [
+        "sfx/death_drifter/1.wav"
+      ],
+      "finished_at": 1794889259,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/death_drifter/1",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A hooded spectre dispersing, a hollow dry sigh like wind through a cracked pipe, a faint rattle of old cloth and fading dust. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "be6d80c8df658816b8f5c4e34e919682ae61790f5bfa58a539a25bdec3928a42",
+      "status": "DONE"
+    },
+    {
+      "bytes": 281678,
+      "credits": 88,
+      "files": [
+        "sfx/death_drifter/2.wav"
+      ],
+      "finished_at": 1794889260,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/death_drifter/2",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A hooded spectre dispersing, a hollow dry sigh like wind through a cracked pipe, a faint rattle of old cloth and fading dust. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "9077ac1b4a6381b1205495d209856c1a05fc4b6e6fa1acbd1a009004ca37411a",
+      "status": "DONE"
+    },
+    {
+      "bytes": 281678,
+      "credits": 88,
+      "files": [
+        "sfx/death_drifter/3.wav"
+      ],
+      "finished_at": 1794889262,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/death_drifter/3",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A hooded spectre dispersing, a hollow dry sigh like wind through a cracked pipe, a faint rattle of old cloth and fading dust. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "cbdaa3b2232be3091d2091415d5b8dc86250e4ec4ca8cafa4fae528b13b158eb",
+      "status": "DONE"
+    },
+    {
+      "bytes": 281678,
+      "credits": 88,
+      "files": [
+        "sfx/death_drifter/4.wav"
+      ],
+      "finished_at": 1794889263,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/death_drifter/4",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A hooded spectre dispersing, a hollow dry sigh like wind through a cracked pipe, a faint rattle of old cloth and fading dust. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "063bc7dd289ebcd4ac645b6d538f42c9a449145515fd9a1380023cec25c1abb4",
+      "status": "DONE"
+    },
+    {
+      "bytes": 281678,
+      "credits": 88,
+      "files": [
+        "sfx/death_drifter/5.wav"
+      ],
+      "finished_at": 1794889265,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/death_drifter/5",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A hooded spectre dispersing, a hollow dry sigh like wind through a cracked pipe, a faint rattle of old cloth and fading dust. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "b0d0df863c4606b35d721066df4fa90084b2be88e6bbd7be31dc183f7d3bd4e8",
+      "status": "DONE"
+    },
+    {
+      "bytes": 281678,
+      "credits": 88,
+      "files": [
+        "sfx/death_drifter/6.wav"
+      ],
+      "finished_at": 1794889266,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/death_drifter/6",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A hooded spectre dispersing, a hollow dry sigh like wind through a cracked pipe, a faint rattle of old cloth and fading dust. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "b89a3a8b7887435fb3a98b747f3850df725f38c1d91dab9e73d75f0bc7593c56",
+      "status": "DONE"
+    },
+    {
+      "bytes": 256078,
+      "credits": 80,
+      "files": [
+        "sfx/death_husk/1.wav"
+      ],
+      "finished_at": 1794889268,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/death_husk/1",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A bog-sodden walking corpse falling apart, a low dry moan, wet crumbling of rotten flesh, a squelch and a slump into mud. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "76767102cf6b663b17e5bb50ab3492845f5d280d6c15c939c58df339b5387658",
+      "status": "DONE"
+    },
+    {
+      "bytes": 256078,
+      "credits": 80,
+      "files": [
+        "sfx/death_husk/2.wav"
+      ],
+      "finished_at": 1794889269,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/death_husk/2",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A bog-sodden walking corpse falling apart, a low dry moan, wet crumbling of rotten flesh, a squelch and a slump into mud. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "6888822fbd71c0b8c725dd8ea59e827ca60999b9ad9be85131ba0e8e9fe2f114",
+      "status": "DONE"
+    },
+    {
+      "bytes": 256078,
+      "credits": 80,
+      "files": [
+        "sfx/death_husk/3.wav"
+      ],
+      "finished_at": 1794889270,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/death_husk/3",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A bog-sodden walking corpse falling apart, a low dry moan, wet crumbling of rotten flesh, a squelch and a slump into mud. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "a211bbc070c5860283f001298d2d31281cfbe57b22bb5c610822a413060b0590",
+      "status": "DONE"
+    },
+    {
+      "bytes": 256078,
+      "credits": 80,
+      "files": [
+        "sfx/death_husk/4.wav"
+      ],
+      "finished_at": 1794889271,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/death_husk/4",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A bog-sodden walking corpse falling apart, a low dry moan, wet crumbling of rotten flesh, a squelch and a slump into mud. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "6aefcccf4c3765aa10218be1f5306690eee31eb5681b9eeaae20c1a712c6c75f",
+      "status": "DONE"
+    },
+    {
+      "bytes": 256078,
+      "credits": 80,
+      "files": [
+        "sfx/death_husk/5.wav"
+      ],
+      "finished_at": 1794889272,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/death_husk/5",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A bog-sodden walking corpse falling apart, a low dry moan, wet crumbling of rotten flesh, a squelch and a slump into mud. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "1b87f4f1c6b4ba2416257d937066871c0cc7c4fc07db2d0cae7690d312fe494a",
+      "status": "DONE"
+    },
+    {
+      "bytes": 256078,
+      "credits": 80,
+      "files": [
+        "sfx/death_husk/6.wav"
+      ],
+      "finished_at": 1794889273,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/death_husk/6",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A bog-sodden walking corpse falling apart, a low dry moan, wet crumbling of rotten flesh, a squelch and a slump into mud. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "d9910ede0b5869fa64be03e04e25b1733f3d15548904efe7f14325611d976fb2",
+      "status": "DONE"
+    },
+    {
+      "bytes": 204878,
+      "credits": 64,
+      "files": [
+        "sfx/death_longbow/1.wav"
+      ],
+      "finished_at": 1794889275,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/death_longbow/1",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A lightly armed archer killed, a sharp gasp and a cry, a soft collapse onto grass and a wooden bow clattering beside him. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "bf3ec139effad42a043d0e448a76248ed9885ac0e6270e4e9334d34c33c1988f",
+      "status": "DONE"
+    },
+    {
+      "bytes": 204878,
+      "credits": 64,
+      "files": [
+        "sfx/death_longbow/2.wav"
+      ],
+      "finished_at": 1794889276,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/death_longbow/2",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A lightly armed archer killed, a sharp gasp and a cry, a soft collapse onto grass and a wooden bow clattering beside him. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "f4f87df0fce22c45296d69d4ecc8e617c4521a2c6ee43f02412c0b27accb51a6",
+      "status": "DONE"
+    },
+    {
+      "bytes": 204878,
+      "credits": 64,
+      "files": [
+        "sfx/death_longbow/3.wav"
+      ],
+      "finished_at": 1794889277,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/death_longbow/3",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A lightly armed archer killed, a sharp gasp and a cry, a soft collapse onto grass and a wooden bow clattering beside him. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "04e7d5fe1d1afe7806b6c4dde5c7dc37dee61a482ac8483ce49459dc5f09090e",
+      "status": "DONE"
+    },
+    {
+      "bytes": 204878,
+      "credits": 64,
+      "files": [
+        "sfx/death_longbow/4.wav"
+      ],
+      "finished_at": 1794889278,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/death_longbow/4",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A lightly armed archer killed, a sharp gasp and a cry, a soft collapse onto grass and a wooden bow clattering beside him. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "adfd576630b0e868b863ad056d8bb1fd1d04c894a1642aa3559a0f2da517abf0",
+      "status": "DONE"
+    },
+    {
+      "bytes": 204878,
+      "credits": 64,
+      "files": [
+        "sfx/death_longbow/5.wav"
+      ],
+      "finished_at": 1794889279,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/death_longbow/5",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A lightly armed archer killed, a sharp gasp and a cry, a soft collapse onto grass and a wooden bow clattering beside him. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "7b21e9454086911ea9ebf5f9258f8f014dc8859fb65a2ea068153e3e954ccad4",
+      "status": "DONE"
+    },
+    {
+      "bytes": 204878,
+      "credits": 64,
+      "files": [
+        "sfx/death_longbow/6.wav"
+      ],
+      "finished_at": 1794889280,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/death_longbow/6",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A lightly armed archer killed, a sharp gasp and a cry, a soft collapse onto grass and a wooden bow clattering beside him. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "05b01363b6f266f6a3ef807df2b3b5efb9c7e03a50aa5704a89fd3943c3ceb4a",
+      "status": "DONE"
+    },
+    {
+      "bytes": 225358,
+      "credits": 72,
+      "files": [
+        "sfx/death_reaver/1.wav"
+      ],
+      "finished_at": 1794889282,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/death_reaver/1",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A fierce swordsman killed, a ragged shout cut short, a heavy fall onto dirt and the clang of a dropped two-handed blade. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "95e1ebd6c01daedcfb04e325fe16d0d6912b58544b7464a43cc286f9e62137e4",
+      "status": "DONE"
+    },
+    {
+      "bytes": 225358,
+      "credits": 72,
+      "files": [
+        "sfx/death_reaver/2.wav"
+      ],
+      "finished_at": 1794889283,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/death_reaver/2",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A fierce swordsman killed, a ragged shout cut short, a heavy fall onto dirt and the clang of a dropped two-handed blade. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "4cdd6a1352008e8dfd84f5f3861922f8d6f8abe16f8bac967e13fc0f045b3048",
+      "status": "DONE"
+    },
+    {
+      "bytes": 225358,
+      "credits": 72,
+      "files": [
+        "sfx/death_reaver/3.wav"
+      ],
+      "finished_at": 1794889284,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/death_reaver/3",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A fierce swordsman killed, a ragged shout cut short, a heavy fall onto dirt and the clang of a dropped two-handed blade. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "c78695b563cac3d48e9ae0ceb8b02fdffca67c261e59ede6154f1870f80a323e",
+      "status": "DONE"
+    },
+    {
+      "bytes": 225358,
+      "credits": 72,
+      "files": [
+        "sfx/death_reaver/4.wav"
+      ],
+      "finished_at": 1794889285,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/death_reaver/4",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A fierce swordsman killed, a ragged shout cut short, a heavy fall onto dirt and the clang of a dropped two-handed blade. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "04baa92d3d8bff1d48fe05504180ace2fc105969d66e9a75ba29f56721c1f274",
+      "status": "DONE"
+    },
+    {
+      "bytes": 225358,
+      "credits": 72,
+      "files": [
+        "sfx/death_reaver/5.wav"
+      ],
+      "finished_at": 1794889287,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/death_reaver/5",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A fierce swordsman killed, a ragged shout cut short, a heavy fall onto dirt and the clang of a dropped two-handed blade. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "3c3ffd785eda570058ec23069dc01dbfc012147541b2337379c1d1617e9f7abb",
+      "status": "DONE"
+    },
+    {
+      "bytes": 225358,
+      "credits": 72,
+      "files": [
+        "sfx/death_reaver/6.wav"
+      ],
+      "finished_at": 1794889288,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/death_reaver/6",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A fierce swordsman killed, a ragged shout cut short, a heavy fall onto dirt and the clang of a dropped two-handed blade. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "d6bb0e8d39f39690def37ea276bf4ef4774cbfd6976cfce9ee2c254e4efeb0ea",
+      "status": "DONE"
+    },
+    {
+      "bytes": 225358,
+      "credits": 72,
+      "files": [
+        "sfx/death_ripper/1.wav"
+      ],
+      "finished_at": 1794889289,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/death_ripper/1",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A gaunt ghoul killed, a thin rasping shriek that breaks to a wheeze, brittle bones snapping as it folds to the ground. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "f4f3c485999930211803ed668c4b0cd6de4248125c17a350654d9f67ef5c7b82",
+      "status": "DONE"
+    },
+    {
+      "bytes": 225358,
+      "credits": 72,
+      "files": [
+        "sfx/death_ripper/2.wav"
+      ],
+      "finished_at": 1794889290,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/death_ripper/2",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A gaunt ghoul killed, a thin rasping shriek that breaks to a wheeze, brittle bones snapping as it folds to the ground. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "f1a906fba10220d8430e972a58f03031318c45a0ee71b23bcc88f88a1ac8143c",
+      "status": "DONE"
+    },
+    {
+      "bytes": 225358,
+      "credits": 72,
+      "files": [
+        "sfx/death_ripper/3.wav"
+      ],
+      "finished_at": 1794889291,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/death_ripper/3",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A gaunt ghoul killed, a thin rasping shriek that breaks to a wheeze, brittle bones snapping as it folds to the ground. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "e9e3acded9463c435006efbfafddab1de5c8a951651eaf6b0b70739d84018cff",
+      "status": "DONE"
+    },
+    {
+      "bytes": 225358,
+      "credits": 72,
+      "files": [
+        "sfx/death_ripper/4.wav"
+      ],
+      "finished_at": 1794889293,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/death_ripper/4",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A gaunt ghoul killed, a thin rasping shriek that breaks to a wheeze, brittle bones snapping as it folds to the ground. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "196f0d50537e3a52b43b30e74513e14907b2af22d8589abc76f470f222d2c98d",
+      "status": "DONE"
+    },
+    {
+      "bytes": 225358,
+      "credits": 72,
+      "files": [
+        "sfx/death_ripper/5.wav"
+      ],
+      "finished_at": 1794889294,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/death_ripper/5",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A gaunt ghoul killed, a thin rasping shriek that breaks to a wheeze, brittle bones snapping as it folds to the ground. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "c16a5575e7453f96a98070fe3f47d7933dea5ef38fe9dbe803f16bc62fb90249",
+      "status": "DONE"
+    },
+    {
+      "bytes": 225358,
+      "credits": 72,
+      "files": [
+        "sfx/death_ripper/6.wav"
+      ],
+      "finished_at": 1794889295,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/death_ripper/6",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A gaunt ghoul killed, a thin rasping shriek that breaks to a wheeze, brittle bones snapping as it folds to the ground. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "f41ebf7aafb4575e06ce01c880aa05b491ee24b2f89503c122c22848196d16a7",
+      "status": "DONE"
+    },
+    {
+      "bytes": 256078,
+      "credits": 80,
+      "files": [
+        "sfx/death_sapper/1.wav"
+      ],
+      "finished_at": 1794889297,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/death_sapper/1",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A man carrying glass bottles killed, a grunt and a fall followed by the clinking and rolling of bottles and a thud of a heavy pack. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "e9f5f01b097f42a93d8457551b2b60986f2bf2190dd0819be64c5da6fe940fb1",
+      "status": "DONE"
+    },
+    {
+      "bytes": 256078,
+      "credits": 80,
+      "files": [
+        "sfx/death_sapper/2.wav"
+      ],
+      "finished_at": 1794889298,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/death_sapper/2",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A man carrying glass bottles killed, a grunt and a fall followed by the clinking and rolling of bottles and a thud of a heavy pack. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "7baf53b8aa17a37447b9004bccc2694f906c468168c4c34f482392de6296c25a",
+      "status": "DONE"
+    },
+    {
+      "bytes": 256078,
+      "credits": 80,
+      "files": [
+        "sfx/death_sapper/3.wav"
+      ],
+      "finished_at": 1794889300,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/death_sapper/3",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A man carrying glass bottles killed, a grunt and a fall followed by the clinking and rolling of bottles and a thud of a heavy pack. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "df2d894d1f6805ede5e7860400f3d67b0b83b482cf11166277a56f3d0b7a3ccd",
+      "status": "DONE"
+    },
+    {
+      "bytes": 256078,
+      "credits": 80,
+      "files": [
+        "sfx/death_sapper/4.wav"
+      ],
+      "finished_at": 1794889301,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/death_sapper/4",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A man carrying glass bottles killed, a grunt and a fall followed by the clinking and rolling of bottles and a thud of a heavy pack. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "ba0284c55fadc1fad3f7c10da68120d96aa2c6e765f7082c02764f446154bbe0",
+      "status": "DONE"
+    },
+    {
+      "bytes": 256078,
+      "credits": 80,
+      "files": [
+        "sfx/death_sapper/5.wav"
+      ],
+      "finished_at": 1794889302,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/death_sapper/5",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A man carrying glass bottles killed, a grunt and a fall followed by the clinking and rolling of bottles and a thud of a heavy pack. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "def289a54ea25edafa31885b7bb6318972ff97661d3f4047bffa6c8dff7b1660",
+      "status": "DONE"
+    },
+    {
+      "bytes": 256078,
+      "credits": 80,
+      "files": [
+        "sfx/death_sapper/6.wav"
+      ],
+      "finished_at": 1794889304,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/death_sapper/6",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A man carrying glass bottles killed, a grunt and a fall followed by the clinking and rolling of bottles and a thud of a heavy pack. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "9766d8e64dc6afc28ca04617f4bfa441bca2b1334a791eef98981bc96e44432f",
+      "status": "DONE"
+    },
+    {
+      "bytes": 225358,
+      "credits": 72,
+      "files": [
+        "sfx/death_shieldman/1.wav"
+      ],
+      "finished_at": 1794889305,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/death_shieldman/1",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A tired armoured man killed in battle, a short strangled cry, the clatter of a wooden shield and mail hitting the ground and a last breath. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "4588f831e29bbe40a5fe66f59c5dae0bf3a8fa0ee8898ca8ebf07da2c1dbfd29",
+      "status": "DONE"
+    },
+    {
+      "bytes": 225358,
+      "credits": 72,
+      "files": [
+        "sfx/death_shieldman/2.wav"
+      ],
+      "finished_at": 1794889307,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/death_shieldman/2",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A tired armoured man killed in battle, a short strangled cry, the clatter of a wooden shield and mail hitting the ground and a last breath. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "fcfa62f66578b6e9a44b2762f960492d51b70efc7fc56949e9e7b41dc6a51ea5",
+      "status": "DONE"
+    },
+    {
+      "bytes": 225358,
+      "credits": 72,
+      "files": [
+        "sfx/death_shieldman/3.wav"
+      ],
+      "finished_at": 1794889308,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/death_shieldman/3",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A tired armoured man killed in battle, a short strangled cry, the clatter of a wooden shield and mail hitting the ground and a last breath. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "94cfe4a93323f48f60ae00dc2e34a0c21b101d7f07b4f60f3838bd9c0740b95f",
+      "status": "DONE"
+    },
+    {
+      "bytes": 225358,
+      "credits": 72,
+      "files": [
+        "sfx/death_shieldman/4.wav"
+      ],
+      "finished_at": 1794889309,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/death_shieldman/4",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A tired armoured man killed in battle, a short strangled cry, the clatter of a wooden shield and mail hitting the ground and a last breath. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "0a019c7342ce69304be32b7c1cb25799bfcbed55934524592de5839018e49839",
+      "status": "DONE"
+    },
+    {
+      "bytes": 225358,
+      "credits": 72,
+      "files": [
+        "sfx/death_shieldman/5.wav"
+      ],
+      "finished_at": 1794889311,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/death_shieldman/5",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A tired armoured man killed in battle, a short strangled cry, the clatter of a wooden shield and mail hitting the ground and a last breath. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "0eea7c60e3d74084186c89211691ac9fc1f315dcd05a771017ab1366bfabe359",
+      "status": "DONE"
+    },
+    {
+      "bytes": 225358,
+      "credits": 72,
+      "files": [
+        "sfx/death_shieldman/6.wav"
+      ],
+      "finished_at": 1794889312,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/death_shieldman/6",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A tired armoured man killed in battle, a short strangled cry, the clatter of a wooden shield and mail hitting the ground and a last breath. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "4cf6b2d917d12bfe7a5725f7c8e6292a7bbb9e09b0658ac05224d7338df94e2b",
+      "status": "DONE"
+    },
+    {
+      "bytes": 281678,
+      "credits": 88,
+      "files": [
+        "sfx/death_stormcaller/1.wav"
+      ],
+      "finished_at": 1794889314,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/death_stormcaller/1",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A lightning sorcerer killed, a harsh gasp, a stuttering crackle of static discharging from the body and a heavy fall in robes. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "11a124fe95c579018cf129e6bdeac1a12f251c6660ef1e2373201caf0249c8f7",
+      "status": "DONE"
+    },
+    {
+      "bytes": 281678,
+      "credits": 88,
+      "files": [
+        "sfx/death_stormcaller/2.wav"
+      ],
+      "finished_at": 1794889316,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/death_stormcaller/2",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A lightning sorcerer killed, a harsh gasp, a stuttering crackle of static discharging from the body and a heavy fall in robes. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "9618782103c4496d773a0e334be134facef84963a61ab66fd02c42ae3aec73c8",
+      "status": "DONE"
+    },
+    {
+      "bytes": 281678,
+      "credits": 88,
+      "files": [
+        "sfx/death_stormcaller/3.wav"
+      ],
+      "finished_at": 1794889317,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/death_stormcaller/3",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A lightning sorcerer killed, a harsh gasp, a stuttering crackle of static discharging from the body and a heavy fall in robes. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "a392e06b89592c1837bde592058c2113fad65b9bac73b106013e5faf48f35c51",
+      "status": "DONE"
+    },
+    {
+      "bytes": 281678,
+      "credits": 88,
+      "files": [
+        "sfx/death_stormcaller/4.wav"
+      ],
+      "finished_at": 1794889318,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/death_stormcaller/4",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A lightning sorcerer killed, a harsh gasp, a stuttering crackle of static discharging from the body and a heavy fall in robes. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "baacb6f5348d5ecf247ad9e6f0aeb61d99cf4c9fb6271d4e9a7165426b408ffe",
+      "status": "DONE"
+    },
+    {
+      "bytes": 281678,
+      "credits": 88,
+      "files": [
+        "sfx/death_stormcaller/5.wav"
+      ],
+      "finished_at": 1794889320,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/death_stormcaller/5",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A lightning sorcerer killed, a harsh gasp, a stuttering crackle of static discharging from the body and a heavy fall in robes. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "16a95a938a651af85bd4a493eb1d274c2e58470566219d6adec65c441c354551",
+      "status": "DONE"
+    },
+    {
+      "bytes": 281678,
+      "credits": 88,
+      "files": [
+        "sfx/death_stormcaller/6.wav"
+      ],
+      "finished_at": 1794889321,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/death_stormcaller/6",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A lightning sorcerer killed, a harsh gasp, a stuttering crackle of static discharging from the body and a heavy fall in robes. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "025cb5ebfdee2f91d903fac7b6079ba72680ad021ae1005552003eafd9fe84fb",
+      "status": "DONE"
+    },
+    {
+      "bytes": 204878,
+      "credits": 64,
+      "files": [
+        "sfx/death_villager/1.wav"
+      ],
+      "finished_at": 1794889323,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/death_villager/1",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "An unarmed villager killed, a frightened short scream cut off, then a stumbling collapse on a dirt path. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "cfb22855a2f1b4aefea33e7190d38ccd9a39aa30c5a4015a6628509f115ef492",
+      "status": "DONE"
+    },
+    {
+      "bytes": 204878,
+      "credits": 64,
+      "files": [
+        "sfx/death_villager/2.wav"
+      ],
+      "finished_at": 1794889324,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/death_villager/2",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "An unarmed villager killed, a frightened short scream cut off, then a stumbling collapse on a dirt path. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "2b662a99ec430954bdb2e993b2a530ab67f8e8651ce220c47d46c4dd7b202643",
+      "status": "DONE"
+    },
+    {
+      "bytes": 204878,
+      "credits": 64,
+      "files": [
+        "sfx/death_villager/3.wav"
+      ],
+      "finished_at": 1794889325,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/death_villager/3",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "An unarmed villager killed, a frightened short scream cut off, then a stumbling collapse on a dirt path. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "e22f28abd7e3597b3c76357dbbcb60300a7186ef3cc147f0b2eec00b301cfcc6",
+      "status": "DONE"
+    },
+    {
+      "bytes": 204878,
+      "credits": 64,
+      "files": [
+        "sfx/death_villager/4.wav"
+      ],
+      "finished_at": 1794889326,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/death_villager/4",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "An unarmed villager killed, a frightened short scream cut off, then a stumbling collapse on a dirt path. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "f4cf9bd8ae8941e4982f7cf3cdee8d5196e4aacbded8cca0acc05747ce80cf21",
+      "status": "DONE"
+    },
+    {
+      "bytes": 204878,
+      "credits": 64,
+      "files": [
+        "sfx/death_villager/5.wav"
+      ],
+      "finished_at": 1794889327,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/death_villager/5",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "An unarmed villager killed, a frightened short scream cut off, then a stumbling collapse on a dirt path. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "bcaf6c95342e78fd6b88a84d61ac97a1452b0c0668cf1cc9b3ba2e9d87185240",
+      "status": "DONE"
+    },
+    {
+      "bytes": 204878,
+      "credits": 64,
+      "files": [
+        "sfx/death_villager/6.wav"
+      ],
+      "finished_at": 1794889328,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/death_villager/6",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "An unarmed villager killed, a frightened short scream cut off, then a stumbling collapse on a dirt path. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "d0615778bef804303013b8d2bc51089b61f60e959403839b8a0358770f0b6c80",
+      "status": "DONE"
+    },
+    {
+      "bytes": 256078,
+      "credits": 80,
+      "files": [
+        "sfx/death_warden/1.wav"
+      ],
+      "finished_at": 1794889330,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/death_warden/1",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "An older woman healer killed, a short sorrowful cry, a soft fall and the scatter of dried herbs and small wooden tools. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "f52f90b6d0ebb8364c9e253a85c3678b3a0928c5fa5fafde4fa8b0d8f07a148e",
+      "status": "DONE"
+    },
+    {
+      "bytes": 256078,
+      "credits": 80,
+      "files": [
+        "sfx/death_warden/2.wav"
+      ],
+      "finished_at": 1794889331,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/death_warden/2",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "An older woman healer killed, a short sorrowful cry, a soft fall and the scatter of dried herbs and small wooden tools. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "fd313f896326350f37a66c02b3af45c612ca51e54a60fa26006a7d575a4bd293",
+      "status": "DONE"
+    },
+    {
+      "bytes": 256078,
+      "credits": 80,
+      "files": [
+        "sfx/death_warden/3.wav"
+      ],
+      "finished_at": 1794889332,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/death_warden/3",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "An older woman healer killed, a short sorrowful cry, a soft fall and the scatter of dried herbs and small wooden tools. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "bf157f4c18f245adfbc14cec3b20ba0ef02d6eb0178bd41b80f892873297472c",
+      "status": "DONE"
+    },
+    {
+      "bytes": 256078,
+      "credits": 80,
+      "files": [
+        "sfx/death_warden/4.wav"
+      ],
+      "finished_at": 1794889334,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/death_warden/4",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "An older woman healer killed, a short sorrowful cry, a soft fall and the scatter of dried herbs and small wooden tools. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "7648432e787a27df7acbc2126fed7b6fcecf057c38bd8ea42ca8c85da54f9b2d",
+      "status": "DONE"
+    },
+    {
+      "bytes": 256078,
+      "credits": 80,
+      "files": [
+        "sfx/death_warden/5.wav"
+      ],
+      "finished_at": 1794889335,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/death_warden/5",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "An older woman healer killed, a short sorrowful cry, a soft fall and the scatter of dried herbs and small wooden tools. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "036630cf510d09a48552942a457bfe58cfa03b06fc3d3f724b62a5e6d32233b9",
+      "status": "DONE"
+    },
+    {
+      "bytes": 256078,
+      "credits": 80,
+      "files": [
+        "sfx/death_warden/6.wav"
+      ],
+      "finished_at": 1794889336,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/death_warden/6",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "An older woman healer killed, a short sorrowful cry, a soft fall and the scatter of dried herbs and small wooden tools. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "293c676a5c950ea869cfa5b4ee7ce77b407d9ffb60c53471ac5aff22f93eef18",
+      "status": "DONE"
+    },
+    {
+      "bytes": 317518,
+      "credits": 100,
+      "files": [
+        "sfx/groan_blightbag/1.wav"
+      ],
+      "finished_at": 1794889338,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/groan_blightbag/1",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A swollen corpse full of gas, a long gurgling moan with bubbling and a wheezy leak of foul air. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "a6096d78ee3cb7b0e7423e9d7a039ceea64e33206294770277540a362ee4d66c",
+      "status": "DONE"
+    },
+    {
+      "bytes": 317518,
+      "credits": 100,
+      "files": [
+        "sfx/groan_blightbag/2.wav"
+      ],
+      "finished_at": 1794889339,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/groan_blightbag/2",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A swollen corpse full of gas, a long gurgling moan with bubbling and a wheezy leak of foul air. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "aef0867f1781075449369bf770f7ab01b002aeb4f027b638bc7ae46f3f63be11",
+      "status": "DONE"
+    },
+    {
+      "bytes": 317518,
+      "credits": 100,
+      "files": [
+        "sfx/groan_blightbag/3.wav"
+      ],
+      "finished_at": 1794889340,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/groan_blightbag/3",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A swollen corpse full of gas, a long gurgling moan with bubbling and a wheezy leak of foul air. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "8d54a8bb3edb81db2abffaabc8d678d65d4379aa46d6e83631bed5ff1474d8b3",
+      "status": "DONE"
+    },
+    {
+      "bytes": 317518,
+      "credits": 100,
+      "files": [
+        "sfx/groan_blightbag/4.wav"
+      ],
+      "finished_at": 1794889341,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/groan_blightbag/4",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A swollen corpse full of gas, a long gurgling moan with bubbling and a wheezy leak of foul air. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "2f1e2aff18c04d153fb93d4152d5356fb1a1e9506f05225678c48d9eeea9c6b1",
+      "status": "DONE"
+    },
+    {
+      "bytes": 317518,
+      "credits": 100,
+      "files": [
+        "sfx/groan_blightbag/5.wav"
+      ],
+      "finished_at": 1794889342,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/groan_blightbag/5",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A swollen corpse full of gas, a long gurgling moan with bubbling and a wheezy leak of foul air. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "e53a6dede15bbd7c43000caca970a7942cb5121b049b7101b5d4db16b161f0ea",
+      "status": "DONE"
+    },
+    {
+      "bytes": 317518,
+      "credits": 100,
+      "files": [
+        "sfx/groan_blightbag/6.wav"
+      ],
+      "finished_at": 1794889343,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/groan_blightbag/6",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A swollen corpse full of gas, a long gurgling moan with bubbling and a wheezy leak of foul air. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "cbd7798857b335c729856b07ff6f56ddbd72b270a65ec71e9713e27edd2842a9",
+      "status": "DONE"
+    },
+    {
+      "bytes": 317518,
+      "credits": 100,
+      "files": [
+        "sfx/groan_drifter/1.wav"
+      ],
+      "finished_at": 1794889345,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/groan_drifter/1",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A hooded spectre drifting, a hollow whispering breath with a dry papery rustle of cloth, cold and wrong. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "66497335e8af9d44dda342e8e9b6ea7921cf200999120380eb756448e56b59fc",
+      "status": "DONE"
+    },
+    {
+      "bytes": 317518,
+      "credits": 100,
+      "files": [
+        "sfx/groan_drifter/2.wav"
+      ],
+      "finished_at": 1794889347,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/groan_drifter/2",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A hooded spectre drifting, a hollow whispering breath with a dry papery rustle of cloth, cold and wrong. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "a5b01f73e2963da51eec29951f055e688c9117b67480cc2e0aa6eb9afab6b156",
+      "status": "DONE"
+    },
+    {
+      "bytes": 317518,
+      "credits": 100,
+      "files": [
+        "sfx/groan_drifter/3.wav"
+      ],
+      "finished_at": 1794889348,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/groan_drifter/3",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A hooded spectre drifting, a hollow whispering breath with a dry papery rustle of cloth, cold and wrong. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "c4b27c61c219d0a23056564207416e3035f7c9a5db80196f0f650bec09d614a5",
+      "status": "DONE"
+    },
+    {
+      "bytes": 317518,
+      "credits": 100,
+      "files": [
+        "sfx/groan_drifter/4.wav"
+      ],
+      "finished_at": 1794889350,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/groan_drifter/4",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A hooded spectre drifting, a hollow whispering breath with a dry papery rustle of cloth, cold and wrong. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "61efd1cb5cc332c1812fe2266bf2b96c19a54b2c97a9155cc86af3a31b6e9b6e",
+      "status": "DONE"
+    },
+    {
+      "bytes": 317518,
+      "credits": 100,
+      "files": [
+        "sfx/groan_drifter/5.wav"
+      ],
+      "finished_at": 1794889352,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/groan_drifter/5",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A hooded spectre drifting, a hollow whispering breath with a dry papery rustle of cloth, cold and wrong. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "04fc15a8ba2eff5dbef86267781b1ded7e4e4be3baeb3e6cb6ffccc9a9ca5423",
+      "status": "DONE"
+    },
+    {
+      "bytes": 317518,
+      "credits": 100,
+      "files": [
+        "sfx/groan_drifter/6.wav"
+      ],
+      "finished_at": 1794889353,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/groan_drifter/6",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A hooded spectre drifting, a hollow whispering breath with a dry papery rustle of cloth, cold and wrong. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "5027667f2fa29a542e6518f9cbb2a1f800351fde074a09d20f7d7757fed2eada",
+      "status": "DONE"
+    },
+    {
+      "bytes": 256078,
+      "credits": 80,
+      "files": [
+        "sfx/groan_husk/1.wav"
+      ],
+      "finished_at": 1794889355,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/groan_husk/1",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A bog zombie groaning, a slow low dry moan, wet-throated and rasping, like air dragged through old wet leather. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "4d52ee6a0f40f232c772b126c5a07885c9af0d5d75842a9beae03377534ee3c7",
+      "status": "DONE"
+    },
+    {
+      "bytes": 256078,
+      "credits": 80,
+      "files": [
+        "sfx/groan_husk/2.wav"
+      ],
+      "finished_at": 1794889356,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/groan_husk/2",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A bog zombie groaning, a slow low dry moan, wet-throated and rasping, like air dragged through old wet leather. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "9f91a2419649d0c176b677f4f3440e883196bf5dbcec7ccd72960d8b9749b473",
+      "status": "DONE"
+    },
+    {
+      "bytes": 256078,
+      "credits": 80,
+      "files": [
+        "sfx/groan_husk/3.wav"
+      ],
+      "finished_at": 1794889357,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/groan_husk/3",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A bog zombie groaning, a slow low dry moan, wet-throated and rasping, like air dragged through old wet leather. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "53f4061fca0bd817094905921720b1df7824bfdc480651dccbac81522b2b4540",
+      "status": "DONE"
+    },
+    {
+      "bytes": 256078,
+      "credits": 80,
+      "files": [
+        "sfx/groan_husk/4.wav"
+      ],
+      "finished_at": 1794889358,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/groan_husk/4",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A bog zombie groaning, a slow low dry moan, wet-throated and rasping, like air dragged through old wet leather. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "fa6c1acc43df229659b64779c30980cb5f91cd7fb60015e8b93c44514461e1dc",
+      "status": "DONE"
+    },
+    {
+      "bytes": 256078,
+      "credits": 80,
+      "files": [
+        "sfx/groan_husk/5.wav"
+      ],
+      "finished_at": 1794889360,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/groan_husk/5",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A bog zombie groaning, a slow low dry moan, wet-throated and rasping, like air dragged through old wet leather. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "5e8657244068929cea60bae671e6aefb60a18ebf0abd4ad41832810ff93f50b6",
+      "status": "DONE"
+    },
+    {
+      "bytes": 256078,
+      "credits": 80,
+      "files": [
+        "sfx/groan_husk/6.wav"
+      ],
+      "finished_at": 1794889361,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/groan_husk/6",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A bog zombie groaning, a slow low dry moan, wet-throated and rasping, like air dragged through old wet leather. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "ee05049d683afbbc2437c68049974ebfe20f9d10a96117906d455a6a47ebdba4",
+      "status": "DONE"
+    },
+    {
+      "bytes": 189518,
+      "credits": 60,
+      "files": [
+        "sfx/groan_ripper/1.wav"
+      ],
+      "finished_at": 1794889362,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/groan_ripper/1",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A starved gaunt ghoul, a thin dry rattling hiss and a clicking in the throat, restless and hungry. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "4bae47d2f064e85da1ef6a95efe5b4544b63719cb369ede7bd4e4b692e3ce1e2",
+      "status": "DONE"
+    },
+    {
+      "bytes": 189518,
+      "credits": 60,
+      "files": [
+        "sfx/groan_ripper/2.wav"
+      ],
+      "finished_at": 1794889363,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/groan_ripper/2",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A starved gaunt ghoul, a thin dry rattling hiss and a clicking in the throat, restless and hungry. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "aed0087f1df55588fe893061a8b4348aefd33df054659ccb344a2c3dd86bd753",
+      "status": "DONE"
+    },
+    {
+      "bytes": 189518,
+      "credits": 60,
+      "files": [
+        "sfx/groan_ripper/3.wav"
+      ],
+      "finished_at": 1794889365,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/groan_ripper/3",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A starved gaunt ghoul, a thin dry rattling hiss and a clicking in the throat, restless and hungry. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "ae15d0053588cceae2d7695b32a71010e1ccb4c9ae34bff3843f7c80e024a827",
+      "status": "DONE"
+    },
+    {
+      "bytes": 189518,
+      "credits": 60,
+      "files": [
+        "sfx/groan_ripper/4.wav"
+      ],
+      "finished_at": 1794889366,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/groan_ripper/4",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A starved gaunt ghoul, a thin dry rattling hiss and a clicking in the throat, restless and hungry. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "4bb19aa75d4a5cd100a463b63c12cb6ef2c86480bbc8660a06850d8077429701",
+      "status": "DONE"
+    },
+    {
+      "bytes": 189518,
+      "credits": 60,
+      "files": [
+        "sfx/groan_ripper/5.wav"
+      ],
+      "finished_at": 1794889367,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/groan_ripper/5",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A starved gaunt ghoul, a thin dry rattling hiss and a clicking in the throat, restless and hungry. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "ff2000a215f10c1c76d55ceef90c51ceafd882fd194a1a909f662d71bf672262",
+      "status": "DONE"
+    },
+    {
+      "bytes": 189518,
+      "credits": 60,
+      "files": [
+        "sfx/groan_ripper/6.wav"
+      ],
+      "finished_at": 1794889368,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/groan_ripper/6",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A starved gaunt ghoul, a thin dry rattling hiss and a clicking in the throat, restless and hungry. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "949a11129e42ef73ba1e5ef5947cfdb1aed1a0e9887a5d4813eaa3d647c24b86",
+      "status": "DONE"
+    },
+    {
+      "bytes": 256078,
+      "credits": 80,
+      "files": [
+        "sfx/groan_stormcaller/1.wav"
+      ],
+      "finished_at": 1794889371,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/groan_stormcaller/1",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A lightning sorcerer muttering, a rough hoarse chant under his breath with a faint crackle of static sparks between words. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "834726b3f2665b12b5544499a08d5698655bf7329ece8aa37d1d079509fa9268",
+      "status": "DONE"
+    },
+    {
+      "bytes": 256078,
+      "credits": 80,
+      "files": [
+        "sfx/groan_stormcaller/2.wav"
+      ],
+      "finished_at": 1794889373,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/groan_stormcaller/2",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A lightning sorcerer muttering, a rough hoarse chant under his breath with a faint crackle of static sparks between words. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "a5d787f8cae97c21ba08ff92569d69e5220a61f3911f7731a24bbc36cb3f36c7",
+      "status": "DONE"
+    },
+    {
+      "bytes": 256078,
+      "credits": 80,
+      "files": [
+        "sfx/groan_stormcaller/3.wav"
+      ],
+      "finished_at": 1794889374,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/groan_stormcaller/3",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A lightning sorcerer muttering, a rough hoarse chant under his breath with a faint crackle of static sparks between words. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "f982335a107344b6309d9f6a7fadae49bbe11c54cb1c02b5fc391261a49281e0",
+      "status": "DONE"
+    },
+    {
+      "bytes": 256078,
+      "credits": 80,
+      "files": [
+        "sfx/groan_stormcaller/4.wav"
+      ],
+      "finished_at": 1794889375,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/groan_stormcaller/4",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A lightning sorcerer muttering, a rough hoarse chant under his breath with a faint crackle of static sparks between words. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "9fb1799ff57ccfc7b039584e799c39659dfdc483c7607a4ddfde77841322e14a",
+      "status": "DONE"
+    },
+    {
+      "bytes": 256078,
+      "credits": 80,
+      "files": [
+        "sfx/groan_stormcaller/5.wav"
+      ],
+      "finished_at": 1794889377,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/groan_stormcaller/5",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A lightning sorcerer muttering, a rough hoarse chant under his breath with a faint crackle of static sparks between words. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "2af28561127ffac18b708fd375a2357f86b14c6fece16aef9319ddde3a8d6d91",
+      "status": "DONE"
+    },
+    {
+      "bytes": 256078,
+      "credits": 80,
+      "files": [
+        "sfx/groan_stormcaller/6.wav"
+      ],
+      "finished_at": 1794889378,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/groan_stormcaller/6",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A lightning sorcerer muttering, a rough hoarse chant under his breath with a faint crackle of static sparks between words. realistic close recording of a single wordless vocal sound, grounded and gritty",
+      "sha256": "b647166a34aede7a150ef8dc5039d74c47e78576bbbe43689904f6a1c798631a",
+      "status": "DONE"
     }
   ]
 }

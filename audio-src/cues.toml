@@ -272,7 +272,7 @@ prompt = "A tired armoured man killed in battle, a short strangled cry, the clat
 duration_s = 1.8
 level_db = -6.0
 placeholder = "res://assets/audio/sfx/death.wav"
-picks = []
+picks = [1, 2, 3, 5]
 
 [cue.death_reaver]
 category = "death"
@@ -280,7 +280,7 @@ prompt = "A fierce swordsman killed, a ragged shout cut short, a heavy fall onto
 duration_s = 1.8
 level_db = -6.0
 placeholder = "res://assets/audio/sfx/death.wav"
-picks = []
+picks = [2, 4, 5]
 
 [cue.death_longbow]
 category = "death"
@@ -288,7 +288,7 @@ prompt = "A lightly armed archer killed, a sharp gasp and a cry, a soft collapse
 duration_s = 1.6
 level_db = -6.0
 placeholder = "res://assets/audio/sfx/death.wav"
-picks = []
+picks = [1, 3, 5]
 
 [cue.death_sapper]
 category = "death"
@@ -296,7 +296,7 @@ prompt = "A man carrying glass bottles killed, a grunt and a fall followed by th
 duration_s = 2.0
 level_db = -6.0
 placeholder = "res://assets/audio/sfx/death.wav"
-picks = []
+picks = [2, 4, 6]
 
 [cue.death_warden]
 category = "death"
@@ -304,7 +304,7 @@ prompt = "An older woman healer killed, a short sorrowful cry, a soft fall and t
 duration_s = 2.0
 level_db = -6.0
 placeholder = "res://assets/audio/sfx/death.wav"
-picks = []
+picks = [1, 3, 5]
 
 [cue.death_villager]
 category = "death"
@@ -312,7 +312,7 @@ prompt = "An unarmed villager killed, a frightened short scream cut off, then a 
 duration_s = 1.6
 level_db = -6.0
 placeholder = "res://assets/audio/sfx/death.wav"
-picks = []
+picks = [2, 4, 6]
 
 [cue.death_husk]
 category = "death"
@@ -320,7 +320,7 @@ prompt = "A bog-sodden walking corpse falling apart, a low dry moan, wet crumbli
 duration_s = 2.0
 level_db = -6.0
 placeholder = "res://assets/audio/sfx/death.wav"
-picks = []
+picks = [1, 3, 5]
 
 [cue.death_ripper]
 category = "death"
@@ -328,7 +328,7 @@ prompt = "A gaunt ghoul killed, a thin rasping shriek that breaks to a wheeze, b
 duration_s = 1.8
 level_db = -6.0
 placeholder = "res://assets/audio/sfx/death.wav"
-picks = []
+picks = [2, 4, 6]
 
 [cue.death_blightbag]
 category = "death"
@@ -336,7 +336,7 @@ prompt = "A bloated gas-filled corpse collapsing, a long wet groan, a slow leaki
 duration_s = 2.2
 level_db = -6.0
 placeholder = "res://assets/audio/sfx/death.wav"
-picks = []
+picks = [1, 3, 5]
 
 [cue.death_drifter]
 category = "death"
@@ -344,7 +344,7 @@ prompt = "A hooded spectre dispersing, a hollow dry sigh like wind through a cra
 duration_s = 2.2
 level_db = -6.0
 placeholder = "res://assets/audio/sfx/death.wav"
-picks = []
+picks = [2, 4, 6]
 
 [cue.death_stormcaller]
 category = "death"
@@ -352,37 +352,37 @@ prompt = "A lightning sorcerer killed, a harsh gasp, a stuttering crackle of sta
 duration_s = 2.2
 level_db = -6.0
 placeholder = "res://assets/audio/sfx/death.wav"
-picks = []
+picks = [3, 5]
 
 [cue.groan_husk]
 category = "groan"
 prompt = "A bog zombie groaning, a slow low dry moan, wet-throated and rasping, like air dragged through old wet leather."
 duration_s = 2.0
-picks = []
+picks = [2, 3, 6]
 
 [cue.groan_ripper]
 category = "groan"
 prompt = "A starved gaunt ghoul, a thin dry rattling hiss and a clicking in the throat, restless and hungry."
 duration_s = 1.5
-picks = []
+picks = [2, 4, 5]
 
 [cue.groan_blightbag]
 category = "groan"
 prompt = "A swollen corpse full of gas, a long gurgling moan with bubbling and a wheezy leak of foul air."
 duration_s = 2.5
-picks = []
+picks = [1, 2, 4]
 
 [cue.groan_drifter]
 category = "groan"
 prompt = "A hooded spectre drifting, a hollow whispering breath with a dry papery rustle of cloth, cold and wrong."
 duration_s = 2.5
-picks = []
+picks = [1, 4, 6]
 
 [cue.groan_stormcaller]
 category = "groan"
 prompt = "A lightning sorcerer muttering, a rough hoarse chant under his breath with a faint crackle of static sparks between words."
 duration_s = 2.0
-picks = []
+picks = [1, 2, 3]
 
 [cue.ui_click]
 category = "ui"
