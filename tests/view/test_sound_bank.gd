@@ -42,8 +42,10 @@ func test_the_committed_bank_holds_every_cue_with_its_placeholder() -> void:
 	# nothing to play is pinned by the fixture test above, so this doesn't depend on what is bought yet.
 	assert_true(bank.declares(&"swing_claw"))
 	assert_true(bank.has(&"swing_claw"), "no placeholder, but picked takes to play")
+	# bed_rain is a bought loop now: an Ogg Vorbis stream imported with loop=true (the placeholder was a looping WAV).
 	var rain: SoundCue = bank.cue(&"bed_rain")
-	assert_eq((rain.streams[0] as AudioStreamWAV).loop_mode, AudioStreamWAV.LOOP_FORWARD)
+	assert_is(rain.streams[0], AudioStreamOggVorbis)
+	assert_true((rain.streams[0] as AudioStreamOggVorbis).loop, "the loop imports with loop=true")
 	assert_eq(rain.playback, AudioServer.PLAYBACK_TYPE_STREAM)
 	assert_false(bank.cue(&"explosion_small").loop)
 	assert_gt(bank.cue(&"hit_flesh").file_bytes, 0)

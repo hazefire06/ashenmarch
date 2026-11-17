@@ -4890,6 +4890,396 @@
       "prompt": "A lightning sorcerer muttering, a rough hoarse chant under his breath with a faint crackle of static sparks between words. realistic close recording of a single wordless vocal sound, grounded and gritty",
       "sha256": "b647166a34aede7a150ef8dc5039d74c47e78576bbbe43689904f6a1c798631a",
       "status": "DONE"
+    },
+    {
+      "bytes": 153678,
+      "credits": 48,
+      "files": [
+        "sfx/fizzle_hiss/7.wav"
+      ],
+      "finished_at": 1794922175,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/fizzle_hiss/7",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A small flame doused by a splash of water, one quick sharp hiss of steam with two or three wet sputters, then silence. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "c3cd3b670588fef1ce0c2a0b4930dd29dbbf20aaa2ab7a2fc3f48177f2715547",
+      "status": "DONE"
+    },
+    {
+      "bytes": 153678,
+      "credits": 48,
+      "files": [
+        "sfx/fizzle_hiss/8.wav"
+      ],
+      "finished_at": 1794922176,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/fizzle_hiss/8",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A small flame doused by a splash of water, one quick sharp hiss of steam with two or three wet sputters, then silence. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "3429a491a3054f59d4b9d78ea12a90091d45aec3862cf79ae6494231e5945b45",
+      "status": "DONE"
+    },
+    {
+      "bytes": 153678,
+      "credits": 48,
+      "files": [
+        "sfx/fizzle_hiss/9.wav"
+      ],
+      "finished_at": 1794922178,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/fizzle_hiss/9",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A small flame doused by a splash of water, one quick sharp hiss of steam with two or three wet sputters, then silence. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "cbdb387de6bd98bc001d555453a469b28742865f2609bc4e9f6e6df9bca8f528",
+      "status": "DONE"
+    },
+    {
+      "bytes": 153678,
+      "credits": 48,
+      "files": [
+        "sfx/fizzle_hiss/10.wav"
+      ],
+      "finished_at": 1794922179,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/fizzle_hiss/10",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A small flame doused by a splash of water, one quick sharp hiss of steam with two or three wet sputters, then silence. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "4e6b84ee86bbf90559e5a8d773292d2572d0a39e0d17e3a901dcf4cba7784406",
+      "status": "DONE"
+    },
+    {
+      "bytes": 153678,
+      "credits": 48,
+      "files": [
+        "sfx/fizzle_hiss/11.wav"
+      ],
+      "finished_at": 1794922180,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/fizzle_hiss/11",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A small flame doused by a splash of water, one quick sharp hiss of steam with two or three wet sputters, then silence. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "40985dbf3db2490a5fb707eba7a8831fbc9edc6e59f0da240ec19c52dd698a11",
+      "status": "DONE"
+    },
+    {
+      "bytes": 153678,
+      "credits": 48,
+      "files": [
+        "sfx/fizzle_hiss/12.wav"
+      ],
+      "finished_at": 1794922183,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/fizzle_hiss/12",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A small flame doused by a splash of water, one quick sharp hiss of steam with two or three wet sputters, then silence. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "373a3c7f3efb92f8039a195c24e51c17349984e3468e90b30e6756bf0be4268b",
+      "status": "DONE"
+    },
+    {
+      "bytes": 1536078,
+      "credits": 480,
+      "files": [
+        "sfx/march_grass/1.wav"
+      ],
+      "finished_at": 1794922185,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/march_grass/1",
+      "model": "eleven_text_to_sound_v3",
+      "prompt": "A small group of men marching steadily through long grass, soft swishing of stalks and a steady tread of boots, a quiet steady rhythm. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "5ece5254d5e3d7006c8c6d289eb32aa997ee144005d564bffdfcc0405aa0c1a7",
+      "status": "DONE"
+    },
+    {
+      "bytes": 1536078,
+      "credits": 480,
+      "files": [
+        "sfx/march_grass/2.wav"
+      ],
+      "finished_at": 1794922187,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/march_grass/2",
+      "model": "eleven_text_to_sound_v3",
+      "prompt": "A small group of men marching steadily through long grass, soft swishing of stalks and a steady tread of boots, a quiet steady rhythm. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "e984e1af3a545213f10f59b98342e02a44ba73e9efbf7403e9fd928de7bd52f9",
+      "status": "DONE"
+    },
+    {
+      "bytes": 1536078,
+      "credits": 480,
+      "files": [
+        "sfx/march_rock/1.wav"
+      ],
+      "finished_at": 1794922190,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/march_rock/1",
+      "model": "eleven_text_to_sound_v3",
+      "prompt": "A small group of men marching on bare rock and gravel, hard crunching steps and the clink of loose stones, a quiet steady rhythm. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "4343cbc9c344f43e83b6a0ebd9570b8d2f4b3615c69db031e3e244e8a378ab9d",
+      "status": "DONE"
+    },
+    {
+      "bytes": 1536078,
+      "credits": 480,
+      "files": [
+        "sfx/march_rock/2.wav"
+      ],
+      "finished_at": 1794922193,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/march_rock/2",
+      "model": "eleven_text_to_sound_v3",
+      "prompt": "A small group of men marching on bare rock and gravel, hard crunching steps and the clink of loose stones, a quiet steady rhythm. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "6cb3268f00aa1343c844f164ade746a45b4cebf473f7d542647ec2fb36614c60",
+      "status": "DONE"
+    },
+    {
+      "bytes": 1536078,
+      "credits": 480,
+      "files": [
+        "sfx/march_sand/1.wav"
+      ],
+      "finished_at": 1794922195,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/march_sand/1",
+      "model": "eleven_text_to_sound_v3",
+      "prompt": "A small group of men marching across loose sand, a soft crunching shuffle of boots and a hiss of falling grains, a quiet steady rhythm. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "b1d3f814012372651e05e6b1e126dbe763039dd0b2b6fac0b45bb8370898016c",
+      "status": "DONE"
+    },
+    {
+      "bytes": 1536078,
+      "credits": 480,
+      "files": [
+        "sfx/march_sand/2.wav"
+      ],
+      "finished_at": 1794922197,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/march_sand/2",
+      "model": "eleven_text_to_sound_v3",
+      "prompt": "A small group of men marching across loose sand, a soft crunching shuffle of boots and a hiss of falling grains, a quiet steady rhythm. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "ffa0ee4db7dd098a4fd5146281db6d3c228d11e6ddfd6c0d01b59fb736fef37e",
+      "status": "DONE"
+    },
+    {
+      "bytes": 1536078,
+      "credits": 480,
+      "files": [
+        "sfx/march_water/1.wav"
+      ],
+      "finished_at": 1794922199,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/march_water/1",
+      "model": "eleven_text_to_sound_v3",
+      "prompt": "A small group of men wading through knee-deep water, heavy splashing steps and the sloshing drip of water off cloth, a quiet steady rhythm. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "8d8e98c848aa9d017c177ca40369ac059c2b8723080595221e415c39ecc4cc9b",
+      "status": "DONE"
+    },
+    {
+      "bytes": 1536078,
+      "credits": 480,
+      "files": [
+        "sfx/march_water/2.wav"
+      ],
+      "finished_at": 1794922201,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/march_water/2",
+      "model": "eleven_text_to_sound_v3",
+      "prompt": "A small group of men wading through knee-deep water, heavy splashing steps and the sloshing drip of water off cloth, a quiet steady rhythm. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "af4ac81a47e95a926e004d9dff918daf26f734f48113130881f5c39593ca3a21",
+      "status": "DONE"
+    },
+    {
+      "bytes": 1536078,
+      "credits": 480,
+      "files": [
+        "sfx/bed_fire/1.wav"
+      ],
+      "finished_at": 1794922203,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/bed_fire/1",
+      "model": "eleven_text_to_sound_v3",
+      "prompt": "A big brush fire burning, a steady roaring crackle with snapping twigs and the dry rush of flames. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "3cacee4d35fde93d5e2353e86cd552c9cb000bceba01e645a7090ca8889bc99c",
+      "status": "DONE"
+    },
+    {
+      "bytes": 1536078,
+      "credits": 480,
+      "files": [
+        "sfx/bed_fire/2.wav"
+      ],
+      "finished_at": 1794922205,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/bed_fire/2",
+      "model": "eleven_text_to_sound_v3",
+      "prompt": "A big brush fire burning, a steady roaring crackle with snapping twigs and the dry rush of flames. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "8edd76b7de0b56c985c2f6caa5c4a8a8979fb744b501dcbaf6619765b7856a76",
+      "status": "DONE"
+    },
+    {
+      "bytes": 1536078,
+      "credits": 480,
+      "files": [
+        "sfx/bed_gas/1.wav"
+      ],
+      "finished_at": 1794922208,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/bed_gas/1",
+      "model": "eleven_text_to_sound_v3",
+      "prompt": "A cloud of poison gas hanging low, a thin steady hiss with a faint wet bubbling, unsettling and monotone. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "bc99e4bb7aff06dc77a01a1c71140c489db8e5b5787d0200654fc703623640ea",
+      "status": "DONE"
+    },
+    {
+      "bytes": 1536078,
+      "credits": 480,
+      "files": [
+        "sfx/bed_gas/2.wav"
+      ],
+      "finished_at": 1794922210,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/bed_gas/2",
+      "model": "eleven_text_to_sound_v3",
+      "prompt": "A cloud of poison gas hanging low, a thin steady hiss with a faint wet bubbling, unsettling and monotone. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "c62497b355726eff1a49cb9bc7c694452bc2599e84c2a7edb564fe3a440b0713",
+      "status": "DONE"
+    },
+    {
+      "bytes": 1536078,
+      "credits": 480,
+      "files": [
+        "sfx/bed_outdoor/1.wav"
+      ],
+      "finished_at": 1794922212,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/bed_outdoor/1",
+      "model": "eleven_text_to_sound_v3",
+      "prompt": "A quiet highland valley at dusk, a soft steady breeze through grass and trees, far off bird calls, all of it distant and gentle. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "84a0ecd43910e9d3f488f43c079508f915796d3180ecee4156add7397e8aac5a",
+      "status": "DONE"
+    },
+    {
+      "bytes": 1536078,
+      "credits": 480,
+      "files": [
+        "sfx/bed_outdoor/2.wav"
+      ],
+      "finished_at": 1794922215,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/bed_outdoor/2",
+      "model": "eleven_text_to_sound_v3",
+      "prompt": "A quiet highland valley at dusk, a soft steady breeze through grass and trees, far off bird calls, all of it distant and gentle. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "95dd1d9e599975fb40ff5c897a9f060817a8df756eae6bb473cd6acfc18b693c",
+      "status": "DONE"
+    },
+    {
+      "bytes": 1536078,
+      "credits": 480,
+      "files": [
+        "sfx/bed_rain/1.wav"
+      ],
+      "finished_at": 1794922218,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/bed_rain/1",
+      "model": "eleven_text_to_sound_v3",
+      "prompt": "Steady rain falling on grass and mud, a dense soft patter with a faint wet drip off leaves, even and steady. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "e2c0690b6d247f3b983e0762b78f6dc1e9756626ab61ac9042e903519f573268",
+      "status": "DONE"
+    },
+    {
+      "bytes": 1536078,
+      "credits": 480,
+      "files": [
+        "sfx/bed_rain/2.wav"
+      ],
+      "finished_at": 1794922219,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/bed_rain/2",
+      "model": "eleven_text_to_sound_v3",
+      "prompt": "Steady rain falling on grass and mud, a dense soft patter with a faint wet drip off leaves, even and steady. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "809256c1b9b61a6ab7ec7f2441ee974d50436fa475d59c889c2ac576301761d1",
+      "status": "DONE"
+    },
+    {
+      "bytes": 1536078,
+      "credits": 480,
+      "files": [
+        "sfx/bed_snow/1.wav"
+      ],
+      "finished_at": 1794922222,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/bed_snow/1",
+      "model": "eleven_text_to_sound_v3",
+      "prompt": "Falling snow on a still moor, a thin cold wind with a faint hush of drifting flakes and a creak of frozen branches. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "86e1158b87b5fa345238ee2678758b310c5baa5d1d24daa31b2c23101ad80347",
+      "status": "DONE"
+    },
+    {
+      "bytes": 1536078,
+      "credits": 480,
+      "files": [
+        "sfx/bed_snow/2.wav"
+      ],
+      "finished_at": 1794922224,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/bed_snow/2",
+      "model": "eleven_text_to_sound_v3",
+      "prompt": "Falling snow on a still moor, a thin cold wind with a faint hush of drifting flakes and a creak of frozen branches. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "5be410b548a2a9b8dbfd9a62380cd1a801a24a7b71116bc6990c247c961d08bd",
+      "status": "DONE"
+    },
+    {
+      "bytes": 1536078,
+      "credits": 480,
+      "files": [
+        "sfx/bed_water/1.wav"
+      ],
+      "finished_at": 1794922227,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/bed_water/1",
+      "model": "eleven_text_to_sound_v3",
+      "prompt": "A shallow creek running over stones, a constant bright burbling and trickle of water, steady and even. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "1b77cfec3088092e52fc861932a14d39e6ca869d81564b1f5792fe598d54e2fc",
+      "status": "DONE"
+    },
+    {
+      "bytes": 1536078,
+      "credits": 480,
+      "files": [
+        "sfx/bed_water/2.wav"
+      ],
+      "finished_at": 1794922229,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/bed_water/2",
+      "model": "eleven_text_to_sound_v3",
+      "prompt": "A shallow creek running over stones, a constant bright burbling and trickle of water, steady and even. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "544da642b45fb0b1f47d279d5959f545f93f74ba749a2951687003bc60b559f2",
+      "status": "DONE"
     }
   ]
 }

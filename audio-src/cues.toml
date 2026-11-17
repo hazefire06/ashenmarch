@@ -212,11 +212,13 @@ picks = [4, 6]
 
 [cue.fizzle_hiss]
 category = "projectile"
-prompt = "A burning fuse or fire arrow dying in rain, a short sputtering hiss and a few spits of steam."
+# Takes 1-6 (the first prompt, about a fire arrow dying in rain) had nothing usable. 7-12 use this prompt.
+prompt = "A small flame doused by a splash of water, one quick sharp hiss of steam with two or three wet sputters, then silence."
 duration_s = 1.2
+takes = 12
 level_db = -6.0
 placeholder = "res://assets/audio/sfx/gas_hiss.wav"
-picks = []
+picks = [1, 7, 12]
 
 [cue.fizzle_water]
 category = "projectile"
@@ -444,7 +446,7 @@ loop = true
 model = "eleven_text_to_sound_v3"
 variants = 1
 takes = 2
-picks = []
+picks = [1]
 
 [cue.march_sand]
 category = "march"
@@ -455,7 +457,7 @@ loop = true
 model = "eleven_text_to_sound_v3"
 variants = 1
 takes = 2
-picks = []
+picks = [2]
 
 [cue.march_rock]
 category = "march"
@@ -466,7 +468,7 @@ loop = true
 model = "eleven_text_to_sound_v3"
 variants = 1
 takes = 2
-picks = []
+picks = [2]
 
 [cue.march_water]
 category = "march"
@@ -477,7 +479,7 @@ loop = true
 model = "eleven_text_to_sound_v3"
 variants = 1
 takes = 2
-picks = []
+picks = [2]
 
 [cue.bed_outdoor]
 category = "bed"
@@ -488,7 +490,7 @@ loop = true
 model = "eleven_text_to_sound_v3"
 variants = 1
 takes = 2
-picks = []
+picks = [2]
 
 [cue.bed_rain]
 category = "bed"
@@ -501,7 +503,7 @@ variants = 1
 takes = 2
 level_db = -4.0
 placeholder = "res://assets/audio/sfx/rain_loop.wav"
-picks = []
+picks = [2]
 
 [cue.bed_snow]
 category = "bed"
@@ -512,7 +514,7 @@ loop = true
 model = "eleven_text_to_sound_v3"
 variants = 1
 takes = 2
-picks = []
+picks = [1]
 
 [cue.bed_fire]
 category = "bed"
@@ -525,7 +527,7 @@ variants = 1
 takes = 2
 level_db = -4.0
 placeholder = "res://assets/audio/sfx/fire_loop.wav"
-picks = []
+picks = [2]
 
 [cue.bed_water]
 category = "bed"
@@ -536,7 +538,7 @@ loop = true
 model = "eleven_text_to_sound_v3"
 variants = 1
 takes = 2
-picks = []
+picks = [2]
 
 [cue.bed_gas]
 category = "bed"
@@ -547,4 +549,4 @@ loop = true
 model = "eleven_text_to_sound_v3"
 variants = 1
 takes = 2
-picks = []
+picks = [1]
