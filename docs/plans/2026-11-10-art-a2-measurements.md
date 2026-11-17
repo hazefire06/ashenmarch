@@ -72,6 +72,22 @@ Tim ran both probes in Terminal.app, with the `ashenmarch` key (scoped, quota 10
 - Tim's account showed 73,000 credits available after the probes. The spec's 90,000 was from 2026-11-09. A key capped at 100 credits can't account for the gap.
 - Still to record: what the usage page shows these two calls cost, and whether in credits or dollars.
 
+## Step 6: Tim's first Riverside listen (2026-11-17)
+
+The build was the worktree at 8518e61 (every cue picked, Riverside's music built), run with `make run` on this Mac. Tim played Riverside at tier 2.
+
+**What he heard, and the causes:**
+- **Groans from the first second, too loud over the music.** Groans needed only a seen undead within 40 m of the camera focus. Riverside's `camera_start` (285, 240) m looks at `field_patrol_w`: 7 Husks looping 13 to 27 m from the focus, about 70 m from the deploy at (290, 180). The listener stands at the focus (`UNIT_SIZE` 12), so they played near full level, peak-normalised, over -23 LUFS music on a 70 % bus.
+- **Marching all the time.** A headless probe of the first 20 s showed the same 7 Husks moving within 40 m of the focus nearly nonstop (1 to 5 at their turns), with the squad standing still. The march counted every visible mover, so `march_grass` sat at sqrt(7/12) = 0.76.
+
+**Changes:**
+- Groans also need a living unit of another side within 20 m (`SfxPlayer.GROAN_NEAR`), commit 6ab6dbe. Tim confirmed the start was quiet afterwards.
+- Only living movers march, since the loops are men in boots (a904139).
+
+**Constants, unchanged so far:** `GROAN_RADIUS` 40 m, `GROAN_GAP_TICKS` 90, `GROAN_CHANCE` 0.03, `UNIT_SIZE` 12, `MARCH_RADIUS` 40 m, `MARCH_FULL` 12, the loudness targets (one-shots peak, beds and music -23 LUFS, barks -18 LUFS), and the bus defaults (Music 70 %, Ambient 100 %).
+
+**Still to judge by ear:** the beds against the calm music at a mission's start, now that the groans and marching are gone.
+
 ## Tooling
 
 Homebrew's ffmpeg has no libvorbis; its native `vorbis` encoder is experimental. Tim installed `vorbis-tools` (`oggenc` 1.4.3) on 2026-11-10, so `process.py` encodes Ogg Vorbis with `oggenc`. The synthetic Oggs above used ffmpeg's native encoder at 96 kbps. Their compressed sizes are therefore only indicative, but the decoded sizes are exact.
