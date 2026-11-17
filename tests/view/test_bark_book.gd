@@ -29,7 +29,24 @@ func test_a_clan_line_is_not_among_a_units_lines() -> void:
 		for line: BarkLine in book.lines_for(&"reaver", trigger):
 			assert_false(line.clan)
 			found += 1
-	assert_eq(found, 4, "select 1, attack 3")
+	assert_eq(found, 13, "select 4, move 4, attack 5")
+
+
+# Every Light unit can answer every trigger the game always fires, its own specials, and a victory.
+func test_every_light_voice_file_covers_the_required_triggers() -> void:
+	var book: BarkBook = BarkBook.shared()
+	var required: Array[StringName] = [
+		&"select", &"move", &"attack", &"kill", &"hurt", &"death", &"annoyed", &"victory"
+	]
+	var specials: Dictionary[StringName, Array] = {
+		&"longbow": [&"special", &"fizzle"], &"sapper": [&"special", &"fizzle"], &"warden": [&"special", &"heal_undead"],
+	}
+	for unit: StringName in [&"shieldman", &"reaver", &"longbow", &"sapper", &"warden"]:
+		var triggers: Array[StringName] = required.duplicate()
+		for extra: StringName in specials.get(unit, []):
+			triggers.append(extra)
+		for trigger: StringName in triggers:
+			assert_true(book.has_trigger(unit, trigger), "%s has no %s line" % [unit, trigger])
 
 
 func test_estimate_seconds_is_a_lead_plus_a_fourteenth_per_character() -> void:

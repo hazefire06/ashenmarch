@@ -4,9 +4,109 @@ unit = "warden"
 description = "an older Highland Scots woman, warm and brisk, a mid-range mezzo with a smoker's rasp, scolding like a grandmother"
 model = "eleven_v4"
 
+[line.select_1]
+trigger = "select"
+text = "Aye, whit's wrang wi' ye now?"
+picks = {}
+
+[line.select_2]
+trigger = "select"
+text = "Ah've herbs fer whit ails ye, an' a stick fer whit doesnae."
+picks = {}
+
+[line.select_3]
+trigger = "select"
+text = "Show me where it hurts."
+picks = {}
+
+[line.move_1]
+trigger = "move"
+text = "Ah'm comin', ah'm comin'. Ma knees arenae."
+picks = {}
+
+[line.move_2]
+trigger = "move"
+text = "Walk, don't run. Ye'll only fall an' need me."
+picks = {}
+
+[line.move_3]
+trigger = "move"
+text = "Right. Somebody'll need patchin' up by the time ah get there."
+picks = {}
+
+[line.attack_1]
+trigger = "attack"
+text = "Ah'll gie ye somethin' tae greet aboot!"
+picks = {}
+
+[line.attack_2]
+trigger = "attack"
+text = "Oot ma road, ya muckle lump!"
+picks = {}
+
+[line.attack_3]
+trigger = "attack"
+text = "Ah've skelped bigger than you fer less."
+picks = {}
+
+[line.kill_1]
+trigger = "kill"
+text = "An' that's whit ye get."
+picks = {}
+
+[line.kill_2]
+trigger = "kill"
+text = "Lie doon, ye're no' well."
+picks = {}
+
+[line.kill_3]
+trigger = "kill"
+text = "There. Somebody had tae."
+picks = {}
+
+[line.hurt_1]
+trigger = "hurt"
+text = "Ah'll see tae masel', thank ye very much."
+picks = {}
+
+[line.hurt_2]
+trigger = "hurt"
+text = "Who did that? Ah'll remember yer face."
+picks = {}
+
+[line.death_1]
+trigger = "death"
+text = "Ah've nae herb... fer this one..."
+picks = {}
+
+[line.death_2]
+trigger = "death"
+text = "Mind... ye eat yer greens..."
+picks = {}
+
+[line.annoyed_1]
+trigger = "annoyed"
+text = "Haud yer horses! Ah've only got the two hands!"
+picks = {}
+
+[line.annoyed_2]
+trigger = "annoyed"
+text = "Keep that up an' ye'll get a dose o' somethin' bitter."
+picks = {}
+
 [line.special_1]
 trigger = "special"
 text = "Haud still, ya big wean, it's only a herb."
+picks = {}
+
+[line.special_2]
+trigger = "special"
+text = "Ah didnae pick herbs all mornin' fer ye tae get stabbed again."
+picks = {}
+
+[line.special_3]
+trigger = "special"
+text = "Chew this. Don't make that face."
 picks = {}
 
 [line.heal_undead_1]
@@ -14,7 +114,17 @@ trigger = "heal_undead"
 text = "Here's a tonic fer ye. Ye'll no' like it."
 picks = {}
 
-[line.special_2]
-trigger = "special"
-text = "Ah didnae pick herbs all mornin' fer ye tae get stabbed again."
+[line.heal_undead_2]
+trigger = "heal_undead"
+text = "Get this doon ye. It'll sort ye oot. Fer good."
+picks = {}
+
+[line.status_confused_1]
+trigger = "status_confused"
+text = "Who moved ma herbs? Who moved... me?"
+picks = {}
+
+[line.victory_1]
+trigger = "victory"
+text = "Right. Line up, the lot o' ye. Ah'm checkin' every scratch."
 picks = {}

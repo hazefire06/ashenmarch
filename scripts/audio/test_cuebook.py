@@ -433,11 +433,15 @@ class VoicesTest(unittest.TestCase):
             self.assertTrue(line.id.startswith("clan_"))
             self.assertEqual(line.trigger, "")
 
-    def test_the_shieldman_covers_the_required_triggers_and_victory(self) -> None:
-        lines = cuebook.load_voices(ROOT / "audio-src" / "voices")["shieldman"].lines
-        triggers = {line.trigger for line in lines.values()}
-        for trigger in (*cuebook.REQUIRED_TRIGGERS, "victory"):
-            self.assertIn(trigger, triggers)
+    def test_every_light_unit_covers_the_required_triggers_its_specials_and_victory(self) -> None:
+        files = cuebook.load_voices(ROOT / "audio-src" / "voices")
+        specials = {"longbow": ("special", "fizzle"), "sapper": ("special", "fizzle"), "warden": ("special", "heal_undead")}
+        for unit in ("shieldman", "reaver", "longbow", "sapper", "warden"):
+            triggers = {line.trigger for line in files[unit].lines.values()}
+            for trigger in (*cuebook.REQUIRED_TRIGGERS, "victory", *specials.get(unit, ())):
+                self.assertIn(trigger, triggers, f"{unit} has no {trigger} line")
+            if unit != "shieldman":
+                self.assertTrue(20 <= len(files[unit].lines) <= 25, f"{unit} has {len(files[unit].lines)} lines")
         self.assertEqual(len(cuebook.TRIGGERS), 15 + 10)
         self.assertIn("formation_short_line", cuebook.TRIGGERS)
         self.assertIn("formation_circle", cuebook.TRIGGERS)

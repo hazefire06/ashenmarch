@@ -83,7 +83,7 @@ class BuildTest(unittest.TestCase):
             self.assertEqual(process.write_sidecar(out), 0)
             data = json.loads(out.read_text(encoding="utf-8"))
         self.assertEqual(len(data["cues"]), 66)
-        self.assertEqual(len(data["lines"]), 37 + 4 + 3 + 4 + 3 + 5)
+        self.assertEqual(len(data["lines"]), 37 + 24 + 24 + 25 + 25 + 5)  # shieldman, reaver, longbow, sapper, warden, clan
 
     def test_the_sidecar_lists_every_voice_of_every_line(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
