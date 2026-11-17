@@ -25,6 +25,7 @@ class Take:
     voice: str | None  # a line's voice, or the model of an A/B take
 
 
+LOOPING: frozenset[str] = frozenset({"loops", "march", "bed"})  # previews that repeat; music previews aren't looped yet
 SINGLE: frozenset[str] = frozenset({"loops", *cuebook.LOOP_CATEGORIES})  # a loop or a music layer keeps one take
 
 
@@ -100,8 +101,9 @@ def page(batch: str, takes: list[Take], note: str = "") -> str:
             tick = "" if kind == "ab" else (
                 f'<input type="checkbox" data-id="{_e(t.id)}" data-take="{_e(t.take)}" data-voice="{_e(t.voice or "")}" '
                 f'aria-label="keep {_e(label)}">')
+            loop = " loop" if batch in LOOPING else ""
             parts.append(
-                f'<div class="take"><audio controls preload="none" src="{_e(t.file)}"></audio>'
+                f'<div class="take"><audio controls{loop} preload="none" src="{_e(t.file)}"></audio>'
                 f'{tick}<span>{_e(label)}</span><p>{_e(t.prompt_or_text)}</p></div>')
     save = "" if kind == "ab" else '<button id="save">Save picks</button>'
     script = "" if kind == "ab" else f"<script>{SCRIPT}</script>"

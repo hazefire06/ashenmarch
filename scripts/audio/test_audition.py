@@ -18,6 +18,17 @@ class PageTest(unittest.TestCase):
         self.assertIn('type="checkbox"', page)
         self.assertIn("picks-melee.json", page)
 
+    def test_loop_batches_preview_on_repeat_and_the_rest_play_once(self) -> None:
+        take = Take("bed_rain", 1, "p", "bed/bed_rain_1.wav", None)
+        for batch in ("loops", "march", "bed"):
+            with self.subTest(batch=batch):
+                self.assertIn('<audio controls loop preload="none"', audition.page(batch, [take]))
+        for batch in ("melee", "music"):
+            with self.subTest(batch=batch):
+                page = audition.page(batch, [take])
+                self.assertIn('<audio controls preload="none"', page)
+                self.assertNotIn(" loop ", page)
+
     def test_an_id_or_file_cannot_break_out_of_its_attribute(self) -> None:
         page = audition.page("melee", [Take('a"onload="x', 1, "p", 'f".wav', "v\"")])
         self.assertNotIn('"onload="x', page)
