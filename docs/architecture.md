@@ -2058,7 +2058,6 @@ Phase 10 introduced the first sound, all of it since extended or replaced by tra
 ### Not yet
 - **Windows:** the determinism run and a play test (Phase 11, on the Parallels VM).
 - **Browser shortcuts:** not checked whether Chrome swallows Cmd/Ctrl+1..0 (group save) on the web. Synthetic key events reach the page whatever the browser does with real ones, so this needs a real keyboard. If it does, Settings > Controls can move saving to Shift.
-- **Not auditioned:** the sounds' character, and 3D sample playback's panning on the web (no errors, but nobody has listened).
 - **Formation arrival:** units squeezing into a box already filled keep making 10 cm of "progress" and never give up. The route-sharing column makes it more visible.
 - **Old Mill: a stuck Sapper at (178, 169)** on seed 1000. The playtest flags stuck units on Old Mill in every run (Sapper #17 near tick 1170, Husks near (127, 106) late on). It is not route sharing: `main` has the identical stall at the identical spot.
 - **Route caching across ticks,** and the aim budget, for the remaining 30 to 50 ms ticks.
