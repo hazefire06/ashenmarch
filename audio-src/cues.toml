@@ -102,7 +102,7 @@ prompt = "A longbow string released, a sharp twang of the string, a creak of ben
 duration_s = 0.8
 level_db = -10.0
 placeholder = "res://assets/audio/sfx/bow_release.wav"
-picks = []
+picks = [1, 6]
 
 [cue.bow_release_fire]
 category = "projectile"
@@ -110,7 +110,7 @@ prompt = "A longbow string released with a burning arrow, a sharp twang followed
 duration_s = 1.0
 level_db = -10.0
 placeholder = "res://assets/audio/sfx/bow_release.wav"
-picks = []
+picks = [4, 6]
 
 [cue.throw_bottle]
 category = "projectile"
@@ -118,13 +118,13 @@ prompt = "A glass bottle lobbed underhand, a short whoosh of an arm and a faint 
 duration_s = 0.7
 level_db = -10.0
 placeholder = "res://assets/audio/sfx/grenade_bounce.wav"
-picks = []
+picks = [3, 6]
 
 [cue.throw_herb]
 category = "projectile"
 prompt = "A pouch of herbs tossed gently, a soft cloth flap and a light rustle of dry leaves in the air."
 duration_s = 0.6
-picks = []
+picks = [3]
 
 [cue.throw_heavy]
 category = "projectile"
@@ -132,13 +132,13 @@ prompt = "A heavy lump of meat and bone hurled with both arms, a heavy low whoos
 duration_s = 0.9
 level_db = -10.0
 placeholder = "res://assets/audio/sfx/grenade_bounce.wav"
-picks = []
+picks = [4, 5]
 
 [cue.lightning_charge]
 category = "projectile"
 prompt = "Electricity gathering in a cupped hand, a rising crackling whine and a dry snapping of sparks building to a sharp edge."
 duration_s = 1.8
-picks = []
+picks = [3, 4]
 
 [cue.arrow_thunk]
 category = "projectile"
@@ -146,7 +146,7 @@ prompt = "An arrow striking packed earth and sticking, a short dull thunk and a 
 duration_s = 0.6
 level_db = -12.0
 placeholder = "res://assets/audio/sfx/arrow_impact.wav"
-picks = []
+picks = [3, 6]
 
 [cue.arrow_splash]
 category = "projectile"
@@ -154,7 +154,7 @@ prompt = "An arrow dropping into shallow water, a small sharp splash and a soft 
 duration_s = 0.8
 level_db = -12.0
 placeholder = "res://assets/audio/sfx/arrow_impact.wav"
-picks = []
+picks = [1, 3]
 
 [cue.arrow_flesh]
 category = "projectile"
@@ -162,7 +162,7 @@ prompt = "An arrow striking a living body, a short wet thud of a point sinking i
 duration_s = 0.6
 level_db = -12.0
 placeholder = "res://assets/audio/sfx/arrow_impact.wav"
-picks = []
+picks = [2, 6]
 
 [cue.thud_flesh]
 category = "projectile"
@@ -170,7 +170,7 @@ prompt = "A heavy lump of flesh hitting the ground, a dull wet slap and a soft s
 duration_s = 0.7
 level_db = -10.0
 placeholder = "res://assets/audio/sfx/grenade_bounce.wav"
-picks = []
+picks = [4, 6]
 
 [cue.bottle_clink]
 category = "projectile"
@@ -178,14 +178,14 @@ prompt = "A thick glass bottle bouncing off stones, a bright clink and a hollow 
 duration_s = 0.6
 level_db = -10.0
 placeholder = "res://assets/audio/sfx/grenade_bounce.wav"
-picks = []
+picks = [1, 3]
 
 [cue.explosion_small]
 category = "projectile"
 prompt = "A small powder charge going off outdoors, a sharp crack and a punchy low thump, flying dirt and gravel pattering down after."
 duration_s = 2.5
 placeholder = "res://assets/audio/sfx/explosion.wav"
-picks = []
+picks = [3]
 
 [cue.explosion_large]
 category = "projectile"
@@ -193,14 +193,14 @@ prompt = "A big satchel of black powder exploding, a huge concussive boom with a
 duration_s = 4.0
 max_voices = 2
 placeholder = "res://assets/audio/sfx/explosion.wav"
-picks = []
+picks = [1, 2]
 
 [cue.explosion_water]
 category = "projectile"
 prompt = "A powder charge exploding in a shallow river, a muffled deep thump, a heavy burst of water and a long cascade of splashing drops."
 duration_s = 3.0
 placeholder = "res://assets/audio/sfx/explosion.wav"
-picks = []
+picks = [1, 3]
 
 [cue.gas_burst]
 category = "projectile"
@@ -208,7 +208,7 @@ prompt = "A bloated body bursting open, a wet pop and a thick sputtering rush of
 duration_s = 3.0
 max_voices = 2
 placeholder = "res://assets/audio/sfx/explosion.wav"
-picks = []
+picks = [4, 6]
 
 [cue.fizzle_hiss]
 category = "projectile"
@@ -224,7 +224,7 @@ prompt = "A burning thing plunged into water, a sharp sizzling hiss and a quick 
 duration_s = 1.0
 level_db = -6.0
 placeholder = "res://assets/audio/sfx/gas_hiss.wav"
-picks = []
+picks = [2, 5]
 
 [cue.satchel_thud]
 category = "projectile"
@@ -232,7 +232,7 @@ prompt = "A canvas satchel of powder set down on the ground, a soft heavy thump,
 duration_s = 0.7
 level_db = -10.0
 placeholder = "res://assets/audio/sfx/grenade_bounce.wav"
-picks = []
+picks = [3, 6]
 
 [cue.fire_whoomp]
 category = "projectile"
@@ -240,7 +240,7 @@ prompt = "Dry grass catching fire, a soft low whoomp of air rushing in, then a q
 duration_s = 1.5
 level_db = -6.0
 placeholder = "res://assets/audio/sfx/fire_ignite.wav"
-picks = []
+picks = [2, 3, 6]
 
 [cue.grab]
 category = "projectile"
@@ -248,7 +248,7 @@ prompt = "A hand snatching a heavy object off the ground, a scrape of gravel, a 
 duration_s = 0.6
 level_db = -10.0
 placeholder = "res://assets/audio/sfx/ui_click.wav"
-picks = []
+picks = [3, 4]
 
 [cue.thunder]
 category = "projectile"
@@ -256,7 +256,7 @@ prompt = "A sharp lightning bolt striking close, a bright electric crack followe
 duration_s = 3.5
 max_voices = 2
 placeholder = "res://assets/audio/sfx/lightning.wav"
-picks = []
+picks = [1, 3]
 
 [cue.gas_release]
 category = "projectile"
@@ -264,7 +264,7 @@ prompt = "A cloud of poison gas vented from a cracked vessel, a long soft hiss w
 duration_s = 2.5
 level_db = -6.0
 placeholder = "res://assets/audio/sfx/gas_hiss.wav"
-picks = []
+picks = [2, 5]
 
 [cue.death_shieldman]
 category = "death"

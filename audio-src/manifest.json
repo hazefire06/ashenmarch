@@ -1470,6 +1470,1986 @@
       "prompt": "A huge boot lifted and driven down, a heavy rush of air then a dull ground thump on bare earth. realistic close foley, grounded and gritty, a single sound effect",
       "sha256": "211cbc9dc225402f0b4f29b80f5d8b0397da3aa6688bef1b6fd2a92cc6c4b943",
       "status": "DONE"
+    },
+    {
+      "bytes": 76878,
+      "credits": 24,
+      "files": [
+        "sfx/arrow_flesh/1.wav"
+      ],
+      "finished_at": 1794884288,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/arrow_flesh/1",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "An arrow striking a living body, a short wet thud of a point sinking into flesh. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "e3c8b938e377416c8fb0555dd389efb0e957cc9ddad84b14a59e627301995239",
+      "status": "DONE"
+    },
+    {
+      "bytes": 76878,
+      "credits": 24,
+      "files": [
+        "sfx/arrow_flesh/2.wav"
+      ],
+      "finished_at": 1794884289,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/arrow_flesh/2",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "An arrow striking a living body, a short wet thud of a point sinking into flesh. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "7a4cf2f02d196f5f94101af521bd7777394b4fda2243a1fbc7768c8304612a70",
+      "status": "DONE"
+    },
+    {
+      "bytes": 76878,
+      "credits": 24,
+      "files": [
+        "sfx/arrow_flesh/3.wav"
+      ],
+      "finished_at": 1794884290,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/arrow_flesh/3",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "An arrow striking a living body, a short wet thud of a point sinking into flesh. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "6cffb4354b1c4a11c243b3029598e08be3b41b533f591bb915998d97cecd32aa",
+      "status": "DONE"
+    },
+    {
+      "bytes": 76878,
+      "credits": 24,
+      "files": [
+        "sfx/arrow_flesh/4.wav"
+      ],
+      "finished_at": 1794884291,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/arrow_flesh/4",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "An arrow striking a living body, a short wet thud of a point sinking into flesh. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "2e54a37d71956f08477cd8169eb7490432e15a01f401f275bd37acb4930ccb73",
+      "status": "DONE"
+    },
+    {
+      "bytes": 76878,
+      "credits": 24,
+      "files": [
+        "sfx/arrow_flesh/5.wav"
+      ],
+      "finished_at": 1794884292,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/arrow_flesh/5",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "An arrow striking a living body, a short wet thud of a point sinking into flesh. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "273a6a0b624ac769a10f92117bb3bf7c989f9f425497a8ca86a0612054f02288",
+      "status": "DONE"
+    },
+    {
+      "bytes": 76878,
+      "credits": 24,
+      "files": [
+        "sfx/arrow_flesh/6.wav"
+      ],
+      "finished_at": 1794884293,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/arrow_flesh/6",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "An arrow striking a living body, a short wet thud of a point sinking into flesh. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "c82d35ce66523b1d548c03b606401bf412016a688adc9646b49e3d3062b01cbf",
+      "status": "DONE"
+    },
+    {
+      "bytes": 102478,
+      "credits": 32,
+      "files": [
+        "sfx/arrow_splash/1.wav"
+      ],
+      "finished_at": 1794884295,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/arrow_splash/1",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "An arrow dropping into shallow water, a small sharp splash and a soft plop with trickling droplets after. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "c50fe84672e29f3a116662f02f04bd6aa91638138247f59893dfe3e5766e88a0",
+      "status": "DONE"
+    },
+    {
+      "bytes": 102478,
+      "credits": 32,
+      "files": [
+        "sfx/arrow_splash/2.wav"
+      ],
+      "finished_at": 1794884296,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/arrow_splash/2",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "An arrow dropping into shallow water, a small sharp splash and a soft plop with trickling droplets after. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "2e32d19ea57ef8fd5b775ccefd952bc9dc442be87a4d82f191e66b032e014c31",
+      "status": "DONE"
+    },
+    {
+      "bytes": 102478,
+      "credits": 32,
+      "files": [
+        "sfx/arrow_splash/3.wav"
+      ],
+      "finished_at": 1794884297,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/arrow_splash/3",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "An arrow dropping into shallow water, a small sharp splash and a soft plop with trickling droplets after. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "5c25750faf373a37817ad0e3f41127ac2ca6d26c8aacec10f478234689d58f4d",
+      "status": "DONE"
+    },
+    {
+      "bytes": 102478,
+      "credits": 32,
+      "files": [
+        "sfx/arrow_splash/4.wav"
+      ],
+      "finished_at": 1794884298,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/arrow_splash/4",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "An arrow dropping into shallow water, a small sharp splash and a soft plop with trickling droplets after. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "51be9cf7e4b2a61494970e2aefd3a61c2182345c8fbde151d76a2daf2fb34583",
+      "status": "DONE"
+    },
+    {
+      "bytes": 102478,
+      "credits": 32,
+      "files": [
+        "sfx/arrow_splash/5.wav"
+      ],
+      "finished_at": 1794884299,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/arrow_splash/5",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "An arrow dropping into shallow water, a small sharp splash and a soft plop with trickling droplets after. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "296ba78b123fb57d426d19eb086f91ad996ca0463fc963d66099d034bdee7de9",
+      "status": "DONE"
+    },
+    {
+      "bytes": 102478,
+      "credits": 32,
+      "files": [
+        "sfx/arrow_splash/6.wav"
+      ],
+      "finished_at": 1794884300,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/arrow_splash/6",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "An arrow dropping into shallow water, a small sharp splash and a soft plop with trickling droplets after. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "5d91bcc5fb47100d91f39d8b22f8c0ae88e985f1ff46ec6c006dfbc51c6165c6",
+      "status": "DONE"
+    },
+    {
+      "bytes": 76878,
+      "credits": 24,
+      "files": [
+        "sfx/arrow_thunk/1.wav"
+      ],
+      "finished_at": 1794884302,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/arrow_thunk/1",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "An arrow striking packed earth and sticking, a short dull thunk and a quick fading wobble of the shaft. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "ebf54d58af38aa2ad79c31097019f7c26b05785746e3b47a192e25b93ff2b9ad",
+      "status": "DONE"
+    },
+    {
+      "bytes": 76878,
+      "credits": 24,
+      "files": [
+        "sfx/arrow_thunk/2.wav"
+      ],
+      "finished_at": 1794884303,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/arrow_thunk/2",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "An arrow striking packed earth and sticking, a short dull thunk and a quick fading wobble of the shaft. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "fe6d45e35153f9dcdf7c02b81d354af63264f78b20a097e37aae2e25a74d89e2",
+      "status": "DONE"
+    },
+    {
+      "bytes": 76878,
+      "credits": 24,
+      "files": [
+        "sfx/arrow_thunk/3.wav"
+      ],
+      "finished_at": 1794884304,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/arrow_thunk/3",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "An arrow striking packed earth and sticking, a short dull thunk and a quick fading wobble of the shaft. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "4fc0b110a976c1a5c3201adb81658603aaa25e332cfb4b72afefafae39ae7e63",
+      "status": "DONE"
+    },
+    {
+      "bytes": 76878,
+      "credits": 24,
+      "files": [
+        "sfx/arrow_thunk/4.wav"
+      ],
+      "finished_at": 1794884305,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/arrow_thunk/4",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "An arrow striking packed earth and sticking, a short dull thunk and a quick fading wobble of the shaft. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "9b69ca5ef097e116c626c9fca66d93db51251efeec6190bff69ef70b9cb0078c",
+      "status": "DONE"
+    },
+    {
+      "bytes": 76878,
+      "credits": 24,
+      "files": [
+        "sfx/arrow_thunk/5.wav"
+      ],
+      "finished_at": 1794884306,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/arrow_thunk/5",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "An arrow striking packed earth and sticking, a short dull thunk and a quick fading wobble of the shaft. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "7e31d50c1cd64314f87b45da7be797416555acfa1be574f548850df5c02680e0",
+      "status": "DONE"
+    },
+    {
+      "bytes": 76878,
+      "credits": 24,
+      "files": [
+        "sfx/arrow_thunk/6.wav"
+      ],
+      "finished_at": 1794884307,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/arrow_thunk/6",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "An arrow striking packed earth and sticking, a short dull thunk and a quick fading wobble of the shaft. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "f3ef9c4fc91713762167805660f6b59249420df41cb119d6e2616ff8ad7d485c",
+      "status": "DONE"
+    },
+    {
+      "bytes": 76878,
+      "credits": 24,
+      "files": [
+        "sfx/bottle_clink/1.wav"
+      ],
+      "finished_at": 1794884308,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/bottle_clink/1",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A thick glass bottle bouncing off stones, a bright clink and a hollow knock, once, then a short roll. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "2aacc1af08ca605ccbfd53c749429e8c9785e1a10ca23bfbb3c546c7314b7d1d",
+      "status": "DONE"
+    },
+    {
+      "bytes": 76878,
+      "credits": 24,
+      "files": [
+        "sfx/bottle_clink/2.wav"
+      ],
+      "finished_at": 1794884309,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/bottle_clink/2",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A thick glass bottle bouncing off stones, a bright clink and a hollow knock, once, then a short roll. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "9e605da8117e6c262707b809d512af1e0d9703aa674126b2ad5bf0167eff036f",
+      "status": "DONE"
+    },
+    {
+      "bytes": 76878,
+      "credits": 24,
+      "files": [
+        "sfx/bottle_clink/3.wav"
+      ],
+      "finished_at": 1794884310,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/bottle_clink/3",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A thick glass bottle bouncing off stones, a bright clink and a hollow knock, once, then a short roll. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "98c07d9f743340e4739d9373bbf79b82e073ae587aab72ae4c69954d8a1699b3",
+      "status": "DONE"
+    },
+    {
+      "bytes": 76878,
+      "credits": 24,
+      "files": [
+        "sfx/bottle_clink/4.wav"
+      ],
+      "finished_at": 1794884311,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/bottle_clink/4",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A thick glass bottle bouncing off stones, a bright clink and a hollow knock, once, then a short roll. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "54a34c092e9a2a6beec54fb3ebb5ae9d5dc0f397fb9ff5f8c086e1e0b5307826",
+      "status": "DONE"
+    },
+    {
+      "bytes": 76878,
+      "credits": 24,
+      "files": [
+        "sfx/bottle_clink/5.wav"
+      ],
+      "finished_at": 1794884313,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/bottle_clink/5",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A thick glass bottle bouncing off stones, a bright clink and a hollow knock, once, then a short roll. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "e4f773bfadc396db9d091ed23dae08645c9e6a128381a30982fa68069fb09460",
+      "status": "DONE"
+    },
+    {
+      "bytes": 76878,
+      "credits": 24,
+      "files": [
+        "sfx/bottle_clink/6.wav"
+      ],
+      "finished_at": 1794884314,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/bottle_clink/6",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A thick glass bottle bouncing off stones, a bright clink and a hollow knock, once, then a short roll. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "6cde32fa3da7c7751d15db5335f345872eaf0a52b17fc38e6ed564d7b8852740",
+      "status": "DONE"
+    },
+    {
+      "bytes": 102478,
+      "credits": 32,
+      "files": [
+        "sfx/bow_release/1.wav"
+      ],
+      "finished_at": 1794884316,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/bow_release/1",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A longbow string released, a sharp twang of the string, a creak of bent yew and the quick hiss of an arrow leaving. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "404e48bde185b483ba94ce7572b42957c3460b797d0cf1917acf3dce9c3265bc",
+      "status": "DONE"
+    },
+    {
+      "bytes": 102478,
+      "credits": 32,
+      "files": [
+        "sfx/bow_release/2.wav"
+      ],
+      "finished_at": 1794884317,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/bow_release/2",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A longbow string released, a sharp twang of the string, a creak of bent yew and the quick hiss of an arrow leaving. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "2faff6ca1aba18939af03d7d3465f8f0a69addc2cb2b797d83495160ee13bc0f",
+      "status": "DONE"
+    },
+    {
+      "bytes": 102478,
+      "credits": 32,
+      "files": [
+        "sfx/bow_release/3.wav"
+      ],
+      "finished_at": 1794884318,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/bow_release/3",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A longbow string released, a sharp twang of the string, a creak of bent yew and the quick hiss of an arrow leaving. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "ae33fcf83a0633a5e3e51199eac74d8d79db7e28088c07673d76693923e7f442",
+      "status": "DONE"
+    },
+    {
+      "bytes": 102478,
+      "credits": 32,
+      "files": [
+        "sfx/bow_release/4.wav"
+      ],
+      "finished_at": 1794884319,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/bow_release/4",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A longbow string released, a sharp twang of the string, a creak of bent yew and the quick hiss of an arrow leaving. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "1904002e06ed3260ce8f45fd457c6bb3948e7196753b820bd87647b47ff72c5a",
+      "status": "DONE"
+    },
+    {
+      "bytes": 102478,
+      "credits": 32,
+      "files": [
+        "sfx/bow_release/5.wav"
+      ],
+      "finished_at": 1794884320,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/bow_release/5",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A longbow string released, a sharp twang of the string, a creak of bent yew and the quick hiss of an arrow leaving. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "0f2aa99971422c6b68f23ea2f0aab3dae2cf2cc755ea82830f15ad456c9541d0",
+      "status": "DONE"
+    },
+    {
+      "bytes": 102478,
+      "credits": 32,
+      "files": [
+        "sfx/bow_release/6.wav"
+      ],
+      "finished_at": 1794884321,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/bow_release/6",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A longbow string released, a sharp twang of the string, a creak of bent yew and the quick hiss of an arrow leaving. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "2f0ed61c658fcdfa3de7daafbf2c115fe41f0f977a850019160c4aea430c6ffe",
+      "status": "DONE"
+    },
+    {
+      "bytes": 128078,
+      "credits": 40,
+      "files": [
+        "sfx/bow_release_fire/1.wav"
+      ],
+      "finished_at": 1794884323,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/bow_release_fire/1",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A longbow string released with a burning arrow, a sharp twang followed by a fluttering whoosh of flame trailing away. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "af29ff2a22ee77a18f97c9909d95f08427392b3958ef3baa1f6f974cc6270aa1",
+      "status": "DONE"
+    },
+    {
+      "bytes": 128078,
+      "credits": 40,
+      "files": [
+        "sfx/bow_release_fire/2.wav"
+      ],
+      "finished_at": 1794884324,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/bow_release_fire/2",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A longbow string released with a burning arrow, a sharp twang followed by a fluttering whoosh of flame trailing away. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "32fcaa0bd2d18d9ec3000b8d466ac12f639b4e7e748eefc70006fa8d72b299fc",
+      "status": "DONE"
+    },
+    {
+      "bytes": 128078,
+      "credits": 40,
+      "files": [
+        "sfx/bow_release_fire/3.wav"
+      ],
+      "finished_at": 1794884325,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/bow_release_fire/3",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A longbow string released with a burning arrow, a sharp twang followed by a fluttering whoosh of flame trailing away. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "62a7d1066ed25b08493d3e9e8fc41440422cd2d4e2c19c0ef1b40742d4caf137",
+      "status": "DONE"
+    },
+    {
+      "bytes": 128078,
+      "credits": 40,
+      "files": [
+        "sfx/bow_release_fire/4.wav"
+      ],
+      "finished_at": 1794884326,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/bow_release_fire/4",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A longbow string released with a burning arrow, a sharp twang followed by a fluttering whoosh of flame trailing away. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "5084a6bf1ac1931e8b22890fb54f2edbba48d2c779bc48fb030c9af19f252c76",
+      "status": "DONE"
+    },
+    {
+      "bytes": 128078,
+      "credits": 40,
+      "files": [
+        "sfx/bow_release_fire/5.wav"
+      ],
+      "finished_at": 1794884327,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/bow_release_fire/5",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A longbow string released with a burning arrow, a sharp twang followed by a fluttering whoosh of flame trailing away. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "3ff3a960c18c572cac7b359cef34a9d3a465bba0581be13fc89bd61cee6c1d23",
+      "status": "DONE"
+    },
+    {
+      "bytes": 128078,
+      "credits": 40,
+      "files": [
+        "sfx/bow_release_fire/6.wav"
+      ],
+      "finished_at": 1794884328,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/bow_release_fire/6",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A longbow string released with a burning arrow, a sharp twang followed by a fluttering whoosh of flame trailing away. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "03c0312ccd7377fe53ab0283e624153df1c77cfec77b7d09ce23fb7f50de55ef",
+      "status": "DONE"
+    },
+    {
+      "bytes": 512078,
+      "credits": 160,
+      "files": [
+        "sfx/explosion_large/1.wav"
+      ],
+      "finished_at": 1794884330,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/explosion_large/1",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A big satchel of black powder exploding, a huge concussive boom with a deep rolling rumble, falling earth and splintered wood raining down. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "7a24a8969b6cfb25dd6d8e5f4cb4ceb99db6e4265c9f1f9d7844a7648670daa9",
+      "status": "DONE"
+    },
+    {
+      "bytes": 512078,
+      "credits": 160,
+      "files": [
+        "sfx/explosion_large/2.wav"
+      ],
+      "finished_at": 1794884332,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/explosion_large/2",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A big satchel of black powder exploding, a huge concussive boom with a deep rolling rumble, falling earth and splintered wood raining down. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "3601a48eae43f58bd07645c5f0fee9d74483fbaeb7c94da403fef780e30d629f",
+      "status": "DONE"
+    },
+    {
+      "bytes": 512078,
+      "credits": 160,
+      "files": [
+        "sfx/explosion_large/3.wav"
+      ],
+      "finished_at": 1794884333,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/explosion_large/3",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A big satchel of black powder exploding, a huge concussive boom with a deep rolling rumble, falling earth and splintered wood raining down. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "ad9ddffaafca416d5b80fcaf227eef87c6858eda1a7095e42d3d26f84362697b",
+      "status": "DONE"
+    },
+    {
+      "bytes": 512078,
+      "credits": 160,
+      "files": [
+        "sfx/explosion_large/4.wav"
+      ],
+      "finished_at": 1794884335,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/explosion_large/4",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A big satchel of black powder exploding, a huge concussive boom with a deep rolling rumble, falling earth and splintered wood raining down. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "672911ecf27c07b4eb2ab8cb80fbf1f4a2cd6c93ff402cee7a0cb590eee4f503",
+      "status": "DONE"
+    },
+    {
+      "bytes": 512078,
+      "credits": 160,
+      "files": [
+        "sfx/explosion_large/5.wav"
+      ],
+      "finished_at": 1794884336,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/explosion_large/5",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A big satchel of black powder exploding, a huge concussive boom with a deep rolling rumble, falling earth and splintered wood raining down. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "5989bfa61d571ee70ae7faf4637f1ca88d778fc573b53437d7b87dc2edb23ff9",
+      "status": "DONE"
+    },
+    {
+      "bytes": 512078,
+      "credits": 160,
+      "files": [
+        "sfx/explosion_large/6.wav"
+      ],
+      "finished_at": 1794884338,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/explosion_large/6",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A big satchel of black powder exploding, a huge concussive boom with a deep rolling rumble, falling earth and splintered wood raining down. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "92db36ebc3415faaf018a4c3502e542c79350ba266427e8e23f39c0e12e56c2f",
+      "status": "DONE"
+    },
+    {
+      "bytes": 317518,
+      "credits": 100,
+      "files": [
+        "sfx/explosion_small/1.wav"
+      ],
+      "finished_at": 1794884340,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/explosion_small/1",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A small powder charge going off outdoors, a sharp crack and a punchy low thump, flying dirt and gravel pattering down after. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "387cedbec3f1a14d8e8aff18ae26014390bd920c06402ff87f301b0ad3bb5148",
+      "status": "DONE"
+    },
+    {
+      "bytes": 317518,
+      "credits": 100,
+      "files": [
+        "sfx/explosion_small/2.wav"
+      ],
+      "finished_at": 1794884342,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/explosion_small/2",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A small powder charge going off outdoors, a sharp crack and a punchy low thump, flying dirt and gravel pattering down after. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "b20bc1e53c374bdf4604e2b4e32bd938c5fe56af8e1db83835622aeffe0915e4",
+      "status": "DONE"
+    },
+    {
+      "bytes": 317518,
+      "credits": 100,
+      "files": [
+        "sfx/explosion_small/3.wav"
+      ],
+      "finished_at": 1794884344,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/explosion_small/3",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A small powder charge going off outdoors, a sharp crack and a punchy low thump, flying dirt and gravel pattering down after. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "2e0349a721499613b04a7035aa3155b9311b8cab1632d96b38b591a079e8a13c",
+      "status": "DONE"
+    },
+    {
+      "bytes": 317518,
+      "credits": 100,
+      "files": [
+        "sfx/explosion_small/4.wav"
+      ],
+      "finished_at": 1794884345,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/explosion_small/4",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A small powder charge going off outdoors, a sharp crack and a punchy low thump, flying dirt and gravel pattering down after. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "9f47b7eec29b7adb50c3fe3b02821a2222f680d1704b6bf969388018abcd0241",
+      "status": "DONE"
+    },
+    {
+      "bytes": 317518,
+      "credits": 100,
+      "files": [
+        "sfx/explosion_small/5.wav"
+      ],
+      "finished_at": 1794884347,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/explosion_small/5",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A small powder charge going off outdoors, a sharp crack and a punchy low thump, flying dirt and gravel pattering down after. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "09ae5dc85a6842e039cf3fd8bd4ef7e21af5945bf499667bbadcfb284eb8bf05",
+      "status": "DONE"
+    },
+    {
+      "bytes": 317518,
+      "credits": 100,
+      "files": [
+        "sfx/explosion_small/6.wav"
+      ],
+      "finished_at": 1794884348,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/explosion_small/6",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A small powder charge going off outdoors, a sharp crack and a punchy low thump, flying dirt and gravel pattering down after. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "01e14bea22a19cde16db0b9a349b3fc356645d5e53f83255200e3819c0f7cca2",
+      "status": "DONE"
+    },
+    {
+      "bytes": 384078,
+      "credits": 120,
+      "files": [
+        "sfx/explosion_water/1.wav"
+      ],
+      "finished_at": 1794884351,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/explosion_water/1",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A powder charge exploding in a shallow river, a muffled deep thump, a heavy burst of water and a long cascade of splashing drops. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "79f6452aaeb4826c15ae7299b568acf6b577f188a0bae9c4c553a71982e35a5a",
+      "status": "DONE"
+    },
+    {
+      "bytes": 384078,
+      "credits": 120,
+      "files": [
+        "sfx/explosion_water/2.wav"
+      ],
+      "finished_at": 1794884352,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/explosion_water/2",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A powder charge exploding in a shallow river, a muffled deep thump, a heavy burst of water and a long cascade of splashing drops. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "7832ad96a17aa10634b1efa254dd4696f353011b6f20fa0fb2cd7b41a055bbab",
+      "status": "DONE"
+    },
+    {
+      "bytes": 384078,
+      "credits": 120,
+      "files": [
+        "sfx/explosion_water/3.wav"
+      ],
+      "finished_at": 1794884354,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/explosion_water/3",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A powder charge exploding in a shallow river, a muffled deep thump, a heavy burst of water and a long cascade of splashing drops. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "336c578c89f03403afef71cdda07f8caf9eab19e25eb29e23d9b1ccc8f1006db",
+      "status": "DONE"
+    },
+    {
+      "bytes": 384078,
+      "credits": 120,
+      "files": [
+        "sfx/explosion_water/4.wav"
+      ],
+      "finished_at": 1794884355,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/explosion_water/4",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A powder charge exploding in a shallow river, a muffled deep thump, a heavy burst of water and a long cascade of splashing drops. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "4e593993ff02832bd3487223d3d6a8db16401db1ea06c84ea94c8f67dc595476",
+      "status": "DONE"
+    },
+    {
+      "bytes": 384078,
+      "credits": 120,
+      "files": [
+        "sfx/explosion_water/5.wav"
+      ],
+      "finished_at": 1794884357,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/explosion_water/5",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A powder charge exploding in a shallow river, a muffled deep thump, a heavy burst of water and a long cascade of splashing drops. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "8de59d6264bed28c258d827158f389d702be7b8e087169c8fd2f8702491cc304",
+      "status": "DONE"
+    },
+    {
+      "bytes": 384078,
+      "credits": 120,
+      "files": [
+        "sfx/explosion_water/6.wav"
+      ],
+      "finished_at": 1794884358,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/explosion_water/6",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A powder charge exploding in a shallow river, a muffled deep thump, a heavy burst of water and a long cascade of splashing drops. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "f9e9817d3d4f6b8d456140ad16a246cbf99d2738963aa82df96dcab00f54a6a9",
+      "status": "DONE"
+    },
+    {
+      "bytes": 189518,
+      "credits": 60,
+      "files": [
+        "sfx/fire_whoomp/1.wav"
+      ],
+      "finished_at": 1794884360,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/fire_whoomp/1",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "Dry grass catching fire, a soft low whoomp of air rushing in, then a quick crackle of twigs taking flame. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "fb678ed859d1a9eb487511b705ef2dcd78ecd4e95312e26e554efabd5396bc25",
+      "status": "DONE"
+    },
+    {
+      "bytes": 189518,
+      "credits": 60,
+      "files": [
+        "sfx/fire_whoomp/2.wav"
+      ],
+      "finished_at": 1794884361,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/fire_whoomp/2",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "Dry grass catching fire, a soft low whoomp of air rushing in, then a quick crackle of twigs taking flame. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "120d9902e1541ffd2ad799adb5359bbf7418fb4ddbda0c8259a58cae980c4660",
+      "status": "DONE"
+    },
+    {
+      "bytes": 189518,
+      "credits": 60,
+      "files": [
+        "sfx/fire_whoomp/3.wav"
+      ],
+      "finished_at": 1794884362,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/fire_whoomp/3",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "Dry grass catching fire, a soft low whoomp of air rushing in, then a quick crackle of twigs taking flame. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "1a50be4b9ba6028770d0344e8e695090333b586ebd30f4f0ca21bada07ecdb0e",
+      "status": "DONE"
+    },
+    {
+      "bytes": 189518,
+      "credits": 60,
+      "files": [
+        "sfx/fire_whoomp/4.wav"
+      ],
+      "finished_at": 1794884363,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/fire_whoomp/4",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "Dry grass catching fire, a soft low whoomp of air rushing in, then a quick crackle of twigs taking flame. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "302e2a0a87326777b3db434c4d86583ffc5c4c2657172a778727856a965301c6",
+      "status": "DONE"
+    },
+    {
+      "bytes": 189518,
+      "credits": 60,
+      "files": [
+        "sfx/fire_whoomp/5.wav"
+      ],
+      "finished_at": 1794884364,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/fire_whoomp/5",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "Dry grass catching fire, a soft low whoomp of air rushing in, then a quick crackle of twigs taking flame. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "672050c55c531ada335ee748d72c6dd7870589586ee235ad98b7e3a97db9ac8d",
+      "status": "DONE"
+    },
+    {
+      "bytes": 189518,
+      "credits": 60,
+      "files": [
+        "sfx/fire_whoomp/6.wav"
+      ],
+      "finished_at": 1794884366,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/fire_whoomp/6",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "Dry grass catching fire, a soft low whoomp of air rushing in, then a quick crackle of twigs taking flame. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "7fd6f14d99436201c7041528066007e369749d574b6547df2f5b5583f08d1088",
+      "status": "DONE"
+    },
+    {
+      "bytes": 153678,
+      "credits": 48,
+      "files": [
+        "sfx/fizzle_hiss/1.wav"
+      ],
+      "finished_at": 1794884367,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/fizzle_hiss/1",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A burning fuse or fire arrow dying in rain, a short sputtering hiss and a few spits of steam. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "9fb7fde8d2124cbf45cd5c462b890ea455c41b3d6f18d16e346fd5b64d63cc17",
+      "status": "DONE"
+    },
+    {
+      "bytes": 153678,
+      "credits": 48,
+      "files": [
+        "sfx/fizzle_hiss/2.wav"
+      ],
+      "finished_at": 1794884369,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/fizzle_hiss/2",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A burning fuse or fire arrow dying in rain, a short sputtering hiss and a few spits of steam. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "f0a8683dec3fe706d8a7f0525399bd8f702def7bbe06a7bf796c5e2df29f250c",
+      "status": "DONE"
+    },
+    {
+      "bytes": 153678,
+      "credits": 48,
+      "files": [
+        "sfx/fizzle_hiss/3.wav"
+      ],
+      "finished_at": 1794884370,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/fizzle_hiss/3",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A burning fuse or fire arrow dying in rain, a short sputtering hiss and a few spits of steam. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "520f4fad0edca70b9ab472e04d24d76fe66fb68931772d6dd65ddc5a50d246bc",
+      "status": "DONE"
+    },
+    {
+      "bytes": 153678,
+      "credits": 48,
+      "files": [
+        "sfx/fizzle_hiss/4.wav"
+      ],
+      "finished_at": 1794884371,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/fizzle_hiss/4",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A burning fuse or fire arrow dying in rain, a short sputtering hiss and a few spits of steam. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "e303f18aa1b21688407eae9c35a5ab8e4fa0193939e71bd92efabe5e6d524e70",
+      "status": "DONE"
+    },
+    {
+      "bytes": 153678,
+      "credits": 48,
+      "files": [
+        "sfx/fizzle_hiss/5.wav"
+      ],
+      "finished_at": 1794884372,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/fizzle_hiss/5",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A burning fuse or fire arrow dying in rain, a short sputtering hiss and a few spits of steam. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "3db652f130d301918c40402dae1dc8d0bb08d14a9ac389444daf5df27fd1946d",
+      "status": "DONE"
+    },
+    {
+      "bytes": 153678,
+      "credits": 48,
+      "files": [
+        "sfx/fizzle_hiss/6.wav"
+      ],
+      "finished_at": 1794884373,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/fizzle_hiss/6",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A burning fuse or fire arrow dying in rain, a short sputtering hiss and a few spits of steam. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "d7c8b48450f027922734f5bbec610cb902c001beffcbf26ee7d14f1c7c066a34",
+      "status": "DONE"
+    },
+    {
+      "bytes": 128078,
+      "credits": 40,
+      "files": [
+        "sfx/fizzle_water/1.wav"
+      ],
+      "finished_at": 1794884374,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/fizzle_water/1",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A burning thing plunged into water, a sharp sizzling hiss and a quick bubbling gurgle. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "3bcd2f0677d97ddae1396221411241c98da5bd1353fe34a3f1f1c3e5d39247ba",
+      "status": "DONE"
+    },
+    {
+      "bytes": 128078,
+      "credits": 40,
+      "files": [
+        "sfx/fizzle_water/2.wav"
+      ],
+      "finished_at": 1794884375,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/fizzle_water/2",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A burning thing plunged into water, a sharp sizzling hiss and a quick bubbling gurgle. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "b72aeace81f36eccf8361d77e0e88cc5e8cbfde87c45c2f648d4db1ca5e2ea07",
+      "status": "DONE"
+    },
+    {
+      "bytes": 128078,
+      "credits": 40,
+      "files": [
+        "sfx/fizzle_water/3.wav"
+      ],
+      "finished_at": 1794884377,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/fizzle_water/3",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A burning thing plunged into water, a sharp sizzling hiss and a quick bubbling gurgle. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "63dff81fff0d5ffe6045ace3384f5e9efd3f9066248a20f81cbae3bd01b2dd7a",
+      "status": "DONE"
+    },
+    {
+      "bytes": 128078,
+      "credits": 40,
+      "files": [
+        "sfx/fizzle_water/4.wav"
+      ],
+      "finished_at": 1794884378,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/fizzle_water/4",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A burning thing plunged into water, a sharp sizzling hiss and a quick bubbling gurgle. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "de3cf9f00df63d1a651276874989f05e9c96a9a67e7c2d22231c7b7a3a759115",
+      "status": "DONE"
+    },
+    {
+      "bytes": 128078,
+      "credits": 40,
+      "files": [
+        "sfx/fizzle_water/5.wav"
+      ],
+      "finished_at": 1794884379,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/fizzle_water/5",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A burning thing plunged into water, a sharp sizzling hiss and a quick bubbling gurgle. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "2016dbcc06b57d9aee78915c3284ba6729d685077dbc16993b19362dd359229e",
+      "status": "DONE"
+    },
+    {
+      "bytes": 128078,
+      "credits": 40,
+      "files": [
+        "sfx/fizzle_water/6.wav"
+      ],
+      "finished_at": 1794884380,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/fizzle_water/6",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A burning thing plunged into water, a sharp sizzling hiss and a quick bubbling gurgle. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "78f8ae726d7df97f5199392272afb088d517583d10a567e9d4d689680e108b80",
+      "status": "DONE"
+    },
+    {
+      "bytes": 384078,
+      "credits": 120,
+      "files": [
+        "sfx/gas_burst/1.wav"
+      ],
+      "finished_at": 1794884382,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/gas_burst/1",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A bloated body bursting open, a wet pop and a thick sputtering rush of foul gas escaping, ending in a long ragged hiss. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "fa7d96d9eedbed9ffd9d62ecac80cc2be645b5b1f8020a256a5323e67c8882d1",
+      "status": "DONE"
+    },
+    {
+      "bytes": 384078,
+      "credits": 120,
+      "files": [
+        "sfx/gas_burst/2.wav"
+      ],
+      "finished_at": 1794884384,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/gas_burst/2",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A bloated body bursting open, a wet pop and a thick sputtering rush of foul gas escaping, ending in a long ragged hiss. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "d7da01b514c3623dac50dcf2921010336b69a7ab39fce0d5bf00bd068d75aa6e",
+      "status": "DONE"
+    },
+    {
+      "bytes": 384078,
+      "credits": 120,
+      "files": [
+        "sfx/gas_burst/3.wav"
+      ],
+      "finished_at": 1794884386,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/gas_burst/3",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A bloated body bursting open, a wet pop and a thick sputtering rush of foul gas escaping, ending in a long ragged hiss. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "3f613cfad0b6825b5ddd10da2718a9b3ada02248be9da4058212596817a62f66",
+      "status": "DONE"
+    },
+    {
+      "bytes": 384078,
+      "credits": 120,
+      "files": [
+        "sfx/gas_burst/4.wav"
+      ],
+      "finished_at": 1794884387,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/gas_burst/4",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A bloated body bursting open, a wet pop and a thick sputtering rush of foul gas escaping, ending in a long ragged hiss. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "7da1ac227a8263f822c895769e8f9c45b84e06464d3a06f216949dc492926976",
+      "status": "DONE"
+    },
+    {
+      "bytes": 384078,
+      "credits": 120,
+      "files": [
+        "sfx/gas_burst/5.wav"
+      ],
+      "finished_at": 1794884389,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/gas_burst/5",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A bloated body bursting open, a wet pop and a thick sputtering rush of foul gas escaping, ending in a long ragged hiss. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "5cf43c9da74e36c7ff9cc1cb831354d7aeeb2280a02448879b033604aa562d13",
+      "status": "DONE"
+    },
+    {
+      "bytes": 384078,
+      "credits": 120,
+      "files": [
+        "sfx/gas_burst/6.wav"
+      ],
+      "finished_at": 1794884391,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/gas_burst/6",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A bloated body bursting open, a wet pop and a thick sputtering rush of foul gas escaping, ending in a long ragged hiss. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "faaa0160e3bfd1c45ef7ffebfeced8165a2bc8b67edbca711f470c250b9ed39d",
+      "status": "DONE"
+    },
+    {
+      "bytes": 317518,
+      "credits": 100,
+      "files": [
+        "sfx/gas_release/1.wav"
+      ],
+      "finished_at": 1794884393,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/gas_release/1",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A cloud of poison gas vented from a cracked vessel, a long soft hiss with a wet bubbling spit at the start. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "4905b070f24a563b443dd5e9694fd27ff4831112e3cd80799d69948c84c936c8",
+      "status": "DONE"
+    },
+    {
+      "bytes": 317518,
+      "credits": 100,
+      "files": [
+        "sfx/gas_release/2.wav"
+      ],
+      "finished_at": 1794884394,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/gas_release/2",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A cloud of poison gas vented from a cracked vessel, a long soft hiss with a wet bubbling spit at the start. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "4a5e6fda79677f6a9ab0ccaa084822279b52ec468cff80ec69ef50a45199b2e6",
+      "status": "DONE"
+    },
+    {
+      "bytes": 317518,
+      "credits": 100,
+      "files": [
+        "sfx/gas_release/3.wav"
+      ],
+      "finished_at": 1794884395,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/gas_release/3",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A cloud of poison gas vented from a cracked vessel, a long soft hiss with a wet bubbling spit at the start. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "98f459bf78026c65b90bb88a59625cb5d975b101569f1266b0c7dcac8a151fea",
+      "status": "DONE"
+    },
+    {
+      "bytes": 317518,
+      "credits": 100,
+      "files": [
+        "sfx/gas_release/4.wav"
+      ],
+      "finished_at": 1794884396,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/gas_release/4",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A cloud of poison gas vented from a cracked vessel, a long soft hiss with a wet bubbling spit at the start. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "f720ccf9431d230e71ddef6fcb94b14ef1748dac438d63150d64698011d0d318",
+      "status": "DONE"
+    },
+    {
+      "bytes": 317518,
+      "credits": 100,
+      "files": [
+        "sfx/gas_release/5.wav"
+      ],
+      "finished_at": 1794884397,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/gas_release/5",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A cloud of poison gas vented from a cracked vessel, a long soft hiss with a wet bubbling spit at the start. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "602f63bfaca3b47d71d7eca09eac23f68c69f7de1f8520656229cd2b360f5d81",
+      "status": "DONE"
+    },
+    {
+      "bytes": 317518,
+      "credits": 100,
+      "files": [
+        "sfx/gas_release/6.wav"
+      ],
+      "finished_at": 1794884398,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/gas_release/6",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A cloud of poison gas vented from a cracked vessel, a long soft hiss with a wet bubbling spit at the start. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "d0f4581c44559a1ee51244174c3a7dd0c1c745d297735b001a95fa99e4d85be9",
+      "status": "DONE"
+    },
+    {
+      "bytes": 76878,
+      "credits": 24,
+      "files": [
+        "sfx/grab/1.wav"
+      ],
+      "finished_at": 1794884400,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/grab/1",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A hand snatching a heavy object off the ground, a scrape of gravel, a rustle of cloth and a scuff of boots. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "7c70069c150942bd41b8674b9bc9b48d09f3e39a1ee0ec9d6c9650e41def9881",
+      "status": "DONE"
+    },
+    {
+      "bytes": 76878,
+      "credits": 24,
+      "files": [
+        "sfx/grab/2.wav"
+      ],
+      "finished_at": 1794884401,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/grab/2",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A hand snatching a heavy object off the ground, a scrape of gravel, a rustle of cloth and a scuff of boots. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "146381bb544c5125b49619e38ff18b9985d4daf4a620f9bb9103a88bac419bd3",
+      "status": "DONE"
+    },
+    {
+      "bytes": 76878,
+      "credits": 24,
+      "files": [
+        "sfx/grab/3.wav"
+      ],
+      "finished_at": 1794884402,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/grab/3",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A hand snatching a heavy object off the ground, a scrape of gravel, a rustle of cloth and a scuff of boots. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "4232deee8a2ad1bb13e7ed8f91dfd21d8ac003d0420d092b36c4ffdda62ba4dc",
+      "status": "DONE"
+    },
+    {
+      "bytes": 76878,
+      "credits": 24,
+      "files": [
+        "sfx/grab/4.wav"
+      ],
+      "finished_at": 1794884403,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/grab/4",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A hand snatching a heavy object off the ground, a scrape of gravel, a rustle of cloth and a scuff of boots. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "33c86cc224b189347c070cee548a0d887ac3741a3a9f56d84b5be095e9ae217a",
+      "status": "DONE"
+    },
+    {
+      "bytes": 76878,
+      "credits": 24,
+      "files": [
+        "sfx/grab/5.wav"
+      ],
+      "finished_at": 1794884404,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/grab/5",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A hand snatching a heavy object off the ground, a scrape of gravel, a rustle of cloth and a scuff of boots. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "6b0a6f09ce9765d0a8bfee4ddfee31b59084e8f5290a64208014f51d04c598a1",
+      "status": "DONE"
+    },
+    {
+      "bytes": 76878,
+      "credits": 24,
+      "files": [
+        "sfx/grab/6.wav"
+      ],
+      "finished_at": 1794884405,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/grab/6",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A hand snatching a heavy object off the ground, a scrape of gravel, a rustle of cloth and a scuff of boots. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "3ca88b56844254901bc845374e0ccda8f7ff5face8453a14794a50f9f45689a0",
+      "status": "DONE"
+    },
+    {
+      "bytes": 225358,
+      "credits": 72,
+      "files": [
+        "sfx/lightning_charge/1.wav"
+      ],
+      "finished_at": 1794884407,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/lightning_charge/1",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "Electricity gathering in a cupped hand, a rising crackling whine and a dry snapping of sparks building to a sharp edge. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "310db50b97d6bac5e1f845512d9bcc26b84d14b1a0611f2674fea98f5ffc46f8",
+      "status": "DONE"
+    },
+    {
+      "bytes": 225358,
+      "credits": 72,
+      "files": [
+        "sfx/lightning_charge/2.wav"
+      ],
+      "finished_at": 1794884408,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/lightning_charge/2",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "Electricity gathering in a cupped hand, a rising crackling whine and a dry snapping of sparks building to a sharp edge. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "a60e5f4ca47f53fc56a330589c9745af124d9009f0d7f182a1db8a3f97b04c73",
+      "status": "DONE"
+    },
+    {
+      "bytes": 225358,
+      "credits": 72,
+      "files": [
+        "sfx/lightning_charge/3.wav"
+      ],
+      "finished_at": 1794884410,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/lightning_charge/3",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "Electricity gathering in a cupped hand, a rising crackling whine and a dry snapping of sparks building to a sharp edge. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "973c5f7eac6156211cecf056a2f2a8ac1eeb98d1a8411e8d6d01311873974b5e",
+      "status": "DONE"
+    },
+    {
+      "bytes": 225358,
+      "credits": 72,
+      "files": [
+        "sfx/lightning_charge/4.wav"
+      ],
+      "finished_at": 1794884411,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/lightning_charge/4",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "Electricity gathering in a cupped hand, a rising crackling whine and a dry snapping of sparks building to a sharp edge. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "d88016c86b77f2658aa01e3a5b934bb14e2579042e6e56dbdeece3c3bb3abd19",
+      "status": "DONE"
+    },
+    {
+      "bytes": 225358,
+      "credits": 72,
+      "files": [
+        "sfx/lightning_charge/5.wav"
+      ],
+      "finished_at": 1794884412,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/lightning_charge/5",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "Electricity gathering in a cupped hand, a rising crackling whine and a dry snapping of sparks building to a sharp edge. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "4167578d11e9eb4d978d85abef4561913c073fb0e017ad7ea0ad6436f5ac0a02",
+      "status": "DONE"
+    },
+    {
+      "bytes": 225358,
+      "credits": 72,
+      "files": [
+        "sfx/lightning_charge/6.wav"
+      ],
+      "finished_at": 1794884413,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/lightning_charge/6",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "Electricity gathering in a cupped hand, a rising crackling whine and a dry snapping of sparks building to a sharp edge. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "bf7517a63243b4f9f39633d381f6b8351682b93eea916e4732cd9761a0c9d857",
+      "status": "DONE"
+    },
+    {
+      "bytes": 87118,
+      "credits": 28,
+      "files": [
+        "sfx/satchel_thud/1.wav"
+      ],
+      "finished_at": 1794884415,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/satchel_thud/1",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A canvas satchel of powder set down on the ground, a soft heavy thump, a rustle of cloth and a faint clink of buckles. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "ce0aeeed61f76c71d2aa0df537b18d6de3f8f3c5831a9b8c32261cc296d98f34",
+      "status": "DONE"
+    },
+    {
+      "bytes": 87118,
+      "credits": 28,
+      "files": [
+        "sfx/satchel_thud/2.wav"
+      ],
+      "finished_at": 1794884416,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/satchel_thud/2",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A canvas satchel of powder set down on the ground, a soft heavy thump, a rustle of cloth and a faint clink of buckles. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "b12a3e5a2c16790ee2554ac4b986aa080618d401d4a8425d73061184402edb0d",
+      "status": "DONE"
+    },
+    {
+      "bytes": 87118,
+      "credits": 28,
+      "files": [
+        "sfx/satchel_thud/3.wav"
+      ],
+      "finished_at": 1794884417,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/satchel_thud/3",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A canvas satchel of powder set down on the ground, a soft heavy thump, a rustle of cloth and a faint clink of buckles. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "92a85398ede31673bff89f31608e1112827ccdea674b8d77f165ea8a010fcd5a",
+      "status": "DONE"
+    },
+    {
+      "bytes": 87118,
+      "credits": 28,
+      "files": [
+        "sfx/satchel_thud/4.wav"
+      ],
+      "finished_at": 1794884418,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/satchel_thud/4",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A canvas satchel of powder set down on the ground, a soft heavy thump, a rustle of cloth and a faint clink of buckles. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "58ce1995b6360751531e2185cb213b5d34084f6561a9ddc3c4987cd6c0d49471",
+      "status": "DONE"
+    },
+    {
+      "bytes": 87118,
+      "credits": 28,
+      "files": [
+        "sfx/satchel_thud/5.wav"
+      ],
+      "finished_at": 1794884419,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/satchel_thud/5",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A canvas satchel of powder set down on the ground, a soft heavy thump, a rustle of cloth and a faint clink of buckles. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "4293b02df62852fb5f5cc06622d7fa1e556642fc0192027e73259554f8cbee20",
+      "status": "DONE"
+    },
+    {
+      "bytes": 87118,
+      "credits": 28,
+      "files": [
+        "sfx/satchel_thud/6.wav"
+      ],
+      "finished_at": 1794884420,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/satchel_thud/6",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A canvas satchel of powder set down on the ground, a soft heavy thump, a rustle of cloth and a faint clink of buckles. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "100f1dae33c0e1b27c5d3da37d790280ccd95ba468393c00927b7668ab07e7b0",
+      "status": "DONE"
+    },
+    {
+      "bytes": 87118,
+      "credits": 28,
+      "files": [
+        "sfx/throw_bottle/1.wav"
+      ],
+      "finished_at": 1794884422,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/throw_bottle/1",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A glass bottle lobbed underhand, a short whoosh of an arm and a faint slosh of liquid inside. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "66ef8e0408c447dc353e786f0937521ef19879fb3c74962712350d5ce33436f0",
+      "status": "DONE"
+    },
+    {
+      "bytes": 87118,
+      "credits": 28,
+      "files": [
+        "sfx/throw_bottle/2.wav"
+      ],
+      "finished_at": 1794884423,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/throw_bottle/2",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A glass bottle lobbed underhand, a short whoosh of an arm and a faint slosh of liquid inside. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "7e6d0d71edccadb935b012ede457dd34cb00489d09b97397c4d37b790cc22556",
+      "status": "DONE"
+    },
+    {
+      "bytes": 87118,
+      "credits": 28,
+      "files": [
+        "sfx/throw_bottle/3.wav"
+      ],
+      "finished_at": 1794884424,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/throw_bottle/3",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A glass bottle lobbed underhand, a short whoosh of an arm and a faint slosh of liquid inside. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "345d1d7cb1f1251ec5385fe4a1fd00b0ae98faf5fe6bab491840b49464e75bd2",
+      "status": "DONE"
+    },
+    {
+      "bytes": 87118,
+      "credits": 28,
+      "files": [
+        "sfx/throw_bottle/4.wav"
+      ],
+      "finished_at": 1794884425,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/throw_bottle/4",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A glass bottle lobbed underhand, a short whoosh of an arm and a faint slosh of liquid inside. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "05c7d1988c86ea5d59aeae9f672dc89ac7a370e112368e6b23fb25920080189e",
+      "status": "DONE"
+    },
+    {
+      "bytes": 87118,
+      "credits": 28,
+      "files": [
+        "sfx/throw_bottle/5.wav"
+      ],
+      "finished_at": 1794884426,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/throw_bottle/5",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A glass bottle lobbed underhand, a short whoosh of an arm and a faint slosh of liquid inside. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "f7b95a6201b399c09babdae5e8bd204d29f2ab7395c0dc8dd5e33ff4c3de0c5b",
+      "status": "DONE"
+    },
+    {
+      "bytes": 87118,
+      "credits": 28,
+      "files": [
+        "sfx/throw_bottle/6.wav"
+      ],
+      "finished_at": 1794884427,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/throw_bottle/6",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A glass bottle lobbed underhand, a short whoosh of an arm and a faint slosh of liquid inside. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "6648bf1c5a9e0d1895f276e6e7f1de8f9cf374064f8dc4db8b1108b08c39795e",
+      "status": "DONE"
+    },
+    {
+      "bytes": 112718,
+      "credits": 36,
+      "files": [
+        "sfx/throw_heavy/1.wav"
+      ],
+      "finished_at": 1794884429,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/throw_heavy/1",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A heavy lump of meat and bone hurled with both arms, a heavy low whoosh and the wet flap of loose flesh. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "f5fb6ee40b39203148d0826cf442331ed98b87b1d1918956f977acab0b7bc806",
+      "status": "DONE"
+    },
+    {
+      "bytes": 112718,
+      "credits": 36,
+      "files": [
+        "sfx/throw_heavy/2.wav"
+      ],
+      "finished_at": 1794884430,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/throw_heavy/2",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A heavy lump of meat and bone hurled with both arms, a heavy low whoosh and the wet flap of loose flesh. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "c20b1350afafe6e66d1812ab4fc241a12972b3e82a764ef8918456b8afb17a62",
+      "status": "DONE"
+    },
+    {
+      "bytes": 112718,
+      "credits": 36,
+      "files": [
+        "sfx/throw_heavy/3.wav"
+      ],
+      "finished_at": 1794884431,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/throw_heavy/3",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A heavy lump of meat and bone hurled with both arms, a heavy low whoosh and the wet flap of loose flesh. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "1628bc318f11141a66a03ae1be9e2e3e08c6e66ba2c143565774a4d717ccd163",
+      "status": "DONE"
+    },
+    {
+      "bytes": 112718,
+      "credits": 36,
+      "files": [
+        "sfx/throw_heavy/4.wav"
+      ],
+      "finished_at": 1794884433,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/throw_heavy/4",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A heavy lump of meat and bone hurled with both arms, a heavy low whoosh and the wet flap of loose flesh. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "75120409d564b2de1cfc1a357b28dc7a4e6b7459d293d1d94588ce811dde458c",
+      "status": "DONE"
+    },
+    {
+      "bytes": 112718,
+      "credits": 36,
+      "files": [
+        "sfx/throw_heavy/5.wav"
+      ],
+      "finished_at": 1794884435,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/throw_heavy/5",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A heavy lump of meat and bone hurled with both arms, a heavy low whoosh and the wet flap of loose flesh. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "bf7dcee856aa9f4eb5627e7cf8c3499d705eaa66a65b24617192c014461e771a",
+      "status": "DONE"
+    },
+    {
+      "bytes": 112718,
+      "credits": 36,
+      "files": [
+        "sfx/throw_heavy/6.wav"
+      ],
+      "finished_at": 1794884436,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/throw_heavy/6",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A heavy lump of meat and bone hurled with both arms, a heavy low whoosh and the wet flap of loose flesh. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "38889a4b0df7da455afc94aa3a54147744138257e672c59fa343558bae5a6d7c",
+      "status": "DONE"
+    },
+    {
+      "bytes": 76878,
+      "credits": 24,
+      "files": [
+        "sfx/throw_herb/1.wav"
+      ],
+      "finished_at": 1794884437,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/throw_herb/1",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A pouch of herbs tossed gently, a soft cloth flap and a light rustle of dry leaves in the air. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "a6f0e179616d93a7f3bfe3ae196178ffc1c5c216d9f5eb72ac11299955be9ca5",
+      "status": "DONE"
+    },
+    {
+      "bytes": 76878,
+      "credits": 24,
+      "files": [
+        "sfx/throw_herb/2.wav"
+      ],
+      "finished_at": 1794884438,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/throw_herb/2",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A pouch of herbs tossed gently, a soft cloth flap and a light rustle of dry leaves in the air. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "c7f10140e7e6e206f21074b5f8b2d3914c7c7a84b06e148c7c29a3a787e31739",
+      "status": "DONE"
+    },
+    {
+      "bytes": 76878,
+      "credits": 24,
+      "files": [
+        "sfx/throw_herb/3.wav"
+      ],
+      "finished_at": 1794884440,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/throw_herb/3",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A pouch of herbs tossed gently, a soft cloth flap and a light rustle of dry leaves in the air. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "781aea16580eb0fee0477a65ed03dc158b670ddc3f50ab128649d2e181b03e6a",
+      "status": "DONE"
+    },
+    {
+      "bytes": 76878,
+      "credits": 24,
+      "files": [
+        "sfx/throw_herb/4.wav"
+      ],
+      "finished_at": 1794884441,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/throw_herb/4",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A pouch of herbs tossed gently, a soft cloth flap and a light rustle of dry leaves in the air. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "b6ecea9964ecd1e488003ad675d79a3c362661218c585b5b6e6d22389332f019",
+      "status": "DONE"
+    },
+    {
+      "bytes": 76878,
+      "credits": 24,
+      "files": [
+        "sfx/throw_herb/5.wav"
+      ],
+      "finished_at": 1794884442,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/throw_herb/5",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A pouch of herbs tossed gently, a soft cloth flap and a light rustle of dry leaves in the air. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "3ec6650d80cc3ebd23e3333b8157b3ee5fc3e46d3060315a4fe5f27275ba42c2",
+      "status": "DONE"
+    },
+    {
+      "bytes": 76878,
+      "credits": 24,
+      "files": [
+        "sfx/throw_herb/6.wav"
+      ],
+      "finished_at": 1794884443,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/throw_herb/6",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A pouch of herbs tossed gently, a soft cloth flap and a light rustle of dry leaves in the air. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "1053736b47261becf851a92fd5bb0e88fee28dd77e0544897c097253f07a6864",
+      "status": "DONE"
+    },
+    {
+      "bytes": 87118,
+      "credits": 28,
+      "files": [
+        "sfx/thud_flesh/1.wav"
+      ],
+      "finished_at": 1794884445,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/thud_flesh/1",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A heavy lump of flesh hitting the ground, a dull wet slap and a soft slump that settles at once. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "465be8c931700001db05184c7a9efc589940b54425456f25f6eb7dd085de2313",
+      "status": "DONE"
+    },
+    {
+      "bytes": 87118,
+      "credits": 28,
+      "files": [
+        "sfx/thud_flesh/2.wav"
+      ],
+      "finished_at": 1794884446,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/thud_flesh/2",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A heavy lump of flesh hitting the ground, a dull wet slap and a soft slump that settles at once. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "fa04a718722e930d92643ab81f86dc4873bd557d62d60d8e1e6d55cf154bea71",
+      "status": "DONE"
+    },
+    {
+      "bytes": 87118,
+      "credits": 28,
+      "files": [
+        "sfx/thud_flesh/3.wav"
+      ],
+      "finished_at": 1794884447,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/thud_flesh/3",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A heavy lump of flesh hitting the ground, a dull wet slap and a soft slump that settles at once. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "6d368bae21ca0aaa879af373a100fc644d98b999e832b3aaebfe7b6fc90362b9",
+      "status": "DONE"
+    },
+    {
+      "bytes": 87118,
+      "credits": 28,
+      "files": [
+        "sfx/thud_flesh/4.wav"
+      ],
+      "finished_at": 1794884448,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/thud_flesh/4",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A heavy lump of flesh hitting the ground, a dull wet slap and a soft slump that settles at once. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "38e0bf47a8ad87e3d2ee33721cd00a9de83eb748c7deb8fb2173992ae3b837e9",
+      "status": "DONE"
+    },
+    {
+      "bytes": 87118,
+      "credits": 28,
+      "files": [
+        "sfx/thud_flesh/5.wav"
+      ],
+      "finished_at": 1794884449,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/thud_flesh/5",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A heavy lump of flesh hitting the ground, a dull wet slap and a soft slump that settles at once. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "b6fd538a8bc691c14f72d0922198900cda49613ca863be27ed588f500d9126b4",
+      "status": "DONE"
+    },
+    {
+      "bytes": 87118,
+      "credits": 28,
+      "files": [
+        "sfx/thud_flesh/6.wav"
+      ],
+      "finished_at": 1794884450,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/thud_flesh/6",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A heavy lump of flesh hitting the ground, a dull wet slap and a soft slump that settles at once. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "57c18317ddb16eeea6191dbe11c37eb77262e8847cdb29334ed3e2c9108438f9",
+      "status": "DONE"
+    },
+    {
+      "bytes": 445518,
+      "credits": 140,
+      "files": [
+        "sfx/thunder/1.wav"
+      ],
+      "finished_at": 1794884452,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/thunder/1",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A sharp lightning bolt striking close, a bright electric crack followed by a deep tearing thunder roll fading into the distance. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "d3b669fbacc958841d97fde7375b2d2e01eef76d7ccf47f1d6304d8da762d793",
+      "status": "DONE"
+    },
+    {
+      "bytes": 445518,
+      "credits": 140,
+      "files": [
+        "sfx/thunder/2.wav"
+      ],
+      "finished_at": 1794884454,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/thunder/2",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A sharp lightning bolt striking close, a bright electric crack followed by a deep tearing thunder roll fading into the distance. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "de19de7e8d02bdfbb623e8570a84568271acbe1e8a98930817ec18051c435f10",
+      "status": "DONE"
+    },
+    {
+      "bytes": 445518,
+      "credits": 140,
+      "files": [
+        "sfx/thunder/3.wav"
+      ],
+      "finished_at": 1794884456,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/thunder/3",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A sharp lightning bolt striking close, a bright electric crack followed by a deep tearing thunder roll fading into the distance. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "8b2756a259ade225efee78e06a0576161596f9874ebe007c6ca6a00f11616d0c",
+      "status": "DONE"
+    },
+    {
+      "bytes": 445518,
+      "credits": 140,
+      "files": [
+        "sfx/thunder/4.wav"
+      ],
+      "finished_at": 1794884457,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/thunder/4",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A sharp lightning bolt striking close, a bright electric crack followed by a deep tearing thunder roll fading into the distance. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "7bcb5feb4389a19f87eba43c1c9c2d0c65e13233ce3c3ff837d52dc7eddbcbed",
+      "status": "DONE"
+    },
+    {
+      "bytes": 445518,
+      "credits": 140,
+      "files": [
+        "sfx/thunder/5.wav"
+      ],
+      "finished_at": 1794884459,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/thunder/5",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A sharp lightning bolt striking close, a bright electric crack followed by a deep tearing thunder roll fading into the distance. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "5137a65565d05934cbcfc267cda9fe420bde562c0624af3d16a90d40a57c0d73",
+      "status": "DONE"
+    },
+    {
+      "bytes": 445518,
+      "credits": 140,
+      "files": [
+        "sfx/thunder/6.wav"
+      ],
+      "finished_at": 1794884460,
+      "format": "wav_32000",
+      "kind": "sfx",
+      "label": "sfx/thunder/6",
+      "model": "eleven_text_to_sound_v2",
+      "prompt": "A sharp lightning bolt striking close, a bright electric crack followed by a deep tearing thunder roll fading into the distance. realistic close foley, grounded and gritty, a single sound effect",
+      "sha256": "0809ab43cfa707a145a2870add996dd9fb1fd75cc91705180f8693dc6fba793e",
+      "status": "DONE"
     }
   ]
 }
