@@ -7,8 +7,9 @@ extends Node
 ## stays silent (the bank warns once).
 
 ## Combat comes in at this many visible fighters held for COMBAT_IN_S, fading in
-## over FADE_IN_S.
-const COMBAT_IN_UNITS: int = 4
+## over FADE_IN_S. Two, not four: Riverside's fights open with two or three
+## longbows shooting from range, and four came only when a sapper joined.
+const COMBAT_IN_UNITS: int = 2
 const COMBAT_IN_S: float = 1.5
 const FADE_IN_S: float = 2.0
 ## It goes out at this many or fewer held for COMBAT_OUT_S, fading out over FADE_OUT_S.

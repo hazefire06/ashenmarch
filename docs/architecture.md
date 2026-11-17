@@ -2288,7 +2288,7 @@ Designed in `docs/specs/2026-11-09-art-a2-audio-design.md`; Web facts in `docs/p
 
 ### Music
 - **`Music`** (`view/audio/music.gd`) runs two streamed players on the Music bus, calm and combat. They start together and loop in step; only their volumes move.
-- **Combat:** it counts the units the viewer can see attacking or shooting, either side. Combat comes in at 4 or more held 1.5 s (fade in 2 s), and goes out at 1 or fewer held 10 s (fade out 6 s). The constants are in `music.gd`.
+- **Combat:** it counts the units the viewer can see attacking or shooting, either side. Combat comes in at 2 or more held 1.5 s (fade in 2 s; it was 4 until Tim's second listen, 2026-11-17, when Riverside's opening archery never reached it), and goes out at 1 or fewer held 10 s (fade out 6 s). The constants are in `music.gd`.
 - **Which pair:** `SoundMap.music_for(map_id)`. No map has a pair of its own, so The Ford and Old Mill play Riverside's for now.
 
 ### Barks

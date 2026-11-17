@@ -301,7 +301,7 @@ Never touched: `sim/`, `data/units/`, `data/missions/`.
 
 - **Players.** Two streamed players on the Music bus, calm and combat. They start together and loop, and only their volumes crossfade.
 - **Combat trigger.** Count the units the viewer can see in `ATTACKING` or `SHOOTING`, either side, smoothed with hysteresis. The starting numbers, tuned at the listening build:
-  - combat comes in at 4 or more for 1.5 s, fading in over 2 s;
+  - combat comes in at 2 or more for 1.5 s, fading in over 2 s (4 until Tim's second Riverside listen, 2026-11-17: the opening fight is two or three longbows shooting from range, and combat came in only when a sapper joined, 22 s after the first arrow);
   - it goes out at 1 or fewer for 10 s, fading out over 6 s.
 - **Track per launch.** The sound map chooses the pair by mission or skirmish map id. Everything plays Riverside's until more music exists.
 - **Layer lengths.** `process.py` cuts both layers to the same length, so they stay in step. If Tim prefers the combat layer to restart on entry, that's a one-line choice at the listening build.

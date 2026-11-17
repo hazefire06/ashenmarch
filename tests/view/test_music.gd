@@ -45,10 +45,12 @@ func _fight(world: World, count: int, side: UnitType.Faction = LIGHT, state: Uni
 		unit.state = state
 
 
-func test_combat_comes_in_after_four_fighters_for_a_second_and_a_half() -> void:
+# Tim's second Riverside listen: the opening fight is two or three longbows shooting a Husk patrol down from
+# range, and at 4 fighters the combat layer came in only when a sapper joined, 22 s after the first arrow.
+func test_combat_comes_in_after_two_fighters_for_a_second_and_a_half() -> void:
 	var world: World = _world()
 	var music: Music = _music(world)
-	_fight(world, 4)
+	_fight(world, 2, LIGHT, Unit.State.SHOOTING)
 	music.after_step()
 	music.advance(1.4)
 	assert_false(music.in_combat(), "not yet")
@@ -58,10 +60,10 @@ func test_combat_comes_in_after_four_fighters_for_a_second_and_a_half() -> void:
 	assert_almost_eq(music.levels(), Vector2(0, 1), Vector2(0.01, 0.01))
 
 
-func test_three_fighters_never_bring_combat_in() -> void:
+func test_one_fighter_never_brings_combat_in() -> void:
 	var world: World = _world()
 	var music: Music = _music(world)
-	_fight(world, 3)
+	_fight(world, 1, LIGHT, Unit.State.SHOOTING)
 	music.after_step()
 	music.advance(60.0)
 	assert_false(music.in_combat())
@@ -71,11 +73,11 @@ func test_three_fighters_never_bring_combat_in() -> void:
 func test_shooters_and_both_sides_count() -> void:
 	var world: World = _world()
 	var music: Music = _music(world)
-	_fight(world, 2, LIGHT, Unit.State.SHOOTING)
-	_fight(world, 2, LIGHT, Unit.State.ATTACKING)
+	_fight(world, 1, LIGHT, Unit.State.SHOOTING)
+	_fight(world, 1, DARK, Unit.State.ATTACKING)
 	music.after_step()
 	music.advance(1.6)
-	assert_true(music.in_combat())
+	assert_true(music.in_combat(), "a Light archer and a Dark swordsman")
 
 
 func test_combat_goes_out_after_ten_quiet_seconds_with_a_six_second_fade() -> void:
