@@ -2305,7 +2305,7 @@ Designed in `docs/specs/2026-11-09-art-a2-audio-design.md`; Web facts in `docs/p
   - about 1 line in 10 is a clan line, never two in a row;
   - a shuffle bag per voice and trigger: no line repeats until all have played.
 - **Voices:** 3 players on the Voice bus, 3D at the speaker. A voiced death line replaces the death cry. The Shieldman has two voices (`shieldman_old`, `shieldman_young`), chosen by unit id; the other four have one each.
-- **Lines:** the Shieldman has 37, the clan 5; the Reaver, Longbow, Sapper and Warden have only a few starting lines each. No line is voiced.
+- **Lines:** the Shieldman has 37, the Reaver 24, the Longbow 24, the Sapper 25, the Warden 25, and the clan 5 (140 in all; Tim approved the four's drafts 2026-11-17). Each light unit covers select, move, attack, kill, hurt, death, annoyed and victory, plus its specials (`test_bark_book.gd`, `test_cuebook.py`). No line is voiced.
 
 ### Web: registration, streaming, budget
 Facts below are from Godot 4.7.2's source and `docs/plans/2026-11-10-art-a2-measurements.md`, measured on this Mac in Chrome with synthetic audio (2026-11-10).
