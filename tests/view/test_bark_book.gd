@@ -2,14 +2,19 @@ extends GutTest
 ## The bark book the builder writes from audio-src/voices, and BarkLine's timing.
 
 
-func test_the_book_has_the_shieldmans_lines_as_text() -> void:
+func test_the_book_has_the_shieldmans_lines_voiced_and_the_others_as_text() -> void:
 	var book: BarkBook = BarkBook.shared()
 	var shield: int = 0
 	for line: BarkLine in book.lines:
+		assert_ne(line.text, "")
 		if line.unit == &"shieldman":
 			shield += 1
-		assert_true(line.streams.is_empty(), "%s is unvoiced" % line.id)
-		assert_ne(line.text, "")
+			assert_true(line.streams.has(&"shieldman_old"), "%s: the old voice" % line.id)
+			# Tim kept only the old voice's take of these two (2026-11-18).
+			var young: bool = not [&"annoyed_3", &"victory_1"].has(line.id)
+			assert_eq(line.streams.has(&"shieldman_young"), young, "%s: the young voice" % line.id)
+		elif not line.clan:
+			assert_true(line.streams.is_empty(), "%s (%s) waits for its voice" % [line.id, line.unit])
 	assert_eq(shield, 37)
 	assert_eq(book.lines_for(&"shieldman", &"select").size(), 5)
 	assert_eq(book.lines_for(&"shieldman", &"victory").size(), 2)
@@ -19,7 +24,7 @@ func test_the_book_has_the_shieldmans_lines_as_text() -> void:
 	for line: BarkLine in book.clan_lines():
 		assert_eq(line.trigger, &"")
 		assert_true(String(line.id).begins_with("clan_"))
-	assert_eq(book.file_bytes(), 0, "nothing is voiced yet")
+	assert_gt(book.file_bytes(), 0, "the Shieldman's voice files")
 
 
 func test_a_clan_line_is_not_among_a_units_lines() -> void:

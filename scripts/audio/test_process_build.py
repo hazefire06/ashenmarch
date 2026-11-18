@@ -91,8 +91,11 @@ class BuildTest(unittest.TestCase):
             self.assertEqual(process.write_sidecar(out), 0)
             lines = {str(x["id"]) + "/" + str(x["unit"]): x for x in json.loads(out.read_text(encoding="utf-8"))["lines"]}
         shield = lines["select_1/shieldman"]
-        self.assertEqual(shield["voices"], {"shieldman_old": "", "shieldman_young": ""})
+        # Voiced 2026-11-18 (Tim's picks); the Reaver isn't yet, so his voice names no file.
+        self.assertEqual(shield["voices"], {"shieldman_old": "res://assets/audio/voice/shieldman_old/select_1.ogg",
+                                            "shieldman_young": "res://assets/audio/voice/shieldman_young/select_1.ogg"})
         self.assertEqual((shield["trigger"], shield["clan"], shield["text"]), ("select", False, "Aye? Whit is it?"))
+        self.assertEqual(lines["select_1/reaver"]["voices"], {"reaver": ""})
         clan = lines["clan_1/_clan"]
         self.assertEqual(set(clan["voices"]), {"shieldman_old", "shieldman_young", "reaver", "longbow", "sapper", "warden"})
         self.assertEqual((clan["clan"], clan["trigger"]), (True, ""))

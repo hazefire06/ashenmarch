@@ -102,19 +102,21 @@ func test_stand_ins_fill_every_unvoiced_line() -> void:
 	var types: Array[StringName] = [&"shieldman"]
 	var book: BarkBook = BarkBook.shared()
 	var stand: Array[AudioStream] = SoundRegistry.stand_ins(types, _catalog(), book, SoundMap.shared())
-	assert_eq(stand.size(), 2 * 37 + 2 * 5)
-	# stand_ins goes type, voice, then book order; check each against its own line.
+	var voiced: Array[AudioStream] = SoundRegistry.bark_streams(types, _catalog(), book, SoundMap.shared())
+	assert_eq(stand.size() + voiced.size(), 2 * 37 + 2 * 5, "each line he can say, in each voice: voiced or stood in for")
+	assert_gt(voiced.size(), 0, "the Shieldman is voiced (2026-11-18)")
+	assert_gt(stand.size(), 0, "two lines have only the old voice's take, and the clan lines wait for their picks")
+	# stand_ins goes type, voice, then book order, skipping what is voiced; check each against its own line.
 	var n: int = 0
 	for voice: StringName in [&"shieldman_old", &"shieldman_young"]:
 		for line: BarkLine in book.lines:
-			if line.unit == &"shieldman" or line.clan:
+			if (line.unit == &"shieldman" or line.clan) and not line.streams.has(voice):
 				assert_almost_eq(stand[n].get_length(), BarkLine.estimate_seconds(line.text), 0.01, "%s/%s" % [voice, line.id])
 				n += 1
 	assert_eq(n, stand.size())
 	var again: Array[AudioStream] = SoundRegistry.stand_ins(types, _catalog(), book, SoundMap.shared())
 	for i: int in stand.size():
 		assert_same(again[i], stand[i], "a restart reuses the cached stand-ins")
-	assert_eq(SoundRegistry.bark_streams(types, _catalog(), book, SoundMap.shared()).size(), 0, "nothing is voiced yet")
 
 
 func test_a_voiced_line_gets_no_stand_in_and_its_stream_registers() -> void:
