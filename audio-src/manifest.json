@@ -5370,6 +5370,138 @@
       "prompt": "Tense, urgent instrumental music for a skirmish against the walking dead, played by a small rough acoustic folk band. The same low drone now driving, heavy frame drums and a deep war drum hitting hard on the beat, rough sawing fiddle and skirling highland pipes playing a harsher, faster version of a mournful melody. Gritty, pressing and physical, raw and close.\nKey of D minor, 84 beats per minute, 4/4, steady tempo throughout.",
       "sha256": "1ee509f9a1c8f5d9843163ed8ba050e797a285e12857dc2eebba47df82dc11d2",
       "status": "DONE"
+    },
+    {
+      "credits": 1000,
+      "files": [
+        "design/shieldman/shieldman_old/1.mp3",
+        "design/shieldman/shieldman_old/2.mp3",
+        "design/shieldman/shieldman_old/3.mp3"
+      ],
+      "finished_at": 1795032975,
+      "kind": "design",
+      "label": "design/shieldman/shieldman_old/call",
+      "model": "eleven_ttv_v3",
+      "status": "DONE",
+      "text": "a gruff older Highland Scots man, gravelly, battle-weary, dry humour"
+    },
+    {
+      "bytes": 903462,
+      "credits": 0,
+      "files": [
+        "design/shieldman/shieldman_old/1.mp3"
+      ],
+      "finished_at": 1795032975,
+      "generated_voice_id": "t2TCpll4Vpb6slUce4Ip",
+      "kind": "design",
+      "label": "design/shieldman/shieldman_old/1",
+      "model": "eleven_ttv_v3",
+      "sha256": "0e1b494df239c4720d0fb17ac60d14d70b7aef7e89a2fe0503a583ecc5adfe16",
+      "status": "DONE"
+    },
+    {
+      "bytes": 771178,
+      "credits": 0,
+      "files": [
+        "design/shieldman/shieldman_old/2.mp3"
+      ],
+      "finished_at": 1795032975,
+      "generated_voice_id": "FsmsDwGM0kk0qkIQHus3",
+      "kind": "design",
+      "label": "design/shieldman/shieldman_old/2",
+      "model": "eleven_ttv_v3",
+      "sha256": "87d30316ddb0cc02e76272ab6361138b78de1d9c1c8d49244a1d9942317060bf",
+      "status": "DONE"
+    },
+    {
+      "bytes": 838261,
+      "credits": 0,
+      "files": [
+        "design/shieldman/shieldman_old/3.mp3"
+      ],
+      "finished_at": 1795032975,
+      "generated_voice_id": "KbGOGeXrmG1IwhjL2cI7",
+      "kind": "design",
+      "label": "design/shieldman/shieldman_old/3",
+      "model": "eleven_ttv_v3",
+      "sha256": "22c5a7140dffc4f1fc6d03682432032b77797e43763f0f4d5febd026e197f17a",
+      "status": "DONE"
+    },
+    {
+      "credits": 1000,
+      "files": [
+        "design/shieldman/shieldman_young/1.mp3",
+        "design/shieldman/shieldman_young/2.mp3",
+        "design/shieldman/shieldman_young/3.mp3"
+      ],
+      "finished_at": 1795033803,
+      "kind": "design",
+      "label": "design/shieldman/shieldman_young/call",
+      "model": "eleven_ttv_v3",
+      "status": "DONE",
+      "text": "a younger Highland Scots man, keen, quick, cocky"
+    },
+    {
+      "bytes": 630744,
+      "credits": 0,
+      "files": [
+        "design/shieldman/shieldman_young/1.mp3"
+      ],
+      "finished_at": 1795033803,
+      "generated_voice_id": "RzMoFlGgsu9dCGxpCTUi",
+      "kind": "design",
+      "label": "design/shieldman/shieldman_young/1",
+      "model": "eleven_ttv_v3",
+      "sha256": "4de3f76837512b903cae42cdae23cc647a4bec07248e0c267bb0248403e6b8d8",
+      "status": "DONE"
+    },
+    {
+      "bytes": 628863,
+      "credits": 0,
+      "files": [
+        "design/shieldman/shieldman_young/2.mp3"
+      ],
+      "finished_at": 1795033803,
+      "generated_voice_id": "UyJQIXIq8JtPOIQ1aBTU",
+      "kind": "design",
+      "label": "design/shieldman/shieldman_young/2",
+      "model": "eleven_ttv_v3",
+      "sha256": "20adacc1ce038c75c9f6d70f1988449c5df424767ddf6fa385cbbecd28086cb0",
+      "status": "DONE"
+    },
+    {
+      "bytes": 492190,
+      "credits": 0,
+      "files": [
+        "design/shieldman/shieldman_young/3.mp3"
+      ],
+      "finished_at": 1795033803,
+      "generated_voice_id": "CD6g4i2F3ajMu7dxFTBY",
+      "kind": "design",
+      "label": "design/shieldman/shieldman_young/3",
+      "model": "eleven_ttv_v3",
+      "sha256": "7705cc4df8f74dbea2fe546dee0a0b418ddfc7d1eca07731eb6aae6f6890670f",
+      "status": "DONE"
+    },
+    {
+      "credits": 0,
+      "files": [],
+      "finished_at": 1795034465,
+      "generated_voice_id": "KbGOGeXrmG1IwhjL2cI7",
+      "kind": "voice",
+      "label": "voice/shieldman_old",
+      "status": "DONE",
+      "voice_id": "KbGOGeXrmG1IwhjL2cI7"
+    },
+    {
+      "credits": 0,
+      "files": [],
+      "finished_at": 1795034481,
+      "generated_voice_id": "CD6g4i2F3ajMu7dxFTBY",
+      "kind": "voice",
+      "label": "voice/shieldman_young",
+      "status": "DONE",
+      "voice_id": "CD6g4i2F3ajMu7dxFTBY"
     }
   ]
 }
