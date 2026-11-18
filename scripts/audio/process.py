@@ -41,6 +41,9 @@ from audition import Take
 from cuebook import CueError
 from ffmpeg_io import AudioError, ToolMissing
 
+# The unit whose lines the model test speaks (generate.AB_UNIT; a test keeps the two equal).
+AB_UNIT: str = "shieldman"
+
 ROOT: Path = Path(__file__).resolve().parents[2]
 CUES: Path = ROOT / "audio-src" / "cues.toml"
 LAYERS: Path = ROOT / "audio-src" / "music" / "prompts.toml"
@@ -309,7 +312,8 @@ def _batch_work(name: str, cues_path: Path, layers_path: Path, voices_dir: Path,
             cue_work(layer.id, layer.prompt, raw / "music" / layer.id, "music")
     elif name == "ab":
         files = cuebook.load_voices(voices_dir)
-        texts = {l.id: l.text for f in files.values() for l in f.lines.values()}
+        # Only the model test's own unit: a line id like attack_1 is in every voice file.
+        texts = {l.id: l.text for l in files[AB_UNIT].lines.values()} if AB_UNIT in files else {}
         for model_dir in sorted((raw / "ab").iterdir() if (raw / "ab").is_dir() else []):
             for line_dir in sorted(model_dir.iterdir() if model_dir.is_dir() else []):
                 for n, path in assets.raw_takes(line_dir).items():

@@ -790,6 +790,22 @@ class BatchTest(unittest.TestCase):
         self.assertIn('data-kind="design"', self.page("design-reaver"))
         self.assertNotIn("Save picks", self.page("ab"))
 
+    def test_the_ab_page_shows_the_model_tests_own_lines(self) -> None:
+        # The first real A/B page showed the Warden's attack_1 under the Shieldman's "Get intae them!": the text was
+        # looked up by line id across every voice file, and the last file read won.
+        shield = 'unit = "shieldman"\n\n[voice.shieldman_old]\ndescription = "old"\nmodel = "eleven_v4"\n\n' \
+            '[line.attack_1]\ntrigger = "attack"\ntext = "Get intae them!"\npicks = {}\n'
+        (self.tree.voices / "shieldman.toml").write_text(shield, encoding="utf-8")
+        (self.tree.voices / "warden.toml").write_text(VOICE.replace("reaver", "warden").replace("Hi", "Wrong man"), encoding="utf-8")
+        code, _, err = self.tree.run("batch", "ab")
+        self.assertEqual(code, 0, err)
+        self.assertIn("Get intae them!", self.page("ab"))
+        self.assertNotIn("Wrong man", self.page("ab"))
+
+    def test_the_ab_page_and_the_model_test_name_the_same_unit(self) -> None:
+        import generate
+        self.assertEqual(process.AB_UNIT, generate.AB_UNIT)
+
     def test_loop_and_music_pages_allow_one_take_and_music_says_it_is_not_looped(self) -> None:
         for name, single in (("loops", "true"), ("music", "true"), ("melee", "false")):
             self.assertEqual(self.tree.run("batch", name)[0], 0, name)

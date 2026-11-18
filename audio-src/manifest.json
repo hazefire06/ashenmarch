@@ -5502,6 +5502,366 @@
       "label": "voice/shieldman_young",
       "status": "DONE",
       "voice_id": "CD6g4i2F3ajMu7dxFTBY"
+    },
+    {
+      "bytes": 107598,
+      "credits": 26,
+      "files": [
+        "ab/eleven_v4/attack_1/1.wav"
+      ],
+      "finished_at": 1795034504,
+      "format": "wav_32000",
+      "kind": "ab",
+      "label": "ab/eleven_v4/attack_1/1",
+      "model": "eleven_v4",
+      "sha256": "afd5699261a851d84a88a2e0ec8c28f10b0e3544f66ddeb68de9f3edc3e23cbb",
+      "status": "DONE",
+      "text": "[shouting] Get intae them!"
+    },
+    {
+      "bytes": 107598,
+      "credits": 26,
+      "files": [
+        "ab/eleven_v4/attack_1/2.wav"
+      ],
+      "finished_at": 1795034505,
+      "format": "wav_32000",
+      "kind": "ab",
+      "label": "ab/eleven_v4/attack_1/2",
+      "model": "eleven_v4",
+      "sha256": "668a5ad01bbb9dd86c6ec2c0867459bc89ae2a4417ddefa0859285d0903e5ce5",
+      "status": "DONE",
+      "text": "[shouting] Get intae them!"
+    },
+    {
+      "bytes": 133198,
+      "credits": 30,
+      "files": [
+        "ab/eleven_v4/attack_2/1.wav"
+      ],
+      "finished_at": 1795034506,
+      "format": "wav_32000",
+      "kind": "ab",
+      "label": "ab/eleven_v4/attack_2/1",
+      "model": "eleven_v4",
+      "sha256": "c831ab54bf203f34157b67fc0005f19284f7dd3d042f17473f0aaa14cc4cecaf",
+      "status": "DONE",
+      "text": "[shouting] Gie it laldy, lads!"
+    },
+    {
+      "bytes": 133198,
+      "credits": 30,
+      "files": [
+        "ab/eleven_v4/attack_2/2.wav"
+      ],
+      "finished_at": 1795034507,
+      "format": "wav_32000",
+      "kind": "ab",
+      "label": "ab/eleven_v4/attack_2/2",
+      "model": "eleven_v4",
+      "sha256": "4035b6d9db8714512c2be2d63b85e8022b2235b781d2a3aae5cc28778fbc64b1",
+      "status": "DONE",
+      "text": "[shouting] Gie it laldy, lads!"
+    },
+    {
+      "bytes": 225358,
+      "credits": 46,
+      "files": [
+        "ab/eleven_v4/hurt_1/1.wav"
+      ],
+      "finished_at": 1795034509,
+      "format": "wav_32000",
+      "kind": "ab",
+      "label": "ab/eleven_v4/hurt_1/1",
+      "model": "eleven_v4",
+      "sha256": "75f64602e74b1d5def0c35109434d0ba0240c7d97f56dc065db926f62b4e540a",
+      "status": "DONE",
+      "text": "[shouting] It's just a scratch! A big scratch!"
+    },
+    {
+      "bytes": 225358,
+      "credits": 46,
+      "files": [
+        "ab/eleven_v4/hurt_1/2.wav"
+      ],
+      "finished_at": 1795034510,
+      "format": "wav_32000",
+      "kind": "ab",
+      "label": "ab/eleven_v4/hurt_1/2",
+      "model": "eleven_v4",
+      "sha256": "80cdd3e1b86357c2ebfa33923c8e6876ad3a4ebb75145ae601c759c66a4bc275",
+      "status": "DONE",
+      "text": "[shouting] It's just a scratch! A big scratch!"
+    },
+    {
+      "bytes": 153678,
+      "credits": 23,
+      "files": [
+        "ab/eleven_v4/kill_1/1.wav"
+      ],
+      "finished_at": 1795034512,
+      "format": "wav_32000",
+      "kind": "ab",
+      "label": "ab/eleven_v4/kill_1/1",
+      "model": "eleven_v4",
+      "sha256": "060917e42451213a2d59adbedf861523f9ebef066396a7f4ff2e054cfca1b83a",
+      "status": "DONE",
+      "text": "[laughs] An' STAY doon!"
+    },
+    {
+      "bytes": 169038,
+      "credits": 23,
+      "files": [
+        "ab/eleven_v4/kill_1/2.wav"
+      ],
+      "finished_at": 1795034513,
+      "format": "wav_32000",
+      "kind": "ab",
+      "label": "ab/eleven_v4/kill_1/2",
+      "model": "eleven_v4",
+      "sha256": "69a218714ea6951b823278fe1a821e3bdddf0076b99ceadbdaee59932ba73a7e",
+      "status": "DONE",
+      "text": "[laughs] An' STAY doon!"
+    },
+    {
+      "bytes": 276558,
+      "credits": 50,
+      "files": [
+        "ab/eleven_v4/kill_2/1.wav"
+      ],
+      "finished_at": 1795034515,
+      "format": "wav_32000",
+      "kind": "ab",
+      "label": "ab/eleven_v4/kill_2/1",
+      "model": "eleven_v4",
+      "sha256": "794279d948dd852efe8bbf7694c3f280327b8b14dfd8bbed1033c5be3873bd31",
+      "status": "DONE",
+      "text": "[laughs] Ye were deid already, ye just didnae ken."
+    },
+    {
+      "bytes": 291918,
+      "credits": 50,
+      "files": [
+        "ab/eleven_v4/kill_2/2.wav"
+      ],
+      "finished_at": 1795034516,
+      "format": "wav_32000",
+      "kind": "ab",
+      "label": "ab/eleven_v4/kill_2/2",
+      "model": "eleven_v4",
+      "sha256": "f7bbbce96ce66799b47dc9d4a87ba1979d2236b00cd29ac71d4a9311755b10bf",
+      "status": "DONE",
+      "text": "[laughs] Ye were deid already, ye just didnae ken."
+    },
+    {
+      "bytes": 261198,
+      "credits": 46,
+      "files": [
+        "ab/eleven_v4/victory_1/1.wav"
+      ],
+      "finished_at": 1795034518,
+      "format": "wav_32000",
+      "kind": "ab",
+      "label": "ab/eleven_v4/victory_1/1",
+      "model": "eleven_v4",
+      "sha256": "3540c03f653fcd237699fc736ff25efd0126dded5a9c5add9a703d16f44f15cd",
+      "status": "DONE",
+      "text": "[laughs] That's them sorted. Who's fer a dram?"
+    },
+    {
+      "bytes": 266318,
+      "credits": 46,
+      "files": [
+        "ab/eleven_v4/victory_1/2.wav"
+      ],
+      "finished_at": 1795034519,
+      "format": "wav_32000",
+      "kind": "ab",
+      "label": "ab/eleven_v4/victory_1/2",
+      "model": "eleven_v4",
+      "sha256": "57371a6a7b5ae325948dd09b5e519208aafcabf42105ea734fece4ab01544431",
+      "status": "DONE",
+      "text": "[laughs] That's them sorted. Who's fer a dram?"
+    },
+    {
+      "bytes": 102478,
+      "credits": 26,
+      "files": [
+        "ab/eleven_v4_turbo/attack_1/1.wav"
+      ],
+      "finished_at": 1795034520,
+      "format": "wav_32000",
+      "kind": "ab",
+      "label": "ab/eleven_v4_turbo/attack_1/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "1779a989f10ec6c300fa8d4540f75a31511e284b0d9fe32318a4b437d0a29804",
+      "status": "DONE",
+      "text": "[shouting] Get intae them!"
+    },
+    {
+      "bytes": 112718,
+      "credits": 26,
+      "files": [
+        "ab/eleven_v4_turbo/attack_1/2.wav"
+      ],
+      "finished_at": 1795034520,
+      "format": "wav_32000",
+      "kind": "ab",
+      "label": "ab/eleven_v4_turbo/attack_1/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "03a725d862a77f9693acf762a547ed6579aaf0bb7a6f03a6826020e64701eb05",
+      "status": "DONE",
+      "text": "[shouting] Get intae them!"
+    },
+    {
+      "bytes": 128078,
+      "credits": 30,
+      "files": [
+        "ab/eleven_v4_turbo/attack_2/1.wav"
+      ],
+      "finished_at": 1795034521,
+      "format": "wav_32000",
+      "kind": "ab",
+      "label": "ab/eleven_v4_turbo/attack_2/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "06962565926f9bfe5e6da9101cf0664bc3683033900076916e36a26379de0058",
+      "status": "DONE",
+      "text": "[shouting] Gie it laldy, lads!"
+    },
+    {
+      "bytes": 138318,
+      "credits": 30,
+      "files": [
+        "ab/eleven_v4_turbo/attack_2/2.wav"
+      ],
+      "finished_at": 1795034522,
+      "format": "wav_32000",
+      "kind": "ab",
+      "label": "ab/eleven_v4_turbo/attack_2/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "5d319d53b60bb0e88e9c622db8e99b044ef49fc562c3d1c8d8a67756368d2275",
+      "status": "DONE",
+      "text": "[shouting] Gie it laldy, lads!"
+    },
+    {
+      "bytes": 230478,
+      "credits": 46,
+      "files": [
+        "ab/eleven_v4_turbo/hurt_1/1.wav"
+      ],
+      "finished_at": 1795034523,
+      "format": "wav_32000",
+      "kind": "ab",
+      "label": "ab/eleven_v4_turbo/hurt_1/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "cd88ecf98cb5c06dab136108bedbf4b81925f432bd0b7b5c5af7877ff2c2aacb",
+      "status": "DONE",
+      "text": "[shouting] It's just a scratch! A big scratch!"
+    },
+    {
+      "bytes": 225358,
+      "credits": 46,
+      "files": [
+        "ab/eleven_v4_turbo/hurt_1/2.wav"
+      ],
+      "finished_at": 1795034524,
+      "format": "wav_32000",
+      "kind": "ab",
+      "label": "ab/eleven_v4_turbo/hurt_1/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "526a97b319a03269c96060d8c54a08524f0083f19675c9bad150c15bb4beb2f2",
+      "status": "DONE",
+      "text": "[shouting] It's just a scratch! A big scratch!"
+    },
+    {
+      "bytes": 153678,
+      "credits": 23,
+      "files": [
+        "ab/eleven_v4_turbo/kill_1/1.wav"
+      ],
+      "finished_at": 1795034525,
+      "format": "wav_32000",
+      "kind": "ab",
+      "label": "ab/eleven_v4_turbo/kill_1/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "e711f76e65c2d4bc2df8f0ea0a54bfce2e34e92f6f1a8810cd04275543347e68",
+      "status": "DONE",
+      "text": "[laughs] An' STAY doon!"
+    },
+    {
+      "bytes": 158798,
+      "credits": 23,
+      "files": [
+        "ab/eleven_v4_turbo/kill_1/2.wav"
+      ],
+      "finished_at": 1795034525,
+      "format": "wav_32000",
+      "kind": "ab",
+      "label": "ab/eleven_v4_turbo/kill_1/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "9b6e6ff26445c2045f1f0d137c01db4e87ee545a205e9b1d86b8ff24fb47df4a",
+      "status": "DONE",
+      "text": "[laughs] An' STAY doon!"
+    },
+    {
+      "bytes": 271438,
+      "credits": 50,
+      "files": [
+        "ab/eleven_v4_turbo/kill_2/1.wav"
+      ],
+      "finished_at": 1795034526,
+      "format": "wav_32000",
+      "kind": "ab",
+      "label": "ab/eleven_v4_turbo/kill_2/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "42d9b9bcffe35c94c22584bb71bb9f55ebc15dc5f8335ef86cdb067e21ea8eee",
+      "status": "DONE",
+      "text": "[laughs] Ye were deid already, ye just didnae ken."
+    },
+    {
+      "bytes": 271438,
+      "credits": 50,
+      "files": [
+        "ab/eleven_v4_turbo/kill_2/2.wav"
+      ],
+      "finished_at": 1795034527,
+      "format": "wav_32000",
+      "kind": "ab",
+      "label": "ab/eleven_v4_turbo/kill_2/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "651b55c8dbfb92edf3837358deadd21477d4ebff42ad4f83e6f550eece2afe9a",
+      "status": "DONE",
+      "text": "[laughs] Ye were deid already, ye just didnae ken."
+    },
+    {
+      "bytes": 266318,
+      "credits": 46,
+      "files": [
+        "ab/eleven_v4_turbo/victory_1/1.wav"
+      ],
+      "finished_at": 1795034528,
+      "format": "wav_32000",
+      "kind": "ab",
+      "label": "ab/eleven_v4_turbo/victory_1/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "15b0d933ec9c5ca7548cf8f6782362ab74f3a2d76c8f198775e7d8b66a6e702e",
+      "status": "DONE",
+      "text": "[laughs] That's them sorted. Who's fer a dram?"
+    },
+    {
+      "bytes": 261198,
+      "credits": 46,
+      "files": [
+        "ab/eleven_v4_turbo/victory_1/2.wav"
+      ],
+      "finished_at": 1795034530,
+      "format": "wav_32000",
+      "kind": "ab",
+      "label": "ab/eleven_v4_turbo/victory_1/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "c41405dcb9af00b52be607d605f3916c8085bc238de95af89bed80a0fc054d71",
+      "status": "DONE",
+      "text": "[laughs] That's them sorted. Who's fer a dram?"
     }
   ]
 }
