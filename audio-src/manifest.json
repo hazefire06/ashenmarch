@@ -5862,6 +5862,3786 @@
       "sha256": "c41405dcb9af00b52be607d605f3916c8085bc238de95af89bed80a0fc054d71",
       "status": "DONE",
       "text": "[laughs] That's them sorted. Who's fer a dram?"
+    },
+    {
+      "bytes": 184398,
+      "credits": 35,
+      "files": [
+        "voices/shieldman_old/annoyed_1/1.wav"
+      ],
+      "finished_at": 1795037489,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/annoyed_1/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "3b6ac420858aa7d5104034eddf34df3caf60d2a012870e6a7e2259cfe46d3e19",
+      "status": "DONE",
+      "text": "Poke me again an' see whit happens."
+    },
+    {
+      "bytes": 179278,
+      "credits": 35,
+      "files": [
+        "voices/shieldman_old/annoyed_1/2.wav"
+      ],
+      "finished_at": 1795037490,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/annoyed_1/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "7ae44a0850f824829f176dc8b8d33b667e9090adf2268ba66e8c67b7dfca9e20",
+      "status": "DONE",
+      "text": "Poke me again an' see whit happens."
+    },
+    {
+      "bytes": 189518,
+      "credits": 35,
+      "files": [
+        "voices/shieldman_old/annoyed_1/3.wav"
+      ],
+      "finished_at": 1795037491,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/annoyed_1/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "fa75f8c471136ba3ca6991700b3f805e246fd54781740d9b73a0110a9e837f2d",
+      "status": "DONE",
+      "text": "Poke me again an' see whit happens."
+    },
+    {
+      "bytes": 204878,
+      "credits": 42,
+      "files": [
+        "voices/shieldman_old/annoyed_2/1.wav"
+      ],
+      "finished_at": 1795037492,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/annoyed_2/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "8a0a5a2c7c8e5dae10ca19e049ff359f973bf2a6ff7aba5ee3e1ba7ef031d4f0",
+      "status": "DONE",
+      "text": "Ah've got a shield, no' a lot o' patience."
+    },
+    {
+      "bytes": 209998,
+      "credits": 42,
+      "files": [
+        "voices/shieldman_old/annoyed_2/2.wav"
+      ],
+      "finished_at": 1795037493,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/annoyed_2/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "00fde1d4efea09fdc1496e3f5a02f9f62cf0cefa990bd5af7465d5c5c41ea5d2",
+      "status": "DONE",
+      "text": "Ah've got a shield, no' a lot o' patience."
+    },
+    {
+      "bytes": 204878,
+      "credits": 42,
+      "files": [
+        "voices/shieldman_old/annoyed_2/3.wav"
+      ],
+      "finished_at": 1795037494,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/annoyed_2/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "d7402cce11a9dec9e93465bc77ce8c20f612785a455d6ba54e24507681a1a615",
+      "status": "DONE",
+      "text": "Ah've got a shield, no' a lot o' patience."
+    },
+    {
+      "bytes": 158798,
+      "credits": 27,
+      "files": [
+        "voices/shieldman_old/annoyed_3/1.wav"
+      ],
+      "finished_at": 1795037495,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/annoyed_3/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "80bd873a57df0ebce6d4e01baa83433f005ad2d079aa47da06c11246d3f36bbe",
+      "status": "DONE",
+      "text": "Ye know ah can see ye, aye?"
+    },
+    {
+      "bytes": 153678,
+      "credits": 27,
+      "files": [
+        "voices/shieldman_old/annoyed_3/2.wav"
+      ],
+      "finished_at": 1795037496,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/annoyed_3/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "6a18f2d4865de368ca4b443fa97c05854dd96be20098c27532ebb552b7ce9e9c",
+      "status": "DONE",
+      "text": "Ye know ah can see ye, aye?"
+    },
+    {
+      "bytes": 153678,
+      "credits": 27,
+      "files": [
+        "voices/shieldman_old/annoyed_3/3.wav"
+      ],
+      "finished_at": 1795037497,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/annoyed_3/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "2fe1b391482e99553fde95ce840615c2804eb62798dbef6ede0e9c6cd3e6c2d1",
+      "status": "DONE",
+      "text": "Ye know ah can see ye, aye?"
+    },
+    {
+      "bytes": 97358,
+      "credits": 15,
+      "files": [
+        "voices/shieldman_old/attack_1/1.wav"
+      ],
+      "finished_at": 1795037497,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/attack_1/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "74c0cc42639feddbc8ecb211dcac74779cee66b875b416fe4dc6b56640ab0f16",
+      "status": "DONE",
+      "text": "Get intae them!"
+    },
+    {
+      "bytes": 97358,
+      "credits": 15,
+      "files": [
+        "voices/shieldman_old/attack_1/2.wav"
+      ],
+      "finished_at": 1795037498,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/attack_1/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "2b052c1453387475c33a844ff20bb1b79acf4ce798c9d9b76edc45cf1b9dc74f",
+      "status": "DONE",
+      "text": "Get intae them!"
+    },
+    {
+      "bytes": 97358,
+      "credits": 15,
+      "files": [
+        "voices/shieldman_old/attack_1/3.wav"
+      ],
+      "finished_at": 1795037499,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/attack_1/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "98828c4c543eefcf62651372383d3cddaadcf35b3ac9307226c483bbab58c908",
+      "status": "DONE",
+      "text": "Get intae them!"
+    },
+    {
+      "bytes": 128078,
+      "credits": 19,
+      "files": [
+        "voices/shieldman_old/attack_2/1.wav"
+      ],
+      "finished_at": 1795037500,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/attack_2/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "c0531226a1ec11c3260d31df600308fabee4c430caa46fef0cd0b704e3c657f0",
+      "status": "DONE",
+      "text": "Gie it laldy, lads!"
+    },
+    {
+      "bytes": 128078,
+      "credits": 19,
+      "files": [
+        "voices/shieldman_old/attack_2/2.wav"
+      ],
+      "finished_at": 1795037501,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/attack_2/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "7cdbcaea115ce7a7a25aae68386e7dd6c5bb6905d33a7fbfd9254983568f97dd",
+      "status": "DONE",
+      "text": "Gie it laldy, lads!"
+    },
+    {
+      "bytes": 128078,
+      "credits": 19,
+      "files": [
+        "voices/shieldman_old/attack_2/3.wav"
+      ],
+      "finished_at": 1795037502,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/attack_2/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "4fb86a35706eab70a3c03e031683d3a29caf967624f9da5f50d526fcf588302b",
+      "status": "DONE",
+      "text": "Gie it laldy, lads!"
+    },
+    {
+      "bytes": 133198,
+      "credits": 20,
+      "files": [
+        "voices/shieldman_old/attack_3/1.wav"
+      ],
+      "finished_at": 1795037502,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/attack_3/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "75d5a8d3cd3d61cbf7907ed74b1579b0618a569ff3fda2a7ac7cff70705ddcb6",
+      "status": "DONE",
+      "text": "Time fer a stramash!"
+    },
+    {
+      "bytes": 128078,
+      "credits": 20,
+      "files": [
+        "voices/shieldman_old/attack_3/2.wav"
+      ],
+      "finished_at": 1795037503,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/attack_3/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "2b46a53cf4bc124abadbde7adeb98f1165b89db5cdcdca3500e1b9ea532bd03c",
+      "status": "DONE",
+      "text": "Time fer a stramash!"
+    },
+    {
+      "bytes": 128078,
+      "credits": 20,
+      "files": [
+        "voices/shieldman_old/attack_3/3.wav"
+      ],
+      "finished_at": 1795037504,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/attack_3/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "245c74a9572d2c480ccdda8364f3440824a0efb44f3638746f337865ea043101",
+      "status": "DONE",
+      "text": "Time fer a stramash!"
+    },
+    {
+      "bytes": 174158,
+      "credits": 31,
+      "files": [
+        "voices/shieldman_old/attack_4/1.wav"
+      ],
+      "finished_at": 1795037505,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/attack_4/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "24418c085cec29d02e467af2e6b19aa455d30d93afd82128aa60a1e6f99c4881",
+      "status": "DONE",
+      "text": "Ah'll skelp ye intae next week!"
+    },
+    {
+      "bytes": 163918,
+      "credits": 31,
+      "files": [
+        "voices/shieldman_old/attack_4/2.wav"
+      ],
+      "finished_at": 1795037506,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/attack_4/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "72cc9ddbe348525a6d22e700131978ee7374c295eeac253c1999d9b7ccce6e87",
+      "status": "DONE",
+      "text": "Ah'll skelp ye intae next week!"
+    },
+    {
+      "bytes": 158798,
+      "credits": 31,
+      "files": [
+        "voices/shieldman_old/attack_4/3.wav"
+      ],
+      "finished_at": 1795037507,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/attack_4/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "19fecec1ada7ab59e753904e42e2ec1a56402ccea5ac593c8714aa31a0ae8e6e",
+      "status": "DONE",
+      "text": "Ah'll skelp ye intae next week!"
+    },
+    {
+      "bytes": 271438,
+      "credits": 41,
+      "files": [
+        "voices/shieldman_old/attack_5/1.wav"
+      ],
+      "finished_at": 1795037508,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/attack_5/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "dc62b73ff7ed8902ad3deedc7d8f763682d798f25e0b2cc87ef16b5bf4659609",
+      "status": "DONE",
+      "text": "Charge! Ach, wait, ah'm already chargin'!"
+    },
+    {
+      "bytes": 266318,
+      "credits": 41,
+      "files": [
+        "voices/shieldman_old/attack_5/2.wav"
+      ],
+      "finished_at": 1795037509,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/attack_5/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "7f588911c82b078502b95600712b41e88af5cce3828b8f485f7536a64f27d284",
+      "status": "DONE",
+      "text": "Charge! Ach, wait, ah'm already chargin'!"
+    },
+    {
+      "bytes": 266318,
+      "credits": 41,
+      "files": [
+        "voices/shieldman_old/attack_5/3.wav"
+      ],
+      "finished_at": 1795037510,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/attack_5/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "60ebab0f92b48ef6db741a4af18963ddad0c72ec65e68c5567a192b27983c0f2",
+      "status": "DONE",
+      "text": "Charge! Ach, wait, ah'm already chargin'!"
+    },
+    {
+      "bytes": 81998,
+      "credits": 8,
+      "files": [
+        "voices/shieldman_old/clan_1/1.wav"
+      ],
+      "finished_at": 1795037510,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/clan_1/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "ebc4c7157c4171bcc069bcfe766e980c8ffb80335bd462aa8344ef7c244a4e06",
+      "status": "DONE",
+      "text": "Crivens!"
+    },
+    {
+      "bytes": 87118,
+      "credits": 8,
+      "files": [
+        "voices/shieldman_old/clan_1/2.wav"
+      ],
+      "finished_at": 1795037511,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/clan_1/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "ef0fa39e086478d53cb5b8d29f13d9668d3c5dd9c838523a2bd3293a8d8f4f3a",
+      "status": "DONE",
+      "text": "Crivens!"
+    },
+    {
+      "bytes": 87118,
+      "credits": 8,
+      "files": [
+        "voices/shieldman_old/clan_1/3.wav"
+      ],
+      "finished_at": 1795037511,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/clan_1/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "89138bdba58fb091e6ba66db82edc7323aaeb5ffdb03efc91612f4eb289cc445",
+      "status": "DONE",
+      "text": "Crivens!"
+    },
+    {
+      "bytes": 117838,
+      "credits": 10,
+      "files": [
+        "voices/shieldman_old/clan_2/1.wav"
+      ],
+      "finished_at": 1795037512,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/clan_2/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "9692e4bae943a4b3631a5c3b2303d05264621062bc769f1a7d36d80af1fdbea0",
+      "status": "DONE",
+      "text": "Michty me!"
+    },
+    {
+      "bytes": 112718,
+      "credits": 10,
+      "files": [
+        "voices/shieldman_old/clan_2/2.wav"
+      ],
+      "finished_at": 1795037513,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/clan_2/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "33f91e3ecccfab610d3a5166f525188fc5ed55c1bfa95e03c3e664788cdd4a30",
+      "status": "DONE",
+      "text": "Michty me!"
+    },
+    {
+      "bytes": 112718,
+      "credits": 10,
+      "files": [
+        "voices/shieldman_old/clan_2/3.wav"
+      ],
+      "finished_at": 1795037513,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/clan_2/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "4e7b4f50250fb92ec0574703f74c3d43d70e9019a3715e46daf92f514e7fc74f",
+      "status": "DONE",
+      "text": "Michty me!"
+    },
+    {
+      "bytes": 107598,
+      "credits": 17,
+      "files": [
+        "voices/shieldman_old/clan_3/1.wav"
+      ],
+      "finished_at": 1795037514,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/clan_3/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "bdcc51380d27b8b89cdf12818c6408a7b46e07c91a08bf4b0c405c6c60d474d3",
+      "status": "DONE",
+      "text": "Haud yer wheesht!"
+    },
+    {
+      "bytes": 107598,
+      "credits": 17,
+      "files": [
+        "voices/shieldman_old/clan_3/2.wav"
+      ],
+      "finished_at": 1795037515,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/clan_3/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "531f9aecf818c5d803c6a27bfaba12d55fd650845a21b3983996a6af7f71944a",
+      "status": "DONE",
+      "text": "Haud yer wheesht!"
+    },
+    {
+      "bytes": 107598,
+      "credits": 17,
+      "files": [
+        "voices/shieldman_old/clan_3/3.wav"
+      ],
+      "finished_at": 1795037515,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/clan_3/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "5984175f2d411adb74a7f2c93de51d95ba8e00fb1fbe1008389b72158b52ae3c",
+      "status": "DONE",
+      "text": "Haud yer wheesht!"
+    },
+    {
+      "bytes": 158798,
+      "credits": 23,
+      "files": [
+        "voices/shieldman_old/clan_4/1.wav"
+      ],
+      "finished_at": 1795037516,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/clan_4/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "c5340f4a79b44fb47ab4c93b2ffda061f43bc2f55b0ccbabf717ce839de63c1c",
+      "status": "DONE",
+      "text": "Och, that's pure mince."
+    },
+    {
+      "bytes": 169038,
+      "credits": 23,
+      "files": [
+        "voices/shieldman_old/clan_4/2.wav"
+      ],
+      "finished_at": 1795037517,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/clan_4/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "dfccee43b4d15b82c2d6cbd0376969005aa3b02827203e236384415ef4a2d54e",
+      "status": "DONE",
+      "text": "Och, that's pure mince."
+    },
+    {
+      "bytes": 163918,
+      "credits": 23,
+      "files": [
+        "voices/shieldman_old/clan_4/3.wav"
+      ],
+      "finished_at": 1795037518,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/clan_4/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "7cbeff3cbcb9bb0cdf1b55ee5dd082e7f2d8fef9b1b396e729bdc0071dc7a5b3",
+      "status": "DONE",
+      "text": "Och, that's pure mince."
+    },
+    {
+      "bytes": 102478,
+      "credits": 14,
+      "files": [
+        "voices/shieldman_old/clan_5/1.wav"
+      ],
+      "finished_at": 1795037518,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/clan_5/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "978520f8bf96c147432d93d70238f63a7cef7f93880b66bbe8f6cdd0cbe5c879",
+      "status": "DONE",
+      "text": "Mind yer feet!"
+    },
+    {
+      "bytes": 102478,
+      "credits": 14,
+      "files": [
+        "voices/shieldman_old/clan_5/2.wav"
+      ],
+      "finished_at": 1795037519,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/clan_5/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "ccf9510b2ffaacd2c09c19e7b606c63c8d989ccd0a5ab9145a5cec76df4dd096",
+      "status": "DONE",
+      "text": "Mind yer feet!"
+    },
+    {
+      "bytes": 97358,
+      "credits": 14,
+      "files": [
+        "voices/shieldman_old/clan_5/3.wav"
+      ],
+      "finished_at": 1795037520,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/clan_5/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "6e0d0a18467fdd64fdc0874525e094ab935e2c219023e82f374f5b903b32dbcd",
+      "status": "DONE",
+      "text": "Mind yer feet!"
+    },
+    {
+      "bytes": 215118,
+      "credits": 28,
+      "files": [
+        "voices/shieldman_old/death_1/1.wav"
+      ],
+      "finished_at": 1795037521,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/death_1/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "ec001976a861bae13545a4a1fa4ccba82190935e6db27fc5a622f1efa6f8429e",
+      "status": "DONE",
+      "text": "Tell ma mither\u2026 ah wis braw\u2026"
+    },
+    {
+      "bytes": 220238,
+      "credits": 28,
+      "files": [
+        "voices/shieldman_old/death_1/2.wav"
+      ],
+      "finished_at": 1795037522,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/death_1/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "c25c44c9c518adcd78ffc6537ac2a39b6fd042e893ae4e11177cb800f7d222d8",
+      "status": "DONE",
+      "text": "Tell ma mither\u2026 ah wis braw\u2026"
+    },
+    {
+      "bytes": 215118,
+      "credits": 28,
+      "files": [
+        "voices/shieldman_old/death_1/3.wav"
+      ],
+      "finished_at": 1795037527,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/death_1/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "8ef38f5012194485591f9357d501a694ec55b357eaf68041ec7754083139ebd6",
+      "status": "DONE",
+      "text": "Tell ma mither\u2026 ah wis braw\u2026"
+    },
+    {
+      "bytes": 245838,
+      "credits": 36,
+      "files": [
+        "voices/shieldman_old/death_2/1.wav"
+      ],
+      "finished_at": 1795037528,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/death_2/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "97729254756f7031a27ff698932d011f91989ab8192bead24f14565c5f09f06e",
+      "status": "DONE",
+      "text": "Avenge me\u2026 or don't, ah'm no' fussy\u2026"
+    },
+    {
+      "bytes": 256078,
+      "credits": 36,
+      "files": [
+        "voices/shieldman_old/death_2/2.wav"
+      ],
+      "finished_at": 1795037529,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/death_2/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "677d9aa3b999225d8222c4d63ee1e5de2be922d38fd841b5adfd263b4cd3e2dd",
+      "status": "DONE",
+      "text": "Avenge me\u2026 or don't, ah'm no' fussy\u2026"
+    },
+    {
+      "bytes": 256078,
+      "credits": 36,
+      "files": [
+        "voices/shieldman_old/death_2/3.wav"
+      ],
+      "finished_at": 1795037530,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/death_2/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "25760c3d6acc63b59f63b27b19e4ba592bbcdc3c752fa58944b9efbb2a647cb1",
+      "status": "DONE",
+      "text": "Avenge me\u2026 or don't, ah'm no' fussy\u2026"
+    },
+    {
+      "bytes": 163918,
+      "credits": 19,
+      "files": [
+        "voices/shieldman_old/death_3/1.wav"
+      ],
+      "finished_at": 1795037531,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/death_3/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "e43a205ad78903167ebcb7260340b9638b6bb2795a5aa51befd9fc85e5da08b5",
+      "status": "DONE",
+      "text": "Ach\u2026 no' like this\u2026"
+    },
+    {
+      "bytes": 158798,
+      "credits": 19,
+      "files": [
+        "voices/shieldman_old/death_3/2.wav"
+      ],
+      "finished_at": 1795037531,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/death_3/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "04039df070933403f20ffc0440b8dc1d4789f176119867b026f649a1135f874a",
+      "status": "DONE",
+      "text": "Ach\u2026 no' like this\u2026"
+    },
+    {
+      "bytes": 163918,
+      "credits": 19,
+      "files": [
+        "voices/shieldman_old/death_3/3.wav"
+      ],
+      "finished_at": 1795037532,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/death_3/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "ab9c203f93a93c5d02bcc3efe304d20efe6d3b92bffb406247db6a64cdb732fa",
+      "status": "DONE",
+      "text": "Ach\u2026 no' like this\u2026"
+    },
+    {
+      "bytes": 245838,
+      "credits": 41,
+      "files": [
+        "voices/shieldman_old/formation_rabble_1/1.wav"
+      ],
+      "finished_at": 1795037533,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/formation_rabble_1/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "c0e0e4a6481e78918f69ff0bf8be43bab184ab09573ce80f9efc500cd74b3080",
+      "status": "DONE",
+      "text": "Rabble? Finally, somethin' we're good at."
+    },
+    {
+      "bytes": 245838,
+      "credits": 41,
+      "files": [
+        "voices/shieldman_old/formation_rabble_1/2.wav"
+      ],
+      "finished_at": 1795037534,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/formation_rabble_1/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "fb76046aca090d6db38fbe12c548cede9183c97d3a0187c884223b20e0095545",
+      "status": "DONE",
+      "text": "Rabble? Finally, somethin' we're good at."
+    },
+    {
+      "bytes": 250958,
+      "credits": 41,
+      "files": [
+        "voices/shieldman_old/formation_rabble_1/3.wav"
+      ],
+      "finished_at": 1795037536,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/formation_rabble_1/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "e8c0217570b016f60c64b92d25573c96c4bca5a15311030ce8b7ee6702842b89",
+      "status": "DONE",
+      "text": "Rabble? Finally, somethin' we're good at."
+    },
+    {
+      "bytes": 128078,
+      "credits": 17,
+      "files": [
+        "voices/shieldman_old/formation_wedge_1/1.wav"
+      ],
+      "finished_at": 1795037536,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/formation_wedge_1/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "6d2c477e297df1208538c3c1520fe131e82a578d3fed8f1fc848726181e1ba29",
+      "status": "DONE",
+      "text": "Pointy end first!"
+    },
+    {
+      "bytes": 128078,
+      "credits": 17,
+      "files": [
+        "voices/shieldman_old/formation_wedge_1/2.wav"
+      ],
+      "finished_at": 1795037537,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/formation_wedge_1/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "9687f5c3c52bef08cb3a3b0dbe306b8b3ef64399ef34fa87a16c25a471ccaf11",
+      "status": "DONE",
+      "text": "Pointy end first!"
+    },
+    {
+      "bytes": 128078,
+      "credits": 17,
+      "files": [
+        "voices/shieldman_old/formation_wedge_1/3.wav"
+      ],
+      "finished_at": 1795037538,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/formation_wedge_1/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "c563dc88c91edf05f305dec393195fff67f6a4e71fb1318af49a169e0a9439b4",
+      "status": "DONE",
+      "text": "Pointy end first!"
+    },
+    {
+      "bytes": 235598,
+      "credits": 35,
+      "files": [
+        "voices/shieldman_old/hurt_1/1.wav"
+      ],
+      "finished_at": 1795037538,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/hurt_1/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "bcc487a0a27f751f58a25df974f6e5c8fa7cd5026365f1ade4c5b7234023e497",
+      "status": "DONE",
+      "text": "It's just a scratch! A big scratch!"
+    },
+    {
+      "bytes": 230478,
+      "credits": 35,
+      "files": [
+        "voices/shieldman_old/hurt_1/2.wav"
+      ],
+      "finished_at": 1795037539,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/hurt_1/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "f9cecc3e69a1d55ec8f589b8ac79c7cc2743a0d3a952c84e52197dfec90d0d74",
+      "status": "DONE",
+      "text": "It's just a scratch! A big scratch!"
+    },
+    {
+      "bytes": 235598,
+      "credits": 35,
+      "files": [
+        "voices/shieldman_old/hurt_1/3.wav"
+      ],
+      "finished_at": 1795037540,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/hurt_1/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "0bd356d129578d8a1c841b198fbc70ec216132ce0980d0f0d30cfbadaaa4c6ef",
+      "status": "DONE",
+      "text": "It's just a scratch! A big scratch!"
+    },
+    {
+      "bytes": 138318,
+      "credits": 31,
+      "files": [
+        "voices/shieldman_old/hurt_2/1.wav"
+      ],
+      "finished_at": 1795037541,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/hurt_2/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "35028369750829f9f3ff180e24ef7ce255379a4e52a097ee134d1a81b7de684e",
+      "status": "DONE",
+      "text": "Ah've had worse frae ma granny!"
+    },
+    {
+      "bytes": 148558,
+      "credits": 31,
+      "files": [
+        "voices/shieldman_old/hurt_2/2.wav"
+      ],
+      "finished_at": 1795037542,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/hurt_2/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "d7feb734efcd62c2a14385beb0f01c8cdda61b45413bca3251452b8df8e3754e",
+      "status": "DONE",
+      "text": "Ah've had worse frae ma granny!"
+    },
+    {
+      "bytes": 148558,
+      "credits": 31,
+      "files": [
+        "voices/shieldman_old/hurt_2/3.wav"
+      ],
+      "finished_at": 1795037543,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/hurt_2/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "46c9a1257a666efe31d5bef174c3e356ff404ee615abc54da46bdb6f61bf610d",
+      "status": "DONE",
+      "text": "Ah've had worse frae ma granny!"
+    },
+    {
+      "bytes": 179278,
+      "credits": 27,
+      "files": [
+        "voices/shieldman_old/hurt_3/1.wav"
+      ],
+      "finished_at": 1795037544,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/hurt_3/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "e3602b639ad694b6f84b284ee7351ff4118a0943c33dbae08ed45e4c3fa478f0",
+      "status": "DONE",
+      "text": "Warden! Ah need a wee herb!"
+    },
+    {
+      "bytes": 179278,
+      "credits": 27,
+      "files": [
+        "voices/shieldman_old/hurt_3/2.wav"
+      ],
+      "finished_at": 1795037544,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/hurt_3/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "64baf13249930f23eaff5194bb7b970489f404de1dbe22cfba3b5037f58671f8",
+      "status": "DONE",
+      "text": "Warden! Ah need a wee herb!"
+    },
+    {
+      "bytes": 163918,
+      "credits": 27,
+      "files": [
+        "voices/shieldman_old/hurt_3/3.wav"
+      ],
+      "finished_at": 1795037545,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/hurt_3/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "8c926116c4dcd6a73edde3120cdeec70ec0329b1d3dbca3a7d46f6014fce79c9",
+      "status": "DONE",
+      "text": "Warden! Ah need a wee herb!"
+    },
+    {
+      "bytes": 256078,
+      "credits": 36,
+      "files": [
+        "voices/shieldman_old/hurt_4/1.wav"
+      ],
+      "finished_at": 1795037547,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/hurt_4/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "a910bc8c7e108c7973f6a41e99e0eea0248520a609c31b7e52c3cfefeed07f44",
+      "status": "DONE",
+      "text": "Ah'm fine! Ah'm fine! Ah'm no' fine."
+    },
+    {
+      "bytes": 256078,
+      "credits": 36,
+      "files": [
+        "voices/shieldman_old/hurt_4/2.wav"
+      ],
+      "finished_at": 1795037548,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/hurt_4/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "95c1dd789aa42ea0733c3c5f169be7471770b4335c853aa04aa1881f01d2ca00",
+      "status": "DONE",
+      "text": "Ah'm fine! Ah'm fine! Ah'm no' fine."
+    },
+    {
+      "bytes": 261198,
+      "credits": 36,
+      "files": [
+        "voices/shieldman_old/hurt_4/3.wav"
+      ],
+      "finished_at": 1795037549,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/hurt_4/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "1fd35d79891b5a1ba4e2f8219a5ba0e4dca0a30adbb07398bc511c3a2a657755",
+      "status": "DONE",
+      "text": "Ah'm fine! Ah'm fine! Ah'm no' fine."
+    },
+    {
+      "bytes": 112718,
+      "credits": 14,
+      "files": [
+        "voices/shieldman_old/kill_1/1.wav"
+      ],
+      "finished_at": 1795037549,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/kill_1/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "0d8fa1fe3824142b25521a18e164c78e68ad041e38b9e8da54e6061fe1866cf0",
+      "status": "DONE",
+      "text": "An' STAY doon!"
+    },
+    {
+      "bytes": 102478,
+      "credits": 14,
+      "files": [
+        "voices/shieldman_old/kill_1/2.wav"
+      ],
+      "finished_at": 1795037550,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/kill_1/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "3ec8a2cf3b58be4825d58176899fe2c011ee8cc68305d34ac409439d70d803b1",
+      "status": "DONE",
+      "text": "An' STAY doon!"
+    },
+    {
+      "bytes": 107598,
+      "credits": 14,
+      "files": [
+        "voices/shieldman_old/kill_1/3.wav"
+      ],
+      "finished_at": 1795037551,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/kill_1/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "06e00ea7e346d95d8e3c691bc821a4fe5c6090227aac060ffa4c904d230642a1",
+      "status": "DONE",
+      "text": "An' STAY doon!"
+    },
+    {
+      "bytes": 230478,
+      "credits": 41,
+      "files": [
+        "voices/shieldman_old/kill_2/1.wav"
+      ],
+      "finished_at": 1795037552,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/kill_2/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "3f110fd765e084ba4a9027612c0abc3b80980a115bbf34599daa5c51dd661772",
+      "status": "DONE",
+      "text": "Ye were deid already, ye just didnae ken."
+    },
+    {
+      "bytes": 225358,
+      "credits": 41,
+      "files": [
+        "voices/shieldman_old/kill_2/2.wav"
+      ],
+      "finished_at": 1795037553,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/kill_2/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "b74b5c17d6e5362ce6dc0fdcc7f395fcb6382976003da6a0578ea92338ab4cd3",
+      "status": "DONE",
+      "text": "Ye were deid already, ye just didnae ken."
+    },
+    {
+      "bytes": 225358,
+      "credits": 41,
+      "files": [
+        "voices/shieldman_old/kill_2/3.wav"
+      ],
+      "finished_at": 1795037554,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/kill_2/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "91a2bcff6eb6e36fbc1a19cd18f9512664f335c6fb9b0a04ee40151d85c0d8cc",
+      "status": "DONE",
+      "text": "Ye were deid already, ye just didnae ken."
+    },
+    {
+      "bytes": 220238,
+      "credits": 39,
+      "files": [
+        "voices/shieldman_old/kill_3/1.wav"
+      ],
+      "finished_at": 1795037555,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/kill_3/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "2e22d3892c3005a937cd91c4e9d3fc873eeabbf67b80db9c6c3bc8955470f862",
+      "status": "DONE",
+      "text": "Is that it? Ah've had fiercer porridge."
+    },
+    {
+      "bytes": 220238,
+      "credits": 39,
+      "files": [
+        "voices/shieldman_old/kill_3/2.wav"
+      ],
+      "finished_at": 1795037556,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/kill_3/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "8ffa89b56ff3bde0278712ab924790efc3db664638997da4801ad76e2897e7b3",
+      "status": "DONE",
+      "text": "Is that it? Ah've had fiercer porridge."
+    },
+    {
+      "bytes": 225358,
+      "credits": 39,
+      "files": [
+        "voices/shieldman_old/kill_3/3.wav"
+      ],
+      "finished_at": 1795037557,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/kill_3/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "e09449509f3b7ff99e61204cec3e3a2d9224c0482195918832e78c29c277d4aa",
+      "status": "DONE",
+      "text": "Is that it? Ah've had fiercer porridge."
+    },
+    {
+      "bytes": 138318,
+      "credits": 24,
+      "files": [
+        "voices/shieldman_old/kill_4/1.wav"
+      ],
+      "finished_at": 1795037558,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/kill_4/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "0b984cde3c96bfe172fa3a55df9929591f4a04bcce4f3c2254ba309efb9c0744",
+      "status": "DONE",
+      "text": "That's one fer the sang!"
+    },
+    {
+      "bytes": 138318,
+      "credits": 24,
+      "files": [
+        "voices/shieldman_old/kill_4/2.wav"
+      ],
+      "finished_at": 1795037558,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/kill_4/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "e9d00eacbed89f17c1450d3ebfe0c75bd8b910fa75b3a5e8e8c5517c4f3c1ae8",
+      "status": "DONE",
+      "text": "That's one fer the sang!"
+    },
+    {
+      "bytes": 138318,
+      "credits": 24,
+      "files": [
+        "voices/shieldman_old/kill_4/3.wav"
+      ],
+      "finished_at": 1795037559,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/kill_4/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "35460f6a581c891fb078db2a0d1b487be60c8c1faae85e16bf0b8b6a19c8f088",
+      "status": "DONE",
+      "text": "That's one fer the sang!"
+    },
+    {
+      "bytes": 66638,
+      "credits": 5,
+      "files": [
+        "voices/shieldman_old/kill_5/1.wav"
+      ],
+      "finished_at": 1795037559,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/kill_5/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "e04838ab68c9dd820206c15ec1007be13ede23bc09a646603b6357911bec787c",
+      "status": "DONE",
+      "text": "Next!"
+    },
+    {
+      "bytes": 66638,
+      "credits": 5,
+      "files": [
+        "voices/shieldman_old/kill_5/2.wav"
+      ],
+      "finished_at": 1795037560,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/kill_5/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "ffd5a8c0349de3344e38fdf57aa3acb1d5cd4d74bc4adc83e0a40d41a0f879a7",
+      "status": "DONE",
+      "text": "Next!"
+    },
+    {
+      "bytes": 66638,
+      "credits": 5,
+      "files": [
+        "voices/shieldman_old/kill_5/3.wav"
+      ],
+      "finished_at": 1795037561,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/kill_5/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "472e4a4de7d9243b99649e73214d90789ca882546208174beb496a16c34a3427",
+      "status": "DONE",
+      "text": "Next!"
+    },
+    {
+      "bytes": 92238,
+      "credits": 13,
+      "files": [
+        "voices/shieldman_old/move_1/1.wav"
+      ],
+      "finished_at": 1795037561,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/move_1/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "aa69e54e08e7124b0688f22f6733c9c138083d1d1140006a769174e42b3535e3",
+      "status": "DONE",
+      "text": "Right ye are!"
+    },
+    {
+      "bytes": 92238,
+      "credits": 13,
+      "files": [
+        "voices/shieldman_old/move_1/2.wav"
+      ],
+      "finished_at": 1795037562,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/move_1/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "19c82aa0503fce75b642174e0df3dbe6d741cfb7650f8780b68a013d9bebae9c",
+      "status": "DONE",
+      "text": "Right ye are!"
+    },
+    {
+      "bytes": 92238,
+      "credits": 13,
+      "files": [
+        "voices/shieldman_old/move_1/3.wav"
+      ],
+      "finished_at": 1795037562,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/move_1/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "2cd68d61c7dbf17bf63b2c556661f5f00b629579085d3dd91cfc7fb4d975fb21",
+      "status": "DONE",
+      "text": "Right ye are!"
+    },
+    {
+      "bytes": 153678,
+      "credits": 25,
+      "files": [
+        "voices/shieldman_old/move_2/1.wav"
+      ],
+      "finished_at": 1795037563,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/move_2/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "5590e921d7b12d2f542c648e470a4866c9ea0775ade34fabe253f82a7de06568",
+      "status": "DONE",
+      "text": "Quick march, ya numpties!"
+    },
+    {
+      "bytes": 153678,
+      "credits": 25,
+      "files": [
+        "voices/shieldman_old/move_2/2.wav"
+      ],
+      "finished_at": 1795037564,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/move_2/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "aeccbdfc1c8b8aaedffc5a3bb29a784d715ed8e38a4ff6501f68807d9b70b0d2",
+      "status": "DONE",
+      "text": "Quick march, ya numpties!"
+    },
+    {
+      "bytes": 148558,
+      "credits": 25,
+      "files": [
+        "voices/shieldman_old/move_2/3.wav"
+      ],
+      "finished_at": 1795037565,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/move_2/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "70eecfaabfc9b0c3b778e5bc6a01403fe5f03228393c8b151b2c70c1739ea145",
+      "status": "DONE",
+      "text": "Quick march, ya numpties!"
+    },
+    {
+      "bytes": 220238,
+      "credits": 32,
+      "files": [
+        "voices/shieldman_old/move_3/1.wav"
+      ],
+      "finished_at": 1795037566,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/move_3/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "fe9f2a0d19c43e0bb63b39c50bc1574b95659f78592ae34be175cacb66d0affc",
+      "status": "DONE",
+      "text": "Marchin'. Grumblin'. Same thing."
+    },
+    {
+      "bytes": 220238,
+      "credits": 32,
+      "files": [
+        "voices/shieldman_old/move_3/2.wav"
+      ],
+      "finished_at": 1795037567,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/move_3/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "c08531b017a5b6841cc6d1c3827908c42e60533b9a8e80da34f36f431850ee0c",
+      "status": "DONE",
+      "text": "Marchin'. Grumblin'. Same thing."
+    },
+    {
+      "bytes": 230478,
+      "credits": 32,
+      "files": [
+        "voices/shieldman_old/move_3/3.wav"
+      ],
+      "finished_at": 1795037568,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/move_3/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "7a6275393bc3f8529774bf5ccf9bc2a680388ca619a0389e7ed6d2b95319d7eb",
+      "status": "DONE",
+      "text": "Marchin'. Grumblin'. Same thing."
+    },
+    {
+      "bytes": 189518,
+      "credits": 33,
+      "files": [
+        "voices/shieldman_old/move_4/1.wav"
+      ],
+      "finished_at": 1795037569,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/move_4/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "9fd0570d3a298e66d12d79c07852e024ec7697c25d44f4dd88690d98944ffd49",
+      "status": "DONE",
+      "text": "If it's a trap, ah'm blamin' you."
+    },
+    {
+      "bytes": 179278,
+      "credits": 33,
+      "files": [
+        "voices/shieldman_old/move_4/2.wav"
+      ],
+      "finished_at": 1795037569,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/move_4/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "eaa09b34d16983f39a70e83ef127905e9dcf4b261354a1ab3ada14392716c9de",
+      "status": "DONE",
+      "text": "If it's a trap, ah'm blamin' you."
+    },
+    {
+      "bytes": 184398,
+      "credits": 33,
+      "files": [
+        "voices/shieldman_old/move_4/3.wav"
+      ],
+      "finished_at": 1795037570,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/move_4/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "2f41a046e4f2f2d9ea9bf56319b890ae7635f1491f45233ac12fe840d2ddbd18",
+      "status": "DONE",
+      "text": "If it's a trap, ah'm blamin' you."
+    },
+    {
+      "bytes": 153678,
+      "credits": 25,
+      "files": [
+        "voices/shieldman_old/move_5/1.wav"
+      ],
+      "finished_at": 1795037571,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/move_5/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "3d6dd8526a9b5727f95f4ac795c01c91e8a0b24529612dd4ad25a2f12843b1a4",
+      "status": "DONE",
+      "text": "Onward! Mind the puddles."
+    },
+    {
+      "bytes": 158798,
+      "credits": 25,
+      "files": [
+        "voices/shieldman_old/move_5/2.wav"
+      ],
+      "finished_at": 1795037572,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/move_5/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "71c625ef3175b74fa1ee127231b519ee3cc599489778a22b5935acaea99adc68",
+      "status": "DONE",
+      "text": "Onward! Mind the puddles."
+    },
+    {
+      "bytes": 158798,
+      "credits": 25,
+      "files": [
+        "voices/shieldman_old/move_5/3.wav"
+      ],
+      "finished_at": 1795037578,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/move_5/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "21c7b810fbd270a5ae698b1fb623aa5813302feec45e155746ef86c836c1c5f2",
+      "status": "DONE",
+      "text": "Onward! Mind the puddles."
+    },
+    {
+      "bytes": 122958,
+      "credits": 16,
+      "files": [
+        "voices/shieldman_old/select_1/1.wav"
+      ],
+      "finished_at": 1795037579,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/select_1/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "8302e3f2a33e6dcb759497cf5aa07522495de44a9801251d931381bd8645ed60",
+      "status": "DONE",
+      "text": "Aye? Whit is it?"
+    },
+    {
+      "bytes": 122958,
+      "credits": 16,
+      "files": [
+        "voices/shieldman_old/select_1/2.wav"
+      ],
+      "finished_at": 1795037580,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/select_1/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "5a43e31cb3a200e68d5258e84fa9c4b11632a06089e729bc8f5aed04610e574a",
+      "status": "DONE",
+      "text": "Aye? Whit is it?"
+    },
+    {
+      "bytes": 128078,
+      "credits": 16,
+      "files": [
+        "voices/shieldman_old/select_1/3.wav"
+      ],
+      "finished_at": 1795037581,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/select_1/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "6fccdff5ecd4641b22e46766572c4f5bf62b22337f84a9831f77f77170d9107c",
+      "status": "DONE",
+      "text": "Aye? Whit is it?"
+    },
+    {
+      "bytes": 138318,
+      "credits": 27,
+      "files": [
+        "voices/shieldman_old/select_2/1.wav"
+      ],
+      "finished_at": 1795037581,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/select_2/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "b3f67eeae80d061f8a80d4b3089055a9b45f29bcdadf7f5382372faedba6cc5d",
+      "status": "DONE",
+      "text": "Point me at somethin' ugly."
+    },
+    {
+      "bytes": 138318,
+      "credits": 27,
+      "files": [
+        "voices/shieldman_old/select_2/2.wav"
+      ],
+      "finished_at": 1795037582,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/select_2/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "527abefc6b3771dfd0da774533f4868b9b4df73b9678321a025f2d213c81b3f1",
+      "status": "DONE",
+      "text": "Point me at somethin' ugly."
+    },
+    {
+      "bytes": 143438,
+      "credits": 27,
+      "files": [
+        "voices/shieldman_old/select_2/3.wav"
+      ],
+      "finished_at": 1795037583,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/select_2/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "caa944ba611b57141c5c44ea29aaa5697fbf77ce5a033eda366fe9fcccfd3858",
+      "status": "DONE",
+      "text": "Point me at somethin' ugly."
+    },
+    {
+      "bytes": 209998,
+      "credits": 42,
+      "files": [
+        "voices/shieldman_old/select_3/1.wav"
+      ],
+      "finished_at": 1795037585,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/select_3/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "889386635f03287f7bf7112f3f61f008b7ea9b08e806ca88941591a1c21792fe",
+      "status": "DONE",
+      "text": "Shield's up, heid's doon. Whit's the plan?"
+    },
+    {
+      "bytes": 209998,
+      "credits": 42,
+      "files": [
+        "voices/shieldman_old/select_3/2.wav"
+      ],
+      "finished_at": 1795037585,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/select_3/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "471ca4a05bf31c88054a60af465965371b9f932838d7aa2ab293b1acaaf1fae2",
+      "status": "DONE",
+      "text": "Shield's up, heid's doon. Whit's the plan?"
+    },
+    {
+      "bytes": 220238,
+      "credits": 42,
+      "files": [
+        "voices/shieldman_old/select_3/3.wav"
+      ],
+      "finished_at": 1795037586,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/select_3/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "dc8246d13e24eb77bdd7544146a5e6729d96779bdf96e490beb05711af96b5b2",
+      "status": "DONE",
+      "text": "Shield's up, heid's doon. Whit's the plan?"
+    },
+    {
+      "bytes": 107598,
+      "credits": 23,
+      "files": [
+        "voices/shieldman_old/select_4/1.wav"
+      ],
+      "finished_at": 1795037587,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/select_4/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "af2ac7c8c9ae1a9c57c8baad5843d892e4fd8c33fcb5680995f29d0955822bc3",
+      "status": "DONE",
+      "text": "Somebody need a wallop?"
+    },
+    {
+      "bytes": 112718,
+      "credits": 23,
+      "files": [
+        "voices/shieldman_old/select_4/2.wav"
+      ],
+      "finished_at": 1795037588,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/select_4/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "5fcaa6e97e1f05a847c8618087c003bf182fe09d0b827b59bc791638b2875548",
+      "status": "DONE",
+      "text": "Somebody need a wallop?"
+    },
+    {
+      "bytes": 107598,
+      "credits": 23,
+      "files": [
+        "voices/shieldman_old/select_4/3.wav"
+      ],
+      "finished_at": 1795037588,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/select_4/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "ed00c3b581cdd01773f035dc5816345149f9e274dffa9c1a49fae792c56ddfcc",
+      "status": "DONE",
+      "text": "Somebody need a wallop?"
+    },
+    {
+      "bytes": 250958,
+      "credits": 56,
+      "files": [
+        "voices/shieldman_old/select_5/1.wav"
+      ],
+      "finished_at": 1795037589,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/select_5/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "249c11d184a7f31110a53e8e202d36397aaa329fd9690b9886da699e8196a9e7",
+      "status": "DONE",
+      "text": "Ah'm listenin'. Make it quick, there's fightin' tae dae."
+    },
+    {
+      "bytes": 250958,
+      "credits": 56,
+      "files": [
+        "voices/shieldman_old/select_5/2.wav"
+      ],
+      "finished_at": 1795037590,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/select_5/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "6783d2309bf46861256b7fdce278da1cecfdd7f96b87e2f5b85e4ab79619703a",
+      "status": "DONE",
+      "text": "Ah'm listenin'. Make it quick, there's fightin' tae dae."
+    },
+    {
+      "bytes": 256078,
+      "credits": 56,
+      "files": [
+        "voices/shieldman_old/select_5/3.wav"
+      ],
+      "finished_at": 1795037592,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/select_5/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "3f86cbdfc61fe95d28e60ac2d0440fc14f9dd4e61d24806cc15cf33a440ac5da",
+      "status": "DONE",
+      "text": "Ah'm listenin'. Make it quick, there's fightin' tae dae."
+    },
+    {
+      "bytes": 307278,
+      "credits": 46,
+      "files": [
+        "voices/shieldman_old/status_burning_1/1.wav"
+      ],
+      "finished_at": 1795037593,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/status_burning_1/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "6e6069c343fcc84f94681c6d28e30c35d1b6e4c8f9d5c4d75562b30664665466",
+      "status": "DONE",
+      "text": "Whit's that smell? Ach, it's me, ah'm on fire!"
+    },
+    {
+      "bytes": 317518,
+      "credits": 46,
+      "files": [
+        "voices/shieldman_old/status_burning_1/2.wav"
+      ],
+      "finished_at": 1795037594,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/status_burning_1/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "214d295c35c7aa160e7c9691e4b0898647bdca50db4e92914be955d9d6d58ab4",
+      "status": "DONE",
+      "text": "Whit's that smell? Ach, it's me, ah'm on fire!"
+    },
+    {
+      "bytes": 302158,
+      "credits": 46,
+      "files": [
+        "voices/shieldman_old/status_burning_1/3.wav"
+      ],
+      "finished_at": 1795037595,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/status_burning_1/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "3c9c695869319a0d178551c4939c5a010d9fa6be57e7eb080d84df34fc665d5c",
+      "status": "DONE",
+      "text": "Whit's that smell? Ach, it's me, ah'm on fire!"
+    },
+    {
+      "bytes": 128078,
+      "credits": 26,
+      "files": [
+        "voices/shieldman_old/status_confused_1/1.wav"
+      ],
+      "finished_at": 1795037595,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/status_confused_1/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "0751bef1e431e6cb52ce5cd80ebc59520a7f62ad7380c72a1e6cdbb17e3c8dd6",
+      "status": "DONE",
+      "text": "Which side am ah on again?"
+    },
+    {
+      "bytes": 128078,
+      "credits": 26,
+      "files": [
+        "voices/shieldman_old/status_confused_1/2.wav"
+      ],
+      "finished_at": 1795037596,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/status_confused_1/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "455dd19d5c8294a3219140f0969492901471d75d8351478a7165e5d9f2795531",
+      "status": "DONE",
+      "text": "Which side am ah on again?"
+    },
+    {
+      "bytes": 133198,
+      "credits": 26,
+      "files": [
+        "voices/shieldman_old/status_confused_1/3.wav"
+      ],
+      "finished_at": 1795037597,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/status_confused_1/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "6a149c0f2650c7a450510c2cce46b83da09c6fdab51a366cdb6ce3a0b89dd8b5",
+      "status": "DONE",
+      "text": "Which side am ah on again?"
+    },
+    {
+      "bytes": 266318,
+      "credits": 23,
+      "files": [
+        "voices/shieldman_old/status_paralyzed_1/1.wav"
+      ],
+      "finished_at": 1795037598,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/status_paralyzed_1/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "6938a9cafb611344b92b4908fe1032f764dd877f6c31622f3ae2961675b5e8c6",
+      "status": "DONE",
+      "text": "Cannae\u2026 move\u2026 ma\u2026 legs\u2026"
+    },
+    {
+      "bytes": 261198,
+      "credits": 23,
+      "files": [
+        "voices/shieldman_old/status_paralyzed_1/2.wav"
+      ],
+      "finished_at": 1795037599,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/status_paralyzed_1/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "43dd2dae9e635c2b279b44dfb7c971f9f2d50283e9dfc13ed17262d252c72e24",
+      "status": "DONE",
+      "text": "Cannae\u2026 move\u2026 ma\u2026 legs\u2026"
+    },
+    {
+      "bytes": 271438,
+      "credits": 23,
+      "files": [
+        "voices/shieldman_old/status_paralyzed_1/3.wav"
+      ],
+      "finished_at": 1795037600,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/status_paralyzed_1/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "a302dafc77b4e23ef3a9236dc30ea4799bf0f64199f34c121f4feaf0b6738c14",
+      "status": "DONE",
+      "text": "Cannae\u2026 move\u2026 ma\u2026 legs\u2026"
+    },
+    {
+      "bytes": 199758,
+      "credits": 37,
+      "files": [
+        "voices/shieldman_old/victory_1/1.wav"
+      ],
+      "finished_at": 1795037601,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/victory_1/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "34ee2e35db493798a6de8b4b6542b220b791405ad51d09964f16bea2cc80e267",
+      "status": "DONE",
+      "text": "That's them sorted. Who's fer a dram?"
+    },
+    {
+      "bytes": 194638,
+      "credits": 37,
+      "files": [
+        "voices/shieldman_old/victory_1/2.wav"
+      ],
+      "finished_at": 1795037602,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/victory_1/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "77a6553067a0dcb55c6f6be34c367574ce052c42fe56cf015d7e5a78bc4095f1",
+      "status": "DONE",
+      "text": "That's them sorted. Who's fer a dram?"
+    },
+    {
+      "bytes": 199758,
+      "credits": 37,
+      "files": [
+        "voices/shieldman_old/victory_1/3.wav"
+      ],
+      "finished_at": 1795037603,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/victory_1/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "4fad2e1e6fc9b7b901e72ffa608608935668d17195fa91f4463cae183271b335",
+      "status": "DONE",
+      "text": "That's them sorted. Who's fer a dram?"
+    },
+    {
+      "bytes": 225358,
+      "credits": 29,
+      "files": [
+        "voices/shieldman_old/victory_2/1.wav"
+      ],
+      "finished_at": 1795037603,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/victory_2/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "f8bcd7b7142f62b46b11e6e711dafdff7b1d2c168135b35e7aabf26b1e4f6b97",
+      "status": "DONE",
+      "text": "We won! Ah think. Did we win?"
+    },
+    {
+      "bytes": 230478,
+      "credits": 29,
+      "files": [
+        "voices/shieldman_old/victory_2/2.wav"
+      ],
+      "finished_at": 1795037604,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/victory_2/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "d2c97172a2b960592305885fbf39936e7651281475192028b48772dbcdf9fd77",
+      "status": "DONE",
+      "text": "We won! Ah think. Did we win?"
+    },
+    {
+      "bytes": 215118,
+      "credits": 29,
+      "files": [
+        "voices/shieldman_old/victory_2/3.wav"
+      ],
+      "finished_at": 1795037605,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_old/victory_2/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "d582437733659bf1b5365ba9efbb8fa9a10612178cef1ff456794b48075ccc13",
+      "status": "DONE",
+      "text": "We won! Ah think. Did we win?"
+    },
+    {
+      "bytes": 143438,
+      "credits": 35,
+      "files": [
+        "voices/shieldman_young/annoyed_1/1.wav"
+      ],
+      "finished_at": 1795037607,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/annoyed_1/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "4abf73588e047205ccc627a365d2ab0e79d7af854367bff67b599ca7e579f4f2",
+      "status": "DONE",
+      "text": "Poke me again an' see whit happens."
+    },
+    {
+      "bytes": 148558,
+      "credits": 35,
+      "files": [
+        "voices/shieldman_young/annoyed_1/2.wav"
+      ],
+      "finished_at": 1795037608,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/annoyed_1/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "fa0d9783250fb34e392c96ceda42d02443d024d9b19478d634a5943cf7bc23f1",
+      "status": "DONE",
+      "text": "Poke me again an' see whit happens."
+    },
+    {
+      "bytes": 148558,
+      "credits": 35,
+      "files": [
+        "voices/shieldman_young/annoyed_1/3.wav"
+      ],
+      "finished_at": 1795037609,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/annoyed_1/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "b6bbdf493e98a047147e037ecf9d099c12bd1b656c3c883921152cc2cc83b412",
+      "status": "DONE",
+      "text": "Poke me again an' see whit happens."
+    },
+    {
+      "bytes": 174158,
+      "credits": 42,
+      "files": [
+        "voices/shieldman_young/annoyed_2/1.wav"
+      ],
+      "finished_at": 1795037610,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/annoyed_2/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "4a11b46e8a2665a1b867fd383eefbf38b110e0c3b0c18aa23d3de6192ab20d88",
+      "status": "DONE",
+      "text": "Ah've got a shield, no' a lot o' patience."
+    },
+    {
+      "bytes": 179278,
+      "credits": 42,
+      "files": [
+        "voices/shieldman_young/annoyed_2/2.wav"
+      ],
+      "finished_at": 1795037611,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/annoyed_2/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "67e3de1a0be80c90ef207ccb6d909774b24bf99cf9c46433ae71c8eedeebc55b",
+      "status": "DONE",
+      "text": "Ah've got a shield, no' a lot o' patience."
+    },
+    {
+      "bytes": 184398,
+      "credits": 42,
+      "files": [
+        "voices/shieldman_young/annoyed_2/3.wav"
+      ],
+      "finished_at": 1795037612,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/annoyed_2/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "8de2d077fb7e96700a788975fc838b5f5ac2aa13244bd2e829b31b3b0862e373",
+      "status": "DONE",
+      "text": "Ah've got a shield, no' a lot o' patience."
+    },
+    {
+      "bytes": 128078,
+      "credits": 27,
+      "files": [
+        "voices/shieldman_young/annoyed_3/1.wav"
+      ],
+      "finished_at": 1795037613,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/annoyed_3/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "e123694fd0a94830ebc83ece9409ca9bdd583fc184a9fcafa63dc29cae9c616d",
+      "status": "DONE",
+      "text": "Ye know ah can see ye, aye?"
+    },
+    {
+      "bytes": 122958,
+      "credits": 27,
+      "files": [
+        "voices/shieldman_young/annoyed_3/2.wav"
+      ],
+      "finished_at": 1795037613,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/annoyed_3/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "8fa636497155926dc463f73691ee80505b9b381c7aa267ebaf74473c63d33861",
+      "status": "DONE",
+      "text": "Ye know ah can see ye, aye?"
+    },
+    {
+      "bytes": 133198,
+      "credits": 27,
+      "files": [
+        "voices/shieldman_young/annoyed_3/3.wav"
+      ],
+      "finished_at": 1795037614,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/annoyed_3/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "38511020fc215e41210951084eeb32af6dc2123b0f076aac1ac411d372d5e2de",
+      "status": "DONE",
+      "text": "Ye know ah can see ye, aye?"
+    },
+    {
+      "bytes": 87118,
+      "credits": 15,
+      "files": [
+        "voices/shieldman_young/attack_1/1.wav"
+      ],
+      "finished_at": 1795037615,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/attack_1/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "87aa1a994f7045e8fcf14c26c6a15a74feb9b3a154f633aaeabfeb2cfdda46bd",
+      "status": "DONE",
+      "text": "Get intae them!"
+    },
+    {
+      "bytes": 81998,
+      "credits": 15,
+      "files": [
+        "voices/shieldman_young/attack_1/2.wav"
+      ],
+      "finished_at": 1795037615,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/attack_1/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "e1a5c2eef45fededde62c4ba6280c2807640db91722c62a2460d7e8cc725a4d7",
+      "status": "DONE",
+      "text": "Get intae them!"
+    },
+    {
+      "bytes": 87118,
+      "credits": 15,
+      "files": [
+        "voices/shieldman_young/attack_1/3.wav"
+      ],
+      "finished_at": 1795037616,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/attack_1/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "f3939b782d1a39b4b6ee8919f101df81ff0c44fe0994701a46a54ed0be9adbc0",
+      "status": "DONE",
+      "text": "Get intae them!"
+    },
+    {
+      "bytes": 107598,
+      "credits": 19,
+      "files": [
+        "voices/shieldman_young/attack_2/1.wav"
+      ],
+      "finished_at": 1795037617,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/attack_2/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "3cdef20925739c23756efa43e441be65dc55fe3506a14dd3d7838a8cc39942cf",
+      "status": "DONE",
+      "text": "Gie it laldy, lads!"
+    },
+    {
+      "bytes": 97358,
+      "credits": 19,
+      "files": [
+        "voices/shieldman_young/attack_2/2.wav"
+      ],
+      "finished_at": 1795037617,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/attack_2/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "6e4b895303bf3e14c8f70a8b4bc658a897d8aaa88e146d5abf78159261597e96",
+      "status": "DONE",
+      "text": "Gie it laldy, lads!"
+    },
+    {
+      "bytes": 107598,
+      "credits": 19,
+      "files": [
+        "voices/shieldman_young/attack_2/3.wav"
+      ],
+      "finished_at": 1795037618,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/attack_2/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "ea8f1ea4ff5f068ff9d3cf731ddf5b46dd515c15810b4c0e1a8edbc7e7310290",
+      "status": "DONE",
+      "text": "Gie it laldy, lads!"
+    },
+    {
+      "bytes": 117838,
+      "credits": 20,
+      "files": [
+        "voices/shieldman_young/attack_3/1.wav"
+      ],
+      "finished_at": 1795037619,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/attack_3/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "1d5aa0cddbeb52163f523a9705c75b81fa34c55c1186658ee900b8a699094bc4",
+      "status": "DONE",
+      "text": "Time fer a stramash!"
+    },
+    {
+      "bytes": 122958,
+      "credits": 20,
+      "files": [
+        "voices/shieldman_young/attack_3/2.wav"
+      ],
+      "finished_at": 1795037619,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/attack_3/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "f782e42e39c53e7793a3d5dcaf61d1e26da5419304ed23f5818a0b295d7d6a6d",
+      "status": "DONE",
+      "text": "Time fer a stramash!"
+    },
+    {
+      "bytes": 117838,
+      "credits": 20,
+      "files": [
+        "voices/shieldman_young/attack_3/3.wav"
+      ],
+      "finished_at": 1795037620,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/attack_3/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "a25364fd950cbb7e1a461ca3423cce2f5d532d8a8fef31eadb6ae4dccae0dbba",
+      "status": "DONE",
+      "text": "Time fer a stramash!"
+    },
+    {
+      "bytes": 128078,
+      "credits": 31,
+      "files": [
+        "voices/shieldman_young/attack_4/1.wav"
+      ],
+      "finished_at": 1795037621,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/attack_4/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "b92ff35971a6fce1c22a2cc42e8495dbdfb90c85edf80624eba762d83a65cf17",
+      "status": "DONE",
+      "text": "Ah'll skelp ye intae next week!"
+    },
+    {
+      "bytes": 138318,
+      "credits": 31,
+      "files": [
+        "voices/shieldman_young/attack_4/2.wav"
+      ],
+      "finished_at": 1795037622,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/attack_4/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "3c88bec06d3f52d3ab79e393a421d637dd96dd938711187fa7cd9d60572dc944",
+      "status": "DONE",
+      "text": "Ah'll skelp ye intae next week!"
+    },
+    {
+      "bytes": 128078,
+      "credits": 31,
+      "files": [
+        "voices/shieldman_young/attack_4/3.wav"
+      ],
+      "finished_at": 1795037622,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/attack_4/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "601011d24232a04f5db21e4efa3ba59c27803f40cb0f3d05ed6d57daac7bed35",
+      "status": "DONE",
+      "text": "Ah'll skelp ye intae next week!"
+    },
+    {
+      "bytes": 225358,
+      "credits": 41,
+      "files": [
+        "voices/shieldman_young/attack_5/1.wav"
+      ],
+      "finished_at": 1795037624,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/attack_5/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "0f865347497819b14728beb33fc9940743717b81ad9e9510f4f751b14b4431b0",
+      "status": "DONE",
+      "text": "Charge! Ach, wait, ah'm already chargin'!"
+    },
+    {
+      "bytes": 220238,
+      "credits": 41,
+      "files": [
+        "voices/shieldman_young/attack_5/2.wav"
+      ],
+      "finished_at": 1795037624,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/attack_5/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "785974dd45f83a79efa71a9a76d97b48209c2f9abe390ef54ec3b45e5da56162",
+      "status": "DONE",
+      "text": "Charge! Ach, wait, ah'm already chargin'!"
+    },
+    {
+      "bytes": 225358,
+      "credits": 41,
+      "files": [
+        "voices/shieldman_young/attack_5/3.wav"
+      ],
+      "finished_at": 1795037625,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/attack_5/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "206bd3cac28a7b0e738e244adbbc4dc7548c64a0ada92ad2bf29968ca74c8146",
+      "status": "DONE",
+      "text": "Charge! Ach, wait, ah'm already chargin'!"
+    },
+    {
+      "bytes": 81998,
+      "credits": 8,
+      "files": [
+        "voices/shieldman_young/clan_1/1.wav"
+      ],
+      "finished_at": 1795037626,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/clan_1/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "8c861f3c86d520849b59fe652219a72e4ec452f440d5de0029b5b00b74618845",
+      "status": "DONE",
+      "text": "Crivens!"
+    },
+    {
+      "bytes": 81998,
+      "credits": 8,
+      "files": [
+        "voices/shieldman_young/clan_1/2.wav"
+      ],
+      "finished_at": 1795037626,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/clan_1/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "5a225db58f74d928bb88f2903f4f9e2826a3026b79b25307fa7ab68564ba2ae2",
+      "status": "DONE",
+      "text": "Crivens!"
+    },
+    {
+      "bytes": 81998,
+      "credits": 8,
+      "files": [
+        "voices/shieldman_young/clan_1/3.wav"
+      ],
+      "finished_at": 1795037627,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/clan_1/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "db17bcb0f8752ffbaebe2bc67645e2657330cb0f2158c2274bed7a1d09f70873",
+      "status": "DONE",
+      "text": "Crivens!"
+    },
+    {
+      "bytes": 107598,
+      "credits": 10,
+      "files": [
+        "voices/shieldman_young/clan_2/1.wav"
+      ],
+      "finished_at": 1795037628,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/clan_2/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "313f7b4cd33856c29947a5f785a951747eed45a5b43b107b3c18ec52e96a4a3b",
+      "status": "DONE",
+      "text": "Michty me!"
+    },
+    {
+      "bytes": 102478,
+      "credits": 10,
+      "files": [
+        "voices/shieldman_young/clan_2/2.wav"
+      ],
+      "finished_at": 1795037628,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/clan_2/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "0a10962d6ec1160b78592e052a5166eeb9c5c3bc5d3579451dfba7dcb4c80d9c",
+      "status": "DONE",
+      "text": "Michty me!"
+    },
+    {
+      "bytes": 102478,
+      "credits": 10,
+      "files": [
+        "voices/shieldman_young/clan_2/3.wav"
+      ],
+      "finished_at": 1795037629,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/clan_2/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "769364cae3e2ef4f2a4c85e2263e4a82ad4c01ceb54323b23a518804af47e99a",
+      "status": "DONE",
+      "text": "Michty me!"
+    },
+    {
+      "bytes": 107598,
+      "credits": 17,
+      "files": [
+        "voices/shieldman_young/clan_3/1.wav"
+      ],
+      "finished_at": 1795037630,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/clan_3/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "2d8fc1a8385e866ad37270398ce8b702a3788fa41266fac59d57ca22f304162b",
+      "status": "DONE",
+      "text": "Haud yer wheesht!"
+    },
+    {
+      "bytes": 97358,
+      "credits": 17,
+      "files": [
+        "voices/shieldman_young/clan_3/2.wav"
+      ],
+      "finished_at": 1795037630,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/clan_3/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "74ef94a121090a0f809c8dbd1df3d662d839826798b5aba8163661b7bbbdc930",
+      "status": "DONE",
+      "text": "Haud yer wheesht!"
+    },
+    {
+      "bytes": 107598,
+      "credits": 17,
+      "files": [
+        "voices/shieldman_young/clan_3/3.wav"
+      ],
+      "finished_at": 1795037631,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/clan_3/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "31b7c5d18fd3ce1499bbc90ef3b8dd10bb1b084ba184ee12a8a7a19a4d00893c",
+      "status": "DONE",
+      "text": "Haud yer wheesht!"
+    },
+    {
+      "bytes": 148558,
+      "credits": 23,
+      "files": [
+        "voices/shieldman_young/clan_4/1.wav"
+      ],
+      "finished_at": 1795037632,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/clan_4/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "8f0a0b7496258a87c1624dc746f208ac2aee0494084b4de320f71b2d7f737b65",
+      "status": "DONE",
+      "text": "Och, that's pure mince."
+    },
+    {
+      "bytes": 148558,
+      "credits": 23,
+      "files": [
+        "voices/shieldman_young/clan_4/2.wav"
+      ],
+      "finished_at": 1795037632,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/clan_4/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "c6e61756c39d13bbfde2e1f963a62fa97aebfb1b2adf08069172a32052482131",
+      "status": "DONE",
+      "text": "Och, that's pure mince."
+    },
+    {
+      "bytes": 158798,
+      "credits": 23,
+      "files": [
+        "voices/shieldman_young/clan_4/3.wav"
+      ],
+      "finished_at": 1795037634,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/clan_4/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "f9417587d7717dfbd69fcb63e0f38b33301f64219b32588971d10af4eb0384b0",
+      "status": "DONE",
+      "text": "Och, that's pure mince."
+    },
+    {
+      "bytes": 81998,
+      "credits": 14,
+      "files": [
+        "voices/shieldman_young/clan_5/1.wav"
+      ],
+      "finished_at": 1795037634,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/clan_5/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "6040f16dcc7f4e304aa837c3bc3d57e485b072b63e6221dc4663fc77bdaebb83",
+      "status": "DONE",
+      "text": "Mind yer feet!"
+    },
+    {
+      "bytes": 81998,
+      "credits": 14,
+      "files": [
+        "voices/shieldman_young/clan_5/2.wav"
+      ],
+      "finished_at": 1795037635,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/clan_5/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "42adade183002d86506356cb12a666fd1f1a5059581da52fcb83660660743f53",
+      "status": "DONE",
+      "text": "Mind yer feet!"
+    },
+    {
+      "bytes": 81998,
+      "credits": 14,
+      "files": [
+        "voices/shieldman_young/clan_5/3.wav"
+      ],
+      "finished_at": 1795037635,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/clan_5/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "9d4a046f031e1b173cbfa11f65d2bf31ddb10d3ed6da0327418ed0a5f88321e3",
+      "status": "DONE",
+      "text": "Mind yer feet!"
+    },
+    {
+      "bytes": 184398,
+      "credits": 28,
+      "files": [
+        "voices/shieldman_young/death_1/1.wav"
+      ],
+      "finished_at": 1795037636,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/death_1/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "b5440139b328cc64cb5153b0e9562da1308a2f1865dc6b9fd53dc4539211ef77",
+      "status": "DONE",
+      "text": "Tell ma mither\u2026 ah wis braw\u2026"
+    },
+    {
+      "bytes": 184398,
+      "credits": 28,
+      "files": [
+        "voices/shieldman_young/death_1/2.wav"
+      ],
+      "finished_at": 1795037637,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/death_1/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "5b5ad4e292b32a62c316df3dea01f6a82fbcb27b3b6c06d55656cbd59beba8e7",
+      "status": "DONE",
+      "text": "Tell ma mither\u2026 ah wis braw\u2026"
+    },
+    {
+      "bytes": 184398,
+      "credits": 28,
+      "files": [
+        "voices/shieldman_young/death_1/3.wav"
+      ],
+      "finished_at": 1795037638,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/death_1/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "0261fbff0ffcb7e80df69641be0485784d79e5732eac0fee61a1f9dc7b978a48",
+      "status": "DONE",
+      "text": "Tell ma mither\u2026 ah wis braw\u2026"
+    },
+    {
+      "bytes": 235598,
+      "credits": 36,
+      "files": [
+        "voices/shieldman_young/death_2/1.wav"
+      ],
+      "finished_at": 1795037639,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/death_2/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "9d57b3c1eb16d7e804867b6b4d379f4d49ac8d8ca910e8b93bd72908805d1b82",
+      "status": "DONE",
+      "text": "Avenge me\u2026 or don't, ah'm no' fussy\u2026"
+    },
+    {
+      "bytes": 240718,
+      "credits": 36,
+      "files": [
+        "voices/shieldman_young/death_2/2.wav"
+      ],
+      "finished_at": 1795037640,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/death_2/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "7e114e0e05e644206dfe5f3dc0879802b0012f80445a6ef53ace10e7931b8d43",
+      "status": "DONE",
+      "text": "Avenge me\u2026 or don't, ah'm no' fussy\u2026"
+    },
+    {
+      "bytes": 230478,
+      "credits": 36,
+      "files": [
+        "voices/shieldman_young/death_2/3.wav"
+      ],
+      "finished_at": 1795037641,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/death_2/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "a7ba8486c1c14d7c417b0a986981c752d63c7a86a4e5b856a2ca22fa212b7099",
+      "status": "DONE",
+      "text": "Avenge me\u2026 or don't, ah'm no' fussy\u2026"
+    },
+    {
+      "bytes": 189518,
+      "credits": 19,
+      "files": [
+        "voices/shieldman_young/death_3/1.wav"
+      ],
+      "finished_at": 1795037642,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/death_3/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "4e256dd2c91c1fa7c3b383cf8b1d4872b46d9d33b4452d78e0fa775dea42cf67",
+      "status": "DONE",
+      "text": "Ach\u2026 no' like this\u2026"
+    },
+    {
+      "bytes": 189518,
+      "credits": 19,
+      "files": [
+        "voices/shieldman_young/death_3/2.wav"
+      ],
+      "finished_at": 1795037643,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/death_3/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "6ba011fc603628e75e3755cd6373cc06f3cf0547b6eebcc151b79e1515fd3abd",
+      "status": "DONE",
+      "text": "Ach\u2026 no' like this\u2026"
+    },
+    {
+      "bytes": 194638,
+      "credits": 19,
+      "files": [
+        "voices/shieldman_young/death_3/3.wav"
+      ],
+      "finished_at": 1795037644,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/death_3/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "2620c8cea772a63c0ee4e9933ce519e9e504f4d8438f69ce418f86bb3e0c00e5",
+      "status": "DONE",
+      "text": "Ach\u2026 no' like this\u2026"
+    },
+    {
+      "bytes": 225358,
+      "credits": 41,
+      "files": [
+        "voices/shieldman_young/formation_rabble_1/1.wav"
+      ],
+      "finished_at": 1795037644,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/formation_rabble_1/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "25d793788193fcf7cba9329dd20e92dd3d47a05e4fc94230473dcaef8afb2b1b",
+      "status": "DONE",
+      "text": "Rabble? Finally, somethin' we're good at."
+    },
+    {
+      "bytes": 225358,
+      "credits": 41,
+      "files": [
+        "voices/shieldman_young/formation_rabble_1/2.wav"
+      ],
+      "finished_at": 1795037645,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/formation_rabble_1/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "d846953f1d21ab02bd6da80f1754ab14302ae8789074435f3ffd649130f1d5c8",
+      "status": "DONE",
+      "text": "Rabble? Finally, somethin' we're good at."
+    },
+    {
+      "bytes": 230478,
+      "credits": 41,
+      "files": [
+        "voices/shieldman_young/formation_rabble_1/3.wav"
+      ],
+      "finished_at": 1795037646,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/formation_rabble_1/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "d8a53f48bb5997665fb7c2b47810414c9c646364279a066a40945c0ebfe37dc1",
+      "status": "DONE",
+      "text": "Rabble? Finally, somethin' we're good at."
+    },
+    {
+      "bytes": 112718,
+      "credits": 17,
+      "files": [
+        "voices/shieldman_young/formation_wedge_1/1.wav"
+      ],
+      "finished_at": 1795037647,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/formation_wedge_1/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "da1d7f3e4c2d6f65a0c7337c2be504c800ff0dd1101770f2b28967240d555b34",
+      "status": "DONE",
+      "text": "Pointy end first!"
+    },
+    {
+      "bytes": 112718,
+      "credits": 17,
+      "files": [
+        "voices/shieldman_young/formation_wedge_1/2.wav"
+      ],
+      "finished_at": 1795037648,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/formation_wedge_1/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "f65f571a9f137f8d07d0348d31f8e539f86751e0d822562ed3c752daa9c4ec47",
+      "status": "DONE",
+      "text": "Pointy end first!"
+    },
+    {
+      "bytes": 97358,
+      "credits": 17,
+      "files": [
+        "voices/shieldman_young/formation_wedge_1/3.wav"
+      ],
+      "finished_at": 1795037648,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/formation_wedge_1/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "61089dc66e1fdbb011f1f795435553322afd61cf7d74cf3c202f0db5a45bf6c5",
+      "status": "DONE",
+      "text": "Pointy end first!"
+    },
+    {
+      "bytes": 209998,
+      "credits": 35,
+      "files": [
+        "voices/shieldman_young/hurt_1/1.wav"
+      ],
+      "finished_at": 1795037649,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/hurt_1/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "0eb0d2aaab51b385792b181d73d2343969c3b2048e5e5996e45c082b067c88a0",
+      "status": "DONE",
+      "text": "It's just a scratch! A big scratch!"
+    },
+    {
+      "bytes": 209998,
+      "credits": 35,
+      "files": [
+        "voices/shieldman_young/hurt_1/2.wav"
+      ],
+      "finished_at": 1795037650,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/hurt_1/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "90c5eff5635db652e1323c413f00627ccafd8b3f77c73186cc9b1795b6bdbabd",
+      "status": "DONE",
+      "text": "It's just a scratch! A big scratch!"
+    },
+    {
+      "bytes": 204878,
+      "credits": 35,
+      "files": [
+        "voices/shieldman_young/hurt_1/3.wav"
+      ],
+      "finished_at": 1795037651,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/hurt_1/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "c10b78f2c302b7284a4dcd1e3e3076ea1c14725047b7ee8b75e13df97570f2bf",
+      "status": "DONE",
+      "text": "It's just a scratch! A big scratch!"
+    },
+    {
+      "bytes": 133198,
+      "credits": 31,
+      "files": [
+        "voices/shieldman_young/hurt_2/1.wav"
+      ],
+      "finished_at": 1795037652,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/hurt_2/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "f4c143c2633be3d2283b5e553431d9786482af51712e037773c9377ebd347d57",
+      "status": "DONE",
+      "text": "Ah've had worse frae ma granny!"
+    },
+    {
+      "bytes": 122958,
+      "credits": 31,
+      "files": [
+        "voices/shieldman_young/hurt_2/2.wav"
+      ],
+      "finished_at": 1795037653,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/hurt_2/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "b24a7b30bebc4410ea638eb5499038d89acfd4fc32e834a02a3c83a6ac7f39cc",
+      "status": "DONE",
+      "text": "Ah've had worse frae ma granny!"
+    },
+    {
+      "bytes": 133198,
+      "credits": 31,
+      "files": [
+        "voices/shieldman_young/hurt_2/3.wav"
+      ],
+      "finished_at": 1795037654,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/hurt_2/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "ad3660bbb0e91fa93235d9ca289213fe337e724f185d72d0a9b8afdd502f18b1",
+      "status": "DONE",
+      "text": "Ah've had worse frae ma granny!"
+    },
+    {
+      "bytes": 158798,
+      "credits": 27,
+      "files": [
+        "voices/shieldman_young/hurt_3/1.wav"
+      ],
+      "finished_at": 1795037655,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/hurt_3/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "fea2e091fa17cd2d312d9918f18a7e9d8c437ed4a1f4257a27b4e11107170c10",
+      "status": "DONE",
+      "text": "Warden! Ah need a wee herb!"
+    },
+    {
+      "bytes": 143438,
+      "credits": 27,
+      "files": [
+        "voices/shieldman_young/hurt_3/2.wav"
+      ],
+      "finished_at": 1795037656,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/hurt_3/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "3dd636901ee33e2fe9dfc7b729b9ea4e154f58acb0d3045a6587114becfbe02c",
+      "status": "DONE",
+      "text": "Warden! Ah need a wee herb!"
+    },
+    {
+      "bytes": 148558,
+      "credits": 27,
+      "files": [
+        "voices/shieldman_young/hurt_3/3.wav"
+      ],
+      "finished_at": 1795037656,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/hurt_3/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "bc489785af0a4f9a1e5d60866d0659747a396125824735947bef2144ebfd7b59",
+      "status": "DONE",
+      "text": "Warden! Ah need a wee herb!"
+    },
+    {
+      "bytes": 245838,
+      "credits": 36,
+      "files": [
+        "voices/shieldman_young/hurt_4/1.wav"
+      ],
+      "finished_at": 1795037658,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/hurt_4/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "c14b3c3c3e4bb878201855498b61ddf09ccab066e3ab930fc3471288cad63f50",
+      "status": "DONE",
+      "text": "Ah'm fine! Ah'm fine! Ah'm no' fine."
+    },
+    {
+      "bytes": 235598,
+      "credits": 36,
+      "files": [
+        "voices/shieldman_young/hurt_4/2.wav"
+      ],
+      "finished_at": 1795037659,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/hurt_4/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "bca91a17804aeaf6c738126d6115a17655b892ff0bc126fc2fdee0848a988f21",
+      "status": "DONE",
+      "text": "Ah'm fine! Ah'm fine! Ah'm no' fine."
+    },
+    {
+      "bytes": 245838,
+      "credits": 36,
+      "files": [
+        "voices/shieldman_young/hurt_4/3.wav"
+      ],
+      "finished_at": 1795037660,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/hurt_4/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "d3759a7f93104c41b9d0978faae9f1cc8496629da31d3c1fac9b6eeec113bf45",
+      "status": "DONE",
+      "text": "Ah'm fine! Ah'm fine! Ah'm no' fine."
+    },
+    {
+      "bytes": 102478,
+      "credits": 14,
+      "files": [
+        "voices/shieldman_young/kill_1/1.wav"
+      ],
+      "finished_at": 1795037660,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/kill_1/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "0cc16e0bd1d04edac44eadaf2c8736daf75fc8f200c1d93d33b73de63f24fd6d",
+      "status": "DONE",
+      "text": "An' STAY doon!"
+    },
+    {
+      "bytes": 97358,
+      "credits": 14,
+      "files": [
+        "voices/shieldman_young/kill_1/2.wav"
+      ],
+      "finished_at": 1795037661,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/kill_1/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "e7f34403be4c86766614737a20366eb94da842be2dae00831547c173b66dd250",
+      "status": "DONE",
+      "text": "An' STAY doon!"
+    },
+    {
+      "bytes": 102478,
+      "credits": 14,
+      "files": [
+        "voices/shieldman_young/kill_1/3.wav"
+      ],
+      "finished_at": 1795037661,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/kill_1/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "25e2c65d09917c4aa0d9493fdf557521c4dfd504d9de96768da67ccc7c7d8c27",
+      "status": "DONE",
+      "text": "An' STAY doon!"
+    },
+    {
+      "bytes": 189518,
+      "credits": 41,
+      "files": [
+        "voices/shieldman_young/kill_2/1.wav"
+      ],
+      "finished_at": 1795037663,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/kill_2/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "f70393f312d9b74728836bda0e5ac06f1e4302b6b94d905b3fbb1a04311afe17",
+      "status": "DONE",
+      "text": "Ye were deid already, ye just didnae ken."
+    },
+    {
+      "bytes": 184398,
+      "credits": 41,
+      "files": [
+        "voices/shieldman_young/kill_2/2.wav"
+      ],
+      "finished_at": 1795037664,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/kill_2/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "9a0c290588f59e233e97ca251cc930a786f6a603da04fbf5ac22df7e49ad31a8",
+      "status": "DONE",
+      "text": "Ye were deid already, ye just didnae ken."
+    },
+    {
+      "bytes": 189518,
+      "credits": 41,
+      "files": [
+        "voices/shieldman_young/kill_2/3.wav"
+      ],
+      "finished_at": 1795037665,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/kill_2/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "43ceea301c5ad0c76973201f3f8f8229a40cd6f3a13925b8f9ebd6a132966942",
+      "status": "DONE",
+      "text": "Ye were deid already, ye just didnae ken."
+    },
+    {
+      "bytes": 194638,
+      "credits": 39,
+      "files": [
+        "voices/shieldman_young/kill_3/1.wav"
+      ],
+      "finished_at": 1795037666,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/kill_3/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "8ebdcd8b3198ae64d47aa063d57540b5ba6d5308c61a3233e5f2b9aebad4eb5a",
+      "status": "DONE",
+      "text": "Is that it? Ah've had fiercer porridge."
+    },
+    {
+      "bytes": 194638,
+      "credits": 39,
+      "files": [
+        "voices/shieldman_young/kill_3/2.wav"
+      ],
+      "finished_at": 1795037667,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/kill_3/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "bf09226b6d68f853a1aa4983f12d4fc44e3c6f773681b4c8a3a85384c6026ac3",
+      "status": "DONE",
+      "text": "Is that it? Ah've had fiercer porridge."
+    },
+    {
+      "bytes": 189518,
+      "credits": 39,
+      "files": [
+        "voices/shieldman_young/kill_3/3.wav"
+      ],
+      "finished_at": 1795037668,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/kill_3/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "7295987cdbf504a966cd9c3733fd99135b95d0dacb4e2607e61dabff44bce64f",
+      "status": "DONE",
+      "text": "Is that it? Ah've had fiercer porridge."
+    },
+    {
+      "bytes": 133198,
+      "credits": 24,
+      "files": [
+        "voices/shieldman_young/kill_4/1.wav"
+      ],
+      "finished_at": 1795037668,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/kill_4/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "a5057a45a5bedba565a44b91e41af1293b279a397d12dbb16b1968b5adab1bf9",
+      "status": "DONE",
+      "text": "That's one fer the sang!"
+    },
+    {
+      "bytes": 128078,
+      "credits": 24,
+      "files": [
+        "voices/shieldman_young/kill_4/2.wav"
+      ],
+      "finished_at": 1795037669,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/kill_4/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "918e6329c7ab8555e9f20a9eed723a913d77c7699bd4d3199d3faa0db401d6f2",
+      "status": "DONE",
+      "text": "That's one fer the sang!"
+    },
+    {
+      "bytes": 122958,
+      "credits": 24,
+      "files": [
+        "voices/shieldman_young/kill_4/3.wav"
+      ],
+      "finished_at": 1795037670,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/kill_4/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "ca5886ea3dd1b52a6086ee735df5c347a800e246df5e0c574f37e91955248130",
+      "status": "DONE",
+      "text": "That's one fer the sang!"
+    },
+    {
+      "bytes": 51278,
+      "credits": 5,
+      "files": [
+        "voices/shieldman_young/kill_5/1.wav"
+      ],
+      "finished_at": 1795037670,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/kill_5/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "309cfe44f3fbc0529f287f32bc84a8b0227444cf7f145c6d1de63e77530f2c26",
+      "status": "DONE",
+      "text": "Next!"
+    },
+    {
+      "bytes": 56398,
+      "credits": 5,
+      "files": [
+        "voices/shieldman_young/kill_5/2.wav"
+      ],
+      "finished_at": 1795037671,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/kill_5/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "4f94e43a274a2013306fdb05197cadaa3a88b85b88ea8099fa70919a5761921a",
+      "status": "DONE",
+      "text": "Next!"
+    },
+    {
+      "bytes": 56398,
+      "credits": 5,
+      "files": [
+        "voices/shieldman_young/kill_5/3.wav"
+      ],
+      "finished_at": 1795037672,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/kill_5/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "ecf21c1965385065bab5987499b753a27f9a308b017525cc7a617ea38ee708fe",
+      "status": "DONE",
+      "text": "Next!"
+    },
+    {
+      "bytes": 71758,
+      "credits": 13,
+      "files": [
+        "voices/shieldman_young/move_1/1.wav"
+      ],
+      "finished_at": 1795037672,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/move_1/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "d5c30074b79cc8f1f69d3089e249789a1c7bd55787b071d73cae9a9cdd542b6f",
+      "status": "DONE",
+      "text": "Right ye are!"
+    },
+    {
+      "bytes": 81998,
+      "credits": 13,
+      "files": [
+        "voices/shieldman_young/move_1/2.wav"
+      ],
+      "finished_at": 1795037673,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/move_1/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "df744ce5a2276004a2751f75bc6ddeaa658c7a9b0d4e363e13151655c3b0de16",
+      "status": "DONE",
+      "text": "Right ye are!"
+    },
+    {
+      "bytes": 81998,
+      "credits": 13,
+      "files": [
+        "voices/shieldman_young/move_1/3.wav"
+      ],
+      "finished_at": 1795037674,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/move_1/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "dc665150fbf161665cf409efc5dcfc40f1405ab2216db1b149ca22a60e66ff5c",
+      "status": "DONE",
+      "text": "Right ye are!"
+    },
+    {
+      "bytes": 143438,
+      "credits": 25,
+      "files": [
+        "voices/shieldman_young/move_2/1.wav"
+      ],
+      "finished_at": 1795037674,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/move_2/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "b7abba9133e3773fde58c6fc0ae0aa98cc1bf2050369ceb46251ef9cedef6b4b",
+      "status": "DONE",
+      "text": "Quick march, ya numpties!"
+    },
+    {
+      "bytes": 143438,
+      "credits": 25,
+      "files": [
+        "voices/shieldman_young/move_2/2.wav"
+      ],
+      "finished_at": 1795037675,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/move_2/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "ebb590f712fd3922d682cdb9e7bd90589089046dfb0495be15fb7579fd0136ac",
+      "status": "DONE",
+      "text": "Quick march, ya numpties!"
+    },
+    {
+      "bytes": 143438,
+      "credits": 25,
+      "files": [
+        "voices/shieldman_young/move_2/3.wav"
+      ],
+      "finished_at": 1795037676,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/move_2/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "fe8ae97ad321a27691cac536eb6fa06b17653f6044083fc9a420347dc890b276",
+      "status": "DONE",
+      "text": "Quick march, ya numpties!"
+    },
+    {
+      "bytes": 194638,
+      "credits": 32,
+      "files": [
+        "voices/shieldman_young/move_3/1.wav"
+      ],
+      "finished_at": 1795037677,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/move_3/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "96abbba55f556c275c516c21c84d806dad71dd8355a87efc3a66b44ccc5cdd08",
+      "status": "DONE",
+      "text": "Marchin'. Grumblin'. Same thing."
+    },
+    {
+      "bytes": 199758,
+      "credits": 32,
+      "files": [
+        "voices/shieldman_young/move_3/2.wav"
+      ],
+      "finished_at": 1795037678,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/move_3/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "433303c6114d003d58f234eb9aaa2761c5c9a34b887f2726eec5e9bb574ea382",
+      "status": "DONE",
+      "text": "Marchin'. Grumblin'. Same thing."
+    },
+    {
+      "bytes": 194638,
+      "credits": 32,
+      "files": [
+        "voices/shieldman_young/move_3/3.wav"
+      ],
+      "finished_at": 1795037679,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/move_3/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "362bf655e7d1300f6b5c0a47bbf8a15dbe8313c936a1753208602901edaf9898",
+      "status": "DONE",
+      "text": "Marchin'. Grumblin'. Same thing."
+    },
+    {
+      "bytes": 163918,
+      "credits": 33,
+      "files": [
+        "voices/shieldman_young/move_4/1.wav"
+      ],
+      "finished_at": 1795037680,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/move_4/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "d541259f03f532cefb5596c3e22c1b90121b20757b6f06a3a20c033ee4088db1",
+      "status": "DONE",
+      "text": "If it's a trap, ah'm blamin' you."
+    },
+    {
+      "bytes": 153678,
+      "credits": 33,
+      "files": [
+        "voices/shieldman_young/move_4/2.wav"
+      ],
+      "finished_at": 1795037681,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/move_4/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "a551eac46038611e5f543454e9723b3d79df39eea6ee169b2240e66f2eec2c2f",
+      "status": "DONE",
+      "text": "If it's a trap, ah'm blamin' you."
+    },
+    {
+      "bytes": 158798,
+      "credits": 33,
+      "files": [
+        "voices/shieldman_young/move_4/3.wav"
+      ],
+      "finished_at": 1795037682,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/move_4/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "22b6e6e09ff307448ffbf819cdf56e1f6c81a064f373e86ecb25c6305a81eaf1",
+      "status": "DONE",
+      "text": "If it's a trap, ah'm blamin' you."
+    },
+    {
+      "bytes": 138318,
+      "credits": 25,
+      "files": [
+        "voices/shieldman_young/move_5/1.wav"
+      ],
+      "finished_at": 1795037683,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/move_5/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "1cf30d3a40b7bd9b03ffcf2c3f78aef6284b7231bfcc41567b815652c172db00",
+      "status": "DONE",
+      "text": "Onward! Mind the puddles."
+    },
+    {
+      "bytes": 143438,
+      "credits": 25,
+      "files": [
+        "voices/shieldman_young/move_5/2.wav"
+      ],
+      "finished_at": 1795037684,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/move_5/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "d3c64c1105bcc17bd1555fff42535b8c8f3ef4bb4659325f1eba1bfe3ff6206f",
+      "status": "DONE",
+      "text": "Onward! Mind the puddles."
+    },
+    {
+      "bytes": 143438,
+      "credits": 25,
+      "files": [
+        "voices/shieldman_young/move_5/3.wav"
+      ],
+      "finished_at": 1795037684,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/move_5/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "8b90e3bbe22447623081313bed9519307362c77d10ce05cfbaf3c6bc70071241",
+      "status": "DONE",
+      "text": "Onward! Mind the puddles."
+    },
+    {
+      "bytes": 112718,
+      "credits": 16,
+      "files": [
+        "voices/shieldman_young/select_1/1.wav"
+      ],
+      "finished_at": 1795037685,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/select_1/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "a171dc97ea319a3c12a73bf1ba55ddc26722a59f8a84eaa1007d740ecbd7a5de",
+      "status": "DONE",
+      "text": "Aye? Whit is it?"
+    },
+    {
+      "bytes": 112718,
+      "credits": 16,
+      "files": [
+        "voices/shieldman_young/select_1/2.wav"
+      ],
+      "finished_at": 1795037686,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/select_1/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "f4dc98da5be121d278bad67853aad5b40be00d5895fc8dc5bcb51fbd5c6b8dfc",
+      "status": "DONE",
+      "text": "Aye? Whit is it?"
+    },
+    {
+      "bytes": 112718,
+      "credits": 16,
+      "files": [
+        "voices/shieldman_young/select_1/3.wav"
+      ],
+      "finished_at": 1795037686,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/select_1/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "a3c48a1f5a3c1e5572f228aac13e559277461f62740e56e5278921e2c0edc7f2",
+      "status": "DONE",
+      "text": "Aye? Whit is it?"
+    },
+    {
+      "bytes": 117838,
+      "credits": 27,
+      "files": [
+        "voices/shieldman_young/select_2/1.wav"
+      ],
+      "finished_at": 1795037688,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/select_2/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "4cc5cafa66888b290997771383e34599149eeaf3b6d7d39f31f890ccce4b2005",
+      "status": "DONE",
+      "text": "Point me at somethin' ugly."
+    },
+    {
+      "bytes": 128078,
+      "credits": 27,
+      "files": [
+        "voices/shieldman_young/select_2/2.wav"
+      ],
+      "finished_at": 1795037688,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/select_2/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "7823a23721f111ae4a39d5dfa746ec4cf548ba28dc37d8818d2dba6c0a2eeb9c",
+      "status": "DONE",
+      "text": "Point me at somethin' ugly."
+    },
+    {
+      "bytes": 128078,
+      "credits": 27,
+      "files": [
+        "voices/shieldman_young/select_2/3.wav"
+      ],
+      "finished_at": 1795037689,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/select_2/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "1ff7ad41b8a6188c7da72a1bdac664c70a6aa9f236a17d40d2cfab7c35ee2c1e",
+      "status": "DONE",
+      "text": "Point me at somethin' ugly."
+    },
+    {
+      "bytes": 189518,
+      "credits": 42,
+      "files": [
+        "voices/shieldman_young/select_3/1.wav"
+      ],
+      "finished_at": 1795037690,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/select_3/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "ffe41eaac90a0149133326a1dcb138f31590e535d633a25c3fb1691a68a67cd3",
+      "status": "DONE",
+      "text": "Shield's up, heid's doon. Whit's the plan?"
+    },
+    {
+      "bytes": 189518,
+      "credits": 42,
+      "files": [
+        "voices/shieldman_young/select_3/2.wav"
+      ],
+      "finished_at": 1795037691,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/select_3/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "f224a9023aca7d13f8b4599c17aeda30f56c84166b31933a19c9e9eaba3ce9bb",
+      "status": "DONE",
+      "text": "Shield's up, heid's doon. Whit's the plan?"
+    },
+    {
+      "bytes": 189518,
+      "credits": 42,
+      "files": [
+        "voices/shieldman_young/select_3/3.wav"
+      ],
+      "finished_at": 1795037692,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/select_3/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "994dbba7cd5ffd244fdf6268fc68426e9fc3edb316e7a7f14e2620023f78061a",
+      "status": "DONE",
+      "text": "Shield's up, heid's doon. Whit's the plan?"
+    },
+    {
+      "bytes": 107598,
+      "credits": 23,
+      "files": [
+        "voices/shieldman_young/select_4/1.wav"
+      ],
+      "finished_at": 1795037693,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/select_4/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "11c7f6b42e0b4614c087382acae0fc8b36c0b376e6b1fe0d378ccb8377d3119a",
+      "status": "DONE",
+      "text": "Somebody need a wallop?"
+    },
+    {
+      "bytes": 107598,
+      "credits": 23,
+      "files": [
+        "voices/shieldman_young/select_4/2.wav"
+      ],
+      "finished_at": 1795037694,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/select_4/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "2d653f61ce3fa49558bf7d105e561094a98bef374269ac3ad7b7ea4324350057",
+      "status": "DONE",
+      "text": "Somebody need a wallop?"
+    },
+    {
+      "bytes": 107598,
+      "credits": 23,
+      "files": [
+        "voices/shieldman_young/select_4/3.wav"
+      ],
+      "finished_at": 1795037694,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/select_4/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "948ef42c4ea8ad2ab3c6b69747b8750770180da3ff10c375100b09ac75fa831b",
+      "status": "DONE",
+      "text": "Somebody need a wallop?"
+    },
+    {
+      "bytes": 215118,
+      "credits": 56,
+      "files": [
+        "voices/shieldman_young/select_5/1.wav"
+      ],
+      "finished_at": 1795037696,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/select_5/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "9b0526e2f34fd5c183f17c6995cc6b1e7f12b8b32647596c4a270f2bf513139a",
+      "status": "DONE",
+      "text": "Ah'm listenin'. Make it quick, there's fightin' tae dae."
+    },
+    {
+      "bytes": 209998,
+      "credits": 56,
+      "files": [
+        "voices/shieldman_young/select_5/2.wav"
+      ],
+      "finished_at": 1795037697,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/select_5/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "32785a352d15b52436cb9fba373e6910df254ec7ea9e601bba517c5c1897d4b0",
+      "status": "DONE",
+      "text": "Ah'm listenin'. Make it quick, there's fightin' tae dae."
+    },
+    {
+      "bytes": 204878,
+      "credits": 56,
+      "files": [
+        "voices/shieldman_young/select_5/3.wav"
+      ],
+      "finished_at": 1795037699,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/select_5/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "8863d4ffa132630bad90aa78105798e2fabb0558b0bc9adc49135602d6cf057c",
+      "status": "DONE",
+      "text": "Ah'm listenin'. Make it quick, there's fightin' tae dae."
+    },
+    {
+      "bytes": 276558,
+      "credits": 46,
+      "files": [
+        "voices/shieldman_young/status_burning_1/1.wav"
+      ],
+      "finished_at": 1795037700,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/status_burning_1/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "59296cc35ea394179a95e0b2cbb351736f4985afc19892183cd56ddfe9e933d4",
+      "status": "DONE",
+      "text": "Whit's that smell? Ach, it's me, ah'm on fire!"
+    },
+    {
+      "bytes": 276558,
+      "credits": 46,
+      "files": [
+        "voices/shieldman_young/status_burning_1/2.wav"
+      ],
+      "finished_at": 1795037701,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/status_burning_1/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "99aef16ddee979edf9217cdc6671933149d8086dedddfe34f17a78f73cd64dd9",
+      "status": "DONE",
+      "text": "Whit's that smell? Ach, it's me, ah'm on fire!"
+    },
+    {
+      "bytes": 281678,
+      "credits": 46,
+      "files": [
+        "voices/shieldman_young/status_burning_1/3.wav"
+      ],
+      "finished_at": 1795037702,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/status_burning_1/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "4afaf0f690498240e6e687368f699384f36f9da13d8eec1ac5c9c280cdd39875",
+      "status": "DONE",
+      "text": "Whit's that smell? Ach, it's me, ah'm on fire!"
+    },
+    {
+      "bytes": 107598,
+      "credits": 26,
+      "files": [
+        "voices/shieldman_young/status_confused_1/1.wav"
+      ],
+      "finished_at": 1795037703,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/status_confused_1/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "3ef5242dd63447601176362cd0539217d658160f884fd6fb3de73af16039ff94",
+      "status": "DONE",
+      "text": "Which side am ah on again?"
+    },
+    {
+      "bytes": 117838,
+      "credits": 26,
+      "files": [
+        "voices/shieldman_young/status_confused_1/2.wav"
+      ],
+      "finished_at": 1795037704,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/status_confused_1/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "2d0185b38e987e393c6c8947860b31473b8180f82e1015ece61f068bdb839ad1",
+      "status": "DONE",
+      "text": "Which side am ah on again?"
+    },
+    {
+      "bytes": 112718,
+      "credits": 26,
+      "files": [
+        "voices/shieldman_young/status_confused_1/3.wav"
+      ],
+      "finished_at": 1795037704,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/status_confused_1/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "a8684e9ee90af71be6126e789940d1441952aa4d6eab8e462cfcb95a54d8c227",
+      "status": "DONE",
+      "text": "Which side am ah on again?"
+    },
+    {
+      "bytes": 266318,
+      "credits": 23,
+      "files": [
+        "voices/shieldman_young/status_paralyzed_1/1.wav"
+      ],
+      "finished_at": 1795037705,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/status_paralyzed_1/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "5fb2ad90fcac4fd449b9799600f32c0b9788e188c87bec1fe96e197212e1bcb8",
+      "status": "DONE",
+      "text": "Cannae\u2026 move\u2026 ma\u2026 legs\u2026"
+    },
+    {
+      "bytes": 256078,
+      "credits": 23,
+      "files": [
+        "voices/shieldman_young/status_paralyzed_1/2.wav"
+      ],
+      "finished_at": 1795037706,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/status_paralyzed_1/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "2672bf69649dab59419b79c078afb42fafc44853cc30ce2db1ee4552b7fa6acd",
+      "status": "DONE",
+      "text": "Cannae\u2026 move\u2026 ma\u2026 legs\u2026"
+    },
+    {
+      "bytes": 266318,
+      "credits": 23,
+      "files": [
+        "voices/shieldman_young/status_paralyzed_1/3.wav"
+      ],
+      "finished_at": 1795037707,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/status_paralyzed_1/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "c16146529f7c8ef2a53b0cad9c0928bf5c322e7f92e63a23087ea383f61b8d77",
+      "status": "DONE",
+      "text": "Cannae\u2026 move\u2026 ma\u2026 legs\u2026"
+    },
+    {
+      "bytes": 163918,
+      "credits": 37,
+      "files": [
+        "voices/shieldman_young/victory_1/1.wav"
+      ],
+      "finished_at": 1795037708,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/victory_1/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "5677b9d9f2e7721c25a5416c9718c1d38ec569b63152286cfa42637a60f95b76",
+      "status": "DONE",
+      "text": "That's them sorted. Who's fer a dram?"
+    },
+    {
+      "bytes": 163918,
+      "credits": 37,
+      "files": [
+        "voices/shieldman_young/victory_1/2.wav"
+      ],
+      "finished_at": 1795037709,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/victory_1/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "9284a67133f5d26fb7430c3dcc05a62e7e3bb6171b4bf67a603c9fdc0ae99054",
+      "status": "DONE",
+      "text": "That's them sorted. Who's fer a dram?"
+    },
+    {
+      "bytes": 163918,
+      "credits": 37,
+      "files": [
+        "voices/shieldman_young/victory_1/3.wav"
+      ],
+      "finished_at": 1795037710,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/victory_1/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "07dc4db5d8511ed9746de2f1ba5ca377081efb317291318192627f65750fe5d3",
+      "status": "DONE",
+      "text": "That's them sorted. Who's fer a dram?"
+    },
+    {
+      "bytes": 204878,
+      "credits": 29,
+      "files": [
+        "voices/shieldman_young/victory_2/1.wav"
+      ],
+      "finished_at": 1795037711,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/victory_2/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "f11cb5c5f288442421106c2c1ad6c2bc85ccb045e90c37c632e1d38f2be21515",
+      "status": "DONE",
+      "text": "We won! Ah think. Did we win?"
+    },
+    {
+      "bytes": 235598,
+      "credits": 29,
+      "files": [
+        "voices/shieldman_young/victory_2/2.wav"
+      ],
+      "finished_at": 1795037712,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/victory_2/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "3503d0827f094a762c19ea87918d86276ff23fc3a330467ac58ce33ed4e2545c",
+      "status": "DONE",
+      "text": "We won! Ah think. Did we win?"
+    },
+    {
+      "bytes": 199758,
+      "credits": 29,
+      "files": [
+        "voices/shieldman_young/victory_2/3.wav"
+      ],
+      "finished_at": 1795037713,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/shieldman_young/victory_2/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "e1a40ef065c758686e289d458e52da9f073d6042228ea8ddf51625388ce5f389",
+      "status": "DONE",
+      "text": "We won! Ah think. Did we win?"
     }
   ]
 }
