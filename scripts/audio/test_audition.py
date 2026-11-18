@@ -44,6 +44,8 @@ class PageTest(unittest.TestCase):
         page = audition.page("ab", [Take("attack_1", 1, "t", "f.wav", "eleven_v4")])
         self.assertNotIn("Save picks", page)
         self.assertNotIn('type="checkbox"', page)
+        self.assertNotIn("Tick", page, "nothing to tick: the model is said, not saved")
+        self.assertIn("No picks to save", page)
 
     def test_the_batch_name_is_escaped_too(self) -> None:
         self.assertNotIn("<b>", audition.page("a<b>", []))

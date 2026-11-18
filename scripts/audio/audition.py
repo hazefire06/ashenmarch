@@ -111,5 +111,6 @@ def page(batch: str, takes: list[Take], note: str = "") -> str:
         "<!DOCTYPE html>\n<html lang=\"en\"><head><meta charset=\"utf-8\">"
         f"<title>Audition: {_e(batch)}</title><style>{STYLE}</style></head>\n"
         f'<body data-kind="{kind}" data-batch="{_e(batch)}" data-file="picks-{_e(batch)}.json" data-single="{str(batch in SINGLE).lower()}">\n<h1>Audition: {_e(batch)}</h1>\n'
-        f"<p>{len(takes)} takes. Tick the keepers" + (", then save the picks." if kind != "ab" else ". Say which model you prefer.") + "</p>\n"
+        + (f"<p>{len(takes)} takes. Tick the keepers, then save the picks.</p>\n" if kind != "ab" else
+           f"<p>{len(takes)} takes. No picks to save here: listen, then tell Claude which model you prefer.</p>\n")
         + (f"<p><em>{_e(note)}</em></p>\n" if note else "") + save + "\n" + "\n".join(parts) + "\n" + script + "\n</body></html>\n")
