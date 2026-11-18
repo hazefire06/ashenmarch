@@ -99,7 +99,7 @@ The facts below come from reading the 4.7.2-stable source; none was observed run
 
      Each player takes its playback type from one setting per category, so whichever option is chosen is a configuration change, not a rewrite. *(Claude's call.)*
 4. **No meta streams anywhere.**
-5. **Reserve lever:** force `audio/driver/mix_rate.web` to 32000, which cuts decoded memory by a third, about 70 MB here. It's used only if needed, and only with Tim's OK.
+5. **Reserve lever:** force `audio/driver/mix_rate.web` to 32000, which cuts decoded memory by a third, about 70 MB here. It's used only if needed, and only with Tim's OK. **Used (Tim's OK, 2026-11-17):** at 48 kHz the bought bank with stand-ins measured 315 MB against the 270 MB cap, and with the lever it measured 215 MB. Levers 1 to 3 (§4.4) would have meant cutting about 30 of the bark recordings Tim had just approved.
 
 ### 4.4 Estimate
 

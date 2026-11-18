@@ -100,6 +100,21 @@ The build was the worktree at 9b029d3, then c8e2cca and 53f85c2 after each fix, 
 - The march level is movers / 12, and the march eases at 4 a second (the beds stay at 1.5), commit c8e2cca. In the same probe it drops to -15 dB within half a second of most men stopping, plays one straggler at -22 dB, and is silent half a second after the last man stops. Tim confirmed the march now stops with the squad.
 - `Music.COMBAT_IN_UNITS` went from 4 to 2 (held 1.5 s; going out is unchanged), commit 53f85c2. In the same probe combat comes in at 14.6 s, holds through the lulls in the shooting, and fades 10 s after the last shot. Tim approved it.
 
+## Step 8: the gate's Web budget, with the bought bank (2026-11-17)
+
+Run with `make export-web serve-web` and `?budget=1` in Chrome through the chrome-devtools MCP, on this Mac. Every cue is bought, and the 202 unvoiced bark recordings run as silent stand-ins sized by their text (0.4 s plus 14 characters a second).
+
+| | Mix | Tab (1,000 MB) | Audio (270 MB) | Decoded | Files | Play | Registration |
+|---|---|---|---|---|---|---|---|
+| 53f85c2 + docs, browser's rate | 48 kHz | 657 PASS | **315 FAIL** | 258 | 8 | 42 | 333 ms |
+| `mix_rate.web` = 32000 | 32 kHz | 560 PASS | **215 PASS** | 172 | 8 | 28 | 248 ms |
+
+- **Where the decoded size goes:** 124 SFX files of 163 s (about 62 MB at 48 kHz), and 513 s of bark stand-ins (about 195 MB). The spec estimated 345 s for barks.
+- **The lever:** levers 1 and 2 (trims, two variants) are worth about 10 to 25 MB, so getting under 270 MB would have needed lever 3, cutting about 30 of the recordings Tim had just approved. Tim chose the 32 kHz lever instead. Every SFX, loop and voice is bought at 32 kHz, so only the music's band above 16 kHz goes. Chrome honoured the setting (`mix=32000` is read back from the browser).
+- **Full lines:**
+  - `BUDGET tab=657 limit=1000 PASS js_wasm=195 (measured) video=204 textures=168 art=138 types=10 art_load=100 pck=150 wire=150 s3tc=yes ticks=1800 seconds=60 on=web audio=315 audio_cap=270 FAIL decoded=258 files=8 play=42 mix=48000 audio_load=333 audio_in_tab=added`
+  - `BUDGET tab=560 limit=1000 PASS js_wasm=191 (measured) video=197 textures=168 art=138 types=10 art_load=104 pck=150 wire=150 s3tc=yes ticks=1800 seconds=60 on=web audio=215 audio_cap=270 PASS decoded=172 files=8 play=28 mix=32000 audio_load=248 audio_in_tab=added`
+
 ## Tooling
 
 Homebrew's ffmpeg has no libvorbis; its native `vorbis` encoder is experimental. Tim installed `vorbis-tools` (`oggenc` 1.4.3) on 2026-11-10, so `process.py` encodes Ogg Vorbis with `oggenc`. The synthetic Oggs above used ffmpeg's native encoder at 96 kbps. Their compressed sizes are therefore only indicative, but the decoded sizes are exact.
