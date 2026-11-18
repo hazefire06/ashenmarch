@@ -2,7 +2,7 @@ unit = "warden"
 
 [voice.warden]
 description = "an older Highland Scots woman, warm and brisk, a mid-range mezzo with a smoker's rasp, scolding like a grandmother"
-model = "eleven_v4"
+model = "eleven_v4_turbo"
 
 [line.select_1]
 trigger = "select"

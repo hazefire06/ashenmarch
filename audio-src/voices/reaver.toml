@@ -2,7 +2,7 @@ unit = "reaver"
 
 [voice.reaver]
 description = "a young Highland Scots man, lean and wiry, hoarse and fast, a rough-edged baritone that cracks into a roar when he gets excited, a wild grin in every word"
-model = "eleven_v4"
+model = "eleven_v4_turbo"
 
 [line.select_1]
 trigger = "select"

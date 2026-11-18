@@ -423,7 +423,8 @@ class VoicesTest(unittest.TestCase):
         self.assertEqual(set(files), {"shieldman", "reaver", "longbow", "sapper", "warden", "_clan"})
         shield = files["shieldman"]
         self.assertEqual(set(shield.voices), {"shieldman_old", "shieldman_young"})
-        self.assertEqual(shield.voices["shieldman_old"].model, "eleven_v4")
+        # Tim's pick after the A/B test (2026-11-18): both models sounded right, so the cheaper Turbo.
+        self.assertEqual(shield.voices["shieldman_old"].model, "eleven_v4_turbo")
         self.assertEqual(len(shield.lines), 37)
         self.assertEqual(shield.lines["select_1"].text, "Aye? Whit is it?")
         self.assertEqual(files["reaver"].lines["attack_3"].tag, "[roaring]")

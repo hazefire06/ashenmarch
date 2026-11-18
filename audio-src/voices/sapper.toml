@@ -2,7 +2,7 @@ unit = "sapper"
 
 [voice.sapper]
 description = "a stocky Highland Scots man in his forties, nasal and cheery, a little deaf from the blasts so he talks too loud, quick and fretful"
-model = "eleven_v4"
+model = "eleven_v4_turbo"
 
 [line.select_1]
 trigger = "select"

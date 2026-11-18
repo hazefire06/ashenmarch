@@ -2,11 +2,11 @@ unit = "shieldman"
 
 [voice.shieldman_old]
 description = "a gruff older Highland Scots man, gravelly, battle-weary, dry humour"
-model = "eleven_v4"
+model = "eleven_v4_turbo"
 
 [voice.shieldman_young]
 description = "a younger Highland Scots man, keen, quick, cocky"
-model = "eleven_v4"
+model = "eleven_v4_turbo"
 
 [line.select_1]
 trigger = "select"
