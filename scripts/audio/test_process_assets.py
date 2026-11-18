@@ -440,7 +440,8 @@ class PicksCommandTest(unittest.TestCase):
             {},
         ):
             before = self.tree.snapshot()
-            code, _, err = self.picks({"batch": "x", **bad})
+            batch = "x" if "lines" not in bad else "voices-_clan" if "clan_1" in bad["lines"] else "voices-reaver"
+            code, _, err = self.picks({"batch": batch, **bad})
             self.assertEqual(code, 1, bad)
             self.assertTrue(err, bad)
             self.assertEqual(self.tree.snapshot()["audio-src/cues.toml"], before["audio-src/cues.toml"], bad)
@@ -503,6 +504,31 @@ class PicksCommandTest(unittest.TestCase):
         code, _, err = self.picks({"batch": "voices-reaver", "lines": {"attack_1": {"reaver": 2}}})
         self.assertEqual(code, 0, err)
         self.assertIn("picks = { reaver = 2 }", (self.tree.voices / "reaver.toml").read_text())
+
+    def test_line_picks_go_to_the_unit_their_page_was_for(self) -> None:
+        # Tim's first real line picks (voices-shieldman) were refused as "shieldman_old isn't a voice of longbow":
+        # the unit was found by line id across every voice file, and select_1, attack_1 and the rest are in all of them.
+        (self.tree.voices / "shieldman.toml").write_text(
+            'unit = "shieldman"\n\n[voice.shieldman_old]\ndescription = "old"\nmodel = "eleven_v4"\n\n'
+            '[line.attack_1]\ntrigger = "attack"\ntext = "Get intae them!"\npicks = {}\n', encoding="utf-8")
+        self.tree.raw("voices/shieldman_old/attack_1/1.wav")
+        reaver = (self.tree.voices / "reaver.toml").read_text()
+        code, _, err = self.picks({"batch": "voices-shieldman", "lines": {"attack_1": {"shieldman_old": 1}}})
+        self.assertEqual(code, 0, err)
+        self.assertIn("picks = { shieldman_old = 1 }", (self.tree.voices / "shieldman.toml").read_text())
+        self.assertEqual((self.tree.voices / "reaver.toml").read_text(), reaver, "the reaver's attack_1 is untouched")
+
+    def test_line_picks_need_a_voices_page_for_a_unit_that_has_those_lines(self) -> None:
+        for batch in (None, "melee", "voices-", "voices-nobody", "voices-../x", "design-reaver"):
+            data: dict[str, object] = {"lines": {"attack_1": {"reaver": 1}}}
+            if batch is not None:
+                data["batch"] = batch
+            before = self.tree.snapshot()
+            code, _, err = self.picks(data)
+            self.assertEqual(code, 1, batch)
+            self.assertTrue(err, batch)
+            self.assertEqual({k: v for k, v in self.tree.snapshot().items() if k != "picks.json"},
+                             {k: v for k, v in before.items() if k != "picks.json"}, batch)
 
     def test_a_design_file_prints_the_save_commands_and_writes_nothing(self) -> None:
         before = self.tree.snapshot()

@@ -139,6 +139,12 @@ def picks_file(path: Path, cues_path: Path, layers_path: Path, voices_dir: Path,
     layer_picks: dict[str, list[int]] = {}
     line_picks: dict[str, dict[str, int]] = {}
     unit_of: dict[str, str] = {}
+    # Line ids repeat across units (every unit has select_1), so the voices-<unit> page names the file.
+    page_unit = batch[len("voices-"):] if isinstance(batch, str) and batch.startswith("voices-") else ""
+    if kinds[0] == "lines" and page_unit not in files:
+        cuebook.emit("process.py picks: nothing written:\n  the batch must be voices-<unit> for a unit with a voice file",
+                     file=sys.stderr)
+        return 1
     for key, value in data[kinds[0]].items():
         try:
             ident = cuebook.check_id(key, kinds[0])
@@ -148,7 +154,7 @@ def picks_file(path: Path, cues_path: Path, layers_path: Path, voices_dir: Path,
         if kinds[0] == "cues":
             _check_cue_pick(ident, value, book, layers, raw, cue_picks, layer_picks, errors)
         else:
-            _check_line_pick(ident, value, files, raw, line_picks, unit_of, errors)
+            _check_line_pick(ident, value, files, page_unit, raw, line_picks, unit_of, errors)
     if errors:
         cuebook.emit("process.py picks: nothing written:\n  " + "\n  ".join(errors), file=sys.stderr)
         return 1
@@ -211,11 +217,10 @@ def _check_cue_pick(ident: str, value: object, book: cuebook.CueBook, layers: di
     out[ident] = seen
 
 
-def _check_line_pick(ident: str, value: object, files: dict[str, cuebook.VoiceFile], raw: Path,
+def _check_line_pick(ident: str, value: object, files: dict[str, cuebook.VoiceFile], unit: str, raw: Path,
                      line_picks: dict[str, dict[str, int]], unit_of: dict[str, str], errors: list[str]) -> None:
-    unit = next((u for u, f in files.items() if ident in f.lines), None)
-    if unit is None:
-        errors.append(f"{ident}: no such line")
+    if ident not in files[unit].lines:
+        errors.append(f"{ident}: no such line for {unit}")
         return
     allowed = {v for u, f in files.items() if u != cuebook.CLAN for v in f.voices} if unit == cuebook.CLAN else set(files[unit].voices)
     if not isinstance(value, dict) or not value:
