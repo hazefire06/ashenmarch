@@ -48,6 +48,8 @@ def _import_text(name: str, loop: bool = True) -> str:
 GUARDED: tuple[str, ...] = ("assets/audio", "audio-src/raw")  # nothing under these may be a symlink
 BUILD_GUARDED: tuple[str, ...] = (*GUARDED, "assets/LICENSES.md", "audio-src/build")
 BARK_LUFS: float = -18.0
+# Every voice line plays this many times as fast, at the same pitch (Tim, 2026-11-18).
+BARK_TEMPO: float = 1.5
 BED_LUFS: float = -23.0  # beds, marching loops and music; both targets are set by ear
 LOOP_FADE_S: float = 1.0
 OGG_QUALITY: dict[str, int] = {"bark": 4, "loop": 4, "music": 5}
@@ -194,6 +196,8 @@ def render_take(path: Path, kind: str) -> tuple[array, int, int]:
         frames = dsp.trim(frames, channels, rate)
         if not frames:
             raise AudioError("the take is silent")
+        if kind == "bark":
+            frames = ffmpeg_io.tempo(frames, rate, channels, BARK_TEMPO)
         frames = dsp.peak_normalise(frames) if kind == "oneshot" else ffmpeg_io.loudness_normalise(frames, rate, channels, BARK_LUFS)
     else:
         frames = ffmpeg_io.loudness_normalise(frames, rate, channels, BED_LUFS)
@@ -256,7 +260,7 @@ def constants_hash() -> str:
     """A hash of everything that shapes a finished file besides the take itself. Read at call time, so a changed constant changes it."""
     knobs = {
         "version": 1, "trim_db": -50.0, "tail_fade_ms": 30.0, "peak_db": -1.0, "true_peak_db": -1.5, "lra": 11,
-        "bark_lufs": BARK_LUFS, "bed_lufs": BED_LUFS, "loop_fade_s": LOOP_FADE_S, "ogg_quality": OGG_QUALITY, "wav": WAV_PARAMS,
+        "bark_lufs": BARK_LUFS, "bark_tempo": BARK_TEMPO, "bed_lufs": BED_LUFS, "loop_fade_s": LOOP_FADE_S, "ogg_quality": OGG_QUALITY, "wav": WAV_PARAMS,
     }
     return hashlib.sha256(json.dumps(knobs, sort_keys=True).encode()).hexdigest()[:16]
 

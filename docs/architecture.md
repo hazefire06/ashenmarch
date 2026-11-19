@@ -2255,6 +2255,7 @@ Designed in `docs/specs/2026-11-09-art-a2-audio-design.md`; Web facts in `docs/p
 - **Formats:** SFX, loops and voices are bought as `wav_32000`; music as `mp3_48000_192`, because `/v1/music` has no WAV output. The music batch refuses until the music probe has succeeded (it did, 2026-11-16).
 - `scripts/audio/process.py` (free; ffmpeg and `oggenc`) trims, levels and converts, writes an audition page per batch, and applies Tim's picks to `cues.toml` without touching anything else in it.
   - **Loudness:** one-shots are peak-normalised; beds, marching loops and music go to -23 LUFS; barks to -18 LUFS (`scripts/audio/assets.py`).
+  - **Bark tempo:** every voice line is sped up 1.5 times at the same pitch (ffmpeg `atempo`, `assets.BARK_TEMPO`). Tim asked for this after hearing the Shieldman, 2026-11-18. It runs after the trim, so every pick and audition preview gets it, and changing it re-renders every line.
   - **Loops:** the generator has no loop option, so `process.py` crossfades each loop's tail into its head (1 s, equal power). The two music layers are cut to one length first.
   - **Files:** one-shots are mono WAV imported QOA-compressed; loops and music are Ogg Vorbis.
 - **`make audio-build`** (free) writes the picked takes to `assets/audio/` (`sfx/`, `loop/`, `music/`) and runs `scripts/audio/build_sound_bank.gd`, which writes `data/audio/sound_bank.tres` and `data/audio/barks.tres`. Both are generated; never hand-edit them. `make test-audio` runs the Python tests with no network.

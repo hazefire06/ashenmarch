@@ -1,1340 +1,1370 @@
 [gd_resource type="Resource" script_class="BarkBook" format=3]
 
-[ext_resource type="Script" path="res://view/audio/bark_line.gd" id="1_ajwhi"]
-[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_old/select_1.ogg" id="2_mvkrf"]
-[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_young/select_1.ogg" id="3_ks7u2"]
-[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_old/select_2.ogg" id="4_eo2in"]
-[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_young/select_2.ogg" id="5_2qya6"]
-[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_old/select_3.ogg" id="6_wan8r"]
-[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_young/select_3.ogg" id="7_ujwum"]
-[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_old/select_4.ogg" id="8_0iyue"]
-[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_young/select_4.ogg" id="9_mg83h"]
-[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_old/select_5.ogg" id="10_gicvb"]
-[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_young/select_5.ogg" id="11_l7ywo"]
-[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_old/move_1.ogg" id="12_csfne"]
-[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_young/move_1.ogg" id="13_gtawu"]
-[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_old/move_2.ogg" id="14_d3ppc"]
-[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_young/move_2.ogg" id="15_iau8x"]
-[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_old/move_3.ogg" id="16_70cch"]
-[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_young/move_3.ogg" id="17_hpxdf"]
-[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_old/move_4.ogg" id="18_jdf0x"]
-[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_young/move_4.ogg" id="19_kc36w"]
-[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_old/move_5.ogg" id="20_3yun4"]
-[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_young/move_5.ogg" id="21_4nfyn"]
-[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_old/attack_1.ogg" id="22_5smge"]
-[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_young/attack_1.ogg" id="23_ju3c6"]
-[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_old/attack_2.ogg" id="24_vkw5f"]
-[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_young/attack_2.ogg" id="25_e6jsi"]
-[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_old/attack_3.ogg" id="26_hlst2"]
-[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_young/attack_3.ogg" id="27_d54jw"]
-[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_old/attack_4.ogg" id="28_20pnf"]
-[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_young/attack_4.ogg" id="29_nvvt2"]
-[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_old/attack_5.ogg" id="30_oo54k"]
-[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_young/attack_5.ogg" id="31_be446"]
-[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_old/kill_1.ogg" id="32_gny1j"]
-[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_young/kill_1.ogg" id="33_onvv3"]
-[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_old/kill_2.ogg" id="34_lgj8s"]
-[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_young/kill_2.ogg" id="35_e6xxp"]
-[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_old/kill_3.ogg" id="36_g6473"]
-[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_young/kill_3.ogg" id="37_i7osj"]
-[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_old/kill_4.ogg" id="38_prypd"]
-[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_young/kill_4.ogg" id="39_esmex"]
-[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_old/kill_5.ogg" id="40_i8fco"]
-[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_young/kill_5.ogg" id="41_aahjw"]
-[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_old/hurt_1.ogg" id="42_r01qj"]
-[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_young/hurt_1.ogg" id="43_ap8o6"]
-[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_old/hurt_2.ogg" id="44_mx8xi"]
-[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_young/hurt_2.ogg" id="45_a53pp"]
-[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_old/hurt_3.ogg" id="46_8l85h"]
-[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_young/hurt_3.ogg" id="47_pj64q"]
-[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_old/hurt_4.ogg" id="48_a581h"]
-[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_young/hurt_4.ogg" id="49_xi7ai"]
-[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_old/death_1.ogg" id="50_qaej1"]
-[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_young/death_1.ogg" id="51_mnhb1"]
-[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_old/death_2.ogg" id="52_e6ta3"]
-[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_young/death_2.ogg" id="53_psk28"]
-[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_old/death_3.ogg" id="54_3q1jr"]
-[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_young/death_3.ogg" id="55_r6kqn"]
-[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_old/annoyed_1.ogg" id="56_gpg1e"]
-[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_young/annoyed_1.ogg" id="57_r1ooj"]
-[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_old/annoyed_2.ogg" id="58_vlacf"]
-[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_young/annoyed_2.ogg" id="59_mdi4e"]
-[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_old/annoyed_3.ogg" id="60_p0g56"]
-[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_old/status_burning_1.ogg" id="61_e28vl"]
-[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_young/status_burning_1.ogg" id="62_3jppk"]
-[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_old/status_paralyzed_1.ogg" id="63_k0s41"]
-[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_young/status_paralyzed_1.ogg" id="64_4eod6"]
-[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_old/status_confused_1.ogg" id="65_sd5d3"]
-[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_young/status_confused_1.ogg" id="66_d2mxk"]
-[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_old/formation_rabble_1.ogg" id="67_dqhc5"]
-[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_young/formation_rabble_1.ogg" id="68_e0th1"]
-[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_old/formation_wedge_1.ogg" id="69_hcwlf"]
-[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_young/formation_wedge_1.ogg" id="70_4h81i"]
-[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_old/victory_1.ogg" id="71_nka4o"]
-[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_old/victory_2.ogg" id="72_mgmso"]
-[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_young/victory_2.ogg" id="73_hvpbu"]
-[ext_resource type="Script" path="res://view/audio/bark_book.gd" id="74_kkwi3"]
+[ext_resource type="Script" path="res://view/audio/bark_line.gd" id="1_l7ywo"]
+[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_old/clan_1.ogg" id="2_csfne"]
+[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_young/clan_1.ogg" id="3_gtawu"]
+[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_old/clan_2.ogg" id="4_d3ppc"]
+[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_young/clan_2.ogg" id="5_iau8x"]
+[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_old/clan_3.ogg" id="6_70cch"]
+[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_young/clan_3.ogg" id="7_hpxdf"]
+[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_old/clan_4.ogg" id="8_jdf0x"]
+[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_young/clan_4.ogg" id="9_kc36w"]
+[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_old/clan_5.ogg" id="10_3yun4"]
+[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_young/clan_5.ogg" id="11_4nfyn"]
+[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_old/select_1.ogg" id="12_5smge"]
+[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_young/select_1.ogg" id="13_ju3c6"]
+[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_old/select_2.ogg" id="14_vkw5f"]
+[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_young/select_2.ogg" id="15_e6jsi"]
+[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_old/select_3.ogg" id="16_hlst2"]
+[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_young/select_3.ogg" id="17_d54jw"]
+[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_old/select_4.ogg" id="18_20pnf"]
+[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_young/select_4.ogg" id="19_nvvt2"]
+[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_old/select_5.ogg" id="20_oo54k"]
+[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_young/select_5.ogg" id="21_be446"]
+[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_old/move_1.ogg" id="22_gny1j"]
+[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_young/move_1.ogg" id="23_onvv3"]
+[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_old/move_2.ogg" id="24_lgj8s"]
+[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_young/move_2.ogg" id="25_e6xxp"]
+[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_old/move_3.ogg" id="26_g6473"]
+[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_young/move_3.ogg" id="27_i7osj"]
+[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_old/move_4.ogg" id="28_prypd"]
+[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_young/move_4.ogg" id="29_esmex"]
+[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_old/move_5.ogg" id="30_i8fco"]
+[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_young/move_5.ogg" id="31_aahjw"]
+[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_old/attack_1.ogg" id="32_r01qj"]
+[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_young/attack_1.ogg" id="33_ap8o6"]
+[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_old/attack_2.ogg" id="34_mx8xi"]
+[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_young/attack_2.ogg" id="35_a53pp"]
+[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_old/attack_3.ogg" id="36_8l85h"]
+[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_young/attack_3.ogg" id="37_pj64q"]
+[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_old/attack_4.ogg" id="38_a581h"]
+[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_young/attack_4.ogg" id="39_xi7ai"]
+[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_old/attack_5.ogg" id="40_qaej1"]
+[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_young/attack_5.ogg" id="41_mnhb1"]
+[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_old/kill_1.ogg" id="42_e6ta3"]
+[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_young/kill_1.ogg" id="43_psk28"]
+[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_old/kill_2.ogg" id="44_3q1jr"]
+[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_young/kill_2.ogg" id="45_r6kqn"]
+[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_old/kill_3.ogg" id="46_gpg1e"]
+[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_young/kill_3.ogg" id="47_r1ooj"]
+[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_old/kill_4.ogg" id="48_vlacf"]
+[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_young/kill_4.ogg" id="49_mdi4e"]
+[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_old/kill_5.ogg" id="50_p0g56"]
+[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_young/kill_5.ogg" id="51_e28vl"]
+[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_old/hurt_1.ogg" id="52_3jppk"]
+[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_young/hurt_1.ogg" id="53_k0s41"]
+[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_old/hurt_2.ogg" id="54_4eod6"]
+[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_young/hurt_2.ogg" id="55_sd5d3"]
+[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_old/hurt_3.ogg" id="56_d2mxk"]
+[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_young/hurt_3.ogg" id="57_dqhc5"]
+[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_old/hurt_4.ogg" id="58_e0th1"]
+[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_young/hurt_4.ogg" id="59_hcwlf"]
+[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_old/death_1.ogg" id="60_4h81i"]
+[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_young/death_1.ogg" id="61_nka4o"]
+[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_old/death_2.ogg" id="62_mgmso"]
+[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_young/death_2.ogg" id="63_hvpbu"]
+[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_old/death_3.ogg" id="64_kkwi3"]
+[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_young/death_3.ogg" id="65_0jkir"]
+[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_old/annoyed_1.ogg" id="66_h2fe5"]
+[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_young/annoyed_1.ogg" id="67_qn1oi"]
+[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_old/annoyed_2.ogg" id="68_4y1wk"]
+[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_young/annoyed_2.ogg" id="69_plu4e"]
+[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_old/annoyed_3.ogg" id="70_tib38"]
+[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_old/status_burning_1.ogg" id="71_0pykg"]
+[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_young/status_burning_1.ogg" id="72_b7tc7"]
+[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_old/status_paralyzed_1.ogg" id="73_m4iv5"]
+[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_young/status_paralyzed_1.ogg" id="74_l8jxc"]
+[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_old/status_confused_1.ogg" id="75_a2wws"]
+[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_young/status_confused_1.ogg" id="76_eoj50"]
+[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_old/formation_rabble_1.ogg" id="77_724sy"]
+[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_young/formation_rabble_1.ogg" id="78_wffgx"]
+[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_old/formation_wedge_1.ogg" id="79_trrip"]
+[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_young/formation_wedge_1.ogg" id="80_q36ow"]
+[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_old/victory_1.ogg" id="81_daeyy"]
+[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_old/victory_2.ogg" id="82_lq0gb"]
+[ext_resource type="AudioStream" path="res://assets/audio/voice/shieldman_young/victory_2.ogg" id="83_vige8"]
+[ext_resource type="Script" path="res://view/audio/bark_book.gd" id="84_xyt68"]
 
-[sub_resource type="Resource" id="Resource_0jkir"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_1l160"]
+script = ExtResource("1_l7ywo")
 id = &"clan_1"
 unit = &"_clan"
 text = "Crivens!"
 clan = true
 voices = Array[StringName]([&"longbow", &"reaver", &"sapper", &"shieldman_old", &"shieldman_young", &"warden"])
+streams = Dictionary[StringName, AudioStream]({
+&"shieldman_old": ExtResource("2_csfne"),
+&"shieldman_young": ExtResource("3_gtawu")
+})
 
-[sub_resource type="Resource" id="Resource_h2fe5"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_f3h4u"]
+script = ExtResource("1_l7ywo")
 id = &"clan_2"
 unit = &"_clan"
 text = "Michty me!"
 clan = true
 voices = Array[StringName]([&"longbow", &"reaver", &"sapper", &"shieldman_old", &"shieldman_young", &"warden"])
+streams = Dictionary[StringName, AudioStream]({
+&"shieldman_old": ExtResource("4_d3ppc"),
+&"shieldman_young": ExtResource("5_iau8x")
+})
 
-[sub_resource type="Resource" id="Resource_qn1oi"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_ogoqg"]
+script = ExtResource("1_l7ywo")
 id = &"clan_3"
 unit = &"_clan"
 text = "Haud yer wheesht!"
 clan = true
 voices = Array[StringName]([&"longbow", &"reaver", &"sapper", &"shieldman_old", &"shieldman_young", &"warden"])
+streams = Dictionary[StringName, AudioStream]({
+&"shieldman_old": ExtResource("6_70cch"),
+&"shieldman_young": ExtResource("7_hpxdf")
+})
 
-[sub_resource type="Resource" id="Resource_4y1wk"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_cnr14"]
+script = ExtResource("1_l7ywo")
 id = &"clan_4"
 unit = &"_clan"
 text = "Och, that's pure mince."
 clan = true
 voices = Array[StringName]([&"longbow", &"reaver", &"sapper", &"shieldman_old", &"shieldman_young", &"warden"])
+streams = Dictionary[StringName, AudioStream]({
+&"shieldman_old": ExtResource("8_jdf0x"),
+&"shieldman_young": ExtResource("9_kc36w")
+})
 
-[sub_resource type="Resource" id="Resource_plu4e"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_6lpk8"]
+script = ExtResource("1_l7ywo")
 id = &"clan_5"
 unit = &"_clan"
 text = "Mind yer feet!"
 clan = true
 voices = Array[StringName]([&"longbow", &"reaver", &"sapper", &"shieldman_old", &"shieldman_young", &"warden"])
+streams = Dictionary[StringName, AudioStream]({
+&"shieldman_old": ExtResource("10_3yun4"),
+&"shieldman_young": ExtResource("11_4nfyn")
+})
 
-[sub_resource type="Resource" id="Resource_tib38"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_rt0bb"]
+script = ExtResource("1_l7ywo")
 id = &"select_1"
 unit = &"longbow"
 trigger = &"select"
 text = "Ah see it. It'll no' see me."
 voices = Array[StringName]([&"longbow"])
 
-[sub_resource type="Resource" id="Resource_0pykg"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_1npln"]
+script = ExtResource("1_l7ywo")
 id = &"select_2"
 unit = &"longbow"
 trigger = &"select"
 text = "Aye. Quietly, now."
 voices = Array[StringName]([&"longbow"])
 
-[sub_resource type="Resource" id="Resource_b7tc7"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_57euo"]
+script = ExtResource("1_l7ywo")
 id = &"select_3"
 unit = &"longbow"
 trigger = &"select"
 text = "Ah've a string an' a steady hand. Whit else d'ye need?"
 voices = Array[StringName]([&"longbow"])
 
-[sub_resource type="Resource" id="Resource_m4iv5"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_ytsg7"]
+script = ExtResource("1_l7ywo")
 id = &"select_4"
 unit = &"longbow"
 trigger = &"select"
 text = "Speak soft. Ye'll spook them."
 voices = Array[StringName]([&"longbow"])
 
-[sub_resource type="Resource" id="Resource_l8jxc"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_q5wow"]
+script = ExtResource("1_l7ywo")
 id = &"move_1"
 unit = &"longbow"
 trigger = &"move"
 text = "Movin'. Keep it quiet."
 voices = Array[StringName]([&"longbow"])
 
-[sub_resource type="Resource" id="Resource_a2wws"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_wp4ju"]
+script = ExtResource("1_l7ywo")
 id = &"move_2"
 unit = &"longbow"
 trigger = &"move"
 text = "Ah'll find high ground. Ah aye dae."
 voices = Array[StringName]([&"longbow"])
 
-[sub_resource type="Resource" id="Resource_eoj50"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_rvuyn"]
+script = ExtResource("1_l7ywo")
 id = &"move_3"
 unit = &"longbow"
 trigger = &"move"
 text = "Lead on. Ah'll be the one ye cannae hear."
 voices = Array[StringName]([&"longbow"])
 
-[sub_resource type="Resource" id="Resource_724sy"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_wy0jv"]
+script = ExtResource("1_l7ywo")
 id = &"attack_1"
 unit = &"longbow"
 trigger = &"attack"
 text = "One arrow, one less problem."
 voices = Array[StringName]([&"longbow"])
 
-[sub_resource type="Resource" id="Resource_wffgx"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_qg8ye"]
+script = ExtResource("1_l7ywo")
 id = &"attack_2"
 unit = &"longbow"
 trigger = &"attack"
 text = "Hold still... there."
 voices = Array[StringName]([&"longbow"])
 
-[sub_resource type="Resource" id="Resource_trrip"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_3spj5"]
+script = ExtResource("1_l7ywo")
 id = &"attack_3"
 unit = &"longbow"
 trigger = &"attack"
 text = "Ah've a shaft wi' yer name on it."
 voices = Array[StringName]([&"longbow"])
 
-[sub_resource type="Resource" id="Resource_q36ow"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_pma03"]
+script = ExtResource("1_l7ywo")
 id = &"kill_1"
 unit = &"longbow"
 trigger = &"kill"
 text = "Clean."
 voices = Array[StringName]([&"longbow"])
 
-[sub_resource type="Resource" id="Resource_daeyy"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_hmkly"]
+script = ExtResource("1_l7ywo")
 id = &"kill_2"
 unit = &"longbow"
 trigger = &"kill"
 text = "Doon. Nae fuss."
 voices = Array[StringName]([&"longbow"])
 
-[sub_resource type="Resource" id="Resource_lq0gb"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_clf5d"]
+script = ExtResource("1_l7ywo")
 id = &"kill_3"
 unit = &"longbow"
 trigger = &"kill"
 text = "That's supper fer the crows."
 voices = Array[StringName]([&"longbow"])
 
-[sub_resource type="Resource" id="Resource_vige8"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_l877a"]
+script = ExtResource("1_l7ywo")
 id = &"hurt_1"
 unit = &"longbow"
 trigger = &"hurt"
 text = "Ach. Ah felt that one."
 voices = Array[StringName]([&"longbow"])
 
-[sub_resource type="Resource" id="Resource_xyt68"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_gxn6t"]
+script = ExtResource("1_l7ywo")
 id = &"hurt_2"
 unit = &"longbow"
 trigger = &"hurt"
 text = "Get them aff me, ah'm no' a sword."
 voices = Array[StringName]([&"longbow"])
 
-[sub_resource type="Resource" id="Resource_1l160"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_5o1k8"]
+script = ExtResource("1_l7ywo")
 id = &"death_1"
 unit = &"longbow"
 trigger = &"death"
 text = "Ah... missed that one..."
 voices = Array[StringName]([&"longbow"])
 
-[sub_resource type="Resource" id="Resource_f3h4u"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_s4q8u"]
+script = ExtResource("1_l7ywo")
 id = &"death_2"
 unit = &"longbow"
 trigger = &"death"
 text = "Tell the hills... ah'm hame..."
 voices = Array[StringName]([&"longbow"])
 
-[sub_resource type="Resource" id="Resource_ogoqg"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_jf5u3"]
+script = ExtResource("1_l7ywo")
 id = &"annoyed_1"
 unit = &"longbow"
 trigger = &"annoyed"
 text = "Ye're louder than the deid. Wheesht."
 voices = Array[StringName]([&"longbow"])
 
-[sub_resource type="Resource" id="Resource_cnr14"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_d0l0h"]
+script = ExtResource("1_l7ywo")
 id = &"annoyed_2"
 unit = &"longbow"
 trigger = &"annoyed"
 text = "Click me again an' ah'll practise on you."
 voices = Array[StringName]([&"longbow"])
 
-[sub_resource type="Resource" id="Resource_6lpk8"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_olrpr"]
+script = ExtResource("1_l7ywo")
 id = &"special_1"
 unit = &"longbow"
 trigger = &"special"
 text = "Wan fire arrow. Better be worth it."
 voices = Array[StringName]([&"longbow"])
 
-[sub_resource type="Resource" id="Resource_rt0bb"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_84nrf"]
+script = ExtResource("1_l7ywo")
 id = &"special_2"
 unit = &"longbow"
 trigger = &"special"
 text = "Light it. Loose it. Leave it."
 voices = Array[StringName]([&"longbow"])
 
-[sub_resource type="Resource" id="Resource_1npln"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_w770o"]
+script = ExtResource("1_l7ywo")
 id = &"fizzle_1"
 unit = &"longbow"
 trigger = &"fizzle"
 text = "Ach, the rain's had ma flame."
 voices = Array[StringName]([&"longbow"])
 
-[sub_resource type="Resource" id="Resource_57euo"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_u8axy"]
+script = ExtResource("1_l7ywo")
 id = &"retreat_1"
 unit = &"longbow"
 trigger = &"retreat"
 text = "Fallin' back. Ah'll shoot frae further."
 voices = Array[StringName]([&"longbow"])
 
-[sub_resource type="Resource" id="Resource_ytsg7"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_q0hlc"]
+script = ExtResource("1_l7ywo")
 id = &"victory_1"
 unit = &"longbow"
 trigger = &"victory"
 text = "Quiet again. That's how ah like it."
 voices = Array[StringName]([&"longbow"])
 
-[sub_resource type="Resource" id="Resource_q5wow"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_tt0fb"]
+script = ExtResource("1_l7ywo")
 id = &"select_1"
 unit = &"reaver"
 trigger = &"select"
 text = "Ah've no' had a guid fight since Tuesday!"
 voices = Array[StringName]([&"reaver"])
 
-[sub_resource type="Resource" id="Resource_wp4ju"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_amc6e"]
+script = ExtResource("1_l7ywo")
 id = &"select_2"
 unit = &"reaver"
 trigger = &"select"
 text = "Aye? Is it fightin'? Tell me it's fightin'."
 voices = Array[StringName]([&"reaver"])
 
-[sub_resource type="Resource" id="Resource_rvuyn"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_11l86"]
+script = ExtResource("1_l7ywo")
 id = &"select_3"
 unit = &"reaver"
 trigger = &"select"
 text = "Ah'm awake! Ah'm sharp! Well, the blade is."
 voices = Array[StringName]([&"reaver"])
 
-[sub_resource type="Resource" id="Resource_wy0jv"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_smueb"]
+script = ExtResource("1_l7ywo")
 id = &"select_4"
 unit = &"reaver"
 trigger = &"select"
 text = "Whit's the hold-up? Ma sword's gettin' bored."
 voices = Array[StringName]([&"reaver"])
 
-[sub_resource type="Resource" id="Resource_qg8ye"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_gr22o"]
+script = ExtResource("1_l7ywo")
 id = &"move_1"
 unit = &"reaver"
 trigger = &"move"
 text = "Fast as ye like!"
 voices = Array[StringName]([&"reaver"])
 
-[sub_resource type="Resource" id="Resource_3spj5"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_6qduh"]
+script = ExtResource("1_l7ywo")
 id = &"move_2"
 unit = &"reaver"
 trigger = &"move"
 text = "Runnin'! Try an' keep up!"
 voices = Array[StringName]([&"reaver"])
 
-[sub_resource type="Resource" id="Resource_pma03"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_bv8ls"]
+script = ExtResource("1_l7ywo")
 id = &"move_3"
 unit = &"reaver"
 trigger = &"move"
 text = "This better end in a scrap."
 voices = Array[StringName]([&"reaver"])
 
-[sub_resource type="Resource" id="Resource_hmkly"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_d1cuf"]
+script = ExtResource("1_l7ywo")
 id = &"move_4"
 unit = &"reaver"
 trigger = &"move"
 text = "Ah'll go roond. Or through, if it's quicker."
 voices = Array[StringName]([&"reaver"])
 
-[sub_resource type="Resource" id="Resource_clf5d"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_m6x0q"]
+script = ExtResource("1_l7ywo")
 id = &"attack_1"
 unit = &"reaver"
 trigger = &"attack"
 text = "Who wants tae be first?"
 voices = Array[StringName]([&"reaver"])
 
-[sub_resource type="Resource" id="Resource_l877a"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_cecte"]
+script = ExtResource("1_l7ywo")
 id = &"attack_2"
 unit = &"reaver"
 trigger = &"attack"
 text = "Ah'll split ye like kindlin'!"
 voices = Array[StringName]([&"reaver"])
 
-[sub_resource type="Resource" id="Resource_gxn6t"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_a8kd1"]
+script = ExtResource("1_l7ywo")
 id = &"attack_3"
 unit = &"reaver"
 trigger = &"attack"
 text = "Raaargh!"
 voices = Array[StringName]([&"reaver"])
 
-[sub_resource type="Resource" id="Resource_5o1k8"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_d2r1g"]
+script = ExtResource("1_l7ywo")
 id = &"attack_4"
 unit = &"reaver"
 trigger = &"attack"
 text = "Nae shield, nae fear, nae sense! Charge!"
 voices = Array[StringName]([&"reaver"])
 
-[sub_resource type="Resource" id="Resource_s4q8u"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_0qel0"]
+script = ExtResource("1_l7ywo")
 id = &"attack_5"
 unit = &"reaver"
 trigger = &"attack"
 text = "Come here till ah get ye!"
 voices = Array[StringName]([&"reaver"])
 
-[sub_resource type="Resource" id="Resource_jf5u3"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_rttlt"]
+script = ExtResource("1_l7ywo")
 id = &"kill_1"
 unit = &"reaver"
 trigger = &"kill"
 text = "Ha! Did ye see that? Did ANYBODY see that?"
 voices = Array[StringName]([&"reaver"])
 
-[sub_resource type="Resource" id="Resource_d0l0h"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_ku5b5"]
+script = ExtResource("1_l7ywo")
 id = &"kill_2"
 unit = &"reaver"
 trigger = &"kill"
 text = "Doon ye go, an' bide there."
 voices = Array[StringName]([&"reaver"])
 
-[sub_resource type="Resource" id="Resource_olrpr"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_w2087"]
+script = ExtResource("1_l7ywo")
 id = &"kill_3"
 unit = &"reaver"
 trigger = &"kill"
 text = "That's three! Or four. Ah've lost count. Mair!"
 voices = Array[StringName]([&"reaver"])
 
-[sub_resource type="Resource" id="Resource_84nrf"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_fxnfu"]
+script = ExtResource("1_l7ywo")
 id = &"hurt_1"
 unit = &"reaver"
 trigger = &"hurt"
 text = "Ow! Oh, that's ma guid arm!"
 voices = Array[StringName]([&"reaver"])
 
-[sub_resource type="Resource" id="Resource_w770o"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_j8uky"]
+script = ExtResource("1_l7ywo")
 id = &"hurt_2"
 unit = &"reaver"
 trigger = &"hurt"
 text = "Ah'm still standin', so it doesnae count."
 voices = Array[StringName]([&"reaver"])
 
-[sub_resource type="Resource" id="Resource_u8axy"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_4158e"]
+script = ExtResource("1_l7ywo")
 id = &"death_1"
 unit = &"reaver"
 trigger = &"death"
 text = "Ach... ah wis jist gettin' started..."
 voices = Array[StringName]([&"reaver"])
 
-[sub_resource type="Resource" id="Resource_q0hlc"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_xwyau"]
+script = ExtResource("1_l7ywo")
 id = &"death_2"
 unit = &"reaver"
 trigger = &"death"
 text = "Somebody... finish ma fight fer me..."
 voices = Array[StringName]([&"reaver"])
 
-[sub_resource type="Resource" id="Resource_tt0fb"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_r7haa"]
+script = ExtResource("1_l7ywo")
 id = &"annoyed_1"
 unit = &"reaver"
 trigger = &"annoyed"
 text = "Stop pokin' me an' point me at somethin'!"
 voices = Array[StringName]([&"reaver"])
 
-[sub_resource type="Resource" id="Resource_amc6e"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_5ar78"]
+script = ExtResource("1_l7ywo")
 id = &"annoyed_2"
 unit = &"reaver"
 trigger = &"annoyed"
 text = "Ah'll swing at the next thing that touches me. Ah'm just sayin'."
 voices = Array[StringName]([&"reaver"])
 
-[sub_resource type="Resource" id="Resource_11l86"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_tadg5"]
+script = ExtResource("1_l7ywo")
 id = &"retreat_1"
 unit = &"reaver"
 trigger = &"retreat"
 text = "Back? BACK? Ach, fine. Under protest!"
 voices = Array[StringName]([&"reaver"])
 
-[sub_resource type="Resource" id="Resource_smueb"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_4fnuv"]
+script = ExtResource("1_l7ywo")
 id = &"victory_1"
 unit = &"reaver"
 trigger = &"victory"
 text = "Is that it? Ah wanted a second helpin'!"
 voices = Array[StringName]([&"reaver"])
 
-[sub_resource type="Resource" id="Resource_gr22o"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_myyjy"]
+script = ExtResource("1_l7ywo")
 id = &"select_1"
 unit = &"sapper"
 trigger = &"select"
 text = "WHIT? Oh, aye, it's you!"
 voices = Array[StringName]([&"sapper"])
 
-[sub_resource type="Resource" id="Resource_6qduh"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_aixfr"]
+script = ExtResource("1_l7ywo")
 id = &"select_2"
 unit = &"sapper"
 trigger = &"select"
 text = "Sapper here! Mind the bag, it's a bit... temperamental."
 voices = Array[StringName]([&"sapper"])
 
-[sub_resource type="Resource" id="Resource_bv8ls"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_iq0au"]
+script = ExtResource("1_l7ywo")
 id = &"select_3"
 unit = &"sapper"
 trigger = &"select"
 text = "Ah've bottles, ah've charges, ah've nae eyebrows. Whit d'ye need?"
 voices = Array[StringName]([&"sapper"])
 
-[sub_resource type="Resource" id="Resource_d1cuf"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_8v2ae"]
+script = ExtResource("1_l7ywo")
 id = &"move_1"
 unit = &"sapper"
 trigger = &"move"
 text = "Movin'! Gently! GENTLY!"
 voices = Array[StringName]([&"sapper"])
 
-[sub_resource type="Resource" id="Resource_m6x0q"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_75ifq"]
+script = ExtResource("1_l7ywo")
 id = &"move_2"
 unit = &"sapper"
 trigger = &"move"
 text = "Nae runnin', lads. No' wi' whit ah'm carryin'."
 voices = Array[StringName]([&"sapper"])
 
-[sub_resource type="Resource" id="Resource_cecte"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_ox7qn"]
+script = ExtResource("1_l7ywo")
 id = &"move_3"
 unit = &"sapper"
 trigger = &"move"
 text = "Mind the bumps, the bag doesnae like bumps!"
 voices = Array[StringName]([&"sapper"])
 
-[sub_resource type="Resource" id="Resource_a8kd1"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_0bg0e"]
+script = ExtResource("1_l7ywo")
 id = &"attack_1"
 unit = &"sapper"
 trigger = &"attack"
 text = "Mind yer heids, this one's a bit lively!"
 voices = Array[StringName]([&"sapper"])
 
-[sub_resource type="Resource" id="Resource_d2r1g"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_70wrp"]
+script = ExtResource("1_l7ywo")
 id = &"attack_2"
 unit = &"sapper"
 trigger = &"attack"
 text = "Stand back! Further! Further than that!"
 voices = Array[StringName]([&"sapper"])
 
-[sub_resource type="Resource" id="Resource_0qel0"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_n730r"]
+script = ExtResource("1_l7ywo")
 id = &"attack_3"
 unit = &"sapper"
 trigger = &"attack"
 text = "Catch! Naw, don't catch!"
 voices = Array[StringName]([&"sapper"])
 
-[sub_resource type="Resource" id="Resource_rttlt"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_wj6ia"]
+script = ExtResource("1_l7ywo")
 id = &"attack_4"
 unit = &"sapper"
 trigger = &"attack"
 text = "Here's a wee bottle o' bother!"
 voices = Array[StringName]([&"sapper"])
 
-[sub_resource type="Resource" id="Resource_ku5b5"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_0cv3f"]
+script = ExtResource("1_l7ywo")
 id = &"kill_1"
 unit = &"sapper"
 trigger = &"kill"
 text = "Boom! Ha! Did ah dae that?"
 voices = Array[StringName]([&"sapper"])
 
-[sub_resource type="Resource" id="Resource_w2087"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_bk637"]
+script = ExtResource("1_l7ywo")
 id = &"kill_2"
 unit = &"sapper"
 trigger = &"kill"
 text = "Bits everywhere. That'll be a job tae tidy."
 voices = Array[StringName]([&"sapper"])
 
-[sub_resource type="Resource" id="Resource_fxnfu"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_tugne"]
+script = ExtResource("1_l7ywo")
 id = &"kill_3"
 unit = &"sapper"
 trigger = &"kill"
 text = "Chemistry!"
 voices = Array[StringName]([&"sapper"])
 
-[sub_resource type="Resource" id="Resource_j8uky"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_3l6li"]
+script = ExtResource("1_l7ywo")
 id = &"hurt_1"
 unit = &"sapper"
 trigger = &"hurt"
 text = "Ow! Mind the bag! MIND THE BAG!"
 voices = Array[StringName]([&"sapper"])
 
-[sub_resource type="Resource" id="Resource_4158e"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_ppbuy"]
+script = ExtResource("1_l7ywo")
 id = &"hurt_2"
 unit = &"sapper"
 trigger = &"hurt"
 text = "Ah'm hit! Somebody check ah'm no' leakin'!"
 voices = Array[StringName]([&"sapper"])
 
-[sub_resource type="Resource" id="Resource_xwyau"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_vueds"]
+script = ExtResource("1_l7ywo")
 id = &"death_1"
 unit = &"sapper"
 trigger = &"death"
 text = "Tell the next sapper... no' that bottle..."
 voices = Array[StringName]([&"sapper"])
 
-[sub_resource type="Resource" id="Resource_r7haa"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_xtbxe"]
+script = ExtResource("1_l7ywo")
 id = &"death_2"
 unit = &"sapper"
 trigger = &"death"
 text = "Ach... it wisnae the bottle... fer once..."
 voices = Array[StringName]([&"sapper"])
 
-[sub_resource type="Resource" id="Resource_5ar78"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_foemo"]
+script = ExtResource("1_l7ywo")
 id = &"annoyed_1"
 unit = &"sapper"
 trigger = &"annoyed"
 text = "Stop proddin' me! D'ye KNOW whit's in this bag?"
 voices = Array[StringName]([&"sapper"])
 
-[sub_resource type="Resource" id="Resource_tadg5"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_y1ahj"]
+script = ExtResource("1_l7ywo")
 id = &"annoyed_2"
 unit = &"sapper"
 trigger = &"annoyed"
 text = "Wan mair click an' ah'm takin' ma bottles hame."
 voices = Array[StringName]([&"sapper"])
 
-[sub_resource type="Resource" id="Resource_4fnuv"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_5u46c"]
+script = ExtResource("1_l7ywo")
 id = &"special_1"
 unit = &"sapper"
 trigger = &"special"
 text = "Leavin' a wee present."
 voices = Array[StringName]([&"sapper"])
 
-[sub_resource type="Resource" id="Resource_myyjy"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_8ulh2"]
+script = ExtResource("1_l7ywo")
 id = &"special_2"
 unit = &"sapper"
 trigger = &"special"
 text = "Charge set! Now walk away. Casually. CASUALLY!"
 voices = Array[StringName]([&"sapper"])
 
-[sub_resource type="Resource" id="Resource_aixfr"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_or1ph"]
+script = ExtResource("1_l7ywo")
 id = &"fizzle_1"
 unit = &"sapper"
 trigger = &"fizzle"
 text = "Ach. Damp."
 voices = Array[StringName]([&"sapper"])
 
-[sub_resource type="Resource" id="Resource_iq0au"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_wufxo"]
+script = ExtResource("1_l7ywo")
 id = &"fizzle_2"
 unit = &"sapper"
 trigger = &"fizzle"
 text = "Pfft. That's the weather's fault, that."
 voices = Array[StringName]([&"sapper"])
 
-[sub_resource type="Resource" id="Resource_8v2ae"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_p5ltd"]
+script = ExtResource("1_l7ywo")
 id = &"status_burning_1"
 unit = &"sapper"
 trigger = &"status_burning"
 text = "Ah'm on fire! Get me AWAY frae the bag!"
 voices = Array[StringName]([&"sapper"])
 
-[sub_resource type="Resource" id="Resource_75ifq"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_7lid5"]
+script = ExtResource("1_l7ywo")
 id = &"victory_1"
 unit = &"sapper"
 trigger = &"victory"
 text = "Did we win? WHIT? Ah said, DID WE WIN?"
 voices = Array[StringName]([&"sapper"])
 
-[sub_resource type="Resource" id="Resource_ox7qn"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_sru5b"]
+script = ExtResource("1_l7ywo")
 id = &"select_1"
 unit = &"shieldman"
 trigger = &"select"
 text = "Aye? Whit is it?"
 voices = Array[StringName]([&"shieldman_old", &"shieldman_young"])
 streams = Dictionary[StringName, AudioStream]({
-&"shieldman_old": ExtResource("2_mvkrf"),
-&"shieldman_young": ExtResource("3_ks7u2")
+&"shieldman_old": ExtResource("12_5smge"),
+&"shieldman_young": ExtResource("13_ju3c6")
 })
 
-[sub_resource type="Resource" id="Resource_0bg0e"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_pogd5"]
+script = ExtResource("1_l7ywo")
 id = &"select_2"
 unit = &"shieldman"
 trigger = &"select"
 text = "Point me at somethin' ugly."
 voices = Array[StringName]([&"shieldman_old", &"shieldman_young"])
 streams = Dictionary[StringName, AudioStream]({
-&"shieldman_old": ExtResource("4_eo2in"),
-&"shieldman_young": ExtResource("5_2qya6")
+&"shieldman_old": ExtResource("14_vkw5f"),
+&"shieldman_young": ExtResource("15_e6jsi")
 })
 
-[sub_resource type="Resource" id="Resource_70wrp"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_8ndxb"]
+script = ExtResource("1_l7ywo")
 id = &"select_3"
 unit = &"shieldman"
 trigger = &"select"
 text = "Shield's up, heid's doon. Whit's the plan?"
 voices = Array[StringName]([&"shieldman_old", &"shieldman_young"])
 streams = Dictionary[StringName, AudioStream]({
-&"shieldman_old": ExtResource("6_wan8r"),
-&"shieldman_young": ExtResource("7_ujwum")
+&"shieldman_old": ExtResource("16_hlst2"),
+&"shieldman_young": ExtResource("17_d54jw")
 })
 
-[sub_resource type="Resource" id="Resource_n730r"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_303uj"]
+script = ExtResource("1_l7ywo")
 id = &"select_4"
 unit = &"shieldman"
 trigger = &"select"
 text = "Somebody need a wallop?"
 voices = Array[StringName]([&"shieldman_old", &"shieldman_young"])
 streams = Dictionary[StringName, AudioStream]({
-&"shieldman_old": ExtResource("8_0iyue"),
-&"shieldman_young": ExtResource("9_mg83h")
+&"shieldman_old": ExtResource("18_20pnf"),
+&"shieldman_young": ExtResource("19_nvvt2")
 })
 
-[sub_resource type="Resource" id="Resource_wj6ia"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_vc65t"]
+script = ExtResource("1_l7ywo")
 id = &"select_5"
 unit = &"shieldman"
 trigger = &"select"
 text = "Ah'm listenin'. Make it quick, there's fightin' tae dae."
 voices = Array[StringName]([&"shieldman_old", &"shieldman_young"])
 streams = Dictionary[StringName, AudioStream]({
-&"shieldman_old": ExtResource("10_gicvb"),
-&"shieldman_young": ExtResource("11_l7ywo")
+&"shieldman_old": ExtResource("20_oo54k"),
+&"shieldman_young": ExtResource("21_be446")
 })
 
-[sub_resource type="Resource" id="Resource_0cv3f"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_wpmcp"]
+script = ExtResource("1_l7ywo")
 id = &"move_1"
 unit = &"shieldman"
 trigger = &"move"
 text = "Right ye are!"
 voices = Array[StringName]([&"shieldman_old", &"shieldman_young"])
 streams = Dictionary[StringName, AudioStream]({
-&"shieldman_old": ExtResource("12_csfne"),
-&"shieldman_young": ExtResource("13_gtawu")
+&"shieldman_old": ExtResource("22_gny1j"),
+&"shieldman_young": ExtResource("23_onvv3")
 })
 
-[sub_resource type="Resource" id="Resource_bk637"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_i388k"]
+script = ExtResource("1_l7ywo")
 id = &"move_2"
 unit = &"shieldman"
 trigger = &"move"
 text = "Quick march, ya numpties!"
 voices = Array[StringName]([&"shieldman_old", &"shieldman_young"])
 streams = Dictionary[StringName, AudioStream]({
-&"shieldman_old": ExtResource("14_d3ppc"),
-&"shieldman_young": ExtResource("15_iau8x")
+&"shieldman_old": ExtResource("24_lgj8s"),
+&"shieldman_young": ExtResource("25_e6xxp")
 })
 
-[sub_resource type="Resource" id="Resource_tugne"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_puqar"]
+script = ExtResource("1_l7ywo")
 id = &"move_3"
 unit = &"shieldman"
 trigger = &"move"
 text = "Marchin'. Grumblin'. Same thing."
 voices = Array[StringName]([&"shieldman_old", &"shieldman_young"])
 streams = Dictionary[StringName, AudioStream]({
-&"shieldman_old": ExtResource("16_70cch"),
-&"shieldman_young": ExtResource("17_hpxdf")
+&"shieldman_old": ExtResource("26_g6473"),
+&"shieldman_young": ExtResource("27_i7osj")
 })
 
-[sub_resource type="Resource" id="Resource_3l6li"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_r3via"]
+script = ExtResource("1_l7ywo")
 id = &"move_4"
 unit = &"shieldman"
 trigger = &"move"
 text = "If it's a trap, ah'm blamin' you."
 voices = Array[StringName]([&"shieldman_old", &"shieldman_young"])
 streams = Dictionary[StringName, AudioStream]({
-&"shieldman_old": ExtResource("18_jdf0x"),
-&"shieldman_young": ExtResource("19_kc36w")
+&"shieldman_old": ExtResource("28_prypd"),
+&"shieldman_young": ExtResource("29_esmex")
 })
 
-[sub_resource type="Resource" id="Resource_ppbuy"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_s0qbq"]
+script = ExtResource("1_l7ywo")
 id = &"move_5"
 unit = &"shieldman"
 trigger = &"move"
 text = "Onward! Mind the puddles."
 voices = Array[StringName]([&"shieldman_old", &"shieldman_young"])
 streams = Dictionary[StringName, AudioStream]({
-&"shieldman_old": ExtResource("20_3yun4"),
-&"shieldman_young": ExtResource("21_4nfyn")
+&"shieldman_old": ExtResource("30_i8fco"),
+&"shieldman_young": ExtResource("31_aahjw")
 })
 
-[sub_resource type="Resource" id="Resource_vueds"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_u53jx"]
+script = ExtResource("1_l7ywo")
 id = &"attack_1"
 unit = &"shieldman"
 trigger = &"attack"
 text = "Get intae them!"
 voices = Array[StringName]([&"shieldman_old", &"shieldman_young"])
 streams = Dictionary[StringName, AudioStream]({
-&"shieldman_old": ExtResource("22_5smge"),
-&"shieldman_young": ExtResource("23_ju3c6")
+&"shieldman_old": ExtResource("32_r01qj"),
+&"shieldman_young": ExtResource("33_ap8o6")
 })
 
-[sub_resource type="Resource" id="Resource_xtbxe"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_1epxc"]
+script = ExtResource("1_l7ywo")
 id = &"attack_2"
 unit = &"shieldman"
 trigger = &"attack"
 text = "Gie it laldy, lads!"
 voices = Array[StringName]([&"shieldman_old", &"shieldman_young"])
 streams = Dictionary[StringName, AudioStream]({
-&"shieldman_old": ExtResource("24_vkw5f"),
-&"shieldman_young": ExtResource("25_e6jsi")
+&"shieldman_old": ExtResource("34_mx8xi"),
+&"shieldman_young": ExtResource("35_a53pp")
 })
 
-[sub_resource type="Resource" id="Resource_foemo"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_f26ht"]
+script = ExtResource("1_l7ywo")
 id = &"attack_3"
 unit = &"shieldman"
 trigger = &"attack"
 text = "Time fer a stramash!"
 voices = Array[StringName]([&"shieldman_old", &"shieldman_young"])
 streams = Dictionary[StringName, AudioStream]({
-&"shieldman_old": ExtResource("26_hlst2"),
-&"shieldman_young": ExtResource("27_d54jw")
+&"shieldman_old": ExtResource("36_8l85h"),
+&"shieldman_young": ExtResource("37_pj64q")
 })
 
-[sub_resource type="Resource" id="Resource_y1ahj"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_0isoi"]
+script = ExtResource("1_l7ywo")
 id = &"attack_4"
 unit = &"shieldman"
 trigger = &"attack"
 text = "Ah'll skelp ye intae next week!"
 voices = Array[StringName]([&"shieldman_old", &"shieldman_young"])
 streams = Dictionary[StringName, AudioStream]({
-&"shieldman_old": ExtResource("28_20pnf"),
-&"shieldman_young": ExtResource("29_nvvt2")
+&"shieldman_old": ExtResource("38_a581h"),
+&"shieldman_young": ExtResource("39_xi7ai")
 })
 
-[sub_resource type="Resource" id="Resource_5u46c"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_ino8h"]
+script = ExtResource("1_l7ywo")
 id = &"attack_5"
 unit = &"shieldman"
 trigger = &"attack"
 text = "Charge! Ach, wait, ah'm already chargin'!"
 voices = Array[StringName]([&"shieldman_old", &"shieldman_young"])
 streams = Dictionary[StringName, AudioStream]({
-&"shieldman_old": ExtResource("30_oo54k"),
-&"shieldman_young": ExtResource("31_be446")
+&"shieldman_old": ExtResource("40_qaej1"),
+&"shieldman_young": ExtResource("41_mnhb1")
 })
 
-[sub_resource type="Resource" id="Resource_8ulh2"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_84jkr"]
+script = ExtResource("1_l7ywo")
 id = &"kill_1"
 unit = &"shieldman"
 trigger = &"kill"
 text = "An' STAY doon!"
 voices = Array[StringName]([&"shieldman_old", &"shieldman_young"])
 streams = Dictionary[StringName, AudioStream]({
-&"shieldman_old": ExtResource("32_gny1j"),
-&"shieldman_young": ExtResource("33_onvv3")
+&"shieldman_old": ExtResource("42_e6ta3"),
+&"shieldman_young": ExtResource("43_psk28")
 })
 
-[sub_resource type="Resource" id="Resource_or1ph"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_vpjw1"]
+script = ExtResource("1_l7ywo")
 id = &"kill_2"
 unit = &"shieldman"
 trigger = &"kill"
 text = "Ye were deid already, ye just didnae ken."
 voices = Array[StringName]([&"shieldman_old", &"shieldman_young"])
 streams = Dictionary[StringName, AudioStream]({
-&"shieldman_old": ExtResource("34_lgj8s"),
-&"shieldman_young": ExtResource("35_e6xxp")
+&"shieldman_old": ExtResource("44_3q1jr"),
+&"shieldman_young": ExtResource("45_r6kqn")
 })
 
-[sub_resource type="Resource" id="Resource_wufxo"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_ilp4f"]
+script = ExtResource("1_l7ywo")
 id = &"kill_3"
 unit = &"shieldman"
 trigger = &"kill"
 text = "Is that it? Ah've had fiercer porridge."
 voices = Array[StringName]([&"shieldman_old", &"shieldman_young"])
 streams = Dictionary[StringName, AudioStream]({
-&"shieldman_old": ExtResource("36_g6473"),
-&"shieldman_young": ExtResource("37_i7osj")
+&"shieldman_old": ExtResource("46_gpg1e"),
+&"shieldman_young": ExtResource("47_r1ooj")
 })
 
-[sub_resource type="Resource" id="Resource_p5ltd"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_j4ymo"]
+script = ExtResource("1_l7ywo")
 id = &"kill_4"
 unit = &"shieldman"
 trigger = &"kill"
 text = "That's one fer the sang!"
 voices = Array[StringName]([&"shieldman_old", &"shieldman_young"])
 streams = Dictionary[StringName, AudioStream]({
-&"shieldman_old": ExtResource("38_prypd"),
-&"shieldman_young": ExtResource("39_esmex")
+&"shieldman_old": ExtResource("48_vlacf"),
+&"shieldman_young": ExtResource("49_mdi4e")
 })
 
-[sub_resource type="Resource" id="Resource_7lid5"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_pk6b1"]
+script = ExtResource("1_l7ywo")
 id = &"kill_5"
 unit = &"shieldman"
 trigger = &"kill"
 text = "Next!"
 voices = Array[StringName]([&"shieldman_old", &"shieldman_young"])
 streams = Dictionary[StringName, AudioStream]({
-&"shieldman_old": ExtResource("40_i8fco"),
-&"shieldman_young": ExtResource("41_aahjw")
+&"shieldman_old": ExtResource("50_p0g56"),
+&"shieldman_young": ExtResource("51_e28vl")
 })
 
-[sub_resource type="Resource" id="Resource_sru5b"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_mumjc"]
+script = ExtResource("1_l7ywo")
 id = &"hurt_1"
 unit = &"shieldman"
 trigger = &"hurt"
 text = "It's just a scratch! A big scratch!"
 voices = Array[StringName]([&"shieldman_old", &"shieldman_young"])
 streams = Dictionary[StringName, AudioStream]({
-&"shieldman_old": ExtResource("42_r01qj"),
-&"shieldman_young": ExtResource("43_ap8o6")
+&"shieldman_old": ExtResource("52_3jppk"),
+&"shieldman_young": ExtResource("53_k0s41")
 })
 
-[sub_resource type="Resource" id="Resource_pogd5"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_r5xll"]
+script = ExtResource("1_l7ywo")
 id = &"hurt_2"
 unit = &"shieldman"
 trigger = &"hurt"
 text = "Ah've had worse frae ma granny!"
 voices = Array[StringName]([&"shieldman_old", &"shieldman_young"])
 streams = Dictionary[StringName, AudioStream]({
-&"shieldman_old": ExtResource("44_mx8xi"),
-&"shieldman_young": ExtResource("45_a53pp")
+&"shieldman_old": ExtResource("54_4eod6"),
+&"shieldman_young": ExtResource("55_sd5d3")
 })
 
-[sub_resource type="Resource" id="Resource_8ndxb"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_rxc1j"]
+script = ExtResource("1_l7ywo")
 id = &"hurt_3"
 unit = &"shieldman"
 trigger = &"hurt"
 text = "Warden! Ah need a wee herb!"
 voices = Array[StringName]([&"shieldman_old", &"shieldman_young"])
 streams = Dictionary[StringName, AudioStream]({
-&"shieldman_old": ExtResource("46_8l85h"),
-&"shieldman_young": ExtResource("47_pj64q")
+&"shieldman_old": ExtResource("56_d2mxk"),
+&"shieldman_young": ExtResource("57_dqhc5")
 })
 
-[sub_resource type="Resource" id="Resource_303uj"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_4wmu4"]
+script = ExtResource("1_l7ywo")
 id = &"hurt_4"
 unit = &"shieldman"
 trigger = &"hurt"
 text = "Ah'm fine! Ah'm fine! Ah'm no' fine."
 voices = Array[StringName]([&"shieldman_old", &"shieldman_young"])
 streams = Dictionary[StringName, AudioStream]({
-&"shieldman_old": ExtResource("48_a581h"),
-&"shieldman_young": ExtResource("49_xi7ai")
+&"shieldman_old": ExtResource("58_e0th1"),
+&"shieldman_young": ExtResource("59_hcwlf")
 })
 
-[sub_resource type="Resource" id="Resource_vc65t"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_fuiev"]
+script = ExtResource("1_l7ywo")
 id = &"death_1"
 unit = &"shieldman"
 trigger = &"death"
 text = "Tell ma mither… ah wis braw…"
 voices = Array[StringName]([&"shieldman_old", &"shieldman_young"])
 streams = Dictionary[StringName, AudioStream]({
-&"shieldman_old": ExtResource("50_qaej1"),
-&"shieldman_young": ExtResource("51_mnhb1")
+&"shieldman_old": ExtResource("60_4h81i"),
+&"shieldman_young": ExtResource("61_nka4o")
 })
 
-[sub_resource type="Resource" id="Resource_wpmcp"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_cqxma"]
+script = ExtResource("1_l7ywo")
 id = &"death_2"
 unit = &"shieldman"
 trigger = &"death"
 text = "Avenge me… or don't, ah'm no' fussy…"
 voices = Array[StringName]([&"shieldman_old", &"shieldman_young"])
 streams = Dictionary[StringName, AudioStream]({
-&"shieldman_old": ExtResource("52_e6ta3"),
-&"shieldman_young": ExtResource("53_psk28")
+&"shieldman_old": ExtResource("62_mgmso"),
+&"shieldman_young": ExtResource("63_hvpbu")
 })
 
-[sub_resource type="Resource" id="Resource_i388k"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_eegxk"]
+script = ExtResource("1_l7ywo")
 id = &"death_3"
 unit = &"shieldman"
 trigger = &"death"
 text = "Ach… no' like this…"
 voices = Array[StringName]([&"shieldman_old", &"shieldman_young"])
 streams = Dictionary[StringName, AudioStream]({
-&"shieldman_old": ExtResource("54_3q1jr"),
-&"shieldman_young": ExtResource("55_r6kqn")
+&"shieldman_old": ExtResource("64_kkwi3"),
+&"shieldman_young": ExtResource("65_0jkir")
 })
 
-[sub_resource type="Resource" id="Resource_puqar"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_okair"]
+script = ExtResource("1_l7ywo")
 id = &"annoyed_1"
 unit = &"shieldman"
 trigger = &"annoyed"
 text = "Poke me again an' see whit happens."
 voices = Array[StringName]([&"shieldman_old", &"shieldman_young"])
 streams = Dictionary[StringName, AudioStream]({
-&"shieldman_old": ExtResource("56_gpg1e"),
-&"shieldman_young": ExtResource("57_r1ooj")
+&"shieldman_old": ExtResource("66_h2fe5"),
+&"shieldman_young": ExtResource("67_qn1oi")
 })
 
-[sub_resource type="Resource" id="Resource_r3via"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_6hoye"]
+script = ExtResource("1_l7ywo")
 id = &"annoyed_2"
 unit = &"shieldman"
 trigger = &"annoyed"
 text = "Ah've got a shield, no' a lot o' patience."
 voices = Array[StringName]([&"shieldman_old", &"shieldman_young"])
 streams = Dictionary[StringName, AudioStream]({
-&"shieldman_old": ExtResource("58_vlacf"),
-&"shieldman_young": ExtResource("59_mdi4e")
+&"shieldman_old": ExtResource("68_4y1wk"),
+&"shieldman_young": ExtResource("69_plu4e")
 })
 
-[sub_resource type="Resource" id="Resource_s0qbq"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_kitdp"]
+script = ExtResource("1_l7ywo")
 id = &"annoyed_3"
 unit = &"shieldman"
 trigger = &"annoyed"
 text = "Ye know ah can see ye, aye?"
 voices = Array[StringName]([&"shieldman_old", &"shieldman_young"])
 streams = Dictionary[StringName, AudioStream]({
-&"shieldman_old": ExtResource("60_p0g56")
+&"shieldman_old": ExtResource("70_tib38")
 })
 
-[sub_resource type="Resource" id="Resource_u53jx"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_4275g"]
+script = ExtResource("1_l7ywo")
 id = &"status_burning_1"
 unit = &"shieldman"
 trigger = &"status_burning"
 text = "Whit's that smell? Ach, it's me, ah'm on fire!"
 voices = Array[StringName]([&"shieldman_old", &"shieldman_young"])
 streams = Dictionary[StringName, AudioStream]({
-&"shieldman_old": ExtResource("61_e28vl"),
-&"shieldman_young": ExtResource("62_3jppk")
+&"shieldman_old": ExtResource("71_0pykg"),
+&"shieldman_young": ExtResource("72_b7tc7")
 })
 
-[sub_resource type="Resource" id="Resource_1epxc"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_6puby"]
+script = ExtResource("1_l7ywo")
 id = &"status_paralyzed_1"
 unit = &"shieldman"
 trigger = &"status_paralyzed"
 text = "Cannae… move… ma… legs…"
 voices = Array[StringName]([&"shieldman_old", &"shieldman_young"])
 streams = Dictionary[StringName, AudioStream]({
-&"shieldman_old": ExtResource("63_k0s41"),
-&"shieldman_young": ExtResource("64_4eod6")
+&"shieldman_old": ExtResource("73_m4iv5"),
+&"shieldman_young": ExtResource("74_l8jxc")
 })
 
-[sub_resource type="Resource" id="Resource_f26ht"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_tyu2t"]
+script = ExtResource("1_l7ywo")
 id = &"status_confused_1"
 unit = &"shieldman"
 trigger = &"status_confused"
 text = "Which side am ah on again?"
 voices = Array[StringName]([&"shieldman_old", &"shieldman_young"])
 streams = Dictionary[StringName, AudioStream]({
-&"shieldman_old": ExtResource("65_sd5d3"),
-&"shieldman_young": ExtResource("66_d2mxk")
+&"shieldman_old": ExtResource("75_a2wws"),
+&"shieldman_young": ExtResource("76_eoj50")
 })
 
-[sub_resource type="Resource" id="Resource_0isoi"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_pe1f7"]
+script = ExtResource("1_l7ywo")
 id = &"formation_rabble_1"
 unit = &"shieldman"
 trigger = &"formation_rabble"
 text = "Rabble? Finally, somethin' we're good at."
 voices = Array[StringName]([&"shieldman_old", &"shieldman_young"])
 streams = Dictionary[StringName, AudioStream]({
-&"shieldman_old": ExtResource("67_dqhc5"),
-&"shieldman_young": ExtResource("68_e0th1")
+&"shieldman_old": ExtResource("77_724sy"),
+&"shieldman_young": ExtResource("78_wffgx")
 })
 
-[sub_resource type="Resource" id="Resource_ino8h"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_ms7i0"]
+script = ExtResource("1_l7ywo")
 id = &"formation_wedge_1"
 unit = &"shieldman"
 trigger = &"formation_wedge"
 text = "Pointy end first!"
 voices = Array[StringName]([&"shieldman_old", &"shieldman_young"])
 streams = Dictionary[StringName, AudioStream]({
-&"shieldman_old": ExtResource("69_hcwlf"),
-&"shieldman_young": ExtResource("70_4h81i")
+&"shieldman_old": ExtResource("79_trrip"),
+&"shieldman_young": ExtResource("80_q36ow")
 })
 
-[sub_resource type="Resource" id="Resource_84jkr"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_asysm"]
+script = ExtResource("1_l7ywo")
 id = &"victory_1"
 unit = &"shieldman"
 trigger = &"victory"
 text = "That's them sorted. Who's fer a dram?"
 voices = Array[StringName]([&"shieldman_old", &"shieldman_young"])
 streams = Dictionary[StringName, AudioStream]({
-&"shieldman_old": ExtResource("71_nka4o")
+&"shieldman_old": ExtResource("81_daeyy")
 })
 
-[sub_resource type="Resource" id="Resource_vpjw1"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_46fcq"]
+script = ExtResource("1_l7ywo")
 id = &"victory_2"
 unit = &"shieldman"
 trigger = &"victory"
 text = "We won! Ah think. Did we win?"
 voices = Array[StringName]([&"shieldman_old", &"shieldman_young"])
 streams = Dictionary[StringName, AudioStream]({
-&"shieldman_old": ExtResource("72_mgmso"),
-&"shieldman_young": ExtResource("73_hvpbu")
+&"shieldman_old": ExtResource("82_lq0gb"),
+&"shieldman_young": ExtResource("83_vige8")
 })
 
-[sub_resource type="Resource" id="Resource_ilp4f"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_4xmvq"]
+script = ExtResource("1_l7ywo")
 id = &"select_1"
 unit = &"warden"
 trigger = &"select"
 text = "Aye, whit's wrang wi' ye now?"
 voices = Array[StringName]([&"warden"])
 
-[sub_resource type="Resource" id="Resource_j4ymo"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_tv2pv"]
+script = ExtResource("1_l7ywo")
 id = &"select_2"
 unit = &"warden"
 trigger = &"select"
 text = "Ah've herbs fer whit ails ye, an' a stick fer whit doesnae."
 voices = Array[StringName]([&"warden"])
 
-[sub_resource type="Resource" id="Resource_pk6b1"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_e024p"]
+script = ExtResource("1_l7ywo")
 id = &"select_3"
 unit = &"warden"
 trigger = &"select"
 text = "Show me where it hurts."
 voices = Array[StringName]([&"warden"])
 
-[sub_resource type="Resource" id="Resource_mumjc"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_fvjqk"]
+script = ExtResource("1_l7ywo")
 id = &"move_1"
 unit = &"warden"
 trigger = &"move"
 text = "Ah'm comin', ah'm comin'. Ma knees arenae."
 voices = Array[StringName]([&"warden"])
 
-[sub_resource type="Resource" id="Resource_r5xll"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_3d28q"]
+script = ExtResource("1_l7ywo")
 id = &"move_2"
 unit = &"warden"
 trigger = &"move"
 text = "Walk, don't run. Ye'll only fall an' need me."
 voices = Array[StringName]([&"warden"])
 
-[sub_resource type="Resource" id="Resource_rxc1j"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_ysi7s"]
+script = ExtResource("1_l7ywo")
 id = &"move_3"
 unit = &"warden"
 trigger = &"move"
 text = "Right. Somebody'll need patchin' up by the time ah get there."
 voices = Array[StringName]([&"warden"])
 
-[sub_resource type="Resource" id="Resource_4wmu4"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_itqua"]
+script = ExtResource("1_l7ywo")
 id = &"attack_1"
 unit = &"warden"
 trigger = &"attack"
 text = "Ah'll gie ye somethin' tae greet aboot!"
 voices = Array[StringName]([&"warden"])
 
-[sub_resource type="Resource" id="Resource_fuiev"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_3yi1w"]
+script = ExtResource("1_l7ywo")
 id = &"attack_2"
 unit = &"warden"
 trigger = &"attack"
 text = "Oot ma road, ya muckle lump!"
 voices = Array[StringName]([&"warden"])
 
-[sub_resource type="Resource" id="Resource_cqxma"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_1lynw"]
+script = ExtResource("1_l7ywo")
 id = &"attack_3"
 unit = &"warden"
 trigger = &"attack"
 text = "Ah've skelped bigger than you fer less."
 voices = Array[StringName]([&"warden"])
 
-[sub_resource type="Resource" id="Resource_eegxk"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_gttu0"]
+script = ExtResource("1_l7ywo")
 id = &"kill_1"
 unit = &"warden"
 trigger = &"kill"
 text = "An' that's whit ye get."
 voices = Array[StringName]([&"warden"])
 
-[sub_resource type="Resource" id="Resource_okair"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_fyjrg"]
+script = ExtResource("1_l7ywo")
 id = &"kill_2"
 unit = &"warden"
 trigger = &"kill"
 text = "Lie doon, ye're no' well."
 voices = Array[StringName]([&"warden"])
 
-[sub_resource type="Resource" id="Resource_6hoye"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_hyrgh"]
+script = ExtResource("1_l7ywo")
 id = &"kill_3"
 unit = &"warden"
 trigger = &"kill"
 text = "There. Somebody had tae."
 voices = Array[StringName]([&"warden"])
 
-[sub_resource type="Resource" id="Resource_kitdp"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_8m5o3"]
+script = ExtResource("1_l7ywo")
 id = &"hurt_1"
 unit = &"warden"
 trigger = &"hurt"
 text = "Ah'll see tae masel', thank ye very much."
 voices = Array[StringName]([&"warden"])
 
-[sub_resource type="Resource" id="Resource_4275g"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_wkyjb"]
+script = ExtResource("1_l7ywo")
 id = &"hurt_2"
 unit = &"warden"
 trigger = &"hurt"
 text = "Who did that? Ah'll remember yer face."
 voices = Array[StringName]([&"warden"])
 
-[sub_resource type="Resource" id="Resource_6puby"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_2g7co"]
+script = ExtResource("1_l7ywo")
 id = &"death_1"
 unit = &"warden"
 trigger = &"death"
 text = "Ah've nae herb... fer this one..."
 voices = Array[StringName]([&"warden"])
 
-[sub_resource type="Resource" id="Resource_tyu2t"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_07tx0"]
+script = ExtResource("1_l7ywo")
 id = &"death_2"
 unit = &"warden"
 trigger = &"death"
 text = "Mind... ye eat yer greens..."
 voices = Array[StringName]([&"warden"])
 
-[sub_resource type="Resource" id="Resource_pe1f7"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_xioxi"]
+script = ExtResource("1_l7ywo")
 id = &"annoyed_1"
 unit = &"warden"
 trigger = &"annoyed"
 text = "Haud yer horses! Ah've only got the two hands!"
 voices = Array[StringName]([&"warden"])
 
-[sub_resource type="Resource" id="Resource_ms7i0"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_lua5w"]
+script = ExtResource("1_l7ywo")
 id = &"annoyed_2"
 unit = &"warden"
 trigger = &"annoyed"
 text = "Keep that up an' ye'll get a dose o' somethin' bitter."
 voices = Array[StringName]([&"warden"])
 
-[sub_resource type="Resource" id="Resource_asysm"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_rhp08"]
+script = ExtResource("1_l7ywo")
 id = &"special_1"
 unit = &"warden"
 trigger = &"special"
 text = "Haud still, ya big wean, it's only a herb."
 voices = Array[StringName]([&"warden"])
 
-[sub_resource type="Resource" id="Resource_46fcq"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_sigby"]
+script = ExtResource("1_l7ywo")
 id = &"special_2"
 unit = &"warden"
 trigger = &"special"
 text = "Ah didnae pick herbs all mornin' fer ye tae get stabbed again."
 voices = Array[StringName]([&"warden"])
 
-[sub_resource type="Resource" id="Resource_4xmvq"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_ncs33"]
+script = ExtResource("1_l7ywo")
 id = &"special_3"
 unit = &"warden"
 trigger = &"special"
 text = "Chew this. Don't make that face."
 voices = Array[StringName]([&"warden"])
 
-[sub_resource type="Resource" id="Resource_tv2pv"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_wlls7"]
+script = ExtResource("1_l7ywo")
 id = &"heal_undead_1"
 unit = &"warden"
 trigger = &"heal_undead"
 text = "Here's a tonic fer ye. Ye'll no' like it."
 voices = Array[StringName]([&"warden"])
 
-[sub_resource type="Resource" id="Resource_e024p"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_1wudx"]
+script = ExtResource("1_l7ywo")
 id = &"heal_undead_2"
 unit = &"warden"
 trigger = &"heal_undead"
 text = "Get this doon ye. It'll sort ye oot. Fer good."
 voices = Array[StringName]([&"warden"])
 
-[sub_resource type="Resource" id="Resource_fvjqk"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_17hqa"]
+script = ExtResource("1_l7ywo")
 id = &"status_confused_1"
 unit = &"warden"
 trigger = &"status_confused"
 text = "Who moved ma herbs? Who moved... me?"
 voices = Array[StringName]([&"warden"])
 
-[sub_resource type="Resource" id="Resource_3d28q"]
-script = ExtResource("1_ajwhi")
+[sub_resource type="Resource" id="Resource_f0fyv"]
+script = ExtResource("1_l7ywo")
 id = &"victory_1"
 unit = &"warden"
 trigger = &"victory"
@@ -1342,6 +1372,6 @@ text = "Right. Line up, the lot o' ye. Ah'm checkin' every scratch."
 voices = Array[StringName]([&"warden"])
 
 [resource]
-script = ExtResource("74_kkwi3")
-lines = Array[ExtResource("1_ajwhi")]([SubResource("Resource_0jkir"), SubResource("Resource_h2fe5"), SubResource("Resource_qn1oi"), SubResource("Resource_4y1wk"), SubResource("Resource_plu4e"), SubResource("Resource_tib38"), SubResource("Resource_0pykg"), SubResource("Resource_b7tc7"), SubResource("Resource_m4iv5"), SubResource("Resource_l8jxc"), SubResource("Resource_a2wws"), SubResource("Resource_eoj50"), SubResource("Resource_724sy"), SubResource("Resource_wffgx"), SubResource("Resource_trrip"), SubResource("Resource_q36ow"), SubResource("Resource_daeyy"), SubResource("Resource_lq0gb"), SubResource("Resource_vige8"), SubResource("Resource_xyt68"), SubResource("Resource_1l160"), SubResource("Resource_f3h4u"), SubResource("Resource_ogoqg"), SubResource("Resource_cnr14"), SubResource("Resource_6lpk8"), SubResource("Resource_rt0bb"), SubResource("Resource_1npln"), SubResource("Resource_57euo"), SubResource("Resource_ytsg7"), SubResource("Resource_q5wow"), SubResource("Resource_wp4ju"), SubResource("Resource_rvuyn"), SubResource("Resource_wy0jv"), SubResource("Resource_qg8ye"), SubResource("Resource_3spj5"), SubResource("Resource_pma03"), SubResource("Resource_hmkly"), SubResource("Resource_clf5d"), SubResource("Resource_l877a"), SubResource("Resource_gxn6t"), SubResource("Resource_5o1k8"), SubResource("Resource_s4q8u"), SubResource("Resource_jf5u3"), SubResource("Resource_d0l0h"), SubResource("Resource_olrpr"), SubResource("Resource_84nrf"), SubResource("Resource_w770o"), SubResource("Resource_u8axy"), SubResource("Resource_q0hlc"), SubResource("Resource_tt0fb"), SubResource("Resource_amc6e"), SubResource("Resource_11l86"), SubResource("Resource_smueb"), SubResource("Resource_gr22o"), SubResource("Resource_6qduh"), SubResource("Resource_bv8ls"), SubResource("Resource_d1cuf"), SubResource("Resource_m6x0q"), SubResource("Resource_cecte"), SubResource("Resource_a8kd1"), SubResource("Resource_d2r1g"), SubResource("Resource_0qel0"), SubResource("Resource_rttlt"), SubResource("Resource_ku5b5"), SubResource("Resource_w2087"), SubResource("Resource_fxnfu"), SubResource("Resource_j8uky"), SubResource("Resource_4158e"), SubResource("Resource_xwyau"), SubResource("Resource_r7haa"), SubResource("Resource_5ar78"), SubResource("Resource_tadg5"), SubResource("Resource_4fnuv"), SubResource("Resource_myyjy"), SubResource("Resource_aixfr"), SubResource("Resource_iq0au"), SubResource("Resource_8v2ae"), SubResource("Resource_75ifq"), SubResource("Resource_ox7qn"), SubResource("Resource_0bg0e"), SubResource("Resource_70wrp"), SubResource("Resource_n730r"), SubResource("Resource_wj6ia"), SubResource("Resource_0cv3f"), SubResource("Resource_bk637"), SubResource("Resource_tugne"), SubResource("Resource_3l6li"), SubResource("Resource_ppbuy"), SubResource("Resource_vueds"), SubResource("Resource_xtbxe"), SubResource("Resource_foemo"), SubResource("Resource_y1ahj"), SubResource("Resource_5u46c"), SubResource("Resource_8ulh2"), SubResource("Resource_or1ph"), SubResource("Resource_wufxo"), SubResource("Resource_p5ltd"), SubResource("Resource_7lid5"), SubResource("Resource_sru5b"), SubResource("Resource_pogd5"), SubResource("Resource_8ndxb"), SubResource("Resource_303uj"), SubResource("Resource_vc65t"), SubResource("Resource_wpmcp"), SubResource("Resource_i388k"), SubResource("Resource_puqar"), SubResource("Resource_r3via"), SubResource("Resource_s0qbq"), SubResource("Resource_u53jx"), SubResource("Resource_1epxc"), SubResource("Resource_f26ht"), SubResource("Resource_0isoi"), SubResource("Resource_ino8h"), SubResource("Resource_84jkr"), SubResource("Resource_vpjw1"), SubResource("Resource_ilp4f"), SubResource("Resource_j4ymo"), SubResource("Resource_pk6b1"), SubResource("Resource_mumjc"), SubResource("Resource_r5xll"), SubResource("Resource_rxc1j"), SubResource("Resource_4wmu4"), SubResource("Resource_fuiev"), SubResource("Resource_cqxma"), SubResource("Resource_eegxk"), SubResource("Resource_okair"), SubResource("Resource_6hoye"), SubResource("Resource_kitdp"), SubResource("Resource_4275g"), SubResource("Resource_6puby"), SubResource("Resource_tyu2t"), SubResource("Resource_pe1f7"), SubResource("Resource_ms7i0"), SubResource("Resource_asysm"), SubResource("Resource_46fcq"), SubResource("Resource_4xmvq"), SubResource("Resource_tv2pv"), SubResource("Resource_e024p"), SubResource("Resource_fvjqk"), SubResource("Resource_3d28q")])
-voiced_bytes = 1792952
+script = ExtResource("84_xyt68")
+lines = Array[ExtResource("1_l7ywo")]([SubResource("Resource_1l160"), SubResource("Resource_f3h4u"), SubResource("Resource_ogoqg"), SubResource("Resource_cnr14"), SubResource("Resource_6lpk8"), SubResource("Resource_rt0bb"), SubResource("Resource_1npln"), SubResource("Resource_57euo"), SubResource("Resource_ytsg7"), SubResource("Resource_q5wow"), SubResource("Resource_wp4ju"), SubResource("Resource_rvuyn"), SubResource("Resource_wy0jv"), SubResource("Resource_qg8ye"), SubResource("Resource_3spj5"), SubResource("Resource_pma03"), SubResource("Resource_hmkly"), SubResource("Resource_clf5d"), SubResource("Resource_l877a"), SubResource("Resource_gxn6t"), SubResource("Resource_5o1k8"), SubResource("Resource_s4q8u"), SubResource("Resource_jf5u3"), SubResource("Resource_d0l0h"), SubResource("Resource_olrpr"), SubResource("Resource_84nrf"), SubResource("Resource_w770o"), SubResource("Resource_u8axy"), SubResource("Resource_q0hlc"), SubResource("Resource_tt0fb"), SubResource("Resource_amc6e"), SubResource("Resource_11l86"), SubResource("Resource_smueb"), SubResource("Resource_gr22o"), SubResource("Resource_6qduh"), SubResource("Resource_bv8ls"), SubResource("Resource_d1cuf"), SubResource("Resource_m6x0q"), SubResource("Resource_cecte"), SubResource("Resource_a8kd1"), SubResource("Resource_d2r1g"), SubResource("Resource_0qel0"), SubResource("Resource_rttlt"), SubResource("Resource_ku5b5"), SubResource("Resource_w2087"), SubResource("Resource_fxnfu"), SubResource("Resource_j8uky"), SubResource("Resource_4158e"), SubResource("Resource_xwyau"), SubResource("Resource_r7haa"), SubResource("Resource_5ar78"), SubResource("Resource_tadg5"), SubResource("Resource_4fnuv"), SubResource("Resource_myyjy"), SubResource("Resource_aixfr"), SubResource("Resource_iq0au"), SubResource("Resource_8v2ae"), SubResource("Resource_75ifq"), SubResource("Resource_ox7qn"), SubResource("Resource_0bg0e"), SubResource("Resource_70wrp"), SubResource("Resource_n730r"), SubResource("Resource_wj6ia"), SubResource("Resource_0cv3f"), SubResource("Resource_bk637"), SubResource("Resource_tugne"), SubResource("Resource_3l6li"), SubResource("Resource_ppbuy"), SubResource("Resource_vueds"), SubResource("Resource_xtbxe"), SubResource("Resource_foemo"), SubResource("Resource_y1ahj"), SubResource("Resource_5u46c"), SubResource("Resource_8ulh2"), SubResource("Resource_or1ph"), SubResource("Resource_wufxo"), SubResource("Resource_p5ltd"), SubResource("Resource_7lid5"), SubResource("Resource_sru5b"), SubResource("Resource_pogd5"), SubResource("Resource_8ndxb"), SubResource("Resource_303uj"), SubResource("Resource_vc65t"), SubResource("Resource_wpmcp"), SubResource("Resource_i388k"), SubResource("Resource_puqar"), SubResource("Resource_r3via"), SubResource("Resource_s0qbq"), SubResource("Resource_u53jx"), SubResource("Resource_1epxc"), SubResource("Resource_f26ht"), SubResource("Resource_0isoi"), SubResource("Resource_ino8h"), SubResource("Resource_84jkr"), SubResource("Resource_vpjw1"), SubResource("Resource_ilp4f"), SubResource("Resource_j4ymo"), SubResource("Resource_pk6b1"), SubResource("Resource_mumjc"), SubResource("Resource_r5xll"), SubResource("Resource_rxc1j"), SubResource("Resource_4wmu4"), SubResource("Resource_fuiev"), SubResource("Resource_cqxma"), SubResource("Resource_eegxk"), SubResource("Resource_okair"), SubResource("Resource_6hoye"), SubResource("Resource_kitdp"), SubResource("Resource_4275g"), SubResource("Resource_6puby"), SubResource("Resource_tyu2t"), SubResource("Resource_pe1f7"), SubResource("Resource_ms7i0"), SubResource("Resource_asysm"), SubResource("Resource_46fcq"), SubResource("Resource_4xmvq"), SubResource("Resource_tv2pv"), SubResource("Resource_e024p"), SubResource("Resource_fvjqk"), SubResource("Resource_3d28q"), SubResource("Resource_ysi7s"), SubResource("Resource_itqua"), SubResource("Resource_3yi1w"), SubResource("Resource_1lynw"), SubResource("Resource_gttu0"), SubResource("Resource_fyjrg"), SubResource("Resource_hyrgh"), SubResource("Resource_8m5o3"), SubResource("Resource_wkyjb"), SubResource("Resource_2g7co"), SubResource("Resource_07tx0"), SubResource("Resource_xioxi"), SubResource("Resource_lua5w"), SubResource("Resource_rhp08"), SubResource("Resource_sigby"), SubResource("Resource_ncs33"), SubResource("Resource_wlls7"), SubResource("Resource_1wudx"), SubResource("Resource_17hqa"), SubResource("Resource_f0fyv")])
+voiced_bytes = 1444198

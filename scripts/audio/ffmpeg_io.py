@@ -144,6 +144,16 @@ def write_ogg(frames: array, rate: int, channels: int, path: Path, quality: int 
         raise
 
 
+def tempo(frames: array, rate: int, channels: int, factor: float) -> array:
+    """The frames played `factor` times as fast at the same pitch (ffmpeg `atempo`). A factor of 1 returns them as they are."""
+    if factor == 1.0 or not frames:
+        return array("h", frames)
+    source = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-f", "s16le", "-ar", str(rate), "-ac", str(channels), "-i", "-"]
+    done = _run([*source, "-af", f"atempo={factor}", "-f", "s16le", "-acodec", "pcm_s16le", "-ar", str(rate), "-ac", str(channels), "-"],
+                _to_bytes(frames))
+    return _to_array(done.stdout)
+
+
 def loudness_normalise(frames: array, rate: int, channels: int, lufs: float) -> array:
     """Two-pass ffmpeg `loudnorm` to an integrated loudness of `lufs`, with a -1.5 dB true-peak ceiling. Silence is returned as it is."""
     if not any(frames):

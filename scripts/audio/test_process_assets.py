@@ -850,3 +850,20 @@ class BatchTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+@unittest.skipUnless(HAS_TOOLS, "ffmpeg and oggenc needed")
+class BarkTempoTest(unittest.TestCase):
+    # Tim (2026-11-18): every voice line at 1.5 times the speed, including the lines already picked.
+    def test_a_bark_plays_at_one_and_a_half_times_the_speed_and_a_one_shot_does_not(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "1.wav"
+            ffmpeg_io.write_wav(tone(1.8, lead_s=0.0), 32000, 1, path)
+            for kind, expect in (("bark", 1.2), ("oneshot", 1.8)):
+                frames, rate, channels = assets.render_take(path, kind)
+                self.assertAlmostEqual(len(frames) / rate / channels, expect, delta=0.08, msg=kind)
+
+    def test_the_tempo_is_part_of_what_makes_a_finished_file(self) -> None:
+        before = assets.constants_hash()
+        with mock.patch.object(assets, "BARK_TEMPO", 1.0):
+            self.assertNotEqual(assets.constants_hash(), before)
