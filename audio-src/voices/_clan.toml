@@ -2,20 +2,20 @@ unit = "_clan"
 
 [line.clan_1]
 text = "Crivens!"
-picks = {}
+picks = { shieldman_old = 3, shieldman_young = 2 }
 
 [line.clan_2]
 text = "Michty me!"
-picks = {}
+picks = { shieldman_old = 2, shieldman_young = 2 }
 
 [line.clan_3]
 text = "Haud yer wheesht!"
-picks = {}
+picks = { shieldman_old = 1, shieldman_young = 3 }
 
 [line.clan_4]
 text = "Och, that's pure mince."
-picks = {}
+picks = { shieldman_old = 2, shieldman_young = 2 }
 
 [line.clan_5]
 text = "Mind yer feet!"
-picks = {}
+picks = { shieldman_old = 3, shieldman_young = 3 }
