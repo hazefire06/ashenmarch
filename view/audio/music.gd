@@ -30,6 +30,8 @@ var _in_combat: bool = false
 var _held_s: float = 0.0
 ## The combat layer's level, 0..1; calm is 1 minus it.
 var _combat_level: float = 0.0
+## Set by MainView: while paused the crossfade holds (the players keep sounding, the mix stops moving).
+var paused: bool = false
 
 
 func setup(world: World, pair: MusicPair, bank: SoundBank = SoundBank.shared()) -> void:
@@ -91,7 +93,7 @@ func advance(seconds: float) -> void:
 
 
 func _process(delta: float) -> void:
-	if _world != null:
+	if _world != null and not paused:
 		advance(delta)
 
 

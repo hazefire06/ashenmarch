@@ -154,3 +154,26 @@ func test_with_no_music_in_the_bank_both_layers_stay_silent_and_warn_once() -> v
 	assert_false(music._combat.playing)
 	assert_true(empty.warned().has(&"music_riverside_calm"))
 	assert_true(empty.warned().has(&"music_riverside_combat"))
+
+
+func test_a_paused_crossfade_holds_and_resumes() -> void:
+	# Pause (P / menu / focus loss) stops the sim stepping but not this node's _process; it must hold the mix.
+	var world: World = _world()
+	var music: Music = _music(world)
+	_fight(world, 4)
+	music.after_step()
+	music.advance(4.0)
+	var held: Vector2 = music.levels()
+	assert_almost_eq(held, Vector2(0, 1), Vector2(0.01, 0.01), "in combat")
+	music.paused = true
+	for unit: Unit in world.units:
+		unit.state = Unit.State.IDLE
+	music.after_step()
+	for i: int in 200:
+		music._process(0.1)
+	assert_eq(music.levels(), held, "the mix is frozen while paused")
+	music.paused = false
+	# Resumed: 10 s with the fighting gone flips it out, then a 6 s fade back to calm.
+	for i: int in 170:
+		music._process(0.1)
+	assert_almost_eq(music.levels(), Vector2(1, 0), Vector2(0.01, 0.01), "and moves again once unpaused")

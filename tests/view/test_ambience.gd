@@ -231,3 +231,24 @@ func test_a_loop_with_no_stream_stays_silent() -> void:
 	for id: StringName in beds._players:
 		assert_false(beds._players[id].playing, str(id))
 	assert_true(empty.warned().has(&"bed_outdoor"), "the bank warned")
+
+
+func test_a_paused_bed_holds_its_level() -> void:
+	var world: World = _world()
+	var beds: Ambience = _ambience(world, Vector3(50, 0, 50))
+	world.weather.rain = 1000
+	beds.after_step()
+	for i: int in 20:
+		beds._process(0.1)
+	var rose: float = beds._levels[&"bed_rain"]
+	assert_gt(rose, 0.3, "rain bed has risen")
+	beds.paused = true
+	world.weather.rain = 0
+	beds.after_step()
+	for i: int in 100:
+		beds._process(0.1)
+	assert_eq(beds._levels[&"bed_rain"], rose, "held while paused")
+	assert_true(beds._players[&"bed_rain"].playing, "and still sounding")
+	beds.paused = false
+	beds._process(0.1)
+	assert_lt(beds._levels[&"bed_rain"], rose, "and eases again once unpaused")

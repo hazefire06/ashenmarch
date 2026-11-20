@@ -819,6 +819,15 @@ func _apply_pause() -> void:
 	_control_bar.set_paused(still or _replay_player != null)
 	_units_view.frozen = still
 	_projectiles_view.frozen = still
+	# The sim stops stepping while paused, but these nodes keep their own _process, so hold them too: the
+	# loops and voices keep sounding, but the music crossfade, the beds and the bark cooldowns don't drift
+	# behind a frozen battle. A won/lost mission (_frozen) keeps easing, as it did before.
+	if _music != null:
+		_music.paused = paused
+	if _ambience != null:
+		_ambience.paused = paused
+	if _barks != null:
+		_barks.paused = paused
 	_pause_menu.show_paused_label(paused)
 
 

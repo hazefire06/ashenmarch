@@ -39,6 +39,8 @@ var _viewer: UnitType.Faction = UnitType.Faction.LIGHT
 var _players: Dictionary[StringName, AudioStreamPlayer] = {}
 var _levels: Dictionary[StringName, float] = {}
 var _targets: Dictionary[StringName, float] = {}
+## Set by MainView: while paused the levels hold (loops keep sounding, easing stops).
+var paused: bool = false
 
 
 func setup(world: World, camera: RtsCamera, bank: SoundBank = SoundBank.shared()) -> void:
@@ -80,7 +82,7 @@ func targets() -> Dictionary[StringName, float]:
 
 
 func _process(delta: float) -> void:
-	if _world == null:
+	if _world == null or paused:
 		return
 	var bed_blend: float = 1.0 - exp(-EASE_RATE * delta)
 	var march_blend: float = 1.0 - exp(-MARCH_EASE_RATE * delta)

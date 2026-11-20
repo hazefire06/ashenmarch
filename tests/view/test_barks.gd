@@ -479,3 +479,16 @@ func test_a_healed_undead_makes_the_healer_speak() -> void:
 	_step(main, [CombatEvent.new(CombatEvent.Kind.HEAL, light[0], dark[0])])
 	assert_eq(main._barks.last_bark()["trigger"], &"heal_undead")
 	assert_eq(main._barks.last_bark()["unit_id"], light[0])
+
+
+func test_a_paused_clock_does_not_advance() -> void:
+	# While paused the battle is frozen; bark cooldowns must not expire behind it.
+	var barks: Barks = Barks.new()
+	add_child_autofree(barks)
+	barks.now = 5.0
+	barks.paused = true
+	barks._process(1.0)
+	assert_eq(barks.now, 5.0, "frozen while paused")
+	barks.paused = false
+	barks._process(1.0)
+	assert_almost_eq(barks.now, 6.0, 0.0001, "runs again once unpaused")

@@ -23,6 +23,8 @@ const PRUNE_STEPS: int = 300
 var enabled: bool = true
 ## View seconds. `_process` adds the frame's delta; tests set it.
 var now: float = 0.0
+## Set by MainView: while paused the clock holds, so cooldowns don't expire behind a frozen battle.
+var paused: bool = false
 var rules: BarkRules = BarkRules.new()
 var book: BarkBook = null
 var map: SoundMap = null
@@ -68,6 +70,8 @@ func setup(
 
 
 func _process(delta: float) -> void:
+	if paused:
+		return
 	now += delta
 
 
