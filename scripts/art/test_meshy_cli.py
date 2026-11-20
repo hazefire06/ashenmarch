@@ -24,6 +24,10 @@ from unit_spec import AnimEntry, load_prop_spec, load_spec, load_style
 ART_SRC = Path(__file__).resolve().parent.parent.parent / "art-src"
 
 
+DUPLICATE_RECORDS = (b'{"tasks": [{"kind": "prop", "label": "x", "status": "FAILED"}, '
+                     b'{"kind": "prop", "label": "x", "status": "DONE"}]}')
+
+
 class FakeClient:
     """Stands in for MeshyClient. Every finished task carries signed-looking URLs."""
 
@@ -1199,7 +1203,8 @@ class MainTest(unittest.TestCase):
                 self.assertIsNone(meshy._unsafe_work_dir(root / "props" / "newprop"))
 
     def test_a_corrupt_manifest_is_one_line_and_exit_2_through_main(self) -> None:
-        for data in (b'{"tasks": [ SECRETLOOKING', b"\xff\xfe\x00", b"[]", b'{"tasks": 3}', b"[" * 200000, NESTED_RECORD):
+        for data in (b'{"tasks": [ SECRETLOOKING', b"\xff\xfe\x00", b"[]", b'{"tasks": 3}', b"[" * 200000, NESTED_RECORD,
+                     DUPLICATE_RECORDS):  # M2: a duplicate (kind, label) after a merge is refused the same way
             for argv in (["prop-plan", "broadsword"], ["prop-candidates", "broadsword", "--max-credits", "10"]):
                 with self.subTest(data=data[:12], command=argv[0]), tempfile.TemporaryDirectory() as tmp:
                     root = Path(tmp) / "art-src"

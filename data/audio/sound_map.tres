@@ -1,0 +1,208 @@
+[gd_resource type="Resource" script_class="SoundMap" format=3]
+
+[ext_resource type="Script" path="res://view/audio/sound_map.gd" id="1_map"]
+[ext_resource type="Script" path="res://view/audio/unit_sound.gd" id="2_unit"]
+[ext_resource type="Script" path="res://view/audio/projectile_sound.gd" id="3_proj"]
+[ext_resource type="Script" path="res://view/audio/music_pair.gd" id="4_music"]
+
+[sub_resource type="Resource" id="Resource_u0"]
+script = ExtResource("2_unit")
+type_id = &"shieldman"
+weapon = &"blade"
+body = &"flesh"
+death = &"death_shieldman"
+groan = &""
+voices = Array[StringName]([&"shieldman_old", &"shieldman_young"])
+
+[sub_resource type="Resource" id="Resource_u1"]
+script = ExtResource("2_unit")
+type_id = &"reaver"
+weapon = &"heavy"
+body = &"flesh"
+death = &"death_reaver"
+groan = &""
+voices = Array[StringName]([&"reaver"])
+
+[sub_resource type="Resource" id="Resource_u2"]
+script = ExtResource("2_unit")
+type_id = &"longbow"
+weapon = &"blade"
+body = &"flesh"
+death = &"death_longbow"
+groan = &""
+voices = Array[StringName]([&"longbow"])
+
+[sub_resource type="Resource" id="Resource_u3"]
+script = ExtResource("2_unit")
+type_id = &"sapper"
+weapon = &"heavy"
+body = &"flesh"
+death = &"death_sapper"
+groan = &""
+voices = Array[StringName]([&"sapper"])
+
+[sub_resource type="Resource" id="Resource_u4"]
+script = ExtResource("2_unit")
+type_id = &"warden"
+weapon = &"staff"
+body = &"flesh"
+death = &"death_warden"
+groan = &""
+voices = Array[StringName]([&"warden"])
+
+[sub_resource type="Resource" id="Resource_u5"]
+script = ExtResource("2_unit")
+type_id = &"villager"
+weapon = &"staff"
+body = &"flesh"
+death = &"death_villager"
+groan = &""
+voices = Array[StringName]([])
+
+[sub_resource type="Resource" id="Resource_u6"]
+script = ExtResource("2_unit")
+type_id = &"husk"
+weapon = &"claw"
+body = &"flesh"
+death = &"death_husk"
+groan = &"groan_husk"
+voices = Array[StringName]([])
+
+[sub_resource type="Resource" id="Resource_u7"]
+script = ExtResource("2_unit")
+type_id = &"ripper"
+weapon = &"claw"
+body = &"flesh"
+death = &"death_ripper"
+groan = &"groan_ripper"
+voices = Array[StringName]([])
+
+[sub_resource type="Resource" id="Resource_u8"]
+script = ExtResource("2_unit")
+type_id = &"blightbag"
+weapon = &"stomp"
+body = &"flesh"
+death = &"death_blightbag"
+groan = &"groan_blightbag"
+voices = Array[StringName]([])
+
+[sub_resource type="Resource" id="Resource_u9"]
+script = ExtResource("2_unit")
+type_id = &"drifter"
+weapon = &"claw"
+body = &"flesh"
+death = &"death_drifter"
+groan = &"groan_drifter"
+voices = Array[StringName]([])
+
+[sub_resource type="Resource" id="Resource_u10"]
+script = ExtResource("2_unit")
+type_id = &"stormcaller"
+weapon = &"staff"
+body = &"dry"
+death = &"death_stormcaller"
+groan = &"groan_stormcaller"
+voices = Array[StringName]([])
+
+[sub_resource type="Resource" id="Resource_u11"]
+script = ExtResource("2_unit")
+type_id = &"_living"
+weapon = &"blade"
+body = &"flesh"
+death = &"death_villager"
+groan = &""
+voices = Array[StringName]([])
+
+[sub_resource type="Resource" id="Resource_u12"]
+script = ExtResource("2_unit")
+type_id = &"_undead"
+weapon = &"claw"
+body = &"flesh"
+death = &"death_husk"
+groan = &"groan_husk"
+voices = Array[StringName]([])
+
+[sub_resource type="Resource" id="Resource_p0"]
+script = ExtResource("3_proj")
+projectile_id = &"arrow"
+launch = &"bow_release"
+stick = &"arrow_thunk"
+hit = &"arrow_flesh"
+bounce = &""
+
+[sub_resource type="Resource" id="Resource_p1"]
+script = ExtResource("3_proj")
+projectile_id = &"fire_arrow"
+launch = &"bow_release_fire"
+stick = &"arrow_thunk"
+hit = &"arrow_flesh"
+bounce = &""
+
+[sub_resource type="Resource" id="Resource_p2"]
+script = ExtResource("3_proj")
+projectile_id = &"grenade"
+launch = &"throw_bottle"
+stick = &""
+hit = &""
+bounce = &"bottle_clink"
+
+[sub_resource type="Resource" id="Resource_p3"]
+script = ExtResource("3_proj")
+projectile_id = &"gas_packet"
+launch = &"throw_bottle"
+stick = &""
+hit = &""
+bounce = &"bottle_clink"
+
+[sub_resource type="Resource" id="Resource_p4"]
+script = ExtResource("3_proj")
+projectile_id = &"satchel"
+launch = &"throw_heavy"
+stick = &""
+hit = &""
+bounce = &"satchel_thud"
+
+[sub_resource type="Resource" id="Resource_p5"]
+script = ExtResource("3_proj")
+projectile_id = &"body_part"
+launch = &"throw_heavy"
+stick = &""
+hit = &"thud_flesh"
+bounce = &"thud_flesh"
+
+[sub_resource type="Resource" id="Resource_p6"]
+script = ExtResource("3_proj")
+projectile_id = &"herb"
+launch = &"throw_herb"
+stick = &""
+hit = &""
+bounce = &""
+
+[sub_resource type="Resource" id="Resource_p7"]
+script = ExtResource("3_proj")
+projectile_id = &"lightning"
+launch = &"lightning_charge"
+stick = &""
+hit = &""
+bounce = &""
+
+[sub_resource type="Resource" id="Resource_p8"]
+script = ExtResource("3_proj")
+projectile_id = &"blight_burst"
+launch = &""
+stick = &""
+hit = &""
+bounce = &""
+
+[sub_resource type="Resource" id="Resource_m0"]
+script = ExtResource("4_music")
+map_id = &"riverside"
+calm = &"music_riverside_calm"
+combat = &"music_riverside_combat"
+
+[resource]
+script = ExtResource("1_map")
+units = Array[ExtResource("2_unit")]([SubResource("Resource_u0"), SubResource("Resource_u1"), SubResource("Resource_u2"), SubResource("Resource_u3"), SubResource("Resource_u4"), SubResource("Resource_u5"), SubResource("Resource_u6"), SubResource("Resource_u7"), SubResource("Resource_u8"), SubResource("Resource_u9"), SubResource("Resource_u10"), SubResource("Resource_u11"), SubResource("Resource_u12")])
+projectiles = Array[ExtResource("3_proj")]([SubResource("Resource_p0"), SubResource("Resource_p1"), SubResource("Resource_p2"), SubResource("Resource_p3"), SubResource("Resource_p4"), SubResource("Resource_p5"), SubResource("Resource_p6"), SubResource("Resource_p7"), SubResource("Resource_p8")])
+music = Array[ExtResource("4_music")]([SubResource("Resource_m0")])
+default_music = SubResource("Resource_m0")

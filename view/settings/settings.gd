@@ -88,7 +88,7 @@ const UI_SCALE_DEFAULT: int = 0
 ## The audio buses (default_bus_layout.tres), with their default volumes in
 ## percent.
 const VOLUMES_DEFAULT: Dictionary[String, int] = {
-	"Master": 80, "Effects": 100, "Ambient": 100, "Interface": 100,
+	"Master": 80, "Effects": 100, "Ambient": 100, "Interface": 100, "Music": 70, "Voice": 100,
 }
 ## What each reads as when the file doesn't say: windowed, and no edge scroll.
 ## Both are opt-in (CLAUDE.md: edge scroll is optional).

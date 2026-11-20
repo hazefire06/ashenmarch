@@ -157,9 +157,18 @@ func test_auto_interface_scale_is_the_screens() -> void:
 	assert_eq(GameSettings.resolved_ui_scale(125), 1.25)
 
 
-func test_the_bus_layout_has_the_four_buses() -> void:
+func test_the_bus_layout_has_the_six_buses() -> void:
+	assert_eq(GameSettings.VOLUMES_DEFAULT.keys(), ["Master", "Effects", "Ambient", "Interface", "Music", "Voice"])
+	assert_eq(GameSettings.VOLUMES_DEFAULT["Music"], 70)
+	assert_eq(GameSettings.VOLUMES_DEFAULT["Voice"], 100)
 	for bus: String in GameSettings.VOLUMES_DEFAULT:
-		assert_gt(AudioServer.get_bus_index(bus), -1, bus)
+		var index: int = AudioServer.get_bus_index(bus)
+		assert_gt(index, -1, bus)
+		if bus != "Master":
+			assert_eq(AudioServer.get_bus_send(index), &"Master", bus)
+	var menu: SettingsMenu = _menu()
+	for bus: String in ["Music", "Voice"]:
+		assert_not_null(MenuFixtures.named(menu, "%sVolume" % bus), bus)
 
 
 func test_the_overlay_has_four_tabs_and_the_old_controls() -> void:

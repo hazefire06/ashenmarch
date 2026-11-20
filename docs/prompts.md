@@ -261,8 +261,10 @@ Build the sprite pipeline and the Shieldman's art per the plan, Part 2 onward. S
 ```
 Read CLAUDE.md and the art and audio spec. A1 is merged.
 
-Plan first: sound generation and processing scripts, the sound bank, AudioDirector, ambience, barks (text first, then the Shieldman's voice), one music loop for Riverside. Branch feature/PHASE-A2-audio.
+Plan first: sound generation and processing scripts, the sound bank, ambience, barks (text first, then the Shieldman's voice), one music loop for Riverside. Branch feature/PHASE-A2-audio.
 ```
+
+What replaced the `AudioDirector`: the extended `SfxPlayer` and `Ambience`, plus new `Music` and `Barks` nodes. See "Sound (track A2)" in `architecture.md`.
 
 ### A3: The rest of the roster
 

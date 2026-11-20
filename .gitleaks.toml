@@ -1,6 +1,7 @@
 # Leak rules for this public repo: gitleaks' defaults plus the API keys this
-# project uses (the defaults miss Meshy's). scripts/check_leak_rules.sh proves
-# each rule fires.
+# project uses (the defaults miss Meshy's). The prefixes are not preceded by \b:
+# _ is a word character, so a key glued to a name (xi_api_key_sk_...) would slip
+# past it. scripts/check_leak_rules.sh proves each rule fires.
 title = "ashenmarch"
 
 [extend]
@@ -9,11 +10,11 @@ useDefault = true
 [[rules]]
 id = "meshy-api-key"
 description = "Meshy API key"
-regex = '''\bmsy_[A-Za-z0-9_-]{20,}'''
+regex = '''(?:^|[^A-Za-z0-9])msy_[A-Za-z0-9_-]{20,}'''
 keywords = ["msy_"]
 
 [[rules]]
 id = "elevenlabs-api-key"
 description = "ElevenLabs API key"
-regex = '''\bsk_[A-Za-z0-9]{32,}'''
+regex = '''(?:^|[^A-Za-z0-9])sk_[A-Za-z0-9]{32,}'''
 keywords = ["sk_"]

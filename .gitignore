@@ -29,3 +29,12 @@ __pycache__/
 
 # Interrupted downloads and manifest writes leave these behind.
 *.part
+
+# The sound bank sidecar (make audio-build writes it).
+audio-src/build/
+# Synthetic test audio for the Web measurement (make audio-synthetic); never committed.
+assets/audio/synthetic/
+# The paid generator's lock (scripts/audio/generate.py); a killed run leaves it behind.
+audio-src/manifest.json.lock
+# Audition previews and pages (process.py batch); local listening files.
+audio-src/audition/

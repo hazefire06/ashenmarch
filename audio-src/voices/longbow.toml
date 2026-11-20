@@ -1,0 +1,126 @@
+unit = "longbow"
+
+[voice.longbow]
+description = "a middle-aged Highland Scots woman, calm and dry, a low even alto, unhurried, speaking softly as if not to spook the deer"
+model = "eleven_v4_turbo"
+
+[line.select_1]
+trigger = "select"
+text = "Ah see it. It'll no' see me."
+picks = { longbow = 2 }
+
+[line.select_2]
+trigger = "select"
+text = "Aye. Quietly, now."
+picks = { longbow = 1 }
+
+[line.select_3]
+trigger = "select"
+text = "Ah've a string an' a steady hand. Whit else d'ye need?"
+picks = { longbow = 1 }
+
+[line.select_4]
+trigger = "select"
+text = "Speak soft. Ye'll spook them."
+picks = { longbow = 2 }
+
+[line.move_1]
+trigger = "move"
+text = "Movin'. Keep it quiet."
+picks = { longbow = 1 }
+
+[line.move_2]
+trigger = "move"
+text = "Ah'll find high ground. Ah aye dae."
+picks = { longbow = 1 }
+
+[line.move_3]
+trigger = "move"
+text = "Lead on. Ah'll be the one ye cannae hear."
+picks = { longbow = 2 }
+
+[line.attack_1]
+trigger = "attack"
+text = "One arrow, one less problem."
+picks = { longbow = 1 }
+
+[line.attack_2]
+trigger = "attack"
+text = "Hold still... there."
+tag = "[whispering]"
+picks = { longbow = 1 }
+
+[line.attack_3]
+trigger = "attack"
+text = "Ah've a shaft wi' yer name on it."
+picks = { longbow = 1 }
+
+[line.kill_1]
+trigger = "kill"
+text = "Clean."
+picks = { longbow = 1 }
+
+[line.kill_2]
+trigger = "kill"
+text = "Doon. Nae fuss."
+picks = { longbow = 1 }
+
+[line.kill_3]
+trigger = "kill"
+text = "That's supper fer the crows."
+picks = { longbow = 1 }
+
+[line.hurt_1]
+trigger = "hurt"
+text = "Ach. Ah felt that one."
+picks = { longbow = 2 }
+
+[line.hurt_2]
+trigger = "hurt"
+text = "Get them aff me, ah'm no' a sword."
+picks = { longbow = 1 }
+
+[line.death_1]
+trigger = "death"
+text = "Ah... missed that one..."
+picks = { longbow = 1 }
+
+[line.death_2]
+trigger = "death"
+text = "Tell the hills... ah'm hame..."
+picks = { longbow = 2 }
+
+[line.annoyed_1]
+trigger = "annoyed"
+text = "Ye're louder than the deid. Wheesht."
+picks = { longbow = 2 }
+
+[line.annoyed_2]
+trigger = "annoyed"
+text = "Click me again an' ah'll practise on you."
+picks = { longbow = 1 }
+
+[line.special_1]
+trigger = "special"
+text = "Wan fire arrow. Better be worth it."
+picks = { longbow = 1 }
+
+[line.special_2]
+trigger = "special"
+text = "Light it. Loose it. Leave it."
+picks = { longbow = 2 }
+
+[line.fizzle_1]
+trigger = "fizzle"
+text = "Ach, the rain's had ma flame."
+picks = { longbow = 1 }
+
+[line.retreat_1]
+trigger = "retreat"
+text = "Fallin' back. Ah'll shoot frae further."
+picks = { longbow = 1 }
+
+[line.victory_1]
+trigger = "victory"
+text = "Quiet again. That's how ah like it."
+picks = { longbow = 2 }

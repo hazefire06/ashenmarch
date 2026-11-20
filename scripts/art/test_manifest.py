@@ -24,6 +24,24 @@ class CleanTest(unittest.TestCase):
         self.assertEqual(kept, {"task_id": "t1"})
 
 
+class AllowlistParameterTest(unittest.TestCase):
+    def test_the_art_manifest_still_keeps_only_art_fields(self) -> None:
+        # The default allowlist is art's: audio's fields don't leak in, and a custom allowlist is honoured everywhere.
+        record = {"kind": "k", "label": "l", "task_id": "t", "voice_id": "v", "generated_voice_id": "g", "format": "wav_32000"}
+        self.assertEqual(clean(record), {"kind": "k", "label": "l", "task_id": "t"})
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "manifest.json"
+            art = Manifest(path)
+            art.upsert(record)
+            self.assertEqual(art.tasks, [{"kind": "k", "label": "l", "task_id": "t"}])
+            audio = Manifest(path, allowed=frozenset({"kind", "label", "voice_id"}))
+            audio.upsert(record)
+            audio.save()
+            self.assertEqual(audio.tasks, [{"kind": "k", "label": "l", "voice_id": "v"}])
+            self.assertEqual(Manifest.load(path).tasks, [{"kind": "k", "label": "l"}])
+            self.assertEqual(Manifest.load(path, allowed=frozenset({"kind", "voice_id"})).tasks, [{"kind": "k", "voice_id": "v"}])
+
+
 class ManifestTest(unittest.TestCase):
     def setUp(self) -> None:
         self._tmp = tempfile.TemporaryDirectory()
@@ -129,10 +147,19 @@ class CorruptManifestTest(unittest.TestCase):
         with self.assertRaises(ManifestError) as caught:
             Manifest.load(self.path)
         text = str(caught.exception)
-        self.assertIn("Fix it by hand (for a merge conflict, keep both sides' records).", text)
+        self.assertIn("merge both sides' records into one per label", text)
         self.assertIn("Don't delete it or check out an older copy: tasks bought since then would be bought again.", text)
         for bad in ("Restore", "restore", "from git"):
             self.assertNotIn(bad, text)
+
+    def test_two_records_for_one_kind_and_label_are_refused(self) -> None:
+        # After a merge a FAILED record can sit before a DONE one: find() would return the first and the item would be bought twice.
+        self.path.write_text('{"tasks": [{"kind": "rig", "label": "x", "status": "FAILED"}, {"kind": "rig", "label": "x", "status": "DONE"}]}')
+        with self.assertRaises(ManifestError) as caught:
+            Manifest.load(self.path)
+        self.assertIn("merge both sides' records into one per label", str(caught.exception))
+        self.path.write_text('{"tasks": [{"kind": "rig", "label": "x"}, {"kind": "rig", "label": "y"}, {"kind": "mesh", "label": "x"}]}')
+        self.assertEqual(len(Manifest.load(self.path).tasks), 3)
 
     def test_a_record_nested_deeper_than_clean_can_handle_is_a_manifest_error(self) -> None:
         self.path.write_bytes(NESTED_RECORD)

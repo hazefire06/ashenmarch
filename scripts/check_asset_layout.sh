@@ -33,6 +33,12 @@ expect_file assets/LICENSES.md
 expect_ignored .env
 expect_ignored .env.local
 expect_ignored .claude/settings.local.json
+expect_ignored assets/audio/synthetic/x.wav.import
+
+# A bank built by `make audio-synthetic` must never be committed.
+if git grep -q "assets/audio/synthetic" -- data/audio/sound_bank.tres 2>/dev/null; then
+  echo "FAIL: data/audio/sound_bank.tres references assets/audio/synthetic (run make audio-synthetic-clean)"; fail=1
+else echo "ok: the committed sound bank is not synthetic"; fi
 
 # The repo is public, so a PR could commit a symlink for a tool to write
 # through (the renderer, packer and builder refuse them only on their own

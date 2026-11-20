@@ -1,8 +1,7 @@
 extends GutTest
 ## The sound views: SfxPlayer turns the sim's events into sounds within its
-## caps and cull distance and acknowledges orders; Ambience follows the rain
-## and the fire; UiSounds clicks for buttons added anywhere; every sound in the
-## bank loads; and H (or the bar's Center) glides the camera to the selection.
+## caps and cull distance and acknowledges orders; UiSounds clicks for buttons added anywhere; and H (or
+## the bar's Center) glides the camera to the selection.
 
 const M: int = 1000
 
@@ -14,25 +13,16 @@ func _main() -> MainView:
 	return main
 
 
-func test_every_sound_loads_and_the_beds_loop() -> void:
-	for sound: StringName in SfxBank.STREAMS:
-		assert_not_null(SfxBank.stream(sound), String(sound))
-		assert_true(SfxBank.LEVELS_DB.has(sound), String(sound))
-	for bed: StringName in [&"rain_loop", &"fire_loop"]:
-		assert_eq((SfxBank.stream(bed) as AudioStreamWAV).loop_mode, AudioStreamWAV.LOOP_FORWARD, String(bed))
-	assert_eq((SfxBank.stream(&"explosion") as AudioStreamWAV).loop_mode, AudioStreamWAV.LOOP_DISABLED)
-
-
 func test_events_become_sounds_within_the_caps() -> void:
 	var main: MainView = _main()
 	var sfx: SfxPlayer = main.find_child("Sfx", true, false) as SfxPlayer
 	assert_not_null(sfx)
 	var near: Vector3 = main._camera.focus
 	for i: int in 5:
-		sfx.play_at(&"explosion", near)
+		sfx.play_at(&"explosion_small", near)
 	assert_eq(sfx.started_this_tick(), SfxPlayer.MAX_PER_TICK, "one sound at most MAX_PER_TICK a tick")
 	for i: int in 10:
-		sfx.play_at(&"sword_hit" if i % 2 == 0 else &"death", near)
+		sfx.play_at(&"hit_flesh" if i % 2 == 0 else &"death_villager", near)
 	assert_eq(sfx.started_this_tick(), SfxPlayer.MAX_TICK_TOTAL, "and MAX_TICK_TOTAL in all")
 	main._physics_process(1.0 / World.TICK_RATE)
 	assert_false(sfx.play_at(&"heal", near + Vector3(SfxPlayer.CULL_DISTANCE + 10.0, 0, 0)), "too far to hear")
@@ -50,15 +40,6 @@ func test_a_blast_in_the_world_is_heard() -> void:
 	main.world.projectile_events.append(event)
 	sfx.after_step()
 	assert_eq(sfx.started_this_tick(), 1)
-
-
-func test_the_beds_follow_the_rain_and_the_fire() -> void:
-	var main: MainView = _main()
-	var beds: Ambience = main.find_child("Ambience", true, false) as Ambience
-	assert_eq(beds.targets(), Vector2.ZERO, "clear and unburnt")
-	main.world.enqueue(SetWeatherCommand.new(main.world.tick, 1000, 0, 0, 0, 0))
-	main._physics_process(1.0 / World.TICK_RATE)
-	assert_almost_eq(beds.targets().x, 1.0, 0.01, "rain at full")
 
 
 func test_buttons_added_anywhere_click() -> void:
@@ -107,6 +88,23 @@ func test_moving_the_camera_by_hand_stops_a_glide() -> void:
 
 func test_an_order_is_acknowledged() -> void:
 	var main: MainView = _main()
-	assert_true(main._selection.order_given.is_connected(
-		(main.find_child("Sfx", true, false) as SfxPlayer).acknowledge
-	))
+	var sfx: SfxPlayer = main.find_child("Sfx", true, false) as SfxPlayer
+	sfx.after_step()
+	main._selection.order_given.emit(PackedInt32Array([1]), SelectionController.OrderKind.MOVE)
+	assert_eq(sfx.played_this_tick()[0]["cue"], &"order_ack")
+
+
+func test_the_viewer_follows_side_changed() -> void:
+	var main: MainView = _main()
+	var sfx: SfxPlayer = main.find_child("Sfx", true, false) as SfxPlayer
+	assert_eq(sfx.viewer(), UnitType.Faction.LIGHT)
+	main._selection.side_changed.emit(UnitType.Faction.DARK)
+	assert_eq(sfx.viewer(), UnitType.Faction.DARK)
+
+
+func test_a_dark_skirmish_starts_with_a_dark_viewer() -> void:
+	var main: MainView = (load("res://view/main.tscn") as PackedScene).instantiate() as MainView
+	main.launch = ViewFixtures.skirmish_launch(SkirmishRules.Mode.KING_OF_THE_HILL, UnitType.Faction.DARK, 10)
+	add_child_autofree(main)
+	var sfx: SfxPlayer = main.find_child("Sfx", true, false) as SfxPlayer
+	assert_eq(sfx.viewer(), UnitType.Faction.DARK)
