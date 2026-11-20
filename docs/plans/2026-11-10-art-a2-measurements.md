@@ -115,6 +115,15 @@ Run with `make export-web serve-web` and `?budget=1` in Chrome through the chrom
   - `BUDGET tab=657 limit=1000 PASS js_wasm=195 (measured) video=204 textures=168 art=138 types=10 art_load=100 pck=150 wire=150 s3tc=yes ticks=1800 seconds=60 on=web audio=315 audio_cap=270 FAIL decoded=258 files=8 play=42 mix=48000 audio_load=333 audio_in_tab=added`
   - `BUDGET tab=560 limit=1000 PASS js_wasm=191 (measured) video=197 textures=168 art=138 types=10 art_load=104 pck=150 wire=150 s3tc=yes ticks=1800 seconds=60 on=web audio=215 audio_cap=270 PASS decoded=172 files=8 play=28 mix=32000 audio_load=248 audio_in_tab=added`
 
+## Step 9: the final Web budget, every line voiced, no stand-ins (2026-11-20)
+
+All five light units are voiced (Shieldman two voices, the other four one each, clan lines in all six), so the budget run registers real bark streams, not stand-ins. `make export-web serve-web`, `?budget=1` in Chrome, this Mac.
+
+`BUDGET tab=514 limit=1000 PASS js_wasm=194 (measured) video=195 textures=168 art=138 types=10 art_load=109 pck=153 wire=153 s3tc=yes ticks=1800 seconds=60 on=web audio=168 audio_cap=270 PASS decoded=125 files=12 play=20 mix=32000 audio_load=619`
+
+- **Audio 168 MB of 270 (PASS); tab 514 MB of 1,000 (PASS).** Audio is lower than the stand-in run (215 MB, Step 8): the stand-ins were sized by each line's text at 14 chars/s, but the real takes are trimmed and sped up 1.5x, so they decode to less. decoded 125 MB, files 12 MB, play allowance 20 MB.
+- The 32 kHz Web mix stands; `mix=32000` read back from Chrome. Registration at load 619 ms (more streams to register than the stand-in run's 248 ms, but one-time and off the play budget).
+
 ## Tooling
 
 Homebrew's ffmpeg has no libvorbis; its native `vorbis` encoder is experimental. Tim installed `vorbis-tools` (`oggenc` 1.4.3) on 2026-11-10, so `process.py` encodes Ogg Vorbis with `oggenc`. The synthetic Oggs above used ffmpeg's native encoder at 96 kbps. Their compressed sizes are therefore only indicative, but the decoded sizes are exact.

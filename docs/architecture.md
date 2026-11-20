@@ -2320,6 +2320,7 @@ Facts below are from Godot 4.7.2's source and `docs/plans/2026-11-10-art-a2-meas
 - **The bought bank, with silent stand-ins for every unvoiced line (2026-11-17, at 53f85c2):**
   - At the browser's 48 kHz, audio measured 315 MB against the 270 MB cap (FAIL), though the tab passed at 657 MB. The bark stand-ins were most of it: 202 recordings, 513 s, about 195 MB, against the spec's estimate of 345 s.
   - With the 32 kHz reserve lever (Tim's OK), the run printed `tab=560 limit=1000 PASS js_wasm=191 (measured) ... audio=215 audio_cap=270 PASS decoded=172 files=8 play=28 mix=32000 audio_load=248`.
+- **The final bank, every line voiced, no stand-ins (2026-11-20, at 6615271):** `tab=514 limit=1000 PASS ... audio=168 audio_cap=270 PASS decoded=125 files=12 play=20 mix=32000 audio_load=619`. Audio came in under the stand-in run (168 vs 215 MB): the real lines, sped up 1.5x, are shorter than the stand-ins the text lengths sized.
 - **The 32 kHz Web mix** (`audio/driver/mix_rate.web` = 32000, pinned by `test_export_settings.gd`): every sound effect, loop and voice is bought at 32 kHz, so only the music's band above 16 kHz is lost. Desktop keeps its default mix.
 
 ### Decisions
@@ -2332,7 +2333,6 @@ Facts below are from Godot 4.7.2's source and `docs/plans/2026-11-10-art-a2-meas
 
 ### Not yet
 - **Voices:** the Shieldman's (Task 23) and the other four's (Task 25). No bark line is voiced.
-- **The final Web budget line with no stand-ins,** once all five units are voiced. Real voice lengths will differ from the text estimate.
 - **Music for The Ford and Old Mill:** they play Riverside's pair. Skirmish, the menus and the victory and defeat stingers have none.
 - **Audition page:** it has no in-step calm-over-combat player for music. The crossfade previews were rendered by hand with ffmpeg.
 - **ElevenLabs credit rates in `generate.py`** are still assumed: Tim hasn't reported the key's real usage.
