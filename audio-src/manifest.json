@@ -9642,6 +9642,5580 @@
       "sha256": "e1a40ef065c758686e289d458e52da9f073d6042228ea8ddf51625388ce5f389",
       "status": "DONE",
       "text": "We won! Ah think. Did we win?"
+    },
+    {
+      "credits": 1000,
+      "files": [
+        "design/reaver/reaver/1.mp3",
+        "design/reaver/reaver/2.mp3",
+        "design/reaver/reaver/3.mp3"
+      ],
+      "finished_at": 1795187050,
+      "kind": "design",
+      "label": "design/reaver/reaver/call",
+      "model": "eleven_ttv_v3",
+      "status": "DONE",
+      "text": "a young Highland Scots man, lean and wiry, hoarse and fast, a rough-edged baritone that cracks into a roar when he gets excited, a wild grin in every word"
+    },
+    {
+      "bytes": 546107,
+      "credits": 0,
+      "files": [
+        "design/reaver/reaver/1.mp3"
+      ],
+      "finished_at": 1795187050,
+      "generated_voice_id": "yFlSkWzQnhv0zWLmrFsV",
+      "kind": "design",
+      "label": "design/reaver/reaver/1",
+      "model": "eleven_ttv_v3",
+      "sha256": "4f3430465984398542a2c3a5368626f226ebd122835c9967fc058c721942dc2e",
+      "status": "DONE"
+    },
+    {
+      "bytes": 607547,
+      "credits": 0,
+      "files": [
+        "design/reaver/reaver/2.mp3"
+      ],
+      "finished_at": 1795187050,
+      "generated_voice_id": "hDO4HVp6Rhotwd6xbhfc",
+      "kind": "design",
+      "label": "design/reaver/reaver/2",
+      "model": "eleven_ttv_v3",
+      "sha256": "9616c513573952279d8082d7eeaa3d9260cebdf2d9595d35686fda50be58a0de",
+      "status": "DONE"
+    },
+    {
+      "bytes": 536703,
+      "credits": 0,
+      "files": [
+        "design/reaver/reaver/3.mp3"
+      ],
+      "finished_at": 1795187050,
+      "generated_voice_id": "0xgDSWDBBT9mQexzEoFj",
+      "kind": "design",
+      "label": "design/reaver/reaver/3",
+      "model": "eleven_ttv_v3",
+      "sha256": "b90ea9ae561115fa6c8f4a429f5e9b0a6282933424935569eec4bbd062e19a6d",
+      "status": "DONE"
+    },
+    {
+      "credits": 1000,
+      "files": [
+        "design/longbow/longbow/1.mp3",
+        "design/longbow/longbow/2.mp3",
+        "design/longbow/longbow/3.mp3"
+      ],
+      "finished_at": 1795187072,
+      "kind": "design",
+      "label": "design/longbow/longbow/call",
+      "model": "eleven_ttv_v3",
+      "status": "DONE",
+      "text": "a middle-aged Highland Scots woman, calm and dry, a low even alto, unhurried, speaking softly as if not to spook the deer"
+    },
+    {
+      "bytes": 751743,
+      "credits": 0,
+      "files": [
+        "design/longbow/longbow/1.mp3"
+      ],
+      "finished_at": 1795187072,
+      "generated_voice_id": "I1XWF2nO2qhpy05tu62U",
+      "kind": "design",
+      "label": "design/longbow/longbow/1",
+      "model": "eleven_ttv_v3",
+      "sha256": "edc92fcd4aadd9a8a9cac4d086a1f16373f2cce33012fd203da8c81d771c68b4",
+      "status": "DONE"
+    },
+    {
+      "bytes": 876504,
+      "credits": 0,
+      "files": [
+        "design/longbow/longbow/2.mp3"
+      ],
+      "finished_at": 1795187072,
+      "generated_voice_id": "buWpmp4O8bRIHUs2c6sU",
+      "kind": "design",
+      "label": "design/longbow/longbow/2",
+      "model": "eleven_ttv_v3",
+      "sha256": "359b5545b3561f3c921e6ea26dbad6f5dc10e444a18df38fce8b4633dfb62530",
+      "status": "DONE"
+    },
+    {
+      "bytes": 830110,
+      "credits": 0,
+      "files": [
+        "design/longbow/longbow/3.mp3"
+      ],
+      "finished_at": 1795187072,
+      "generated_voice_id": "pRTGDMMtrNHH7UjjW9RY",
+      "kind": "design",
+      "label": "design/longbow/longbow/3",
+      "model": "eleven_ttv_v3",
+      "sha256": "19c69e42abc46e78ae3685781e72e6e55ba9dd086cefede8ba3d149f43880a46",
+      "status": "DONE"
+    },
+    {
+      "credits": 1000,
+      "files": [
+        "design/sapper/sapper/1.mp3",
+        "design/sapper/sapper/2.mp3",
+        "design/sapper/sapper/3.mp3"
+      ],
+      "finished_at": 1795187094,
+      "kind": "design",
+      "label": "design/sapper/sapper/call",
+      "model": "eleven_ttv_v3",
+      "status": "DONE",
+      "text": "a stocky Highland Scots man in his forties, nasal and cheery, a little deaf from the blasts so he talks too loud, quick and fretful"
+    },
+    {
+      "bytes": 619459,
+      "credits": 0,
+      "files": [
+        "design/sapper/sapper/1.mp3"
+      ],
+      "finished_at": 1795187094,
+      "generated_voice_id": "Jrn06JYE3V9XPbYousVS",
+      "kind": "design",
+      "label": "design/sapper/sapper/1",
+      "model": "eleven_ttv_v3",
+      "sha256": "62a30c3bbcf9828a018c9af72162a8d5e2e070334cad7eb28efa78370f127bc7",
+      "status": "DONE"
+    },
+    {
+      "bytes": 558019,
+      "credits": 0,
+      "files": [
+        "design/sapper/sapper/2.mp3"
+      ],
+      "finished_at": 1795187094,
+      "generated_voice_id": "zHbKKcrP6wOHbfix7rcQ",
+      "kind": "design",
+      "label": "design/sapper/sapper/2",
+      "model": "eleven_ttv_v3",
+      "sha256": "e93341a8c18f30bd5107fd8ea79f0d0f54df3768296fa92d8016db22ea4a2a3a",
+      "status": "DONE"
+    },
+    {
+      "bytes": 525418,
+      "credits": 0,
+      "files": [
+        "design/sapper/sapper/3.mp3"
+      ],
+      "finished_at": 1795187094,
+      "generated_voice_id": "o3x9D69QXo5nZMaovCJ6",
+      "kind": "design",
+      "label": "design/sapper/sapper/3",
+      "model": "eleven_ttv_v3",
+      "sha256": "e4ad88bf8b6b18673d1a57e922904e2bc9defcfbf571637bcdc88347f4ac321e",
+      "status": "DONE"
+    },
+    {
+      "credits": 1000,
+      "files": [
+        "design/warden/warden/1.mp3",
+        "design/warden/warden/2.mp3",
+        "design/warden/warden/3.mp3"
+      ],
+      "finished_at": 1795187117,
+      "kind": "design",
+      "label": "design/warden/warden/call",
+      "model": "eleven_ttv_v3",
+      "status": "DONE",
+      "text": "an older Highland Scots woman, warm and brisk, a mid-range mezzo with a smoker's rasp, scolding like a grandmother"
+    },
+    {
+      "bytes": 674630,
+      "credits": 0,
+      "files": [
+        "design/warden/warden/1.mp3"
+      ],
+      "finished_at": 1795187117,
+      "generated_voice_id": "anW1dC7ty4bb1b789lZP",
+      "kind": "design",
+      "label": "design/warden/warden/1",
+      "model": "eleven_ttv_v3",
+      "sha256": "093c48d65308facbc23c1977fe23f5e209bb9d82fe2f5c6923bd6419cd4868ef",
+      "status": "DONE"
+    },
+    {
+      "bytes": 684661,
+      "credits": 0,
+      "files": [
+        "design/warden/warden/2.mp3"
+      ],
+      "finished_at": 1795187117,
+      "generated_voice_id": "OtDMie7ChJeWaSy8t5Y9",
+      "kind": "design",
+      "label": "design/warden/warden/2",
+      "model": "eleven_ttv_v3",
+      "sha256": "5bd173d4417dfd0eb53278c0d3702e9745fc5f9baf55564e516e5069625081a1",
+      "status": "DONE"
+    },
+    {
+      "bytes": 672749,
+      "credits": 0,
+      "files": [
+        "design/warden/warden/3.mp3"
+      ],
+      "finished_at": 1795187117,
+      "generated_voice_id": "SBLPcGjNiFC4AS9a8Fxg",
+      "kind": "design",
+      "label": "design/warden/warden/3",
+      "model": "eleven_ttv_v3",
+      "sha256": "856df36d28ac4d0308f3b586520ca6428dcda8bea9669582270a88332515c339",
+      "status": "DONE"
+    },
+    {
+      "credits": 0,
+      "files": [],
+      "finished_at": 1795187343,
+      "generated_voice_id": "hDO4HVp6Rhotwd6xbhfc",
+      "kind": "voice",
+      "label": "voice/reaver",
+      "status": "DONE",
+      "voice_id": "hDO4HVp6Rhotwd6xbhfc"
+    },
+    {
+      "credits": 0,
+      "files": [],
+      "finished_at": 1795187371,
+      "generated_voice_id": "pRTGDMMtrNHH7UjjW9RY",
+      "kind": "voice",
+      "label": "voice/longbow",
+      "status": "DONE",
+      "voice_id": "pRTGDMMtrNHH7UjjW9RY"
+    },
+    {
+      "credits": 0,
+      "files": [],
+      "finished_at": 1795187387,
+      "generated_voice_id": "Jrn06JYE3V9XPbYousVS",
+      "kind": "voice",
+      "label": "voice/sapper",
+      "status": "DONE",
+      "voice_id": "Jrn06JYE3V9XPbYousVS"
+    },
+    {
+      "credits": 0,
+      "files": [],
+      "finished_at": 1795187404,
+      "generated_voice_id": "anW1dC7ty4bb1b789lZP",
+      "kind": "voice",
+      "label": "voice/warden",
+      "status": "DONE",
+      "voice_id": "anW1dC7ty4bb1b789lZP"
+    },
+    {
+      "bytes": 158798,
+      "credits": 41,
+      "files": [
+        "voices/reaver/annoyed_1/1.wav"
+      ],
+      "finished_at": 1795187420,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/reaver/annoyed_1/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "29a06feefefee3c79f51d78a96cb6a42431ff28ad8e8cead720c21d9c6cb135d",
+      "status": "DONE",
+      "text": "Stop pokin' me an' point me at somethin'!"
+    },
+    {
+      "bytes": 163918,
+      "credits": 41,
+      "files": [
+        "voices/reaver/annoyed_1/2.wav"
+      ],
+      "finished_at": 1795187421,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/reaver/annoyed_1/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "3c8323bc318b4c0a02fee3f46a67c7391e717d88d5ad0550eeae95de03b75e26",
+      "status": "DONE",
+      "text": "Stop pokin' me an' point me at somethin'!"
+    },
+    {
+      "bytes": 158798,
+      "credits": 41,
+      "files": [
+        "voices/reaver/annoyed_1/3.wav"
+      ],
+      "finished_at": 1795187422,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/reaver/annoyed_1/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "bc822fe9b3583a10a912903ef3d819459b8328400792c7f6da177c0340866e50",
+      "status": "DONE",
+      "text": "Stop pokin' me an' point me at somethin'!"
+    },
+    {
+      "bytes": 256078,
+      "credits": 64,
+      "files": [
+        "voices/reaver/annoyed_2/1.wav"
+      ],
+      "finished_at": 1795187423,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/reaver/annoyed_2/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "e17845d7bde719facbaeb72f946d89500ca03165427ff6318f7e54bf386b65c8",
+      "status": "DONE",
+      "text": "Ah'll swing at the next thing that touches me. Ah'm just sayin'."
+    },
+    {
+      "bytes": 256078,
+      "credits": 64,
+      "files": [
+        "voices/reaver/annoyed_2/2.wav"
+      ],
+      "finished_at": 1795187424,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/reaver/annoyed_2/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "d0688d6d21ca48bc4068687b3d494724a1990966aab440821b192e471b0414b4",
+      "status": "DONE",
+      "text": "Ah'll swing at the next thing that touches me. Ah'm just sayin'."
+    },
+    {
+      "bytes": 245838,
+      "credits": 64,
+      "files": [
+        "voices/reaver/annoyed_2/3.wav"
+      ],
+      "finished_at": 1795187426,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/reaver/annoyed_2/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "996681ecbd21513c4e3b480aa3414c5e896083b5cd10d79726027f70f57c95f4",
+      "status": "DONE",
+      "text": "Ah'll swing at the next thing that touches me. Ah'm just sayin'."
+    },
+    {
+      "bytes": 97358,
+      "credits": 23,
+      "files": [
+        "voices/reaver/attack_1/1.wav"
+      ],
+      "finished_at": 1795187426,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/reaver/attack_1/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "eb7f0a70914cc60487f4bec53ef9d950fae5e12fe89a7d2dc17bdebc8e1d8f18",
+      "status": "DONE",
+      "text": "Who wants tae be first?"
+    },
+    {
+      "bytes": 102478,
+      "credits": 23,
+      "files": [
+        "voices/reaver/attack_1/2.wav"
+      ],
+      "finished_at": 1795187427,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/reaver/attack_1/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "bc9bc1c5e3adaba1b6d3c98ea9090982a542417d59dff1a9f63dc7a8898c0fe8",
+      "status": "DONE",
+      "text": "Who wants tae be first?"
+    },
+    {
+      "bytes": 97358,
+      "credits": 23,
+      "files": [
+        "voices/reaver/attack_1/3.wav"
+      ],
+      "finished_at": 1795187427,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/reaver/attack_1/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "a19c1f8c767f5948e5e4be9e1e1bd30a060903027f456b0ba9a8ba699d32606e",
+      "status": "DONE",
+      "text": "Who wants tae be first?"
+    },
+    {
+      "bytes": 138318,
+      "credits": 29,
+      "files": [
+        "voices/reaver/attack_2/1.wav"
+      ],
+      "finished_at": 1795187428,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/reaver/attack_2/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "05ede4a70663f07b4f6a7c11102dfbb505c7d4a7b8ee5c0435b21cbb6e6bd9f4",
+      "status": "DONE",
+      "text": "Ah'll split ye like kindlin'!"
+    },
+    {
+      "bytes": 133198,
+      "credits": 29,
+      "files": [
+        "voices/reaver/attack_2/2.wav"
+      ],
+      "finished_at": 1795187429,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/reaver/attack_2/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "f0c44705895ade9ecbf0fab5089174efccc140013dfb891a62f488df97747c53",
+      "status": "DONE",
+      "text": "Ah'll split ye like kindlin'!"
+    },
+    {
+      "bytes": 138318,
+      "credits": 29,
+      "files": [
+        "voices/reaver/attack_2/3.wav"
+      ],
+      "finished_at": 1795187430,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/reaver/attack_2/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "cc33374ccc3df5cc4d70f3a1bd877938a58d8de6054b3b1402575125acfdda59",
+      "status": "DONE",
+      "text": "Ah'll split ye like kindlin'!"
+    },
+    {
+      "bytes": 184398,
+      "credits": 18,
+      "files": [
+        "voices/reaver/attack_3/1.wav"
+      ],
+      "finished_at": 1795187430,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/reaver/attack_3/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "447d7c2069d7d9f2b07cb4b8100340050f645be3537de8520f57423b56cd40bf",
+      "status": "DONE",
+      "text": "[roaring] Raaargh!"
+    },
+    {
+      "bytes": 179278,
+      "credits": 18,
+      "files": [
+        "voices/reaver/attack_3/2.wav"
+      ],
+      "finished_at": 1795187431,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/reaver/attack_3/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "b09d340edfb7db9db3df6eaed3374e3967cec3c4c0a2b7581849632dcfb8f652",
+      "status": "DONE",
+      "text": "[roaring] Raaargh!"
+    },
+    {
+      "bytes": 194638,
+      "credits": 18,
+      "files": [
+        "voices/reaver/attack_3/3.wav"
+      ],
+      "finished_at": 1795187432,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/reaver/attack_3/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "e5a42c4ac5010f534ae1c5cda791289baddf13dc21df6e3510829550b617701f",
+      "status": "DONE",
+      "text": "[roaring] Raaargh!"
+    },
+    {
+      "bytes": 261198,
+      "credits": 40,
+      "files": [
+        "voices/reaver/attack_4/1.wav"
+      ],
+      "finished_at": 1795187433,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/reaver/attack_4/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "f512562baf500d67c64e4281eaef09aa0f36041f5e75a25af770b97959337a72",
+      "status": "DONE",
+      "text": "Nae shield, nae fear, nae sense! Charge!"
+    },
+    {
+      "bytes": 271438,
+      "credits": 40,
+      "files": [
+        "voices/reaver/attack_4/2.wav"
+      ],
+      "finished_at": 1795187434,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/reaver/attack_4/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "4a4b57095e4841ee3b2a714a6b55701a41e1429555b4e842fbeeb291692e4be6",
+      "status": "DONE",
+      "text": "Nae shield, nae fear, nae sense! Charge!"
+    },
+    {
+      "bytes": 261198,
+      "credits": 40,
+      "files": [
+        "voices/reaver/attack_4/3.wav"
+      ],
+      "finished_at": 1795187435,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/reaver/attack_4/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "741cbafe5b3936d72da489b7c9a0e9a9686375d7407736d85165eb77929c2ea4",
+      "status": "DONE",
+      "text": "Nae shield, nae fear, nae sense! Charge!"
+    },
+    {
+      "bytes": 138318,
+      "credits": 25,
+      "files": [
+        "voices/reaver/attack_5/1.wav"
+      ],
+      "finished_at": 1795187436,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/reaver/attack_5/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "6e1dcb62b4e37f6edc6660db8131b802173c0e999382b457a3dad686a027c18b",
+      "status": "DONE",
+      "text": "Come here till ah get ye!"
+    },
+    {
+      "bytes": 128078,
+      "credits": 25,
+      "files": [
+        "voices/reaver/attack_5/2.wav"
+      ],
+      "finished_at": 1795187437,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/reaver/attack_5/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "2c967b773a55316048d715d9c7a3761265f26c0414dcb28c83e426f122e77c66",
+      "status": "DONE",
+      "text": "Come here till ah get ye!"
+    },
+    {
+      "bytes": 133198,
+      "credits": 25,
+      "files": [
+        "voices/reaver/attack_5/3.wav"
+      ],
+      "finished_at": 1795187437,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/reaver/attack_5/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "267da20c8e2bc255e2152932c284980b1f4fe053bf664c6134d7af1eb31c45bb",
+      "status": "DONE",
+      "text": "Come here till ah get ye!"
+    },
+    {
+      "bytes": 81998,
+      "credits": 8,
+      "files": [
+        "voices/reaver/clan_1/1.wav"
+      ],
+      "finished_at": 1795187438,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/reaver/clan_1/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "616fc4d3a0d0d19942b15e302ef99e35c81970177ae2973e8e5feeee919170fc",
+      "status": "DONE",
+      "text": "Crivens!"
+    },
+    {
+      "bytes": 81998,
+      "credits": 8,
+      "files": [
+        "voices/reaver/clan_1/2.wav"
+      ],
+      "finished_at": 1795187438,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/reaver/clan_1/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "bb5711af8e2a840e2cc6159f83398238386b30f4207d46e333acfcc568089386",
+      "status": "DONE",
+      "text": "Crivens!"
+    },
+    {
+      "bytes": 81998,
+      "credits": 8,
+      "files": [
+        "voices/reaver/clan_1/3.wav"
+      ],
+      "finished_at": 1795187439,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/reaver/clan_1/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "ea72d9c95ca5f9f3a5f6425ae4aa219823f2808e56b91bdeaf0a03876f701647",
+      "status": "DONE",
+      "text": "Crivens!"
+    },
+    {
+      "bytes": 102478,
+      "credits": 10,
+      "files": [
+        "voices/reaver/clan_2/1.wav"
+      ],
+      "finished_at": 1795187439,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/reaver/clan_2/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "27dd55261427e972fd729b3e394bea7def6bd6b5e756acbb59cb1b88a907bb35",
+      "status": "DONE",
+      "text": "Michty me!"
+    },
+    {
+      "bytes": 97358,
+      "credits": 10,
+      "files": [
+        "voices/reaver/clan_2/2.wav"
+      ],
+      "finished_at": 1795187440,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/reaver/clan_2/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "f85bf3d079270df790297e96a87e730ede3736c42f326c9554fe949da164c9f9",
+      "status": "DONE",
+      "text": "Michty me!"
+    },
+    {
+      "bytes": 107598,
+      "credits": 10,
+      "files": [
+        "voices/reaver/clan_2/3.wav"
+      ],
+      "finished_at": 1795187440,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/reaver/clan_2/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "3429e4537a4225758212c2cb5e48cb1d088189673ee03827ec498353a01ea31a",
+      "status": "DONE",
+      "text": "Michty me!"
+    },
+    {
+      "bytes": 97358,
+      "credits": 17,
+      "files": [
+        "voices/reaver/clan_3/1.wav"
+      ],
+      "finished_at": 1795187441,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/reaver/clan_3/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "2578765a793b4cc7ed5ef46f7970bf4ce33c3e1f4f7b49b63dcb722cdddd41e1",
+      "status": "DONE",
+      "text": "Haud yer wheesht!"
+    },
+    {
+      "bytes": 102478,
+      "credits": 17,
+      "files": [
+        "voices/reaver/clan_3/2.wav"
+      ],
+      "finished_at": 1795187442,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/reaver/clan_3/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "22935c7c69d7ca19031ff723919763c1d8f3f09d58ddf4536740115b3366bb01",
+      "status": "DONE",
+      "text": "Haud yer wheesht!"
+    },
+    {
+      "bytes": 102478,
+      "credits": 17,
+      "files": [
+        "voices/reaver/clan_3/3.wav"
+      ],
+      "finished_at": 1795187442,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/reaver/clan_3/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "c0db8234b2f36eb99ffcabccc08d0309dbc56e4adb9724ee1cc98eebaef768e4",
+      "status": "DONE",
+      "text": "Haud yer wheesht!"
+    },
+    {
+      "bytes": 148558,
+      "credits": 23,
+      "files": [
+        "voices/reaver/clan_4/1.wav"
+      ],
+      "finished_at": 1795187443,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/reaver/clan_4/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "1b3a09bedb344d317f6d88bcad8a30306875d1a0e09ac12a3f85a1e066d3d62f",
+      "status": "DONE",
+      "text": "Och, that's pure mince."
+    },
+    {
+      "bytes": 148558,
+      "credits": 23,
+      "files": [
+        "voices/reaver/clan_4/2.wav"
+      ],
+      "finished_at": 1795187444,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/reaver/clan_4/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "32ec94bb0b20cf7bf2b55b669b90ecd80817781f57b155ef46598895cb224c94",
+      "status": "DONE",
+      "text": "Och, that's pure mince."
+    },
+    {
+      "bytes": 143438,
+      "credits": 23,
+      "files": [
+        "voices/reaver/clan_4/3.wav"
+      ],
+      "finished_at": 1795187444,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/reaver/clan_4/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "320cf306ea0798a30b3e0b7d803785da89ef8033446f2de2ecd069c392ccd462",
+      "status": "DONE",
+      "text": "Och, that's pure mince."
+    },
+    {
+      "bytes": 81998,
+      "credits": 14,
+      "files": [
+        "voices/reaver/clan_5/1.wav"
+      ],
+      "finished_at": 1795187445,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/reaver/clan_5/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "2d2369e1c8672a901a325797bba88c3bfc35bd37fd359bf9c5bfe8d3799dd91a",
+      "status": "DONE",
+      "text": "Mind yer feet!"
+    },
+    {
+      "bytes": 81998,
+      "credits": 14,
+      "files": [
+        "voices/reaver/clan_5/2.wav"
+      ],
+      "finished_at": 1795187445,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/reaver/clan_5/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "ca2fbe3e7d68f6f2fabc3e39d73fd1c64199d25eef50da8fc93b17717e648259",
+      "status": "DONE",
+      "text": "Mind yer feet!"
+    },
+    {
+      "bytes": 81998,
+      "credits": 14,
+      "files": [
+        "voices/reaver/clan_5/3.wav"
+      ],
+      "finished_at": 1795187446,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/reaver/clan_5/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "363bdc2bce326c3646dc277aa9d56608a6b08e892dc6203f68d844e6188e3791",
+      "status": "DONE",
+      "text": "Mind yer feet!"
+    },
+    {
+      "bytes": 194638,
+      "credits": 37,
+      "files": [
+        "voices/reaver/death_1/1.wav"
+      ],
+      "finished_at": 1795187446,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/reaver/death_1/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "ab835fbe9fd36bddf1d457b0a41b6e431ba163ec716f2bf8ac19832f82279be1",
+      "status": "DONE",
+      "text": "Ach... ah wis jist gettin' started..."
+    },
+    {
+      "bytes": 194638,
+      "credits": 37,
+      "files": [
+        "voices/reaver/death_1/2.wav"
+      ],
+      "finished_at": 1795187447,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/reaver/death_1/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "3d00e8cfb5685ebac90616e2cbfdc2ef882469e627133c36332b33ad0597c967",
+      "status": "DONE",
+      "text": "Ach... ah wis jist gettin' started..."
+    },
+    {
+      "bytes": 184398,
+      "credits": 37,
+      "files": [
+        "voices/reaver/death_1/3.wav"
+      ],
+      "finished_at": 1795187448,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/reaver/death_1/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "0fc4bc7713202e5cd5b0e18934bca53562a8441783eefb3f5c65dc6298be71ef",
+      "status": "DONE",
+      "text": "Ach... ah wis jist gettin' started..."
+    },
+    {
+      "bytes": 189518,
+      "credits": 37,
+      "files": [
+        "voices/reaver/death_2/1.wav"
+      ],
+      "finished_at": 1795187449,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/reaver/death_2/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "e0f423a6cbc92ced85cbfcb841c461aa91369e363585307ad2f9f3a5308a353d",
+      "status": "DONE",
+      "text": "Somebody... finish ma fight fer me..."
+    },
+    {
+      "bytes": 199758,
+      "credits": 37,
+      "files": [
+        "voices/reaver/death_2/2.wav"
+      ],
+      "finished_at": 1795187450,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/reaver/death_2/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "8962edcb9411c4b1e5b235d3a3d07ba52bc3998c6423b39ae67799a230061288",
+      "status": "DONE",
+      "text": "Somebody... finish ma fight fer me..."
+    },
+    {
+      "bytes": 184398,
+      "credits": 37,
+      "files": [
+        "voices/reaver/death_2/3.wav"
+      ],
+      "finished_at": 1795187451,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/reaver/death_2/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "0374b2726862ee5accbbb2d6273142259f3bacfdc8a157550902d8f31f2b95e1",
+      "status": "DONE",
+      "text": "Somebody... finish ma fight fer me..."
+    },
+    {
+      "bytes": 194638,
+      "credits": 27,
+      "files": [
+        "voices/reaver/hurt_1/1.wav"
+      ],
+      "finished_at": 1795187451,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/reaver/hurt_1/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "d5675f78887032055304099d50dc81c0d1d2c4249b00f7098be4f9aeefd3cf07",
+      "status": "DONE",
+      "text": "Ow! Oh, that's ma guid arm!"
+    },
+    {
+      "bytes": 184398,
+      "credits": 27,
+      "files": [
+        "voices/reaver/hurt_1/2.wav"
+      ],
+      "finished_at": 1795187452,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/reaver/hurt_1/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "51c65df49861dc644852c737af42549d4ac1b6fb9b54b051a58344379bde4983",
+      "status": "DONE",
+      "text": "Ow! Oh, that's ma guid arm!"
+    },
+    {
+      "bytes": 184398,
+      "credits": 27,
+      "files": [
+        "voices/reaver/hurt_1/3.wav"
+      ],
+      "finished_at": 1795187453,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/reaver/hurt_1/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "d7545be02bedd3f830f87cca644324b4ba16a3490ee3993b2cd544fd740c5fc1",
+      "status": "DONE",
+      "text": "Ow! Oh, that's ma guid arm!"
+    },
+    {
+      "bytes": 174158,
+      "credits": 41,
+      "files": [
+        "voices/reaver/hurt_2/1.wav"
+      ],
+      "finished_at": 1795187454,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/reaver/hurt_2/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "27e5af5b96f1da6e6a664c77cfcca7ffff4ca2c8e30cddaf916ba0387fe5bcaa",
+      "status": "DONE",
+      "text": "Ah'm still standin', so it doesnae count."
+    },
+    {
+      "bytes": 174158,
+      "credits": 41,
+      "files": [
+        "voices/reaver/hurt_2/2.wav"
+      ],
+      "finished_at": 1795187455,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/reaver/hurt_2/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "cc4d455189c0a440f6d2618b1fd706f61ffd3009c734f135d51141753c38917e",
+      "status": "DONE",
+      "text": "Ah'm still standin', so it doesnae count."
+    },
+    {
+      "bytes": 174158,
+      "credits": 41,
+      "files": [
+        "voices/reaver/hurt_2/3.wav"
+      ],
+      "finished_at": 1795187456,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/reaver/hurt_2/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "e68d59c26ca3d19a5e560eae97444ad3b113cab509360ee3d8ec23ec57e838e1",
+      "status": "DONE",
+      "text": "Ah'm still standin', so it doesnae count."
+    },
+    {
+      "bytes": 276558,
+      "credits": 53,
+      "files": [
+        "voices/reaver/kill_1/1.wav"
+      ],
+      "finished_at": 1795187457,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/reaver/kill_1/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "7fd31cbb5568213671a421b242fe738905e5e935624a59d6a9c409ae0d8aabff",
+      "status": "DONE",
+      "text": "[laughing] Ha! Did ye see that? Did ANYBODY see that?"
+    },
+    {
+      "bytes": 250958,
+      "credits": 53,
+      "files": [
+        "voices/reaver/kill_1/2.wav"
+      ],
+      "finished_at": 1795187458,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/reaver/kill_1/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "1c1920eceb39ec81154373174e69027ddc845fcc823320ad9943a7321fd9a45f",
+      "status": "DONE",
+      "text": "[laughing] Ha! Did ye see that? Did ANYBODY see that?"
+    },
+    {
+      "bytes": 240718,
+      "credits": 53,
+      "files": [
+        "voices/reaver/kill_1/3.wav"
+      ],
+      "finished_at": 1795187459,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/reaver/kill_1/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "75791de4726ddf9899f8f830b296e3d553a9ef692b785c1f7362ffa8fe4315a3",
+      "status": "DONE",
+      "text": "[laughing] Ha! Did ye see that? Did ANYBODY see that?"
+    },
+    {
+      "bytes": 133198,
+      "credits": 27,
+      "files": [
+        "voices/reaver/kill_2/1.wav"
+      ],
+      "finished_at": 1795187460,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/reaver/kill_2/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "44d18620ce993672a9f2a3d04ff985786877a8e4e2a7ae12a5f1b13518b3e978",
+      "status": "DONE",
+      "text": "Doon ye go, an' bide there."
+    },
+    {
+      "bytes": 133198,
+      "credits": 27,
+      "files": [
+        "voices/reaver/kill_2/2.wav"
+      ],
+      "finished_at": 1795187460,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/reaver/kill_2/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "17487cc42bb7bfdf1e2104fd1b7ebd919151fd5e28e7cf51abc448f4e54a2c05",
+      "status": "DONE",
+      "text": "Doon ye go, an' bide there."
+    },
+    {
+      "bytes": 138318,
+      "credits": 27,
+      "files": [
+        "voices/reaver/kill_2/3.wav"
+      ],
+      "finished_at": 1795187461,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/reaver/kill_2/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "390d383169a93866e4aba09f85686f9cc3e6cf40d3ba1323f246cac59747bf8c",
+      "status": "DONE",
+      "text": "Doon ye go, an' bide there."
+    },
+    {
+      "bytes": 276558,
+      "credits": 46,
+      "files": [
+        "voices/reaver/kill_3/1.wav"
+      ],
+      "finished_at": 1795187462,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/reaver/kill_3/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "fd64b6f65e29b41456e9c32c5e9a19f904c6f0cc2496a0c8a438188461192184",
+      "status": "DONE",
+      "text": "That's three! Or four. Ah've lost count. Mair!"
+    },
+    {
+      "bytes": 297038,
+      "credits": 46,
+      "files": [
+        "voices/reaver/kill_3/2.wav"
+      ],
+      "finished_at": 1795187463,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/reaver/kill_3/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "7c6202e9b942abe2cfece0bf67700a942ea3d6176d750139445b9f7590df5232",
+      "status": "DONE",
+      "text": "That's three! Or four. Ah've lost count. Mair!"
+    },
+    {
+      "bytes": 281678,
+      "credits": 46,
+      "files": [
+        "voices/reaver/kill_3/3.wav"
+      ],
+      "finished_at": 1795187464,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/reaver/kill_3/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "ea9edc8457d9c1c860d50ac4f8653360e98f693403f4249accad73df36b3203b",
+      "status": "DONE",
+      "text": "That's three! Or four. Ah've lost count. Mair!"
+    },
+    {
+      "bytes": 87118,
+      "credits": 16,
+      "files": [
+        "voices/reaver/move_1/1.wav"
+      ],
+      "finished_at": 1795187465,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/reaver/move_1/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "b2aef553c590dcce3b02dd64604bf7465105ac883a86570d873a2d0896dd4021",
+      "status": "DONE",
+      "text": "Fast as ye like!"
+    },
+    {
+      "bytes": 92238,
+      "credits": 16,
+      "files": [
+        "voices/reaver/move_1/2.wav"
+      ],
+      "finished_at": 1795187466,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/reaver/move_1/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "f7b4955d637f92c5128767b17b25cfe47fec83005ba6b1ed000d81f185e95c73",
+      "status": "DONE",
+      "text": "Fast as ye like!"
+    },
+    {
+      "bytes": 92238,
+      "credits": 16,
+      "files": [
+        "voices/reaver/move_1/3.wav"
+      ],
+      "finished_at": 1795187467,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/reaver/move_1/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "61333ad04678e78a3864e5d6c559e90c24e1cd44e4308f0881207806668e69a5",
+      "status": "DONE",
+      "text": "Fast as ye like!"
+    },
+    {
+      "bytes": 138318,
+      "credits": 25,
+      "files": [
+        "voices/reaver/move_2/1.wav"
+      ],
+      "finished_at": 1795187467,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/reaver/move_2/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "2130514ceb125ae807ac18e11d857b275fadd343e274792f58be0ce1c06863ec",
+      "status": "DONE",
+      "text": "Runnin'! Try an' keep up!"
+    },
+    {
+      "bytes": 148558,
+      "credits": 25,
+      "files": [
+        "voices/reaver/move_2/2.wav"
+      ],
+      "finished_at": 1795187468,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/reaver/move_2/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "5e8bb2e3609354b11af62dc5f48f48806214ca611d3762266676760d9460f9e4",
+      "status": "DONE",
+      "text": "Runnin'! Try an' keep up!"
+    },
+    {
+      "bytes": 138318,
+      "credits": 25,
+      "files": [
+        "voices/reaver/move_2/3.wav"
+      ],
+      "finished_at": 1795187469,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/reaver/move_2/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "dab6806d6e86f45cfb49a63d66336782c3ecb6c53cf30e758e39209e8222c448",
+      "status": "DONE",
+      "text": "Runnin'! Try an' keep up!"
+    },
+    {
+      "bytes": 133198,
+      "credits": 27,
+      "files": [
+        "voices/reaver/move_3/1.wav"
+      ],
+      "finished_at": 1795187470,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/reaver/move_3/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "1065e4c597a1e3ef700b658ae8c79b0d0d1baf3ed19b85dec464551038cea3c7",
+      "status": "DONE",
+      "text": "This better end in a scrap."
+    },
+    {
+      "bytes": 133198,
+      "credits": 27,
+      "files": [
+        "voices/reaver/move_3/2.wav"
+      ],
+      "finished_at": 1795187470,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/reaver/move_3/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "06d212081eba05e4a1f346aa71f72933b32214e1bccdf85b638a1b93d11c2b17",
+      "status": "DONE",
+      "text": "This better end in a scrap."
+    },
+    {
+      "bytes": 133198,
+      "credits": 27,
+      "files": [
+        "voices/reaver/move_3/3.wav"
+      ],
+      "finished_at": 1795187471,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/reaver/move_3/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "aeb945800e41bda38ef0416ea6deb77748656f0a251094a38a72a55dc3a02411",
+      "status": "DONE",
+      "text": "This better end in a scrap."
+    },
+    {
+      "bytes": 204878,
+      "credits": 44,
+      "files": [
+        "voices/reaver/move_4/1.wav"
+      ],
+      "finished_at": 1795187472,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/reaver/move_4/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "446421e76b6d198987a5ea831233f23f96442e79d071eadfdbe31d3029702a03",
+      "status": "DONE",
+      "text": "Ah'll go roond. Or through, if it's quicker."
+    },
+    {
+      "bytes": 194638,
+      "credits": 44,
+      "files": [
+        "voices/reaver/move_4/2.wav"
+      ],
+      "finished_at": 1795187473,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/reaver/move_4/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "1e696c1ea70a631aa6a3c59040a98c98bbb6fe35583ca820479d045b5937987c",
+      "status": "DONE",
+      "text": "Ah'll go roond. Or through, if it's quicker."
+    },
+    {
+      "bytes": 199758,
+      "credits": 44,
+      "files": [
+        "voices/reaver/move_4/3.wav"
+      ],
+      "finished_at": 1795187474,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/reaver/move_4/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "026624f64cc2b1dc3d6aa67db6c9c8f7f19c9e9693eed98439a0789019f72b45",
+      "status": "DONE",
+      "text": "Ah'll go roond. Or through, if it's quicker."
+    },
+    {
+      "bytes": 302158,
+      "credits": 37,
+      "files": [
+        "voices/reaver/retreat_1/1.wav"
+      ],
+      "finished_at": 1795187475,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/reaver/retreat_1/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "00dfa76147589c949d2af380b36e504afa4b2df7a24b919f174a49205422b707",
+      "status": "DONE",
+      "text": "Back? BACK? Ach, fine. Under protest!"
+    },
+    {
+      "bytes": 291918,
+      "credits": 37,
+      "files": [
+        "voices/reaver/retreat_1/2.wav"
+      ],
+      "finished_at": 1795187477,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/reaver/retreat_1/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "7bfddb9e50fa4f97e0b3e3c7dabf932c09a74a7b11885a79365cdbf9dbfc1b7b",
+      "status": "DONE",
+      "text": "Back? BACK? Ach, fine. Under protest!"
+    },
+    {
+      "bytes": 297038,
+      "credits": 37,
+      "files": [
+        "voices/reaver/retreat_1/3.wav"
+      ],
+      "finished_at": 1795187478,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/reaver/retreat_1/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "9ef31ce17bd391cc518ddd4bce614c46e54b602ea8abf6f8026cfe0e2509e0b8",
+      "status": "DONE",
+      "text": "Back? BACK? Ach, fine. Under protest!"
+    },
+    {
+      "bytes": 174158,
+      "credits": 41,
+      "files": [
+        "voices/reaver/select_1/1.wav"
+      ],
+      "finished_at": 1795187479,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/reaver/select_1/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "154a24c28e72fad847e33694ea70015463c76c94d2b7f5f1a51aaf9642073cf5",
+      "status": "DONE",
+      "text": "Ah've no' had a guid fight since Tuesday!"
+    },
+    {
+      "bytes": 184398,
+      "credits": 41,
+      "files": [
+        "voices/reaver/select_1/2.wav"
+      ],
+      "finished_at": 1795187480,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/reaver/select_1/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "f48fc7ce04da1bc8e5e9d5c6466698255e476e91ea8b0179e51dcdc19032f1cb",
+      "status": "DONE",
+      "text": "Ah've no' had a guid fight since Tuesday!"
+    },
+    {
+      "bytes": 184398,
+      "credits": 41,
+      "files": [
+        "voices/reaver/select_1/3.wav"
+      ],
+      "finished_at": 1795187481,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/reaver/select_1/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "8c12cbc80e333c937835e9b4eb0f82ac5055b3ee8925d8de76c2c6012e91b25e",
+      "status": "DONE",
+      "text": "Ah've no' had a guid fight since Tuesday!"
+    },
+    {
+      "bytes": 199758,
+      "credits": 43,
+      "files": [
+        "voices/reaver/select_2/1.wav"
+      ],
+      "finished_at": 1795187481,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/reaver/select_2/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "74dbe943ade1432d17dbcfd97226b9fee3794f9b2bfaff3cdd71210533759f20",
+      "status": "DONE",
+      "text": "Aye? Is it fightin'? Tell me it's fightin'."
+    },
+    {
+      "bytes": 230478,
+      "credits": 43,
+      "files": [
+        "voices/reaver/select_2/2.wav"
+      ],
+      "finished_at": 1795187482,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/reaver/select_2/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "4c7aef2f5eb9d5510ab12801038f7295e135870bf2fcf0034c351888d5026046",
+      "status": "DONE",
+      "text": "Aye? Is it fightin'? Tell me it's fightin'."
+    },
+    {
+      "bytes": 225358,
+      "credits": 43,
+      "files": [
+        "voices/reaver/select_2/3.wav"
+      ],
+      "finished_at": 1795187483,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/reaver/select_2/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "effb580f90f171dd19f5906441ed4c58718c0cac25b1095bd799ee79d4ebec76",
+      "status": "DONE",
+      "text": "Aye? Is it fightin'? Tell me it's fightin'."
+    },
+    {
+      "bytes": 245838,
+      "credits": 43,
+      "files": [
+        "voices/reaver/select_3/1.wav"
+      ],
+      "finished_at": 1795187484,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/reaver/select_3/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "01952633a200c6ad56e2791a52906dc72c5c63a802529ddd29f178e97096e781",
+      "status": "DONE",
+      "text": "Ah'm awake! Ah'm sharp! Well, the blade is."
+    },
+    {
+      "bytes": 235598,
+      "credits": 43,
+      "files": [
+        "voices/reaver/select_3/2.wav"
+      ],
+      "finished_at": 1795187486,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/reaver/select_3/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "f4f3545ef5efff0d713a0a45f4c2f158e44ef51f22b1f928c56557045b57efa1",
+      "status": "DONE",
+      "text": "Ah'm awake! Ah'm sharp! Well, the blade is."
+    },
+    {
+      "bytes": 235598,
+      "credits": 43,
+      "files": [
+        "voices/reaver/select_3/3.wav"
+      ],
+      "finished_at": 1795187487,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/reaver/select_3/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "90ba52ce046066e493cc4e1b66d5a8c4e1442e211d2c5c98efe5b4b07a116f9c",
+      "status": "DONE",
+      "text": "Ah'm awake! Ah'm sharp! Well, the blade is."
+    },
+    {
+      "bytes": 189518,
+      "credits": 45,
+      "files": [
+        "voices/reaver/select_4/1.wav"
+      ],
+      "finished_at": 1795187487,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/reaver/select_4/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "8166cbce0998637081b9cbd8c07a23ba2a43eef341f93900e30b339a3ca1520b",
+      "status": "DONE",
+      "text": "Whit's the hold-up? Ma sword's gettin' bored."
+    },
+    {
+      "bytes": 194638,
+      "credits": 45,
+      "files": [
+        "voices/reaver/select_4/2.wav"
+      ],
+      "finished_at": 1795187488,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/reaver/select_4/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "28c00b6126b6ffdc9c0c4e60decb47310c211cec6413b04f7799947c18f392dd",
+      "status": "DONE",
+      "text": "Whit's the hold-up? Ma sword's gettin' bored."
+    },
+    {
+      "bytes": 189518,
+      "credits": 45,
+      "files": [
+        "voices/reaver/select_4/3.wav"
+      ],
+      "finished_at": 1795187489,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/reaver/select_4/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "c1db47c765a886d1c60a1ad0b50229c980813562027e1d488ca32730d7eff0fc",
+      "status": "DONE",
+      "text": "Whit's the hold-up? Ma sword's gettin' bored."
+    },
+    {
+      "bytes": 174158,
+      "credits": 39,
+      "files": [
+        "voices/reaver/victory_1/1.wav"
+      ],
+      "finished_at": 1795187490,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/reaver/victory_1/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "5cc9e71d6cd09057b66dfea4580e647a2704f93a5bd7739ce643965beb4d1185",
+      "status": "DONE",
+      "text": "Is that it? Ah wanted a second helpin'!"
+    },
+    {
+      "bytes": 179278,
+      "credits": 39,
+      "files": [
+        "voices/reaver/victory_1/2.wav"
+      ],
+      "finished_at": 1795187491,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/reaver/victory_1/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "1a108d833abed0136b55db853d7910c722c5fae327daf2e657ff6ea76d787d88",
+      "status": "DONE",
+      "text": "Is that it? Ah wanted a second helpin'!"
+    },
+    {
+      "bytes": 179278,
+      "credits": 39,
+      "files": [
+        "voices/reaver/victory_1/3.wav"
+      ],
+      "finished_at": 1795187492,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/reaver/victory_1/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "69b0bde28e50f254e1340d09400f247811c6003f802d1fef628a831ba1bbfb63",
+      "status": "DONE",
+      "text": "Is that it? Ah wanted a second helpin'!"
+    },
+    {
+      "bytes": 215118,
+      "credits": 36,
+      "files": [
+        "voices/longbow/annoyed_1/1.wav"
+      ],
+      "finished_at": 1795187504,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/longbow/annoyed_1/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "6a3df5eac86f9a442f136a8ca6afef7477e7d42aa10f53dc0f48bfbb9cbb93f1",
+      "status": "DONE",
+      "text": "Ye're louder than the deid. Wheesht."
+    },
+    {
+      "bytes": 209998,
+      "credits": 36,
+      "files": [
+        "voices/longbow/annoyed_1/2.wav"
+      ],
+      "finished_at": 1795187505,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/longbow/annoyed_1/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "17c0905003e65b7641ac5c96741162560aec5d89f6eb6a6c86270611bdc82ac3",
+      "status": "DONE",
+      "text": "Ye're louder than the deid. Wheesht."
+    },
+    {
+      "bytes": 209998,
+      "credits": 36,
+      "files": [
+        "voices/longbow/annoyed_1/3.wav"
+      ],
+      "finished_at": 1795187506,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/longbow/annoyed_1/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "6adf072fdfbd98cd00c5b461b289b78d775247cae31ce928a2121753e5f133e0",
+      "status": "DONE",
+      "text": "Ye're louder than the deid. Wheesht."
+    },
+    {
+      "bytes": 158798,
+      "credits": 41,
+      "files": [
+        "voices/longbow/annoyed_2/1.wav"
+      ],
+      "finished_at": 1795187507,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/longbow/annoyed_2/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "bb335a2aa3ff3a09d9ab7ed8fa470c6b28309defa6e98b75ade6db2bf8c1267f",
+      "status": "DONE",
+      "text": "Click me again an' ah'll practise on you."
+    },
+    {
+      "bytes": 158798,
+      "credits": 41,
+      "files": [
+        "voices/longbow/annoyed_2/2.wav"
+      ],
+      "finished_at": 1795187508,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/longbow/annoyed_2/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "5a80e2fe447827d78b0e665fa5d27e2eae59eb2654406f8ae54e8eba588fc5f5",
+      "status": "DONE",
+      "text": "Click me again an' ah'll practise on you."
+    },
+    {
+      "bytes": 158798,
+      "credits": 41,
+      "files": [
+        "voices/longbow/annoyed_2/3.wav"
+      ],
+      "finished_at": 1795187508,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/longbow/annoyed_2/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "5373ca861efbf368c7497ca57b9c35c987818cabb409a7e54608f9d1fea3df32",
+      "status": "DONE",
+      "text": "Click me again an' ah'll practise on you."
+    },
+    {
+      "bytes": 163918,
+      "credits": 28,
+      "files": [
+        "voices/longbow/attack_1/1.wav"
+      ],
+      "finished_at": 1795187509,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/longbow/attack_1/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "266d8dcb0b737b5ae71a2d5fc3ce4e82d28a2bf07812347950cfd540f2685c54",
+      "status": "DONE",
+      "text": "One arrow, one less problem."
+    },
+    {
+      "bytes": 163918,
+      "credits": 28,
+      "files": [
+        "voices/longbow/attack_1/2.wav"
+      ],
+      "finished_at": 1795187510,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/longbow/attack_1/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "9b1bb5ede49576d96b41c370b8b72ed8d5bdc5893efb4860e16246a28f234537",
+      "status": "DONE",
+      "text": "One arrow, one less problem."
+    },
+    {
+      "bytes": 163918,
+      "credits": 28,
+      "files": [
+        "voices/longbow/attack_1/3.wav"
+      ],
+      "finished_at": 1795187511,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/longbow/attack_1/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "0ec0ef8fabfc5bca5f36ee7a60e963920c3fd59fbc8d341b08e7673af153d260",
+      "status": "DONE",
+      "text": "One arrow, one less problem."
+    },
+    {
+      "bytes": 163918,
+      "credits": 33,
+      "files": [
+        "voices/longbow/attack_2/1.wav"
+      ],
+      "finished_at": 1795187512,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/longbow/attack_2/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "0b0b40dccf9854d3bc4a9d0636f209db6d1c9827c1663e0bb670664221ccbcef",
+      "status": "DONE",
+      "text": "[whispering] Hold still... there."
+    },
+    {
+      "bytes": 163918,
+      "credits": 33,
+      "files": [
+        "voices/longbow/attack_2/2.wav"
+      ],
+      "finished_at": 1795187512,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/longbow/attack_2/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "54651e4e1151037c14189c7ee833c09be44005899d496d3eca3e5739a3e2f880",
+      "status": "DONE",
+      "text": "[whispering] Hold still... there."
+    },
+    {
+      "bytes": 163918,
+      "credits": 33,
+      "files": [
+        "voices/longbow/attack_2/3.wav"
+      ],
+      "finished_at": 1795187513,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/longbow/attack_2/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "cfae5840f21aabc90438427cf530292c0a1866cb7d60fe2aeda346113cb9b318",
+      "status": "DONE",
+      "text": "[whispering] Hold still... there."
+    },
+    {
+      "bytes": 138318,
+      "credits": 33,
+      "files": [
+        "voices/longbow/attack_3/1.wav"
+      ],
+      "finished_at": 1795187514,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/longbow/attack_3/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "bbf1dadbefdcea99cd1d5e3feb44a7ca76ca3db2fd841776f404198e555ad73c",
+      "status": "DONE",
+      "text": "Ah've a shaft wi' yer name on it."
+    },
+    {
+      "bytes": 143438,
+      "credits": 33,
+      "files": [
+        "voices/longbow/attack_3/2.wav"
+      ],
+      "finished_at": 1795187514,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/longbow/attack_3/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "c97c0218981b013a4459c4055ce887bae5968b6f60645107dd16bc80cf684d72",
+      "status": "DONE",
+      "text": "Ah've a shaft wi' yer name on it."
+    },
+    {
+      "bytes": 138318,
+      "credits": 33,
+      "files": [
+        "voices/longbow/attack_3/3.wav"
+      ],
+      "finished_at": 1795187515,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/longbow/attack_3/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "1b5c2484e4ca1859cfdd9098be10dd90d6d7c3f461a5a1bca4b011931390bc72",
+      "status": "DONE",
+      "text": "Ah've a shaft wi' yer name on it."
+    },
+    {
+      "bytes": 76878,
+      "credits": 8,
+      "files": [
+        "voices/longbow/clan_1/1.wav"
+      ],
+      "finished_at": 1795187516,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/longbow/clan_1/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "42da5c0410c19defa38ec70e4cff53f130b5ed22fd8cd3b6e8766ba4b742e4fa",
+      "status": "DONE",
+      "text": "Crivens!"
+    },
+    {
+      "bytes": 76878,
+      "credits": 8,
+      "files": [
+        "voices/longbow/clan_1/2.wav"
+      ],
+      "finished_at": 1795187516,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/longbow/clan_1/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "fbcfeb5eb718259108fec75f3a8c6a3ddd78ae99877febc9bb8f297b488df35f",
+      "status": "DONE",
+      "text": "Crivens!"
+    },
+    {
+      "bytes": 76878,
+      "credits": 8,
+      "files": [
+        "voices/longbow/clan_1/3.wav"
+      ],
+      "finished_at": 1795187517,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/longbow/clan_1/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "5b5fcab726afbd3854a5e1160a929933e931f565e8735408848734f093e18262",
+      "status": "DONE",
+      "text": "Crivens!"
+    },
+    {
+      "bytes": 107598,
+      "credits": 10,
+      "files": [
+        "voices/longbow/clan_2/1.wav"
+      ],
+      "finished_at": 1795187517,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/longbow/clan_2/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "f8b6618ac36a3ed4588a89632f9bbb96a87700d0783e19b0afd717d7d7ea6e8f",
+      "status": "DONE",
+      "text": "Michty me!"
+    },
+    {
+      "bytes": 107598,
+      "credits": 10,
+      "files": [
+        "voices/longbow/clan_2/2.wav"
+      ],
+      "finished_at": 1795187518,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/longbow/clan_2/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "e11b41374f1e7c13e5fa3e79a649852ad8129289a6b406f12c18d754cc4963d2",
+      "status": "DONE",
+      "text": "Michty me!"
+    },
+    {
+      "bytes": 97358,
+      "credits": 10,
+      "files": [
+        "voices/longbow/clan_2/3.wav"
+      ],
+      "finished_at": 1795187518,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/longbow/clan_2/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "593b6c929a7ad3a0146d7ca57d68acc0a72ac8cb9e09a1f09d077f7ea4f205c9",
+      "status": "DONE",
+      "text": "Michty me!"
+    },
+    {
+      "bytes": 107598,
+      "credits": 17,
+      "files": [
+        "voices/longbow/clan_3/1.wav"
+      ],
+      "finished_at": 1795187519,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/longbow/clan_3/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "2cf1b020d3c74daaa37e2921bd3c8c3730459f3981a25d1f4f53e4a7058b1ce4",
+      "status": "DONE",
+      "text": "Haud yer wheesht!"
+    },
+    {
+      "bytes": 112718,
+      "credits": 17,
+      "files": [
+        "voices/longbow/clan_3/2.wav"
+      ],
+      "finished_at": 1795187520,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/longbow/clan_3/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "6c5e3bb8fefe647d33e2f923621d62aead7b2e8bccde7d145c37aa4bf52468cb",
+      "status": "DONE",
+      "text": "Haud yer wheesht!"
+    },
+    {
+      "bytes": 117838,
+      "credits": 17,
+      "files": [
+        "voices/longbow/clan_3/3.wav"
+      ],
+      "finished_at": 1795187520,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/longbow/clan_3/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "b2a3e71b83f980e06311264dffc1dccf4e8242ce385b2d14342798ce514cda1a",
+      "status": "DONE",
+      "text": "Haud yer wheesht!"
+    },
+    {
+      "bytes": 163918,
+      "credits": 23,
+      "files": [
+        "voices/longbow/clan_4/1.wav"
+      ],
+      "finished_at": 1795187521,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/longbow/clan_4/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "a60f33059bd9e1ceca83379acee6544fb9068eb69985d2fd46f1301902adfa2b",
+      "status": "DONE",
+      "text": "Och, that's pure mince."
+    },
+    {
+      "bytes": 163918,
+      "credits": 23,
+      "files": [
+        "voices/longbow/clan_4/2.wav"
+      ],
+      "finished_at": 1795187522,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/longbow/clan_4/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "93fdfa9011cc9ece8cfed5a3f9a32a05a0d11c808484bcd910e4b9c5bfc1d48c",
+      "status": "DONE",
+      "text": "Och, that's pure mince."
+    },
+    {
+      "bytes": 163918,
+      "credits": 23,
+      "files": [
+        "voices/longbow/clan_4/3.wav"
+      ],
+      "finished_at": 1795187523,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/longbow/clan_4/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "40a71ab0d2ef4b5074d16dd533402f1ba12d7b697783db5641275ad4c7bd15a3",
+      "status": "DONE",
+      "text": "Och, that's pure mince."
+    },
+    {
+      "bytes": 87118,
+      "credits": 14,
+      "files": [
+        "voices/longbow/clan_5/1.wav"
+      ],
+      "finished_at": 1795187523,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/longbow/clan_5/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "219e83eeec8358a1024142296dc33129a773f56359f78ddce755e0294b06af3c",
+      "status": "DONE",
+      "text": "Mind yer feet!"
+    },
+    {
+      "bytes": 87118,
+      "credits": 14,
+      "files": [
+        "voices/longbow/clan_5/2.wav"
+      ],
+      "finished_at": 1795187524,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/longbow/clan_5/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "efc77158cc1e38f271326e388414535735373d49ec5dad47ce61f7c2f745889f",
+      "status": "DONE",
+      "text": "Mind yer feet!"
+    },
+    {
+      "bytes": 87118,
+      "credits": 14,
+      "files": [
+        "voices/longbow/clan_5/3.wav"
+      ],
+      "finished_at": 1795187524,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/longbow/clan_5/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "47f1bea13d2f92627c342216c2e858cc893133464739031ccb3002498b3c1926",
+      "status": "DONE",
+      "text": "Mind yer feet!"
+    },
+    {
+      "bytes": 133198,
+      "credits": 24,
+      "files": [
+        "voices/longbow/death_1/1.wav"
+      ],
+      "finished_at": 1795187525,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/longbow/death_1/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "52063897735cc2b00253d68180f5816b66c1c94a959ab1b0cba288e2e7d3d9e7",
+      "status": "DONE",
+      "text": "Ah... missed that one..."
+    },
+    {
+      "bytes": 133198,
+      "credits": 24,
+      "files": [
+        "voices/longbow/death_1/2.wav"
+      ],
+      "finished_at": 1795187526,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/longbow/death_1/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "19a8a2246dcc3c0cec74c495186a4e023573463ba8e0a97df7eb0537a31ca339",
+      "status": "DONE",
+      "text": "Ah... missed that one..."
+    },
+    {
+      "bytes": 133198,
+      "credits": 24,
+      "files": [
+        "voices/longbow/death_1/3.wav"
+      ],
+      "finished_at": 1795187527,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/longbow/death_1/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "3be5af6f2ee1b3f899677e9f2c895b6189b98e40f642c38a5df446fd42a8abc2",
+      "status": "DONE",
+      "text": "Ah... missed that one..."
+    },
+    {
+      "bytes": 174158,
+      "credits": 30,
+      "files": [
+        "voices/longbow/death_2/1.wav"
+      ],
+      "finished_at": 1795187527,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/longbow/death_2/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "667d10837a4dfcc4e14cadbe935ddb8cdc82f0da8465fa7ea89f4660bdf62700",
+      "status": "DONE",
+      "text": "Tell the hills... ah'm hame..."
+    },
+    {
+      "bytes": 184398,
+      "credits": 30,
+      "files": [
+        "voices/longbow/death_2/2.wav"
+      ],
+      "finished_at": 1795187528,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/longbow/death_2/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "f8d2afd00871f8bbdf0206e005561f53f593989451f515cbe94acb53a65edcb8",
+      "status": "DONE",
+      "text": "Tell the hills... ah'm hame..."
+    },
+    {
+      "bytes": 184398,
+      "credits": 30,
+      "files": [
+        "voices/longbow/death_2/3.wav"
+      ],
+      "finished_at": 1795187529,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/longbow/death_2/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "aa57a96041ae41f507fa8e43c12e3e0dd7595ff6f8acdba898e29c2ad6cf8ccb",
+      "status": "DONE",
+      "text": "Tell the hills... ah'm hame..."
+    },
+    {
+      "bytes": 174158,
+      "credits": 29,
+      "files": [
+        "voices/longbow/fizzle_1/1.wav"
+      ],
+      "finished_at": 1795187530,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/longbow/fizzle_1/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "fe410d5d538235bb8f4bdb3865f070e8bda32bbd5e3d313acbdc3a05726af2d0",
+      "status": "DONE",
+      "text": "Ach, the rain's had ma flame."
+    },
+    {
+      "bytes": 163918,
+      "credits": 29,
+      "files": [
+        "voices/longbow/fizzle_1/2.wav"
+      ],
+      "finished_at": 1795187531,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/longbow/fizzle_1/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "b2de7d93844db39c820db8c85f7bfdf2aadf10a22013bcf6638647634f47ab91",
+      "status": "DONE",
+      "text": "Ach, the rain's had ma flame."
+    },
+    {
+      "bytes": 174158,
+      "credits": 29,
+      "files": [
+        "voices/longbow/fizzle_1/3.wav"
+      ],
+      "finished_at": 1795187532,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/longbow/fizzle_1/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "751081eff67965621a1fa9e373777de4ec0d8e521cb129ef1e8fa12806870f98",
+      "status": "DONE",
+      "text": "Ach, the rain's had ma flame."
+    },
+    {
+      "bytes": 189518,
+      "credits": 22,
+      "files": [
+        "voices/longbow/hurt_1/1.wav"
+      ],
+      "finished_at": 1795187532,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/longbow/hurt_1/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "7c85e34b405ed8c9c69d40ae06b4c1950cb06ce3cb7ecc626ad1ed55cfaf1249",
+      "status": "DONE",
+      "text": "Ach. Ah felt that one."
+    },
+    {
+      "bytes": 194638,
+      "credits": 22,
+      "files": [
+        "voices/longbow/hurt_1/2.wav"
+      ],
+      "finished_at": 1795187533,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/longbow/hurt_1/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "92b6a73fa33d77272b63a78d04607f67b01d38bf4cf7a036718269f86e5f3c7c",
+      "status": "DONE",
+      "text": "Ach. Ah felt that one."
+    },
+    {
+      "bytes": 194638,
+      "credits": 22,
+      "files": [
+        "voices/longbow/hurt_1/3.wav"
+      ],
+      "finished_at": 1795187534,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/longbow/hurt_1/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "fdaf02d49266328c311a32bf8a57d63f1807ce33f1e2cd463d6972848e1f79ec",
+      "status": "DONE",
+      "text": "Ach. Ah felt that one."
+    },
+    {
+      "bytes": 169038,
+      "credits": 34,
+      "files": [
+        "voices/longbow/hurt_2/1.wav"
+      ],
+      "finished_at": 1795187535,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/longbow/hurt_2/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "4f8f4e6a1683d0bce00cfc113d0b5dc1eb5a07ec4ed2752c50ab5601c1c51865",
+      "status": "DONE",
+      "text": "Get them aff me, ah'm no' a sword."
+    },
+    {
+      "bytes": 174158,
+      "credits": 34,
+      "files": [
+        "voices/longbow/hurt_2/2.wav"
+      ],
+      "finished_at": 1795187536,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/longbow/hurt_2/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "ae4b8d1c183e038285f0c1900477dd60a6397d931c0dbd377b5ab45540248b8e",
+      "status": "DONE",
+      "text": "Get them aff me, ah'm no' a sword."
+    },
+    {
+      "bytes": 169038,
+      "credits": 34,
+      "files": [
+        "voices/longbow/hurt_2/3.wav"
+      ],
+      "finished_at": 1795187537,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/longbow/hurt_2/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "0d0ce7f72f09339e9ffaff1e735c8ff9817083fe774f5ae0814c1238a1ca2071",
+      "status": "DONE",
+      "text": "Get them aff me, ah'm no' a sword."
+    },
+    {
+      "bytes": 61518,
+      "credits": 6,
+      "files": [
+        "voices/longbow/kill_1/1.wav"
+      ],
+      "finished_at": 1795187537,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/longbow/kill_1/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "f5284744e89408bb173fabbf1444db4e99c0a4a945609c4eb73b2ded4300d5eb",
+      "status": "DONE",
+      "text": "Clean."
+    },
+    {
+      "bytes": 61518,
+      "credits": 6,
+      "files": [
+        "voices/longbow/kill_1/2.wav"
+      ],
+      "finished_at": 1795187537,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/longbow/kill_1/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "d53e638ce3c7203138304af2c614622a4ce9a629d51c17414eaa34018bef48e5",
+      "status": "DONE",
+      "text": "Clean."
+    },
+    {
+      "bytes": 51278,
+      "credits": 6,
+      "files": [
+        "voices/longbow/kill_1/3.wav"
+      ],
+      "finished_at": 1795187538,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/longbow/kill_1/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "1f55fe700c3f9c3860503b11fa7c6820872f65b4cffd892ba5406f2b099e9e52",
+      "status": "DONE",
+      "text": "Clean."
+    },
+    {
+      "bytes": 133198,
+      "credits": 15,
+      "files": [
+        "voices/longbow/kill_2/1.wav"
+      ],
+      "finished_at": 1795187550,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/longbow/kill_2/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "748735489a40ac2f65cb756b8ac31928e93acfe32d0879d68b7936ab401d2c65",
+      "status": "DONE",
+      "text": "Doon. Nae fuss."
+    },
+    {
+      "bytes": 138318,
+      "credits": 15,
+      "files": [
+        "voices/longbow/kill_2/2.wav"
+      ],
+      "finished_at": 1795187551,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/longbow/kill_2/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "e36ed6799bb05b5acab731a5e2376fbe89f36a23942fc30508a5c8526a2d967d",
+      "status": "DONE",
+      "text": "Doon. Nae fuss."
+    },
+    {
+      "bytes": 133198,
+      "credits": 15,
+      "files": [
+        "voices/longbow/kill_2/3.wav"
+      ],
+      "finished_at": 1795187551,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/longbow/kill_2/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "706d0f107f1ae8032dd4b21b2965f67790fddc4cabeef4d24f5006be97d75e11",
+      "status": "DONE",
+      "text": "Doon. Nae fuss."
+    },
+    {
+      "bytes": 133198,
+      "credits": 28,
+      "files": [
+        "voices/longbow/kill_3/1.wav"
+      ],
+      "finished_at": 1795187552,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/longbow/kill_3/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "05f7f662c2a467f463a28c881d50f97c44962c3fff116c6a2806f004fdce79f7",
+      "status": "DONE",
+      "text": "That's supper fer the crows."
+    },
+    {
+      "bytes": 133198,
+      "credits": 28,
+      "files": [
+        "voices/longbow/kill_3/2.wav"
+      ],
+      "finished_at": 1795187553,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/longbow/kill_3/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "40ba8c4f113d5712c2caf82e9bbc50e83d62bbb5bbb2bc0dc4d223352d9b486a",
+      "status": "DONE",
+      "text": "That's supper fer the crows."
+    },
+    {
+      "bytes": 128078,
+      "credits": 28,
+      "files": [
+        "voices/longbow/kill_3/3.wav"
+      ],
+      "finished_at": 1795187553,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/longbow/kill_3/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "108a20d21aaa32f86a43c9902daa9f1d5f3189d77cf982e4cdaeab9a49b84705",
+      "status": "DONE",
+      "text": "That's supper fer the crows."
+    },
+    {
+      "bytes": 148558,
+      "credits": 22,
+      "files": [
+        "voices/longbow/move_1/1.wav"
+      ],
+      "finished_at": 1795187554,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/longbow/move_1/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "215d89de9a727857e2cf34ab91296b2f43929377269167c2cab8146098cceb8d",
+      "status": "DONE",
+      "text": "Movin'. Keep it quiet."
+    },
+    {
+      "bytes": 148558,
+      "credits": 22,
+      "files": [
+        "voices/longbow/move_1/2.wav"
+      ],
+      "finished_at": 1795187555,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/longbow/move_1/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "17ca13bcbbc3d29e8a4059bf1205ee842fb0de6f8425af4e1d346685b21c1c1a",
+      "status": "DONE",
+      "text": "Movin'. Keep it quiet."
+    },
+    {
+      "bytes": 148558,
+      "credits": 22,
+      "files": [
+        "voices/longbow/move_1/3.wav"
+      ],
+      "finished_at": 1795187555,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/longbow/move_1/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "b18836fc68588d871843eee7465a0dcdb239f912eadd2199cd482257cbf25dce",
+      "status": "DONE",
+      "text": "Movin'. Keep it quiet."
+    },
+    {
+      "bytes": 194638,
+      "credits": 35,
+      "files": [
+        "voices/longbow/move_2/1.wav"
+      ],
+      "finished_at": 1795187556,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/longbow/move_2/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "cecb31bf7403216c1a34c3e2708b0ef5be93acfd0e9715ad67942a2c6f5eee12",
+      "status": "DONE",
+      "text": "Ah'll find high ground. Ah aye dae."
+    },
+    {
+      "bytes": 194638,
+      "credits": 35,
+      "files": [
+        "voices/longbow/move_2/2.wav"
+      ],
+      "finished_at": 1795187557,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/longbow/move_2/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "c804afbde2f77a1f234cbe43cb0d8605cdaad77bd5b307c4d0ff6cbc9d8ead9b",
+      "status": "DONE",
+      "text": "Ah'll find high ground. Ah aye dae."
+    },
+    {
+      "bytes": 199758,
+      "credits": 35,
+      "files": [
+        "voices/longbow/move_2/3.wav"
+      ],
+      "finished_at": 1795187558,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/longbow/move_2/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "b479d75c84c886a38bd314195e1a556561ca14f830deba66400676fb153a6212",
+      "status": "DONE",
+      "text": "Ah'll find high ground. Ah aye dae."
+    },
+    {
+      "bytes": 189518,
+      "credits": 41,
+      "files": [
+        "voices/longbow/move_3/1.wav"
+      ],
+      "finished_at": 1795187559,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/longbow/move_3/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "41ba0b62a0dd5594cc00b217ce1dc05ba41938df1a1890b17169c9313aa24352",
+      "status": "DONE",
+      "text": "Lead on. Ah'll be the one ye cannae hear."
+    },
+    {
+      "bytes": 194638,
+      "credits": 41,
+      "files": [
+        "voices/longbow/move_3/2.wav"
+      ],
+      "finished_at": 1795187560,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/longbow/move_3/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "a6e7505b1257c73cc1bed8c26232b78c1f8e088c31ac85db9ca2f127f414c145",
+      "status": "DONE",
+      "text": "Lead on. Ah'll be the one ye cannae hear."
+    },
+    {
+      "bytes": 199758,
+      "credits": 41,
+      "files": [
+        "voices/longbow/move_3/3.wav"
+      ],
+      "finished_at": 1795187561,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/longbow/move_3/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "30e82f2a6f381703dd6bd6ab905a31b606e084cb9d19deff90868cf592823bf4",
+      "status": "DONE",
+      "text": "Lead on. Ah'll be the one ye cannae hear."
+    },
+    {
+      "bytes": 189518,
+      "credits": 39,
+      "files": [
+        "voices/longbow/retreat_1/1.wav"
+      ],
+      "finished_at": 1795187562,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/longbow/retreat_1/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "acb983e05d752b358f9b796c0da7a156782c704c38955b681f2e171e8ff9c336",
+      "status": "DONE",
+      "text": "Fallin' back. Ah'll shoot frae further."
+    },
+    {
+      "bytes": 189518,
+      "credits": 39,
+      "files": [
+        "voices/longbow/retreat_1/2.wav"
+      ],
+      "finished_at": 1795187563,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/longbow/retreat_1/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "63374651253fb1deef51b42f13916cb5e32b934549ea4bac223e1711740dc5c5",
+      "status": "DONE",
+      "text": "Fallin' back. Ah'll shoot frae further."
+    },
+    {
+      "bytes": 209998,
+      "credits": 39,
+      "files": [
+        "voices/longbow/retreat_1/3.wav"
+      ],
+      "finished_at": 1795187563,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/longbow/retreat_1/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "25fb2ce3ad5cdb6c711287c39c566761392a48aecdc1b0d06e486229e6e8987f",
+      "status": "DONE",
+      "text": "Fallin' back. Ah'll shoot frae further."
+    },
+    {
+      "bytes": 179278,
+      "credits": 28,
+      "files": [
+        "voices/longbow/select_1/1.wav"
+      ],
+      "finished_at": 1795187564,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/longbow/select_1/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "8333680f32627930d0bf84c0a49afbd8546979bc3874967d5f71fca1152e6fe4",
+      "status": "DONE",
+      "text": "Ah see it. It'll no' see me."
+    },
+    {
+      "bytes": 189518,
+      "credits": 28,
+      "files": [
+        "voices/longbow/select_1/2.wav"
+      ],
+      "finished_at": 1795187565,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/longbow/select_1/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "ad17d28e89aa643ed0a11fee909fcee4fd5736e9e098f345f8cfce48a500d82d",
+      "status": "DONE",
+      "text": "Ah see it. It'll no' see me."
+    },
+    {
+      "bytes": 189518,
+      "credits": 28,
+      "files": [
+        "voices/longbow/select_1/3.wav"
+      ],
+      "finished_at": 1795187566,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/longbow/select_1/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "cd9a7695397c1543e3f5436a6ce074541279eeb0c585cfaa852f99795516117c",
+      "status": "DONE",
+      "text": "Ah see it. It'll no' see me."
+    },
+    {
+      "bytes": 133198,
+      "credits": 18,
+      "files": [
+        "voices/longbow/select_2/1.wav"
+      ],
+      "finished_at": 1795187567,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/longbow/select_2/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "e97372c6e0f99625c0aaedb26333942141a651c15b3932638cd1dd8bcf2ba562",
+      "status": "DONE",
+      "text": "Aye. Quietly, now."
+    },
+    {
+      "bytes": 133198,
+      "credits": 18,
+      "files": [
+        "voices/longbow/select_2/2.wav"
+      ],
+      "finished_at": 1795187567,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/longbow/select_2/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "c3882cf07ac34c6c535374810bd1b789981004771b9a807b22e81bddcdc48d5c",
+      "status": "DONE",
+      "text": "Aye. Quietly, now."
+    },
+    {
+      "bytes": 133198,
+      "credits": 18,
+      "files": [
+        "voices/longbow/select_2/3.wav"
+      ],
+      "finished_at": 1795187568,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/longbow/select_2/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "7459d05caa86ed80a70bb266b80f751783bc97d82779381b1b7c5fdfb0de2598",
+      "status": "DONE",
+      "text": "Aye. Quietly, now."
+    },
+    {
+      "bytes": 230478,
+      "credits": 54,
+      "files": [
+        "voices/longbow/select_3/1.wav"
+      ],
+      "finished_at": 1795187569,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/longbow/select_3/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "08d448aa5e26cf81b9b741f040f92d2a9a145d5722810f576c4185712ad11a2f",
+      "status": "DONE",
+      "text": "Ah've a string an' a steady hand. Whit else d'ye need?"
+    },
+    {
+      "bytes": 230478,
+      "credits": 54,
+      "files": [
+        "voices/longbow/select_3/2.wav"
+      ],
+      "finished_at": 1795187570,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/longbow/select_3/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "8adfddb681bd144b99617c2e47166066cfc87906187566c093379398b97c5b2f",
+      "status": "DONE",
+      "text": "Ah've a string an' a steady hand. Whit else d'ye need?"
+    },
+    {
+      "bytes": 230478,
+      "credits": 54,
+      "files": [
+        "voices/longbow/select_3/3.wav"
+      ],
+      "finished_at": 1795187571,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/longbow/select_3/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "6e6a19dd0f845358f0a328df1de5eed07058e2ced74b98792c3ab7a831b91dbb",
+      "status": "DONE",
+      "text": "Ah've a string an' a steady hand. Whit else d'ye need?"
+    },
+    {
+      "bytes": 169038,
+      "credits": 29,
+      "files": [
+        "voices/longbow/select_4/1.wav"
+      ],
+      "finished_at": 1795187572,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/longbow/select_4/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "fb9aa6cf1fd3b826415b6a47db1714ec7ae749169a4eaab1540ff67f5b709855",
+      "status": "DONE",
+      "text": "Speak soft. Ye'll spook them."
+    },
+    {
+      "bytes": 174158,
+      "credits": 29,
+      "files": [
+        "voices/longbow/select_4/2.wav"
+      ],
+      "finished_at": 1795187572,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/longbow/select_4/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "8cb887fede0ffa53ee390b22468d83706007e14930fdd74d9e8cc4f3e56552d8",
+      "status": "DONE",
+      "text": "Speak soft. Ye'll spook them."
+    },
+    {
+      "bytes": 174158,
+      "credits": 29,
+      "files": [
+        "voices/longbow/select_4/3.wav"
+      ],
+      "finished_at": 1795187573,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/longbow/select_4/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "3ece4b62da03660f94d59b35b9da814859d3f615d6ff27aee7a9bfff7b0e7bab",
+      "status": "DONE",
+      "text": "Speak soft. Ye'll spook them."
+    },
+    {
+      "bytes": 204878,
+      "credits": 35,
+      "files": [
+        "voices/longbow/special_1/1.wav"
+      ],
+      "finished_at": 1795187574,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/longbow/special_1/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "5bc7d889aedd5787b915fd5ffa93e61fa34e56e050fcdfd5b879c1e689a07da8",
+      "status": "DONE",
+      "text": "Wan fire arrow. Better be worth it."
+    },
+    {
+      "bytes": 204878,
+      "credits": 35,
+      "files": [
+        "voices/longbow/special_1/2.wav"
+      ],
+      "finished_at": 1795187575,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/longbow/special_1/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "0e1fc79757c542576396da045c6a049c097aee05eec496463e53edc197874087",
+      "status": "DONE",
+      "text": "Wan fire arrow. Better be worth it."
+    },
+    {
+      "bytes": 204878,
+      "credits": 35,
+      "files": [
+        "voices/longbow/special_1/3.wav"
+      ],
+      "finished_at": 1795187576,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/longbow/special_1/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "684a4d2f5d7db548ed36c592768705b67b8585321a163b03203245ed2ccec16e",
+      "status": "DONE",
+      "text": "Wan fire arrow. Better be worth it."
+    },
+    {
+      "bytes": 204878,
+      "credits": 29,
+      "files": [
+        "voices/longbow/special_2/1.wav"
+      ],
+      "finished_at": 1795187577,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/longbow/special_2/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "df75e3d71d1302dac3299e21f431cd2e44bf77b97a47ff9d2c373c4b7692ad29",
+      "status": "DONE",
+      "text": "Light it. Loose it. Leave it."
+    },
+    {
+      "bytes": 209998,
+      "credits": 29,
+      "files": [
+        "voices/longbow/special_2/2.wav"
+      ],
+      "finished_at": 1795187577,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/longbow/special_2/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "8d4da781629dc437f567dbe06616843932ca49f6ea99652396abc4089e530925",
+      "status": "DONE",
+      "text": "Light it. Loose it. Leave it."
+    },
+    {
+      "bytes": 209998,
+      "credits": 29,
+      "files": [
+        "voices/longbow/special_2/3.wav"
+      ],
+      "finished_at": 1795187578,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/longbow/special_2/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "780c9a56698bc29bb46ed42bbdc685d389810aec32cbcf67fa151cc7c3571b9d",
+      "status": "DONE",
+      "text": "Light it. Loose it. Leave it."
+    },
+    {
+      "bytes": 194638,
+      "credits": 35,
+      "files": [
+        "voices/longbow/victory_1/1.wav"
+      ],
+      "finished_at": 1795187579,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/longbow/victory_1/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "2e22c84a6af650585d66b3739e92a3c09eb8afedc7d028c634e81fd6757eb783",
+      "status": "DONE",
+      "text": "Quiet again. That's how ah like it."
+    },
+    {
+      "bytes": 189518,
+      "credits": 35,
+      "files": [
+        "voices/longbow/victory_1/2.wav"
+      ],
+      "finished_at": 1795187580,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/longbow/victory_1/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "70bc9044893a053c7522a45e783b678c5a63edca6ad78dc8b565efa07c66f82d",
+      "status": "DONE",
+      "text": "Quiet again. That's how ah like it."
+    },
+    {
+      "bytes": 189518,
+      "credits": 35,
+      "files": [
+        "voices/longbow/victory_1/3.wav"
+      ],
+      "finished_at": 1795187581,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/longbow/victory_1/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "9793deba0161d3cf11aa5de11838bec93eda0510cfefd08d82914ea52a97e7b5",
+      "status": "DONE",
+      "text": "Quiet again. That's how ah like it."
+    },
+    {
+      "bytes": 204878,
+      "credits": 47,
+      "files": [
+        "voices/sapper/annoyed_1/1.wav"
+      ],
+      "finished_at": 1795187588,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/sapper/annoyed_1/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "9554ad5e449e19e3082fe3ff291474f9932792c53800edf560902f0f5ec95f5c",
+      "status": "DONE",
+      "text": "Stop proddin' me! D'ye KNOW whit's in this bag?"
+    },
+    {
+      "bytes": 209998,
+      "credits": 47,
+      "files": [
+        "voices/sapper/annoyed_1/2.wav"
+      ],
+      "finished_at": 1795187589,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/sapper/annoyed_1/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "d417ef4d95b7696b1a203bfbcad7b6c47465c316fd1e3638e46b1b906bbdbec5",
+      "status": "DONE",
+      "text": "Stop proddin' me! D'ye KNOW whit's in this bag?"
+    },
+    {
+      "bytes": 199758,
+      "credits": 47,
+      "files": [
+        "voices/sapper/annoyed_1/3.wav"
+      ],
+      "finished_at": 1795187590,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/sapper/annoyed_1/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "658018aa669b89e521379de552c7636bf3e3802ebb885a61f0917774e521b98a",
+      "status": "DONE",
+      "text": "Stop proddin' me! D'ye KNOW whit's in this bag?"
+    },
+    {
+      "bytes": 174158,
+      "credits": 47,
+      "files": [
+        "voices/sapper/annoyed_2/1.wav"
+      ],
+      "finished_at": 1795187590,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/sapper/annoyed_2/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "a46952b537f4e005a4ca686562ea7868fb8e4ef3df1795f920e3560288b008cd",
+      "status": "DONE",
+      "text": "Wan mair click an' ah'm takin' ma bottles hame."
+    },
+    {
+      "bytes": 174158,
+      "credits": 47,
+      "files": [
+        "voices/sapper/annoyed_2/2.wav"
+      ],
+      "finished_at": 1795187591,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/sapper/annoyed_2/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "76642048c790a7d89d0af63523f8600243461bd46e943846f65931fe49d296eb",
+      "status": "DONE",
+      "text": "Wan mair click an' ah'm takin' ma bottles hame."
+    },
+    {
+      "bytes": 174158,
+      "credits": 47,
+      "files": [
+        "voices/sapper/annoyed_2/3.wav"
+      ],
+      "finished_at": 1795187592,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/sapper/annoyed_2/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "f3fa92b5e33feb980496f94df6e4810edfdc509f720274e464e6e58dd3738378",
+      "status": "DONE",
+      "text": "Wan mair click an' ah'm takin' ma bottles hame."
+    },
+    {
+      "bytes": 184398,
+      "credits": 40,
+      "files": [
+        "voices/sapper/attack_1/1.wav"
+      ],
+      "finished_at": 1795187593,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/sapper/attack_1/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "21d0b904c2972c7af748a5d82d6f5d07767aea796dd6f8b1367d7dec838ea3f7",
+      "status": "DONE",
+      "text": "Mind yer heids, this one's a bit lively!"
+    },
+    {
+      "bytes": 194638,
+      "credits": 40,
+      "files": [
+        "voices/sapper/attack_1/2.wav"
+      ],
+      "finished_at": 1795187594,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/sapper/attack_1/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "e181b9d99b03c84bf7a8fcb43c7db0b16ead1a804842762beea546c0b9dab1e4",
+      "status": "DONE",
+      "text": "Mind yer heids, this one's a bit lively!"
+    },
+    {
+      "bytes": 179278,
+      "credits": 40,
+      "files": [
+        "voices/sapper/attack_1/3.wav"
+      ],
+      "finished_at": 1795187595,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/sapper/attack_1/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "309e88792bdb441ec2178c54e24eda07e681489b0390ab6a1788bf56dc59ef26",
+      "status": "DONE",
+      "text": "Mind yer heids, this one's a bit lively!"
+    },
+    {
+      "bytes": 215118,
+      "credits": 39,
+      "files": [
+        "voices/sapper/attack_2/1.wav"
+      ],
+      "finished_at": 1795187596,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/sapper/attack_2/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "35a0843af42792972ce4053b4e79c25dead325aa6036d770c3b830d7a779de34",
+      "status": "DONE",
+      "text": "Stand back! Further! Further than that!"
+    },
+    {
+      "bytes": 215118,
+      "credits": 39,
+      "files": [
+        "voices/sapper/attack_2/2.wav"
+      ],
+      "finished_at": 1795187597,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/sapper/attack_2/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "422fedfedb5d29c42181de4fb26db1700a099d809c13c2de50edf7cef645d37e",
+      "status": "DONE",
+      "text": "Stand back! Further! Further than that!"
+    },
+    {
+      "bytes": 215118,
+      "credits": 39,
+      "files": [
+        "voices/sapper/attack_2/3.wav"
+      ],
+      "finished_at": 1795187598,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/sapper/attack_2/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "519bf5bec5363d5cc4aa5babf1a07b590fde342e6cf213fb99ce04d5cb4a45b5",
+      "status": "DONE",
+      "text": "Stand back! Further! Further than that!"
+    },
+    {
+      "bytes": 163918,
+      "credits": 24,
+      "files": [
+        "voices/sapper/attack_3/1.wav"
+      ],
+      "finished_at": 1795187598,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/sapper/attack_3/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "e246ccf2fc414a8d745dfc05e94f3e1b252057572152930e550e7464e2d68359",
+      "status": "DONE",
+      "text": "Catch! Naw, don't catch!"
+    },
+    {
+      "bytes": 158798,
+      "credits": 24,
+      "files": [
+        "voices/sapper/attack_3/2.wav"
+      ],
+      "finished_at": 1795187599,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/sapper/attack_3/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "9f193ab1778865c0efc10aae2f80a99bbc5f3833ff5fc2b62851d3bc0ebe260d",
+      "status": "DONE",
+      "text": "Catch! Naw, don't catch!"
+    },
+    {
+      "bytes": 158798,
+      "credits": 24,
+      "files": [
+        "voices/sapper/attack_3/3.wav"
+      ],
+      "finished_at": 1795187600,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/sapper/attack_3/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "abd17615e59be95a55834b676c7c4a7339ed0d8edca62a3535fed5d6cb9777a7",
+      "status": "DONE",
+      "text": "Catch! Naw, don't catch!"
+    },
+    {
+      "bytes": 143438,
+      "credits": 30,
+      "files": [
+        "voices/sapper/attack_4/1.wav"
+      ],
+      "finished_at": 1795187601,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/sapper/attack_4/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "89dfbf72c00c069965c488e3741aaede99c3b0bdcef72f0a5f5ae204ec5e7b07",
+      "status": "DONE",
+      "text": "Here's a wee bottle o' bother!"
+    },
+    {
+      "bytes": 133198,
+      "credits": 30,
+      "files": [
+        "voices/sapper/attack_4/2.wav"
+      ],
+      "finished_at": 1795187601,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/sapper/attack_4/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "40aa83bd8b7e40595017e286297fc3585ff2b30a0f07b59b8648bb0bc1c60192",
+      "status": "DONE",
+      "text": "Here's a wee bottle o' bother!"
+    },
+    {
+      "bytes": 138318,
+      "credits": 30,
+      "files": [
+        "voices/sapper/attack_4/3.wav"
+      ],
+      "finished_at": 1795187602,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/sapper/attack_4/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "cae48657b2680f606af432ae03206696611d5fee9cb4a4fc624500948c2ab33a",
+      "status": "DONE",
+      "text": "Here's a wee bottle o' bother!"
+    },
+    {
+      "bytes": 81998,
+      "credits": 8,
+      "files": [
+        "voices/sapper/clan_1/1.wav"
+      ],
+      "finished_at": 1795187603,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/sapper/clan_1/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "991714be7d8c5adec6c8f0c2a7ad2611fd5c6345e3a9c351e2ebb6c16290a643",
+      "status": "DONE",
+      "text": "Crivens!"
+    },
+    {
+      "bytes": 71758,
+      "credits": 8,
+      "files": [
+        "voices/sapper/clan_1/2.wav"
+      ],
+      "finished_at": 1795187603,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/sapper/clan_1/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "4ee7c94d428f3409e36ccabda23b9fd9e8ea260fe3ec82408525b251c78bfb29",
+      "status": "DONE",
+      "text": "Crivens!"
+    },
+    {
+      "bytes": 71758,
+      "credits": 8,
+      "files": [
+        "voices/sapper/clan_1/3.wav"
+      ],
+      "finished_at": 1795187603,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/sapper/clan_1/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "04c9abe958c06ab10c33191054ab2bb7aeaea5ef4a4a3e404ce7f5a69a9f4916",
+      "status": "DONE",
+      "text": "Crivens!"
+    },
+    {
+      "bytes": 107598,
+      "credits": 10,
+      "files": [
+        "voices/sapper/clan_2/1.wav"
+      ],
+      "finished_at": 1795187604,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/sapper/clan_2/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "480e89816effcf5a0765cee55c496620e3ef06799bf03e4fb869f65ecd7faaa2",
+      "status": "DONE",
+      "text": "Michty me!"
+    },
+    {
+      "bytes": 107598,
+      "credits": 10,
+      "files": [
+        "voices/sapper/clan_2/2.wav"
+      ],
+      "finished_at": 1795187605,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/sapper/clan_2/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "c1540e24b22fc2c4afd863168fb68a553688d3897f72bfdc64ff457f32d3dc1c",
+      "status": "DONE",
+      "text": "Michty me!"
+    },
+    {
+      "bytes": 107598,
+      "credits": 10,
+      "files": [
+        "voices/sapper/clan_2/3.wav"
+      ],
+      "finished_at": 1795187605,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/sapper/clan_2/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "0c86d61ea4721486f6290c30c8f81cfe3deccbd0264877e6e36d81f2657fa283",
+      "status": "DONE",
+      "text": "Michty me!"
+    },
+    {
+      "bytes": 107598,
+      "credits": 17,
+      "files": [
+        "voices/sapper/clan_3/1.wav"
+      ],
+      "finished_at": 1795187606,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/sapper/clan_3/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "6af0e6f6c62adf25446c4b9be34671cb501ad6ada958418a2a48a440e738ceaf",
+      "status": "DONE",
+      "text": "Haud yer wheesht!"
+    },
+    {
+      "bytes": 97358,
+      "credits": 17,
+      "files": [
+        "voices/sapper/clan_3/2.wav"
+      ],
+      "finished_at": 1795187607,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/sapper/clan_3/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "a2f78d872a40af67ad44a960d499936a43689ed002906e95675bca72a6d91b30",
+      "status": "DONE",
+      "text": "Haud yer wheesht!"
+    },
+    {
+      "bytes": 97358,
+      "credits": 17,
+      "files": [
+        "voices/sapper/clan_3/3.wav"
+      ],
+      "finished_at": 1795187607,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/sapper/clan_3/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "cd77dd01f05155d249851b45ce2a0ba20d2c1642fa36eb10e9188e18a0986e38",
+      "status": "DONE",
+      "text": "Haud yer wheesht!"
+    },
+    {
+      "bytes": 143438,
+      "credits": 23,
+      "files": [
+        "voices/sapper/clan_4/1.wav"
+      ],
+      "finished_at": 1795187608,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/sapper/clan_4/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "59c53e3ffa570ff788638f40095add2c1495a299b4f93d367bf7690cc67f5711",
+      "status": "DONE",
+      "text": "Och, that's pure mince."
+    },
+    {
+      "bytes": 148558,
+      "credits": 23,
+      "files": [
+        "voices/sapper/clan_4/2.wav"
+      ],
+      "finished_at": 1795187609,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/sapper/clan_4/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "506abc1c5d1f31c602661efd50c5dabc1fd03cd174d464ca2301b2808a090d8f",
+      "status": "DONE",
+      "text": "Och, that's pure mince."
+    },
+    {
+      "bytes": 143438,
+      "credits": 23,
+      "files": [
+        "voices/sapper/clan_4/3.wav"
+      ],
+      "finished_at": 1795187609,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/sapper/clan_4/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "f3ed6c241cf89d9a0a77005392afdd6cee47df7ed6f11683ec85b999725bbaea",
+      "status": "DONE",
+      "text": "Och, that's pure mince."
+    },
+    {
+      "bytes": 81998,
+      "credits": 14,
+      "files": [
+        "voices/sapper/clan_5/1.wav"
+      ],
+      "finished_at": 1795187610,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/sapper/clan_5/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "7555e9bbe91435303dea054bb07cef4f1c55a42f8c4cee32dc0e8ff20886eabf",
+      "status": "DONE",
+      "text": "Mind yer feet!"
+    },
+    {
+      "bytes": 81998,
+      "credits": 14,
+      "files": [
+        "voices/sapper/clan_5/2.wav"
+      ],
+      "finished_at": 1795187610,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/sapper/clan_5/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "583cda7f109ccb014205d69fb3c9c9372f61b3f661ccd14f43021346fae9ef8a",
+      "status": "DONE",
+      "text": "Mind yer feet!"
+    },
+    {
+      "bytes": 81998,
+      "credits": 14,
+      "files": [
+        "voices/sapper/clan_5/3.wav"
+      ],
+      "finished_at": 1795187611,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/sapper/clan_5/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "23b582dd64c8e673d9199f2c8d62e29af30a650790208af32fca0cfc6c713221",
+      "status": "DONE",
+      "text": "Mind yer feet!"
+    },
+    {
+      "bytes": 209998,
+      "credits": 42,
+      "files": [
+        "voices/sapper/death_1/1.wav"
+      ],
+      "finished_at": 1795187612,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/sapper/death_1/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "a39601b94acb8a19ae5ee85ae8e5f737518f791c5287c28849e45570c779fffa",
+      "status": "DONE",
+      "text": "Tell the next sapper... no' that bottle..."
+    },
+    {
+      "bytes": 215118,
+      "credits": 42,
+      "files": [
+        "voices/sapper/death_1/2.wav"
+      ],
+      "finished_at": 1795187613,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/sapper/death_1/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "803d3d4f5ccdbebed29cdc778f6a4f4223f253284312fb93cb51477290b84d7a",
+      "status": "DONE",
+      "text": "Tell the next sapper... no' that bottle..."
+    },
+    {
+      "bytes": 209998,
+      "credits": 42,
+      "files": [
+        "voices/sapper/death_1/3.wav"
+      ],
+      "finished_at": 1795187614,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/sapper/death_1/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "dd796dc09850e70430f4bc83d5099d1ff5170844ab200afb2727e7b821c4b644",
+      "status": "DONE",
+      "text": "Tell the next sapper... no' that bottle..."
+    },
+    {
+      "bytes": 235598,
+      "credits": 42,
+      "files": [
+        "voices/sapper/death_2/1.wav"
+      ],
+      "finished_at": 1795187615,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/sapper/death_2/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "3f570295fdcfaaca6257e70e047314d19a1fadf7787b7ed7cccc7f5445efe314",
+      "status": "DONE",
+      "text": "Ach... it wisnae the bottle... fer once..."
+    },
+    {
+      "bytes": 230478,
+      "credits": 42,
+      "files": [
+        "voices/sapper/death_2/2.wav"
+      ],
+      "finished_at": 1795187615,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/sapper/death_2/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "8ffd69e786be45abffd6f0c24278468e35a6812b3cb5043007b2658b0dc79bc8",
+      "status": "DONE",
+      "text": "Ach... it wisnae the bottle... fer once..."
+    },
+    {
+      "bytes": 240718,
+      "credits": 42,
+      "files": [
+        "voices/sapper/death_2/3.wav"
+      ],
+      "finished_at": 1795187617,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/sapper/death_2/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "44eecb00abdcc2e78de83589ce3df7607c333d60d9eae478e5f755e9894b9ea1",
+      "status": "DONE",
+      "text": "Ach... it wisnae the bottle... fer once..."
+    },
+    {
+      "bytes": 128078,
+      "credits": 10,
+      "files": [
+        "voices/sapper/fizzle_1/1.wav"
+      ],
+      "finished_at": 1795187617,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/sapper/fizzle_1/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "ab100714ffcc8b9da3622c6d72a47421da608258e12dafb9d390827e5508ee32",
+      "status": "DONE",
+      "text": "Ach. Damp."
+    },
+    {
+      "bytes": 133198,
+      "credits": 10,
+      "files": [
+        "voices/sapper/fizzle_1/2.wav"
+      ],
+      "finished_at": 1795187618,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/sapper/fizzle_1/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "70272da7b4fbd508092530d858174b9f4a798037f97c2d483b9c84d65caf9fd3",
+      "status": "DONE",
+      "text": "Ach. Damp."
+    },
+    {
+      "bytes": 133198,
+      "credits": 10,
+      "files": [
+        "voices/sapper/fizzle_1/3.wav"
+      ],
+      "finished_at": 1795187619,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/sapper/fizzle_1/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "d7a12bea50642315cc005f0b5cea2cff75eff8650e6f5c6f8d3b698f4fded762",
+      "status": "DONE",
+      "text": "Ach. Damp."
+    },
+    {
+      "bytes": 153678,
+      "credits": 39,
+      "files": [
+        "voices/sapper/fizzle_2/1.wav"
+      ],
+      "finished_at": 1795187619,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/sapper/fizzle_2/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "81912ed02458b9de6ddff25b851ce0811942a0564b05ff2b3f7e9e8e656342dd",
+      "status": "DONE",
+      "text": "Pfft. That's the weather's fault, that."
+    },
+    {
+      "bytes": 148558,
+      "credits": 39,
+      "files": [
+        "voices/sapper/fizzle_2/2.wav"
+      ],
+      "finished_at": 1795187620,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/sapper/fizzle_2/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "eeab598a47f2147d8650a520c235e9a95a4de6996fe4088c375df72021bee480",
+      "status": "DONE",
+      "text": "Pfft. That's the weather's fault, that."
+    },
+    {
+      "bytes": 143438,
+      "credits": 39,
+      "files": [
+        "voices/sapper/fizzle_2/3.wav"
+      ],
+      "finished_at": 1795187621,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/sapper/fizzle_2/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "5d6844cbc26810f317a24ca0bc3b5f5f1980ccc18dbe240588f7d6a76170f171",
+      "status": "DONE",
+      "text": "Pfft. That's the weather's fault, that."
+    },
+    {
+      "bytes": 220238,
+      "credits": 42,
+      "files": [
+        "voices/sapper/hurt_1/1.wav"
+      ],
+      "finished_at": 1795187622,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/sapper/hurt_1/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "02da2ec517c6501e8aaf03a54bbc94d48b4b431a33382d15a76467773314e337",
+      "status": "DONE",
+      "text": "[shouting] Ow! Mind the bag! MIND THE BAG!"
+    },
+    {
+      "bytes": 220238,
+      "credits": 42,
+      "files": [
+        "voices/sapper/hurt_1/2.wav"
+      ],
+      "finished_at": 1795187623,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/sapper/hurt_1/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "b0efd60d6b7846033aaede949b19811d0d553825f85ff520e19ba3dd424be057",
+      "status": "DONE",
+      "text": "[shouting] Ow! Mind the bag! MIND THE BAG!"
+    },
+    {
+      "bytes": 220238,
+      "credits": 42,
+      "files": [
+        "voices/sapper/hurt_1/3.wav"
+      ],
+      "finished_at": 1795187624,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/sapper/hurt_1/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "f6f301e2895f823dd414c978d54041c925b9070a1f1eddcdaf62af12176ab90c",
+      "status": "DONE",
+      "text": "[shouting] Ow! Mind the bag! MIND THE BAG!"
+    },
+    {
+      "bytes": 194638,
+      "credits": 42,
+      "files": [
+        "voices/sapper/hurt_2/1.wav"
+      ],
+      "finished_at": 1795187625,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/sapper/hurt_2/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "90350f24bf69ec4a7a0b5f44824fe5b1885f95938785c1a4213571f596e1b22a",
+      "status": "DONE",
+      "text": "Ah'm hit! Somebody check ah'm no' leakin'!"
+    },
+    {
+      "bytes": 194638,
+      "credits": 42,
+      "files": [
+        "voices/sapper/hurt_2/2.wav"
+      ],
+      "finished_at": 1795187625,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/sapper/hurt_2/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "86516c264bc203ebc2c6895129c793d58528f15c272d89f6562925add247f2c6",
+      "status": "DONE",
+      "text": "Ah'm hit! Somebody check ah'm no' leakin'!"
+    },
+    {
+      "bytes": 189518,
+      "credits": 42,
+      "files": [
+        "voices/sapper/hurt_2/3.wav"
+      ],
+      "finished_at": 1795187626,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/sapper/hurt_2/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "8c8425b9eed5ce69163bfa5703dba4f3e33ef20d6a60cd9f8fa47e06abe841cc",
+      "status": "DONE",
+      "text": "Ah'm hit! Somebody check ah'm no' leakin'!"
+    },
+    {
+      "bytes": 240718,
+      "credits": 37,
+      "files": [
+        "voices/sapper/kill_1/1.wav"
+      ],
+      "finished_at": 1795187628,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/sapper/kill_1/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "051b645ff74e117e7d584a54fc8c7c9cb54e59c35ead2871cec6c32f2b866161",
+      "status": "DONE",
+      "text": "[laughing] Boom! Ha! Did ah dae that?"
+    },
+    {
+      "bytes": 240718,
+      "credits": 37,
+      "files": [
+        "voices/sapper/kill_1/2.wav"
+      ],
+      "finished_at": 1795187629,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/sapper/kill_1/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "edcd2c5d57712a6628e92f0887e5b632a10ab08efa4d327060ba147960b813ca",
+      "status": "DONE",
+      "text": "[laughing] Boom! Ha! Did ah dae that?"
+    },
+    {
+      "bytes": 250958,
+      "credits": 37,
+      "files": [
+        "voices/sapper/kill_1/3.wav"
+      ],
+      "finished_at": 1795187630,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/sapper/kill_1/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "ea1ff35f234b96f30b3f4169e6ee2f0ed0b941df9c006fd6b3b58439205a4a14",
+      "status": "DONE",
+      "text": "[laughing] Boom! Ha! Did ah dae that?"
+    },
+    {
+      "bytes": 225358,
+      "credits": 43,
+      "files": [
+        "voices/sapper/kill_2/1.wav"
+      ],
+      "finished_at": 1795187631,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/sapper/kill_2/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "4e2e6e0df830f12a1866153f536175376e962fdc248b77d8479c9c9ed84aff6d",
+      "status": "DONE",
+      "text": "Bits everywhere. That'll be a job tae tidy."
+    },
+    {
+      "bytes": 220238,
+      "credits": 43,
+      "files": [
+        "voices/sapper/kill_2/2.wav"
+      ],
+      "finished_at": 1795187632,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/sapper/kill_2/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "dd6cc48f877988ee74913ab711687f3a83811eadc7fefe16a93dad6da321dd45",
+      "status": "DONE",
+      "text": "Bits everywhere. That'll be a job tae tidy."
+    },
+    {
+      "bytes": 220238,
+      "credits": 43,
+      "files": [
+        "voices/sapper/kill_2/3.wav"
+      ],
+      "finished_at": 1795187633,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/sapper/kill_2/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "c74ee27e2af10fafbaf99f16a8de9d703e1ccabfa16d493d379d641b59ebdca3",
+      "status": "DONE",
+      "text": "Bits everywhere. That'll be a job tae tidy."
+    },
+    {
+      "bytes": 66638,
+      "credits": 10,
+      "files": [
+        "voices/sapper/kill_3/1.wav"
+      ],
+      "finished_at": 1795187633,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/sapper/kill_3/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "ed1803141255501e6ebde3d95a1425af146fa4e9df360baa81c5c367ab1c3cc3",
+      "status": "DONE",
+      "text": "Chemistry!"
+    },
+    {
+      "bytes": 66638,
+      "credits": 10,
+      "files": [
+        "voices/sapper/kill_3/2.wav"
+      ],
+      "finished_at": 1795187634,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/sapper/kill_3/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "45ffa93d060762f8b9456b5723736fec6083fa0f8ca31933eb000a29bb5a0572",
+      "status": "DONE",
+      "text": "Chemistry!"
+    },
+    {
+      "bytes": 66638,
+      "credits": 10,
+      "files": [
+        "voices/sapper/kill_3/3.wav"
+      ],
+      "finished_at": 1795187634,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/sapper/kill_3/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "387ab7445a4be0803a21cad086d325f28d7cb37dd490b73c1c6d477658c70127",
+      "status": "DONE",
+      "text": "Chemistry!"
+    },
+    {
+      "bytes": 220238,
+      "credits": 23,
+      "files": [
+        "voices/sapper/move_1/1.wav"
+      ],
+      "finished_at": 1795187635,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/sapper/move_1/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "62c677586931bf186607cdfa2294a24ab36857e80c2ff11bf98a19edd5767d68",
+      "status": "DONE",
+      "text": "Movin'! Gently! GENTLY!"
+    },
+    {
+      "bytes": 204878,
+      "credits": 23,
+      "files": [
+        "voices/sapper/move_1/2.wav"
+      ],
+      "finished_at": 1795187636,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/sapper/move_1/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "ec4d795f133463ed61c2198dbf71b20a459d53e14271214352e6233df9a1ebdb",
+      "status": "DONE",
+      "text": "Movin'! Gently! GENTLY!"
+    },
+    {
+      "bytes": 204878,
+      "credits": 23,
+      "files": [
+        "voices/sapper/move_1/3.wav"
+      ],
+      "finished_at": 1795187636,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/sapper/move_1/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "7ec96149395facef6fe9fd92ae2ccfc6252c47f43fc7bf63c1dfbbadbbe23c93",
+      "status": "DONE",
+      "text": "Movin'! Gently! GENTLY!"
+    },
+    {
+      "bytes": 199758,
+      "credits": 46,
+      "files": [
+        "voices/sapper/move_2/1.wav"
+      ],
+      "finished_at": 1795187637,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/sapper/move_2/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "48556941108a228a8ba6b33c9025469117e2a44473663e76ea1325a3e071c5f6",
+      "status": "DONE",
+      "text": "Nae runnin', lads. No' wi' whit ah'm carryin'."
+    },
+    {
+      "bytes": 204878,
+      "credits": 46,
+      "files": [
+        "voices/sapper/move_2/2.wav"
+      ],
+      "finished_at": 1795187638,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/sapper/move_2/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "00737c0ea36a8d588bb19cd7cc91c764189ab276232513842277e9a4ac28a975",
+      "status": "DONE",
+      "text": "Nae runnin', lads. No' wi' whit ah'm carryin'."
+    },
+    {
+      "bytes": 194638,
+      "credits": 46,
+      "files": [
+        "voices/sapper/move_2/3.wav"
+      ],
+      "finished_at": 1795187639,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/sapper/move_2/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "4710c12d42e0bfa2d2cb706ce26082662670f371dbef7b577ca440e06fe3f46b",
+      "status": "DONE",
+      "text": "Nae runnin', lads. No' wi' whit ah'm carryin'."
+    },
+    {
+      "bytes": 199758,
+      "credits": 43,
+      "files": [
+        "voices/sapper/move_3/1.wav"
+      ],
+      "finished_at": 1795187640,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/sapper/move_3/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "2c185753352b4494c93a4c6e5192a622aa2f7362bf5d90104765d219653d4e5f",
+      "status": "DONE",
+      "text": "Mind the bumps, the bag doesnae like bumps!"
+    },
+    {
+      "bytes": 204878,
+      "credits": 43,
+      "files": [
+        "voices/sapper/move_3/2.wav"
+      ],
+      "finished_at": 1795187641,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/sapper/move_3/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "70858b8fd5b8291b6388b897da0431bb5921387ac199a974b8038b9ca6be7666",
+      "status": "DONE",
+      "text": "Mind the bumps, the bag doesnae like bumps!"
+    },
+    {
+      "bytes": 204878,
+      "credits": 43,
+      "files": [
+        "voices/sapper/move_3/3.wav"
+      ],
+      "finished_at": 1795187642,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/sapper/move_3/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "5c6682a77a325cb22214fc579205914f698204c3fa8c29368bc28f320a687e4f",
+      "status": "DONE",
+      "text": "Mind the bumps, the bag doesnae like bumps!"
+    },
+    {
+      "bytes": 199758,
+      "credits": 24,
+      "files": [
+        "voices/sapper/select_1/1.wav"
+      ],
+      "finished_at": 1795187643,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/sapper/select_1/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "ce6f73e1f82381192b5c2c3e1d4cf5abba7796f6a2f9559f469bd194d093d322",
+      "status": "DONE",
+      "text": "WHIT? Oh, aye, it's you!"
+    },
+    {
+      "bytes": 199758,
+      "credits": 24,
+      "files": [
+        "voices/sapper/select_1/2.wav"
+      ],
+      "finished_at": 1795187644,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/sapper/select_1/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "18f74c0580c340a709a09d050e001b3903961c143332b20cdbd1bceea686cd54",
+      "status": "DONE",
+      "text": "WHIT? Oh, aye, it's you!"
+    },
+    {
+      "bytes": 189518,
+      "credits": 24,
+      "files": [
+        "voices/sapper/select_1/3.wav"
+      ],
+      "finished_at": 1795187644,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/sapper/select_1/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "ce76c89039f4678c36a380e628c5b049c2fcf51ea9b02b27c41d8b78894beef5",
+      "status": "DONE",
+      "text": "WHIT? Oh, aye, it's you!"
+    },
+    {
+      "bytes": 281678,
+      "credits": 55,
+      "files": [
+        "voices/sapper/select_2/1.wav"
+      ],
+      "finished_at": 1795187645,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/sapper/select_2/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "90ba3686357bafa1643c884ed3c2a11f07f3857cc910665adf12083ab6cb4b99",
+      "status": "DONE",
+      "text": "Sapper here! Mind the bag, it's a bit... temperamental."
+    },
+    {
+      "bytes": 276558,
+      "credits": 55,
+      "files": [
+        "voices/sapper/select_2/2.wav"
+      ],
+      "finished_at": 1795187647,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/sapper/select_2/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "88da6a0b899bb152486ef91ddfa5878d19e3d61458898b9bddabd87bd9973222",
+      "status": "DONE",
+      "text": "Sapper here! Mind the bag, it's a bit... temperamental."
+    },
+    {
+      "bytes": 271438,
+      "credits": 55,
+      "files": [
+        "voices/sapper/select_2/3.wav"
+      ],
+      "finished_at": 1795187648,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/sapper/select_2/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "8a436a1433d3e6ece5369adf9de747ac9e425f1ad215f5e0fdfc28b2f6012702",
+      "status": "DONE",
+      "text": "Sapper here! Mind the bag, it's a bit... temperamental."
+    },
+    {
+      "bytes": 281678,
+      "credits": 65,
+      "files": [
+        "voices/sapper/select_3/1.wav"
+      ],
+      "finished_at": 1795187649,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/sapper/select_3/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "c50e7df065548c86c22cae38d5cd1ac73d46cd309cd136d4669862ec1fd706ec",
+      "status": "DONE",
+      "text": "Ah've bottles, ah've charges, ah've nae eyebrows. Whit d'ye need?"
+    },
+    {
+      "bytes": 276558,
+      "credits": 65,
+      "files": [
+        "voices/sapper/select_3/2.wav"
+      ],
+      "finished_at": 1795187650,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/sapper/select_3/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "64d593e50ae603a14a63049c7dee12a45341094fe33ccc146a7f2a4b23886953",
+      "status": "DONE",
+      "text": "Ah've bottles, ah've charges, ah've nae eyebrows. Whit d'ye need?"
+    },
+    {
+      "bytes": 281678,
+      "credits": 65,
+      "files": [
+        "voices/sapper/select_3/3.wav"
+      ],
+      "finished_at": 1795187651,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/sapper/select_3/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "5b2288efd2f3717c4fd1a8883f34d2e1039dd61a4ebce5d4a690f70bf80497f1",
+      "status": "DONE",
+      "text": "Ah've bottles, ah've charges, ah've nae eyebrows. Whit d'ye need?"
+    },
+    {
+      "bytes": 102478,
+      "credits": 22,
+      "files": [
+        "voices/sapper/special_1/1.wav"
+      ],
+      "finished_at": 1795187652,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/sapper/special_1/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "41926c0877f585cd9fe4aee11da07bbb487908242f3fe7c74accdc435ee7934b",
+      "status": "DONE",
+      "text": "Leavin' a wee present."
+    },
+    {
+      "bytes": 102478,
+      "credits": 22,
+      "files": [
+        "voices/sapper/special_1/2.wav"
+      ],
+      "finished_at": 1795187652,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/sapper/special_1/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "731144f53a6a263402020f8522b10d3e43a0871dd883bb7fb313fc6eabe603f7",
+      "status": "DONE",
+      "text": "Leavin' a wee present."
+    },
+    {
+      "bytes": 97358,
+      "credits": 22,
+      "files": [
+        "voices/sapper/special_1/3.wav"
+      ],
+      "finished_at": 1795187653,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/sapper/special_1/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "62735de73569a552e3c2f79cf915d937f8f86502fcfcd1a5f798f3ab12695526",
+      "status": "DONE",
+      "text": "Leavin' a wee present."
+    },
+    {
+      "bytes": 327758,
+      "credits": 46,
+      "files": [
+        "voices/sapper/special_2/1.wav"
+      ],
+      "finished_at": 1795187654,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/sapper/special_2/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "6187aae4461f8167cd99d1bb4d7ef2b4c4ba898ebff7a88dbbaa9c51329ab1a0",
+      "status": "DONE",
+      "text": "Charge set! Now walk away. Casually. CASUALLY!"
+    },
+    {
+      "bytes": 327758,
+      "credits": 46,
+      "files": [
+        "voices/sapper/special_2/2.wav"
+      ],
+      "finished_at": 1795187655,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/sapper/special_2/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "410a60be7e5ad8ab95a52aab9ec09fe2063b018677a8146b530f78b48755abdb",
+      "status": "DONE",
+      "text": "Charge set! Now walk away. Casually. CASUALLY!"
+    },
+    {
+      "bytes": 332878,
+      "credits": 46,
+      "files": [
+        "voices/sapper/special_2/3.wav"
+      ],
+      "finished_at": 1795187656,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/sapper/special_2/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "4e8b4a6ba1bb1f97fa87e56b2862d0046d37fa93f1dbdc72549236482d26f230",
+      "status": "DONE",
+      "text": "Charge set! Now walk away. Casually. CASUALLY!"
+    },
+    {
+      "bytes": 209998,
+      "credits": 50,
+      "files": [
+        "voices/sapper/status_burning_1/1.wav"
+      ],
+      "finished_at": 1795187657,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/sapper/status_burning_1/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "77364f1447340be6067c913502bcbf7d3209a5e82e7ded5e7e69f0716ff8ba8e",
+      "status": "DONE",
+      "text": "[shouting] Ah'm on fire! Get me AWAY frae the bag!"
+    },
+    {
+      "bytes": 215118,
+      "credits": 50,
+      "files": [
+        "voices/sapper/status_burning_1/2.wav"
+      ],
+      "finished_at": 1795187658,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/sapper/status_burning_1/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "74e2a2cde8dcc6141d6dbdb86be162561058125ad0401db420efd55d67cb180e",
+      "status": "DONE",
+      "text": "[shouting] Ah'm on fire! Get me AWAY frae the bag!"
+    },
+    {
+      "bytes": 209998,
+      "credits": 50,
+      "files": [
+        "voices/sapper/status_burning_1/3.wav"
+      ],
+      "finished_at": 1795187659,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/sapper/status_burning_1/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "82f07ce770027ebae4a4fccf4ab560fadd32586ae2c4efdda67471eacc1ff448",
+      "status": "DONE",
+      "text": "[shouting] Ah'm on fire! Get me AWAY frae the bag!"
+    },
+    {
+      "bytes": 256078,
+      "credits": 38,
+      "files": [
+        "voices/sapper/victory_1/1.wav"
+      ],
+      "finished_at": 1795187660,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/sapper/victory_1/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "ae7dafebaa5438634ea2d9126ae56b31103064858d7792e45ccf7f3ab9480c74",
+      "status": "DONE",
+      "text": "Did we win? WHIT? Ah said, DID WE WIN?"
+    },
+    {
+      "bytes": 276558,
+      "credits": 38,
+      "files": [
+        "voices/sapper/victory_1/2.wav"
+      ],
+      "finished_at": 1795187661,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/sapper/victory_1/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "4bcbd57e0f9ec18721faa01e5bcdcba233d9ba8506f7ed926230b515aec9419d",
+      "status": "DONE",
+      "text": "Did we win? WHIT? Ah said, DID WE WIN?"
+    },
+    {
+      "bytes": 256078,
+      "credits": 38,
+      "files": [
+        "voices/sapper/victory_1/3.wav"
+      ],
+      "finished_at": 1795187662,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/sapper/victory_1/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "7da98c906d34d1683ce484e818b091f54c7c6fbc701f14185710ce6ed20c6571",
+      "status": "DONE",
+      "text": "Did we win? WHIT? Ah said, DID WE WIN?"
+    },
+    {
+      "bytes": 215118,
+      "credits": 46,
+      "files": [
+        "voices/warden/annoyed_1/1.wav"
+      ],
+      "finished_at": 1795187669,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/warden/annoyed_1/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "1db04405d07e70ac31afa14ad0bf7100b89b193c11d11fab9de46ac95d3fbcd2",
+      "status": "DONE",
+      "text": "Haud yer horses! Ah've only got the two hands!"
+    },
+    {
+      "bytes": 220238,
+      "credits": 46,
+      "files": [
+        "voices/warden/annoyed_1/2.wav"
+      ],
+      "finished_at": 1795187670,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/warden/annoyed_1/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "37bca9dee0c163aad70ddffcc37b7d7e9f08f812500ac9c8472de23923f35d70",
+      "status": "DONE",
+      "text": "Haud yer horses! Ah've only got the two hands!"
+    },
+    {
+      "bytes": 230478,
+      "credits": 46,
+      "files": [
+        "voices/warden/annoyed_1/3.wav"
+      ],
+      "finished_at": 1795187671,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/warden/annoyed_1/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "2adf603095737e80333cdb4b6f73ef1d08c98142ccfd1c8807ee55b92e62dd71",
+      "status": "DONE",
+      "text": "Haud yer horses! Ah've only got the two hands!"
+    },
+    {
+      "bytes": 204878,
+      "credits": 54,
+      "files": [
+        "voices/warden/annoyed_2/1.wav"
+      ],
+      "finished_at": 1795187672,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/warden/annoyed_2/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "b75b5833529cd06a9c457a2bff3e1d16383cfc8ecfdd1122686db38df18fa0a0",
+      "status": "DONE",
+      "text": "Keep that up an' ye'll get a dose o' somethin' bitter."
+    },
+    {
+      "bytes": 209998,
+      "credits": 54,
+      "files": [
+        "voices/warden/annoyed_2/2.wav"
+      ],
+      "finished_at": 1795187673,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/warden/annoyed_2/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "24e60dfb72801e2df1f7e0ca23248e2fab174981b4924bb54f33758ef8aaccbd",
+      "status": "DONE",
+      "text": "Keep that up an' ye'll get a dose o' somethin' bitter."
+    },
+    {
+      "bytes": 209998,
+      "credits": 54,
+      "files": [
+        "voices/warden/annoyed_2/3.wav"
+      ],
+      "finished_at": 1795187674,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/warden/annoyed_2/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "03349e7c4b9b282a458562acb3127e72c33f262c88fc78385782f9d07b316557",
+      "status": "DONE",
+      "text": "Keep that up an' ye'll get a dose o' somethin' bitter."
+    },
+    {
+      "bytes": 163918,
+      "credits": 39,
+      "files": [
+        "voices/warden/attack_1/1.wav"
+      ],
+      "finished_at": 1795187675,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/warden/attack_1/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "53c7cc1a669d747c1a768095c8a6d4366cea3b7a80714c1e8203d0801cbab107",
+      "status": "DONE",
+      "text": "Ah'll gie ye somethin' tae greet aboot!"
+    },
+    {
+      "bytes": 163918,
+      "credits": 39,
+      "files": [
+        "voices/warden/attack_1/2.wav"
+      ],
+      "finished_at": 1795187676,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/warden/attack_1/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "2bdc0a129d96bba3c567101566d97960983e486e6d2b8bae0c60188599de176e",
+      "status": "DONE",
+      "text": "Ah'll gie ye somethin' tae greet aboot!"
+    },
+    {
+      "bytes": 163918,
+      "credits": 39,
+      "files": [
+        "voices/warden/attack_1/3.wav"
+      ],
+      "finished_at": 1795187677,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/warden/attack_1/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "44585ac9fb52d47efbf75d9f9d8f28c2822556ed3259f6cf4eac28cc27000025",
+      "status": "DONE",
+      "text": "Ah'll gie ye somethin' tae greet aboot!"
+    },
+    {
+      "bytes": 163918,
+      "credits": 28,
+      "files": [
+        "voices/warden/attack_2/1.wav"
+      ],
+      "finished_at": 1795187677,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/warden/attack_2/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "00f765c37466ce4ba6f39f84c0e084eb65d5a8684eb6b8e0186ff5b6bb4e4523",
+      "status": "DONE",
+      "text": "Oot ma road, ya muckle lump!"
+    },
+    {
+      "bytes": 163918,
+      "credits": 28,
+      "files": [
+        "voices/warden/attack_2/2.wav"
+      ],
+      "finished_at": 1795187678,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/warden/attack_2/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "4e39270e436669993b3fe84728c72919bf5ed2dd73c98222cee84ddc47141a94",
+      "status": "DONE",
+      "text": "Oot ma road, ya muckle lump!"
+    },
+    {
+      "bytes": 163918,
+      "credits": 28,
+      "files": [
+        "voices/warden/attack_2/3.wav"
+      ],
+      "finished_at": 1795187679,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/warden/attack_2/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "f106605fbd12ed3efd4516038f605f6fe31d0fdcba555d923045df2b5c86d64a",
+      "status": "DONE",
+      "text": "Oot ma road, ya muckle lump!"
+    },
+    {
+      "bytes": 169038,
+      "credits": 39,
+      "files": [
+        "voices/warden/attack_3/1.wav"
+      ],
+      "finished_at": 1795187680,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/warden/attack_3/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "96b4b4edc2e918f6599a78194da1379836a64e2fece76c5f9bede0c6cce55023",
+      "status": "DONE",
+      "text": "Ah've skelped bigger than you fer less."
+    },
+    {
+      "bytes": 169038,
+      "credits": 39,
+      "files": [
+        "voices/warden/attack_3/2.wav"
+      ],
+      "finished_at": 1795187681,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/warden/attack_3/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "21920e25be2ca04bd6cee2d44d508e5ccd885d3c4dbf2ac52876c41451159019",
+      "status": "DONE",
+      "text": "Ah've skelped bigger than you fer less."
+    },
+    {
+      "bytes": 163918,
+      "credits": 39,
+      "files": [
+        "voices/warden/attack_3/3.wav"
+      ],
+      "finished_at": 1795187682,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/warden/attack_3/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "92347603e7f95bf9d60711a7bb2bbbdf98749b6ca9e83f68f4717dc1a0b543a9",
+      "status": "DONE",
+      "text": "Ah've skelped bigger than you fer less."
+    },
+    {
+      "bytes": 76878,
+      "credits": 8,
+      "files": [
+        "voices/warden/clan_1/1.wav"
+      ],
+      "finished_at": 1795187682,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/warden/clan_1/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "3180e2ba9b88242b9bd534539afde7fb601065a40083fdf1ab355ebaede27f41",
+      "status": "DONE",
+      "text": "Crivens!"
+    },
+    {
+      "bytes": 81998,
+      "credits": 8,
+      "files": [
+        "voices/warden/clan_1/2.wav"
+      ],
+      "finished_at": 1795187683,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/warden/clan_1/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "18093b824368eaff0298abf67501d97d295dd44dd1890c602ba939974a18f4e8",
+      "status": "DONE",
+      "text": "Crivens!"
+    },
+    {
+      "bytes": 81998,
+      "credits": 8,
+      "files": [
+        "voices/warden/clan_1/3.wav"
+      ],
+      "finished_at": 1795187683,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/warden/clan_1/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "6ccc18d561f377de481951ed4dcfd21d29084622ab718530620084f5aad1ac5a",
+      "status": "DONE",
+      "text": "Crivens!"
+    },
+    {
+      "bytes": 97358,
+      "credits": 10,
+      "files": [
+        "voices/warden/clan_2/1.wav"
+      ],
+      "finished_at": 1795187684,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/warden/clan_2/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "b25f93680084abb3b9e09fb30f2c838aa9096359f6a8054f312b98e5208d1977",
+      "status": "DONE",
+      "text": "Michty me!"
+    },
+    {
+      "bytes": 107598,
+      "credits": 10,
+      "files": [
+        "voices/warden/clan_2/2.wav"
+      ],
+      "finished_at": 1795187684,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/warden/clan_2/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "809431be04b99ec58f2b181ae7e10eb90279422ebf877fbb81322d7435ab9a6a",
+      "status": "DONE",
+      "text": "Michty me!"
+    },
+    {
+      "bytes": 107598,
+      "credits": 10,
+      "files": [
+        "voices/warden/clan_2/3.wav"
+      ],
+      "finished_at": 1795187685,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/warden/clan_2/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "c99f815b1b7922b017f1e51f9bd27d039a998253b5cd229448c6199643512da6",
+      "status": "DONE",
+      "text": "Michty me!"
+    },
+    {
+      "bytes": 107598,
+      "credits": 17,
+      "files": [
+        "voices/warden/clan_3/1.wav"
+      ],
+      "finished_at": 1795187685,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/warden/clan_3/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "3f58ba4186adf357ebb5df01fdd79f6667080adc0300cc583eb8b98010ac5636",
+      "status": "DONE",
+      "text": "Haud yer wheesht!"
+    },
+    {
+      "bytes": 102478,
+      "credits": 17,
+      "files": [
+        "voices/warden/clan_3/2.wav"
+      ],
+      "finished_at": 1795187686,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/warden/clan_3/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "13f1a109aa0acb625c0624f5bb3f01d09126f2aa86191e4bcd0e7a8df23ef3d6",
+      "status": "DONE",
+      "text": "Haud yer wheesht!"
+    },
+    {
+      "bytes": 112718,
+      "credits": 17,
+      "files": [
+        "voices/warden/clan_3/3.wav"
+      ],
+      "finished_at": 1795187687,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/warden/clan_3/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "6e9796b7603af6bae193ff3c51acc971e5e20077411593178d93c48c7a1a456d",
+      "status": "DONE",
+      "text": "Haud yer wheesht!"
+    },
+    {
+      "bytes": 153678,
+      "credits": 23,
+      "files": [
+        "voices/warden/clan_4/1.wav"
+      ],
+      "finished_at": 1795187688,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/warden/clan_4/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "8e4f8a8d821f029caf7c72024ed1d7367310ef2f669773af8f6d798be07cfbab",
+      "status": "DONE",
+      "text": "Och, that's pure mince."
+    },
+    {
+      "bytes": 153678,
+      "credits": 23,
+      "files": [
+        "voices/warden/clan_4/2.wav"
+      ],
+      "finished_at": 1795187688,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/warden/clan_4/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "9a08d76631c6626c7e7b702490aeff2b2d3e21657db0b377dee0d76e5b63e89f",
+      "status": "DONE",
+      "text": "Och, that's pure mince."
+    },
+    {
+      "bytes": 153678,
+      "credits": 23,
+      "files": [
+        "voices/warden/clan_4/3.wav"
+      ],
+      "finished_at": 1795187689,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/warden/clan_4/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "cce7872075ae80ce7324ceb981da984d1c425b7c40c9e3db499c7b5b00b7c784",
+      "status": "DONE",
+      "text": "Och, that's pure mince."
+    },
+    {
+      "bytes": 97358,
+      "credits": 14,
+      "files": [
+        "voices/warden/clan_5/1.wav"
+      ],
+      "finished_at": 1795187689,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/warden/clan_5/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "0e514fc2fb5961b946900bb32a816edacf6f1488819e0b92dd16a7e09780c34c",
+      "status": "DONE",
+      "text": "Mind yer feet!"
+    },
+    {
+      "bytes": 87118,
+      "credits": 14,
+      "files": [
+        "voices/warden/clan_5/2.wav"
+      ],
+      "finished_at": 1795187690,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/warden/clan_5/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "52d533332dbce1a1ba28eafd59dc6b64d28ccc43a2bcb1bb26a7c52c0f77d072",
+      "status": "DONE",
+      "text": "Mind yer feet!"
+    },
+    {
+      "bytes": 92238,
+      "credits": 14,
+      "files": [
+        "voices/warden/clan_5/3.wav"
+      ],
+      "finished_at": 1795187690,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/warden/clan_5/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "748b8331baeb86b914c360bc2276dd60e98c19460fb2f5aa235b447bbb039413",
+      "status": "DONE",
+      "text": "Mind yer feet!"
+    },
+    {
+      "bytes": 179278,
+      "credits": 33,
+      "files": [
+        "voices/warden/death_1/1.wav"
+      ],
+      "finished_at": 1795187691,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/warden/death_1/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "d5419ef4d2bc310a3bc2f2087d85785f04866266ac5d6f06299a744769bafd95",
+      "status": "DONE",
+      "text": "Ah've nae herb... fer this one..."
+    },
+    {
+      "bytes": 174158,
+      "credits": 33,
+      "files": [
+        "voices/warden/death_1/2.wav"
+      ],
+      "finished_at": 1795187692,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/warden/death_1/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "83a8b14068305b5bdfa6a17ce8c466396b156ba10a64b9b9ee50017c3c93cfbb",
+      "status": "DONE",
+      "text": "Ah've nae herb... fer this one..."
+    },
+    {
+      "bytes": 174158,
+      "credits": 33,
+      "files": [
+        "voices/warden/death_1/3.wav"
+      ],
+      "finished_at": 1795187693,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/warden/death_1/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "4b6977e33ec66c4c5385e554b4425a2e914cf1da3ee87fdb2b773fbfe0bfaec6",
+      "status": "DONE",
+      "text": "Ah've nae herb... fer this one..."
+    },
+    {
+      "bytes": 148558,
+      "credits": 28,
+      "files": [
+        "voices/warden/death_2/1.wav"
+      ],
+      "finished_at": 1795187694,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/warden/death_2/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "3432173a80a17c5ff8e5fc4a69deb71388f9e4db0564c045cde1b27c6d50fec6",
+      "status": "DONE",
+      "text": "Mind... ye eat yer greens..."
+    },
+    {
+      "bytes": 138318,
+      "credits": 28,
+      "files": [
+        "voices/warden/death_2/2.wav"
+      ],
+      "finished_at": 1795187695,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/warden/death_2/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "7d923545b2587dd5a7a30cc2d6c7f8e35f3a3828e554037e2dde777b6a5d174e",
+      "status": "DONE",
+      "text": "Mind... ye eat yer greens..."
+    },
+    {
+      "bytes": 143438,
+      "credits": 28,
+      "files": [
+        "voices/warden/death_2/3.wav"
+      ],
+      "finished_at": 1795187695,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/warden/death_2/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "1dc27f3e2abf700d0cd5599d29b5f5fc1e7bdef8f440e8d8806160cdd5818b88",
+      "status": "DONE",
+      "text": "Mind... ye eat yer greens..."
+    },
+    {
+      "bytes": 204878,
+      "credits": 41,
+      "files": [
+        "voices/warden/heal_undead_1/1.wav"
+      ],
+      "finished_at": 1795187696,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/warden/heal_undead_1/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "f7363cbb3c8c20817dddf4b66b5741577a792ea4b35c205ace9a7a987ed4bd5b",
+      "status": "DONE",
+      "text": "Here's a tonic fer ye. Ye'll no' like it."
+    },
+    {
+      "bytes": 199758,
+      "credits": 41,
+      "files": [
+        "voices/warden/heal_undead_1/2.wav"
+      ],
+      "finished_at": 1795187697,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/warden/heal_undead_1/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "5b6315b413f93c473bd7634f187604eb7c560a24da86115daa4a745fa7cf8822",
+      "status": "DONE",
+      "text": "Here's a tonic fer ye. Ye'll no' like it."
+    },
+    {
+      "bytes": 199758,
+      "credits": 41,
+      "files": [
+        "voices/warden/heal_undead_1/3.wav"
+      ],
+      "finished_at": 1795187698,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/warden/heal_undead_1/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "3053e77688e245020bf853bf3e7626323fe16481a32ed23351a78c730ee86fa6",
+      "status": "DONE",
+      "text": "Here's a tonic fer ye. Ye'll no' like it."
+    },
+    {
+      "bytes": 256078,
+      "credits": 46,
+      "files": [
+        "voices/warden/heal_undead_2/1.wav"
+      ],
+      "finished_at": 1795187699,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/warden/heal_undead_2/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "77e7137b47faa097ada38d373ae8ac6e1159bd832c054ccccde4d6fc3f00763f",
+      "status": "DONE",
+      "text": "Get this doon ye. It'll sort ye oot. Fer good."
+    },
+    {
+      "bytes": 250958,
+      "credits": 46,
+      "files": [
+        "voices/warden/heal_undead_2/2.wav"
+      ],
+      "finished_at": 1795187700,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/warden/heal_undead_2/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "b09e5be4ab70f44fc1b4365eee41f6f239f58e091abe91ab2fc7d48930720668",
+      "status": "DONE",
+      "text": "Get this doon ye. It'll sort ye oot. Fer good."
+    },
+    {
+      "bytes": 245838,
+      "credits": 46,
+      "files": [
+        "voices/warden/heal_undead_2/3.wav"
+      ],
+      "finished_at": 1795187701,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/warden/heal_undead_2/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "e7ddcbea546bc501ac6a09e695f4636bd2e7e8e166e6918e305a7319a8d2b008",
+      "status": "DONE",
+      "text": "Get this doon ye. It'll sort ye oot. Fer good."
+    },
+    {
+      "bytes": 179278,
+      "credits": 41,
+      "files": [
+        "voices/warden/hurt_1/1.wav"
+      ],
+      "finished_at": 1795187702,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/warden/hurt_1/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "fb85ebcbde79ba1cdfcf055464d2ede83d1d8c16929d9e9cdc22558b40c61dd1",
+      "status": "DONE",
+      "text": "Ah'll see tae masel', thank ye very much."
+    },
+    {
+      "bytes": 174158,
+      "credits": 41,
+      "files": [
+        "voices/warden/hurt_1/2.wav"
+      ],
+      "finished_at": 1795187703,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/warden/hurt_1/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "95421f659b07aa83207e27abdf10179d63166ca410e8bf0e792998cd2eccac52",
+      "status": "DONE",
+      "text": "Ah'll see tae masel', thank ye very much."
+    },
+    {
+      "bytes": 179278,
+      "credits": 41,
+      "files": [
+        "voices/warden/hurt_1/3.wav"
+      ],
+      "finished_at": 1795187704,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/warden/hurt_1/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "443b9bf8ccf86b0052adf997e8d05bbf4ebd3115bd8bd2f7c3ef0d32c09f3a77",
+      "status": "DONE",
+      "text": "Ah'll see tae masel', thank ye very much."
+    },
+    {
+      "bytes": 215118,
+      "credits": 38,
+      "files": [
+        "voices/warden/hurt_2/1.wav"
+      ],
+      "finished_at": 1795187705,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/warden/hurt_2/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "169a4c072460d6c02527697f51504c7186be1f23a6cd7eb9782ab4ed6bcb1dee",
+      "status": "DONE",
+      "text": "Who did that? Ah'll remember yer face."
+    },
+    {
+      "bytes": 209998,
+      "credits": 38,
+      "files": [
+        "voices/warden/hurt_2/2.wav"
+      ],
+      "finished_at": 1795187705,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/warden/hurt_2/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "82a25fac43d0d3e447005cc9e52c21c407880332c33a683ddd19f38dee4ffd70",
+      "status": "DONE",
+      "text": "Who did that? Ah'll remember yer face."
+    },
+    {
+      "bytes": 209998,
+      "credits": 38,
+      "files": [
+        "voices/warden/hurt_2/3.wav"
+      ],
+      "finished_at": 1795187706,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/warden/hurt_2/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "b50856bcd144d55bda320d78ac847d80a6c1f35dc68167304fb6f1efc17a24d1",
+      "status": "DONE",
+      "text": "Who did that? Ah'll remember yer face."
+    },
+    {
+      "bytes": 107598,
+      "credits": 23,
+      "files": [
+        "voices/warden/kill_1/1.wav"
+      ],
+      "finished_at": 1795187707,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/warden/kill_1/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "b822c01a1e09f58da6e7fbbb6f3480975612e61651fbd5a026f83fb01a977949",
+      "status": "DONE",
+      "text": "An' that's whit ye get."
+    },
+    {
+      "bytes": 102478,
+      "credits": 23,
+      "files": [
+        "voices/warden/kill_1/2.wav"
+      ],
+      "finished_at": 1795187707,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/warden/kill_1/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "293307d897020948cc10823edbf5334d350f9ab437eb0677916d47aff3521def",
+      "status": "DONE",
+      "text": "An' that's whit ye get."
+    },
+    {
+      "bytes": 112718,
+      "credits": 23,
+      "files": [
+        "voices/warden/kill_1/3.wav"
+      ],
+      "finished_at": 1795187708,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/warden/kill_1/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "63a644493f9a4ecb36573b046c6096935de3d184a5b15d0913ab4c49d783703a",
+      "status": "DONE",
+      "text": "An' that's whit ye get."
+    },
+    {
+      "bytes": 148558,
+      "credits": 25,
+      "files": [
+        "voices/warden/kill_2/1.wav"
+      ],
+      "finished_at": 1795187709,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/warden/kill_2/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "3af13b76c714e712b8bfc0106aaeab40c50ffb590382cb695492abcc5b7fdf2f",
+      "status": "DONE",
+      "text": "Lie doon, ye're no' well."
+    },
+    {
+      "bytes": 143438,
+      "credits": 25,
+      "files": [
+        "voices/warden/kill_2/2.wav"
+      ],
+      "finished_at": 1795187710,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/warden/kill_2/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "9898d9f1d3d2bd2cc15260e1083caebae12312213594091bdf31b727de9d67aa",
+      "status": "DONE",
+      "text": "Lie doon, ye're no' well."
+    },
+    {
+      "bytes": 143438,
+      "credits": 25,
+      "files": [
+        "voices/warden/kill_2/3.wav"
+      ],
+      "finished_at": 1795187710,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/warden/kill_2/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "6786252f5bc25da29f46aff24bb8807373719bb35e87dc20042eb97ca5a8f44c",
+      "status": "DONE",
+      "text": "Lie doon, ye're no' well."
+    },
+    {
+      "bytes": 163918,
+      "credits": 24,
+      "files": [
+        "voices/warden/kill_3/1.wav"
+      ],
+      "finished_at": 1795187711,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/warden/kill_3/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "6b4ce39ede7e03f877a3dfea990d1d2c02b271f025fc1c025ca987c74c7cda6d",
+      "status": "DONE",
+      "text": "There. Somebody had tae."
+    },
+    {
+      "bytes": 153678,
+      "credits": 24,
+      "files": [
+        "voices/warden/kill_3/2.wav"
+      ],
+      "finished_at": 1795187712,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/warden/kill_3/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "3c0d9f6165f02f6d1c4f3ad9256d5a0e1c985389c03ccf454076352cfdaa4bc2",
+      "status": "DONE",
+      "text": "There. Somebody had tae."
+    },
+    {
+      "bytes": 158798,
+      "credits": 24,
+      "files": [
+        "voices/warden/kill_3/3.wav"
+      ],
+      "finished_at": 1795187713,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/warden/kill_3/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "83974d52370df04bc1d94a6e8d3b3942f0acadeb504c351e8efb8a7b7ef54151",
+      "status": "DONE",
+      "text": "There. Somebody had tae."
+    },
+    {
+      "bytes": 245838,
+      "credits": 42,
+      "files": [
+        "voices/warden/move_1/1.wav"
+      ],
+      "finished_at": 1795187714,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/warden/move_1/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "62e68af638cc2920b3131d25d2e2410c53d6bbe7424e591eb4e4403699ef82c3",
+      "status": "DONE",
+      "text": "Ah'm comin', ah'm comin'. Ma knees arenae."
+    },
+    {
+      "bytes": 235598,
+      "credits": 42,
+      "files": [
+        "voices/warden/move_1/2.wav"
+      ],
+      "finished_at": 1795187715,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/warden/move_1/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "95d2a6ff66bca11cae259c761144db291fc401756764b65f7665aae613a90e83",
+      "status": "DONE",
+      "text": "Ah'm comin', ah'm comin'. Ma knees arenae."
+    },
+    {
+      "bytes": 235598,
+      "credits": 42,
+      "files": [
+        "voices/warden/move_1/3.wav"
+      ],
+      "finished_at": 1795187716,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/warden/move_1/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "ef1960d809733d6e8ff4890a34761393cbfc0629deda104a8e5e0cc33db7c3fa",
+      "status": "DONE",
+      "text": "Ah'm comin', ah'm comin'. Ma knees arenae."
+    },
+    {
+      "bytes": 245838,
+      "credits": 45,
+      "files": [
+        "voices/warden/move_2/1.wav"
+      ],
+      "finished_at": 1795187717,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/warden/move_2/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "ac9ee9c3dce157b32ce75d365e9d752f395dec00211bfe9c0d3fc98ede593463",
+      "status": "DONE",
+      "text": "Walk, don't run. Ye'll only fall an' need me."
+    },
+    {
+      "bytes": 245838,
+      "credits": 45,
+      "files": [
+        "voices/warden/move_2/2.wav"
+      ],
+      "finished_at": 1795187718,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/warden/move_2/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "036e33a759809ebaa3d55c1ecb5a613fb1e6950dbb76a876da30590b861f3ce2",
+      "status": "DONE",
+      "text": "Walk, don't run. Ye'll only fall an' need me."
+    },
+    {
+      "bytes": 240718,
+      "credits": 45,
+      "files": [
+        "voices/warden/move_2/3.wav"
+      ],
+      "finished_at": 1795187719,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/warden/move_2/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "610f4c97dcec50f130bd3ddb4e6e0a760116b327e89fa15a23044a759fc5b426",
+      "status": "DONE",
+      "text": "Walk, don't run. Ye'll only fall an' need me."
+    },
+    {
+      "bytes": 235598,
+      "credits": 61,
+      "files": [
+        "voices/warden/move_3/1.wav"
+      ],
+      "finished_at": 1795187720,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/warden/move_3/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "fd942e9e51cce973f22f012e58e684fc66947fd6a6c8231490a40a1c68131463",
+      "status": "DONE",
+      "text": "Right. Somebody'll need patchin' up by the time ah get there."
+    },
+    {
+      "bytes": 245838,
+      "credits": 61,
+      "files": [
+        "voices/warden/move_3/2.wav"
+      ],
+      "finished_at": 1795187721,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/warden/move_3/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "185b7aa36d810eb275a4c02aecbc0012def4ed6f28b6c7582ef6f167cda10dc2",
+      "status": "DONE",
+      "text": "Right. Somebody'll need patchin' up by the time ah get there."
+    },
+    {
+      "bytes": 240718,
+      "credits": 61,
+      "files": [
+        "voices/warden/move_3/3.wav"
+      ],
+      "finished_at": 1795187722,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/warden/move_3/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "92d6d888d884eb6639cde670935cb84c47cf8c90413043cc9ddb3eae799f3fd3",
+      "status": "DONE",
+      "text": "Right. Somebody'll need patchin' up by the time ah get there."
+    },
+    {
+      "bytes": 143438,
+      "credits": 29,
+      "files": [
+        "voices/warden/select_1/1.wav"
+      ],
+      "finished_at": 1795187723,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/warden/select_1/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "857b0de15413ccbb52193da2efe6183809b2d565a9bb369b72a6a942ee75cfb3",
+      "status": "DONE",
+      "text": "Aye, whit's wrang wi' ye now?"
+    },
+    {
+      "bytes": 148558,
+      "credits": 29,
+      "files": [
+        "voices/warden/select_1/2.wav"
+      ],
+      "finished_at": 1795187724,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/warden/select_1/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "aa3f38df44a230d4af33ed39da667150ea6a324da03b1148ed580d39e9a22791",
+      "status": "DONE",
+      "text": "Aye, whit's wrang wi' ye now?"
+    },
+    {
+      "bytes": 148558,
+      "credits": 29,
+      "files": [
+        "voices/warden/select_1/3.wav"
+      ],
+      "finished_at": 1795187724,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/warden/select_1/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "8b2a1a3332cee97b69cf4595895f34572f2d7ef333bad658ac069359797969ad",
+      "status": "DONE",
+      "text": "Aye, whit's wrang wi' ye now?"
+    },
+    {
+      "bytes": 276558,
+      "credits": 59,
+      "files": [
+        "voices/warden/select_2/1.wav"
+      ],
+      "finished_at": 1795187725,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/warden/select_2/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "8ca3ba2a91cfb67a12ab7bc9a7ce2d6f554a2ec34431df9d46f87831ef274fac",
+      "status": "DONE",
+      "text": "Ah've herbs fer whit ails ye, an' a stick fer whit doesnae."
+    },
+    {
+      "bytes": 261198,
+      "credits": 59,
+      "files": [
+        "voices/warden/select_2/2.wav"
+      ],
+      "finished_at": 1795187726,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/warden/select_2/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "f39431e034747dbf8c789678436ecc90e1d225336b3a774daebf6571c3d116af",
+      "status": "DONE",
+      "text": "Ah've herbs fer whit ails ye, an' a stick fer whit doesnae."
+    },
+    {
+      "bytes": 266318,
+      "credits": 59,
+      "files": [
+        "voices/warden/select_2/3.wav"
+      ],
+      "finished_at": 1795187728,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/warden/select_2/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "106529d2d9f145055b2999d2acf5190c2c7ff36e504b5fde0f932b1cb898c57f",
+      "status": "DONE",
+      "text": "Ah've herbs fer whit ails ye, an' a stick fer whit doesnae."
+    },
+    {
+      "bytes": 112718,
+      "credits": 23,
+      "files": [
+        "voices/warden/select_3/1.wav"
+      ],
+      "finished_at": 1795187728,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/warden/select_3/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "1f3abbde8d4bc87cdd6492e768953ed5b8323955ce44e566de0261bdf20cd561",
+      "status": "DONE",
+      "text": "Show me where it hurts."
+    },
+    {
+      "bytes": 117838,
+      "credits": 23,
+      "files": [
+        "voices/warden/select_3/2.wav"
+      ],
+      "finished_at": 1795187729,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/warden/select_3/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "78e1c52937886791cbfc96388aa53275a93911acbd7707b5eb77d59ed2a6eca4",
+      "status": "DONE",
+      "text": "Show me where it hurts."
+    },
+    {
+      "bytes": 112718,
+      "credits": 23,
+      "files": [
+        "voices/warden/select_3/3.wav"
+      ],
+      "finished_at": 1795187729,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/warden/select_3/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "3d0aaef72eb7b13ccc699544a012172601d5c00d9fe3b90ad10119b2b5fc2433",
+      "status": "DONE",
+      "text": "Show me where it hurts."
+    },
+    {
+      "bytes": 220238,
+      "credits": 42,
+      "files": [
+        "voices/warden/special_1/1.wav"
+      ],
+      "finished_at": 1795187730,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/warden/special_1/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "d82a0abc8fe94ac4fc69a7845731b9ddcf13ff6428a2af6f59b154d826e37590",
+      "status": "DONE",
+      "text": "Haud still, ya big wean, it's only a herb."
+    },
+    {
+      "bytes": 215118,
+      "credits": 42,
+      "files": [
+        "voices/warden/special_1/2.wav"
+      ],
+      "finished_at": 1795187731,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/warden/special_1/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "c55d59903f9fdee472ead252a693ba4eb0ada728ae0ba1b2237edb37adbcf34e",
+      "status": "DONE",
+      "text": "Haud still, ya big wean, it's only a herb."
+    },
+    {
+      "bytes": 220238,
+      "credits": 42,
+      "files": [
+        "voices/warden/special_1/3.wav"
+      ],
+      "finished_at": 1795187732,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/warden/special_1/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "48f542ece6594e6c863fcdd939ddebff43acd259790bdf9907ddb69c03416ecf",
+      "status": "DONE",
+      "text": "Haud still, ya big wean, it's only a herb."
+    },
+    {
+      "bytes": 271438,
+      "credits": 62,
+      "files": [
+        "voices/warden/special_2/1.wav"
+      ],
+      "finished_at": 1795187734,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/warden/special_2/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "9d2cd85873a82d95b6b54f2892baeec6a696d8b3f897c4920bf7dc744640e0c3",
+      "status": "DONE",
+      "text": "Ah didnae pick herbs all mornin' fer ye tae get stabbed again."
+    },
+    {
+      "bytes": 271438,
+      "credits": 62,
+      "files": [
+        "voices/warden/special_2/2.wav"
+      ],
+      "finished_at": 1795187735,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/warden/special_2/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "fc7b025d2bfe63bbfd37d677250f999a315124e319893162c0789dc752fcaae0",
+      "status": "DONE",
+      "text": "Ah didnae pick herbs all mornin' fer ye tae get stabbed again."
+    },
+    {
+      "bytes": 271438,
+      "credits": 62,
+      "files": [
+        "voices/warden/special_2/3.wav"
+      ],
+      "finished_at": 1795187736,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/warden/special_2/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "4f9ea68f08728cf128f83bf1763b6f56839e091020d6f3f0ea175049ba08993a",
+      "status": "DONE",
+      "text": "Ah didnae pick herbs all mornin' fer ye tae get stabbed again."
+    },
+    {
+      "bytes": 184398,
+      "credits": 32,
+      "files": [
+        "voices/warden/special_3/1.wav"
+      ],
+      "finished_at": 1795187737,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/warden/special_3/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "37c88fe49f311fab8dcfb6a7f4853a60f5434420aac1db6e388031a8dc901f3a",
+      "status": "DONE",
+      "text": "Chew this. Don't make that face."
+    },
+    {
+      "bytes": 184398,
+      "credits": 32,
+      "files": [
+        "voices/warden/special_3/2.wav"
+      ],
+      "finished_at": 1795187738,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/warden/special_3/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "fe8ad31b895ffe6054478b699403809276a012e778f495d096d8bbef1178fffc",
+      "status": "DONE",
+      "text": "Chew this. Don't make that face."
+    },
+    {
+      "bytes": 184398,
+      "credits": 32,
+      "files": [
+        "voices/warden/special_3/3.wav"
+      ],
+      "finished_at": 1795187738,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/warden/special_3/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "561a078d2acd3e46182d554f2ea3ab563670fe166083854ae0ba45afb2289429",
+      "status": "DONE",
+      "text": "Chew this. Don't make that face."
+    },
+    {
+      "bytes": 245838,
+      "credits": 36,
+      "files": [
+        "voices/warden/status_confused_1/1.wav"
+      ],
+      "finished_at": 1795187739,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/warden/status_confused_1/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "f62e5233b3ec290f644b949f8200966870341b10e25e0560fd9eb7bcafd94a96",
+      "status": "DONE",
+      "text": "Who moved ma herbs? Who moved... me?"
+    },
+    {
+      "bytes": 256078,
+      "credits": 36,
+      "files": [
+        "voices/warden/status_confused_1/2.wav"
+      ],
+      "finished_at": 1795187740,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/warden/status_confused_1/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "4ad8d87b935e9f7cb328a1bd2b7355d21d520bfa05ff010d6dcddb395e1c8465",
+      "status": "DONE",
+      "text": "Who moved ma herbs? Who moved... me?"
+    },
+    {
+      "bytes": 250958,
+      "credits": 36,
+      "files": [
+        "voices/warden/status_confused_1/3.wav"
+      ],
+      "finished_at": 1795187741,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/warden/status_confused_1/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "ceb4e8b25c43f21e5cc20b18382604e9574d4e4c432336e53e1de0fc47d98c64",
+      "status": "DONE",
+      "text": "Who moved ma herbs? Who moved... me?"
+    },
+    {
+      "bytes": 307278,
+      "credits": 59,
+      "files": [
+        "voices/warden/victory_1/1.wav"
+      ],
+      "finished_at": 1795187742,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/warden/victory_1/1",
+      "model": "eleven_v4_turbo",
+      "sha256": "9257171c73d842bdc2296ddbfc0563e4ac6bbd9f8cd17e7fdbd586e8e58d5152",
+      "status": "DONE",
+      "text": "Right. Line up, the lot o' ye. Ah'm checkin' every scratch."
+    },
+    {
+      "bytes": 297038,
+      "credits": 59,
+      "files": [
+        "voices/warden/victory_1/2.wav"
+      ],
+      "finished_at": 1795187744,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/warden/victory_1/2",
+      "model": "eleven_v4_turbo",
+      "sha256": "2e47b7db26ffb0f28e44c829e3e4740e1b774f055f5408ad55934898136eb290",
+      "status": "DONE",
+      "text": "Right. Line up, the lot o' ye. Ah'm checkin' every scratch."
+    },
+    {
+      "bytes": 302158,
+      "credits": 59,
+      "files": [
+        "voices/warden/victory_1/3.wav"
+      ],
+      "finished_at": 1795187745,
+      "format": "wav_32000",
+      "kind": "voices",
+      "label": "voices/warden/victory_1/3",
+      "model": "eleven_v4_turbo",
+      "sha256": "954c46e516d6d948b5d8e9de1cc9a851329f68a8a7784f6e61b49dafe891e6ca",
+      "status": "DONE",
+      "text": "Right. Line up, the lot o' ye. Ah'm checkin' every scratch."
     }
   ]
 }

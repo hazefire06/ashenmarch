@@ -7,127 +7,127 @@ model = "eleven_v4_turbo"
 [line.select_1]
 trigger = "select"
 text = "WHIT? Oh, aye, it's you!"
-picks = {}
+picks = { sapper = 1 }
 
 [line.select_2]
 trigger = "select"
 text = "Sapper here! Mind the bag, it's a bit... temperamental."
-picks = {}
+picks = { sapper = 2 }
 
 [line.select_3]
 trigger = "select"
 text = "Ah've bottles, ah've charges, ah've nae eyebrows. Whit d'ye need?"
-picks = {}
+picks = { sapper = 1 }
 
 [line.move_1]
 trigger = "move"
 text = "Movin'! Gently! GENTLY!"
-picks = {}
+picks = { sapper = 2 }
 
 [line.move_2]
 trigger = "move"
 text = "Nae runnin', lads. No' wi' whit ah'm carryin'."
-picks = {}
+picks = { sapper = 1 }
 
 [line.move_3]
 trigger = "move"
 text = "Mind the bumps, the bag doesnae like bumps!"
-picks = {}
+picks = { sapper = 2 }
 
 [line.attack_1]
 trigger = "attack"
 text = "Mind yer heids, this one's a bit lively!"
-picks = {}
+picks = { sapper = 1 }
 
 [line.attack_2]
 trigger = "attack"
 text = "Stand back! Further! Further than that!"
-picks = {}
+picks = { sapper = 1 }
 
 [line.attack_3]
 trigger = "attack"
 text = "Catch! Naw, don't catch!"
-picks = {}
+picks = { sapper = 2 }
 
 [line.attack_4]
 trigger = "attack"
 text = "Here's a wee bottle o' bother!"
-picks = {}
+picks = { sapper = 3 }
 
 [line.kill_1]
 trigger = "kill"
 text = "Boom! Ha! Did ah dae that?"
 tag = "[laughing]"
-picks = {}
+picks = { sapper = 1 }
 
 [line.kill_2]
 trigger = "kill"
 text = "Bits everywhere. That'll be a job tae tidy."
-picks = {}
+picks = { sapper = 2 }
 
 [line.kill_3]
 trigger = "kill"
 text = "Chemistry!"
-picks = {}
+picks = { sapper = 1 }
 
 [line.hurt_1]
 trigger = "hurt"
 text = "Ow! Mind the bag! MIND THE BAG!"
 tag = "[shouting]"
-picks = {}
+picks = { sapper = 1 }
 
 [line.hurt_2]
 trigger = "hurt"
 text = "Ah'm hit! Somebody check ah'm no' leakin'!"
-picks = {}
+picks = { sapper = 1 }
 
 [line.death_1]
 trigger = "death"
 text = "Tell the next sapper... no' that bottle..."
-picks = {}
+picks = { sapper = 1 }
 
 [line.death_2]
 trigger = "death"
 text = "Ach... it wisnae the bottle... fer once..."
-picks = {}
+picks = { sapper = 1 }
 
 [line.annoyed_1]
 trigger = "annoyed"
 text = "Stop proddin' me! D'ye KNOW whit's in this bag?"
-picks = {}
+picks = { sapper = 1 }
 
 [line.annoyed_2]
 trigger = "annoyed"
 text = "Wan mair click an' ah'm takin' ma bottles hame."
-picks = {}
+picks = { sapper = 1 }
 
 [line.special_1]
 trigger = "special"
 text = "Leavin' a wee present."
-picks = {}
+picks = { sapper = 1 }
 
 [line.special_2]
 trigger = "special"
 text = "Charge set! Now walk away. Casually. CASUALLY!"
-picks = {}
+picks = { sapper = 1 }
 
 [line.fizzle_1]
 trigger = "fizzle"
 text = "Ach. Damp."
-picks = {}
+picks = { sapper = 2 }
 
 [line.fizzle_2]
 trigger = "fizzle"
 text = "Pfft. That's the weather's fault, that."
-picks = {}
+picks = { sapper = 2 }
 
 [line.status_burning_1]
 trigger = "status_burning"
 text = "Ah'm on fire! Get me AWAY frae the bag!"
 tag = "[shouting]"
-picks = {}
+picks = { sapper = 1 }
 
 [line.victory_1]
 trigger = "victory"
 text = "Did we win? WHIT? Ah said, DID WE WIN?"
-picks = {}
+picks = { sapper = 1 }

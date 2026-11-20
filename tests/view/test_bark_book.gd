@@ -2,7 +2,10 @@ extends GutTest
 ## The bark book the builder writes from audio-src/voices, and BarkLine's timing.
 
 
-func test_the_book_has_the_shieldmans_lines_voiced_and_the_others_as_text() -> void:
+func test_the_book_has_every_light_unit_voiced() -> void:
+	# All five light units are voiced (Tim's picks, 2026-11-18 to -20). Each line carries a stream for every
+	# voice that can say it: both Shieldman voices (bar two lines he kept in the old voice only), each other
+	# unit's single voice, and for a clan line all six light voices.
 	var book: BarkBook = BarkBook.shared()
 	var shield: int = 0
 	for line: BarkLine in book.lines:
@@ -10,11 +13,10 @@ func test_the_book_has_the_shieldmans_lines_voiced_and_the_others_as_text() -> v
 		if line.unit == &"shieldman":
 			shield += 1
 			assert_true(line.streams.has(&"shieldman_old"), "%s: the old voice" % line.id)
-			# Tim kept only the old voice's take of these two (2026-11-18).
 			var young: bool = not [&"annoyed_3", &"victory_1"].has(line.id)
 			assert_eq(line.streams.has(&"shieldman_young"), young, "%s: the young voice" % line.id)
 		elif not line.clan:
-			assert_true(line.streams.is_empty(), "%s (%s) waits for its voice" % [line.id, line.unit])
+			assert_true(line.streams.has(line.unit), "%s (%s) is voiced" % [line.id, line.unit])
 	assert_eq(shield, 37)
 	assert_eq(book.lines_for(&"shieldman", &"select").size(), 5)
 	assert_eq(book.lines_for(&"shieldman", &"victory").size(), 2)

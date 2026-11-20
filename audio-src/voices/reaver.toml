@@ -7,121 +7,121 @@ model = "eleven_v4_turbo"
 [line.select_1]
 trigger = "select"
 text = "Ah've no' had a guid fight since Tuesday!"
-picks = {}
+picks = { reaver = 2 }
 
 [line.select_2]
 trigger = "select"
 text = "Aye? Is it fightin'? Tell me it's fightin'."
-picks = {}
+picks = { reaver = 3 }
 
 [line.select_3]
 trigger = "select"
 text = "Ah'm awake! Ah'm sharp! Well, the blade is."
-picks = {}
+picks = { reaver = 2 }
 
 [line.select_4]
 trigger = "select"
 text = "Whit's the hold-up? Ma sword's gettin' bored."
-picks = {}
+picks = { reaver = 1 }
 
 [line.move_1]
 trigger = "move"
 text = "Fast as ye like!"
-picks = {}
+picks = { reaver = 2 }
 
 [line.move_2]
 trigger = "move"
 text = "Runnin'! Try an' keep up!"
-picks = {}
+picks = { reaver = 1 }
 
 [line.move_3]
 trigger = "move"
 text = "This better end in a scrap."
-picks = {}
+picks = { reaver = 1 }
 
 [line.move_4]
 trigger = "move"
 text = "Ah'll go roond. Or through, if it's quicker."
-picks = {}
+picks = { reaver = 3 }
 
 [line.attack_1]
 trigger = "attack"
 text = "Who wants tae be first?"
-picks = {}
+picks = { reaver = 1 }
 
 [line.attack_2]
 trigger = "attack"
 text = "Ah'll split ye like kindlin'!"
-picks = {}
+picks = { reaver = 1 }
 
 [line.attack_3]
 trigger = "attack"
 text = "Raaargh!"
 tag = "[roaring]"
-picks = {}
+picks = { reaver = 1 }
 
 [line.attack_4]
 trigger = "attack"
 text = "Nae shield, nae fear, nae sense! Charge!"
-picks = {}
+picks = { reaver = 1 }
 
 [line.attack_5]
 trigger = "attack"
 text = "Come here till ah get ye!"
-picks = {}
+picks = { reaver = 3 }
 
 [line.kill_1]
 trigger = "kill"
 text = "Ha! Did ye see that? Did ANYBODY see that?"
 tag = "[laughing]"
-picks = {}
+picks = { reaver = 2 }
 
 [line.kill_2]
 trigger = "kill"
 text = "Doon ye go, an' bide there."
-picks = {}
+picks = { reaver = 1 }
 
 [line.kill_3]
 trigger = "kill"
 text = "That's three! Or four. Ah've lost count. Mair!"
-picks = {}
+picks = { reaver = 3 }
 
 [line.hurt_1]
 trigger = "hurt"
 text = "Ow! Oh, that's ma guid arm!"
-picks = {}
+picks = { reaver = 2 }
 
 [line.hurt_2]
 trigger = "hurt"
 text = "Ah'm still standin', so it doesnae count."
-picks = {}
+picks = { reaver = 1 }
 
 [line.death_1]
 trigger = "death"
 text = "Ach... ah wis jist gettin' started..."
-picks = {}
+picks = { reaver = 1 }
 
 [line.death_2]
 trigger = "death"
 text = "Somebody... finish ma fight fer me..."
-picks = {}
+picks = { reaver = 1 }
 
 [line.annoyed_1]
 trigger = "annoyed"
 text = "Stop pokin' me an' point me at somethin'!"
-picks = {}
+picks = { reaver = 1 }
 
 [line.annoyed_2]
 trigger = "annoyed"
 text = "Ah'll swing at the next thing that touches me. Ah'm just sayin'."
-picks = {}
+picks = { reaver = 1 }
 
 [line.retreat_1]
 trigger = "retreat"
 text = "Back? BACK? Ach, fine. Under protest!"
-picks = {}
+picks = { reaver = 3 }
 
 [line.victory_1]
 trigger = "victory"
 text = "Is that it? Ah wanted a second helpin'!"
-picks = {}
+picks = { reaver = 2 }
