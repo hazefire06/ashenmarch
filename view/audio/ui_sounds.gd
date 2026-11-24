@@ -10,8 +10,10 @@ var _player: AudioStreamPlayer
 
 func _ready() -> void:
 	_player = AudioStreamPlayer.new()
-	_player.stream = SfxBank.stream(&"ui_click")
-	_player.volume_db = SfxBank.level_db(&"ui_click")
+	var bank: SoundBank = SoundBank.shared()
+	var cue: SoundCue = bank.cue(&"ui_click")
+	_player.stream = bank.pick(&"ui_click", RandomNumberGenerator.new())
+	_player.volume_db = cue.level_db if cue != null else 0.0
 	_player.bus = &"Interface"
 	add_child(_player)
 	get_tree().node_added.connect(_on_node_added)

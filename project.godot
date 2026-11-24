@@ -16,6 +16,11 @@ config/version="0.10.0"
 run/main_scene="res://view/app/app.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 
+[audio]
+
+driver/mix_rate.web=32000
+driver/output_latency.web=200
+
 [autoload]
 
 InputDevice="*res://view/input/input_device.gd"

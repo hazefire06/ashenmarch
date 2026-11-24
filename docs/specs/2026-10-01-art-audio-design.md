@@ -1,6 +1,6 @@
 # Art and audio track: design
 
-Status: approved. A0 and A1 implemented (2026-10-07); A3 implemented (2026-10-14); A4 (art per roster, Web budget; `2026-10-15-art-a4-loading-design.md`) implemented (2026-10-27); A2 planned. Drafted 2026-10-01 and decided with Tim in one brainstorming session, section by section.
+Status: approved. A0 and A1 implemented (2026-10-07); A3 implemented (2026-10-14); A4 (art per roster, Web budget; `2026-10-15-art-a4-loading-design.md`) implemented (2026-10-27); A2 re-specified in `2026-11-09-art-a2-audio-design.md`, which replaces §8 where the two differ. Drafted 2026-10-01 and decided with Tim in one brainstorming session, section by section.
 
 ## 1. Goal
 
@@ -268,6 +268,8 @@ Timing is recomputed from sim numbers every time, so rebalancing wind-ups and ve
 - `UnitArt.validate()` catches a missing direction, an out-of-range impact frame, a missing `die` on a unit that doesn't burst, an art set with no strike clip, and a strike or act clip with no impact frame.
 
 ## 8. Audio
+
+> **Superseded in part (2026-11-09).** A2 is specified in `2026-11-09-art-a2-audio-design.md`, which replaces this section wherever the two differ. §8.4's trigger list, draft lines, originality rule and clan-wide line still hold, and so does §4 (secrets and repository hygiene).
 
 ### 8.1 Offline pipeline
 

@@ -152,6 +152,13 @@ var recording: Replay
 var last_step_ms: float = 0.0
 ## How long loading this game's unit art took, in ms; the budget check reports it.
 var art_load_ms: int = 0
+## Set before the node enters the tree (the budget run's ?audio=0): false plays
+## and registers no one-shot sounds.
+var audio_enabled: bool = true
+## Set before the node enters the tree; Task 12 (bark stand-ins) reads it.
+var audio_stand_ins: bool = false
+## What SoundRegistry.load_for reported at load (see there).
+var audio_report: Dictionary = {}
 ## Where the unit art catalog is read from. Tests point it at their own.
 var art_catalog_path: String = UnitArtCatalog.DEFAULT_PATH
 
@@ -184,6 +191,8 @@ var _replay_speed: int = 1
 ## The battle's sounds and its rain and fire beds.
 var _sfx: SfxPlayer
 var _ambience: Ambience
+var _music: Music
+var _barks: Barks
 
 @onready var _terrain_view: TerrainView = $TerrainView
 @onready var _units_view: UnitsView = $Units
@@ -258,10 +267,24 @@ func _ready() -> void:
 	_sfx.name = "Sfx"
 	add_child(_sfx)
 	_sfx.setup(world, _camera)
+	_sfx.enabled = audio_enabled
+	var audio_types: Array[StringName] = launch.unit_types() if launch != null else art_types
+	var bark_book: BarkBook = BarkBook.shared()
+	var barks: Array[AudioStream] = SoundRegistry.bark_streams(audio_types, world.catalog, bark_book, SoundMap.shared())
+	if audio_stand_ins:
+		barks.append_array(SoundRegistry.stand_ins(audio_types, world.catalog, bark_book, SoundMap.shared()))
+	audio_report = SoundRegistry.load_for(
+		audio_types, world.catalog, SoundBank.shared(), SoundMap.shared(), barks, bark_book.file_bytes(),
+		OS.has_feature("web"), audio_enabled
+	)
 	_ambience = Ambience.new()
 	_ambience.name = "Ambience"
 	add_child(_ambience)
-	_ambience.setup(world)
+	_ambience.setup(world, _camera)
+	_music = Music.new()
+	_music.name = "Music"
+	add_child(_music)
+	_music.setup(world, SoundMap.shared().music_for(_map_id()))
 	if launch != null:
 		# After the views it grades exist: the terrain's material and the ash layer.
 		var look: Atmosphere = (
@@ -277,10 +300,25 @@ func _ready() -> void:
 		world, _units_view, _camera.get_camera(), TerrainPicker.new(terrain), _projectiles_view, _plants_view
 	)
 	_selection.side_changed.connect(_units_view.set_viewer)
+	_selection.side_changed.connect(_sfx.set_viewer)
+	_selection.side_changed.connect(_ambience.set_viewer)
+	_selection.side_changed.connect(_music.set_viewer)
+	_barks = Barks.new()
+	_barks.name = "Barks"
+	add_child(_barks)
+	_barks.setup(world, _camera, _units_view, bark_book)
+	_barks.enabled = audio_enabled
+	_barks.connect_selection(_selection)
+	_selection.side_changed.connect(_barks.set_viewer)
+	_sfx.set_barks(_barks)
 	if launch != null and launch.is_skirmish():
 		# The player may be Dark: they select, and see, from their own side.
 		_selection.side = launch.player_faction()
 		_units_view.set_viewer(launch.player_faction())
+		_sfx.set_viewer(launch.player_faction())
+		_ambience.set_viewer(launch.player_faction())
+		_music.set_viewer(launch.player_faction())
+		_barks.set_viewer(launch.player_faction())
 	_control_bar.setup(_selection, world)
 	if launch != null and launch.is_skirmish():
 		_control_bar.set_skirmish(launch.player_faction())
@@ -310,7 +348,7 @@ func _ready() -> void:
 		_pause_menu.set_scoreboard_visible(true)
 		_pause_menu.scoreboard_requested.connect(_skirmish_hud.toggle_scoreboard)
 	_overhead_map.set_orders(_selection)
-	_selection.order_given.connect(_sfx.acknowledge)
+	_sfx.connect_selection(_selection)
 	_pause_menu.opened.connect(_on_pause_menu_opened)
 	_pause_menu.closed.connect(_on_pause_menu_closed)
 	_pause_menu.resume_requested.connect(_on_resume_requested)
@@ -392,8 +430,10 @@ func _advance() -> void:
 	_gas_view.after_step()
 	_plants_view.after_step()
 	_ai_debug.after_step()
+	_barks.after_step()
 	_sfx.after_step()
 	_ambience.after_step()
+	_music.after_step()
 	if _replay_player == null:
 		rumble.after_step(world, _camera.focus, _selection.side)
 	_mission_hud.show_world(world)
@@ -577,6 +617,13 @@ func _process(delta: float) -> void:
 		world.fire.burn_end.size(),
 		hints,
 	]
+
+
+# The id of the map this launch plays, for the music; empty in the sandbox.
+func _map_id() -> StringName:
+	if launch == null:
+		return &""
+	return launch.skirmish.map.id if launch.is_skirmish() else launch.mission.id
 
 
 # The world to play: the launch's mission, set up by MissionSetup, or the
@@ -772,6 +819,15 @@ func _apply_pause() -> void:
 	_control_bar.set_paused(still or _replay_player != null)
 	_units_view.frozen = still
 	_projectiles_view.frozen = still
+	# The sim stops stepping while paused, but these nodes keep their own _process, so hold them too: the
+	# loops and voices keep sounding, but the music crossfade, the beds and the bark cooldowns don't drift
+	# behind a frozen battle. A won/lost mission (_frozen) keeps easing, as it did before.
+	if _music != null:
+		_music.paused = paused
+	if _ambience != null:
+		_ambience.paused = paused
+	if _barks != null:
+		_barks.paused = paused
 	_pause_menu.show_paused_label(paused)
 
 

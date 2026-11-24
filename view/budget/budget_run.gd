@@ -10,9 +10,10 @@ extends Node
 ## and shows it on screen:
 ##   web:     BUDGET tab=<MB> limit=1000 PASS|FAIL|UNKNOWN js_wasm=<MB> (<how>) video=<MB>
 ##            textures=<MB> art=<MB> types=<n> art_load=<ms> pck=<MB> wire=<MB> s3tc=<yes|no>
-##            ticks=<n> seconds=<s> on=web
+##            ticks=<n> seconds=<s> on=web audio=<MB> audio_cap=270 PASS|FAIL decoded=<MB>
+##            files=<MB> play=<MB> mix=<Hz> audio_load=<ms> audio_in_tab=added|counted
 ##   desktop: BUDGET video=<MB> textures=<MB> static=<MB> art=<MB> types=<n> art_load=<ms>
-##            ticks=<n> seconds=<s> on=<os>
+##            ticks=<n> seconds=<s> on=<os> audio_files=<MB> audio_load=<ms>
 ## tab is js_wasm plus video. js_wasm is measureUserAgentSpecificMemory when
 ## the page is cross-origin isolated ("measured"), else Chrome's JS heap alone
 ## ("fallback"), else unknown (-1). Only a measured tab gets PASS or FAIL: the
@@ -22,6 +23,15 @@ extends Node
 ## (UnitArt.sheet_bytes): Godot 4.7 doesn't give scripts the driver's own
 ## count per texture. Desktop has no budget, so its line has no verdict. The
 ## page sets window.__amBudgetLine to the line, for a script to read.
+## Audio (A2 spec §4.5) has its own cap, AudioBudget.CAP_MB, beside the tab's:
+## audio is decoded + 2 x files + play, where decoded is the registered one-shots'
+## seconds x mix x 8 bytes, files is every bank cue's file bytes (held twice: the
+## resident pck, then the loaded resources) and play is the allowance for the 27
+## longest variants playing at once. Its verdict is AudioBudget.verdict, and it
+## shows even when the tab passes. Until a with/without run proves that Chrome
+## counts decoded audio (AUDIO_IN_TAB), the tab adds decoded to its total and
+## says audio_in_tab=added. mix is AudioServer.get_mix_rate(). A run asked for
+## ?budget=1&audio=0 registers and plays no one-shots, so decoded and play are 0.
 
 signal finished(line: String)
 
@@ -35,6 +45,9 @@ const MINUTES: int = 10
 const JS_WAIT_FRAMES: int = 1800
 const MAIN_SCENE: String = "res://view/main.tscn"
 const MB: float = 1_000_000.0
+## Until Chrome is shown to count decoded audio in its memory figure (the A2
+## with/without run), the tab total adds the computed decoded size.
+const AUDIO_IN_TAB: bool = false
 ## How the page can say it read its memory.
 const HOWS: Array[String] = ["measured", "fallback", "unknown"]
 ## Starts the page's measurement; window.__amBudget gets its JSON.
@@ -79,6 +92,15 @@ static func requested() -> bool:
 	return "--budget" in OS.get_cmdline_user_args()
 
 
+## True when a page's search string asks for audio=0 (the without-audio run).
+static func audio_off_in_query(search: String) -> bool:
+	for pair: String in search.trim_prefix("?").split("&", false):
+		var kv: PackedStringArray = pair.split("=", true, 1)
+		if kv[0].uri_decode() == "audio":
+			return kv.size() > 1 and kv[1].uri_decode() == "0"
+	return false
+
+
 ## True when a page's search string (?a=1&budget=1) holds budget=<not 0>.
 static func asked_in_query(search: String) -> bool:
 	for pair: String in search.trim_prefix("?").split("&", false):
@@ -119,23 +141,34 @@ static func verdict(tab_mb: float) -> String:
 ## The web line from the fields (see the head). js_bytes is -1 when unread.
 static func web_line(f: Dictionary) -> String:
 	var js: float = float(f["js_bytes"])
-	var tab: float = js + float(f["video"]) if js >= 0.0 else -1.0
+	var decoded: float = float(f["audio_decoded"])
+	var files: float = float(f["audio_files"])
+	var play: float = float(f["audio_play"])
+	var audio: float = decoded + 2.0 * files + play
+	var tab: float = js + float(f["video"]) + (0.0 if AUDIO_IN_TAB else decoded) if js >= 0.0 else -1.0
 	var judged: float = tab / MB if tab >= 0.0 and f["how"] == "measured" else -1.0
 	return (
 		"BUDGET tab=%d limit=%d %s js_wasm=%d (%s) video=%d textures=%d art=%d types=%d art_load=%d"
 		+ " pck=%d wire=%d s3tc=%s ticks=%d seconds=%d on=web"
+		+ " audio=%d audio_cap=%d %s decoded=%d files=%d play=%d mix=%d audio_load=%d audio_in_tab=%s"
 	) % [
 		_mb(tab), LIMIT_MB, verdict(judged), _mb(js), f["how"], _mb(f["video"]),
 		_mb(f["textures"]), _mb(f["art"]), f["types"], f["art_load_ms"], _mb(f["pck"]), _mb(f["wire"]),
 		"yes" if f["s3tc"] else "no", f["ticks"], f["seconds"],
+		_mb(audio), AudioBudget.CAP_MB, AudioBudget.verdict(audio / MB), _mb(decoded), _mb(files), _mb(play),
+		roundi(float(f["mix"])), f["audio_load_ms"], "counted" if AUDIO_IN_TAB else "added",
 	]
 
 
 ## The desktop line from the fields (see the head).
 static func desktop_line(f: Dictionary) -> String:
-	return "BUDGET video=%d textures=%d static=%d art=%d types=%d art_load=%d ticks=%d seconds=%d on=%s" % [
+	return (
+		"BUDGET video=%d textures=%d static=%d art=%d types=%d art_load=%d ticks=%d seconds=%d on=%s"
+		+ " audio_files=%d audio_load=%d"
+	) % [
 		_mb(f["video"]), _mb(f["textures"]), _mb(f["static"]), _mb(f["art"]), f["types"], f["art_load_ms"],
 		f["ticks"], f["seconds"], OS.get_name().to_lower(),
+		_mb(f["audio_files"]), f["audio_load_ms"],
 	]
 
 
@@ -175,6 +208,9 @@ func start() -> void:
 	# Not campaign mode: a window opened from a terminal starts unfocused, and
 	# campaign mode pauses when the window loses focus.
 	main.launch.campaign_mode = false
+	# Both before add_child: MainView sets its audio up as it enters the tree.
+	main.audio_enabled = not (OS.has_feature("web") and audio_off_in_query(str(JavaScriptBridge.eval("window.location.search", true))))
+	main.audio_stand_ins = true
 	add_child(main)
 	_started_ms = Time.get_ticks_msec()
 	var layer: CanvasLayer = CanvasLayer.new()
@@ -205,7 +241,15 @@ func _measure() -> void:
 	var art_bytes: int = 0
 	for art: UnitArt in arts:
 		art_bytes += art.sheet_bytes()
+	var audio: Dictionary = main.audio_report
+	var rate: float = AudioServer.get_mix_rate()
+	var on: bool = main.audio_enabled
 	_fields = {
+		"audio_decoded": AudioBudget.decoded_bytes(float(audio.get("seconds", 0.0)), rate) if on else 0.0,
+		"audio_play": AudioBudget.play_allowance_bytes(audio.get("lengths", PackedFloat32Array()), rate) if on else 0.0,
+		"audio_files": float(audio.get("file_bytes", 0)),
+		"audio_load_ms": audio.get("load_ms", 0),
+		"mix": rate,
 		"video": Performance.get_monitor(Performance.RENDER_VIDEO_MEM_USED),
 		"textures": Performance.get_monitor(Performance.RENDER_TEXTURE_MEM_USED),
 		"static": float(OS.get_static_memory_usage()),

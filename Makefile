@@ -3,7 +3,7 @@ MAC_APP := build/mac/Ashenmarch.app
 WIN_EXE := build/windows/Ashenmarch.exe
 WEB_HTML := build/web/index.html
 
-.PHONY: pad-playthrough import run demo demo-projectiles demo-abilities demo-ai test check-sim export-mac export-windows export-web export-all serve-web sfx bench profile-sim golden-replays verify-replays verify-replays-app verify-replays-x86 maps fixtures playtest skirmish-playtest capture capture-skirmish hooks check-leaks check-layout test-art art-candidates art-render art-attach art-prop-candidates art-build art-probe budget budget-app
+.PHONY: pad-playthrough import run demo demo-projectiles demo-abilities demo-ai test check-sim export-mac export-windows export-web export-all serve-web bench profile-sim golden-replays verify-replays verify-replays-app verify-replays-x86 maps fixtures playtest skirmish-playtest capture capture-skirmish hooks check-leaks check-layout test-art test-audio audio-build audio-synthetic audio-synthetic-clean art-candidates art-render art-attach art-prop-candidates art-build art-probe budget budget-app
 
 # Builds the .godot/ import and class_name cache. A fresh clone has none, and
 # GUT can't resolve class_name types without it.
@@ -178,13 +178,6 @@ check-sim:
 maps: import
 	for script in scripts/gen_*.gd; do $(GODOT) --headless --path . -s $$script || exit 1; done
 
-# Regenerates the placeholder sound effects (assets/audio/sfx), synthesized
-# from scratch and deterministic. The WAVs are committed; rerun only when
-# scripts/gen_sfx.py changes. rain_loop and fire_loop loop forward (their
-# .import files say so).
-sfx:
-	python3 scripts/gen_sfx.py
-
 # Regenerates the PNG test fixtures with an independent Python encoder.
 fixtures:
 	python3 tests/fixtures/png/make_png_fixtures.py
@@ -246,6 +239,34 @@ BLENDER_RUN = $(BLENDER) -b --factory-startup --python-exit-code 1
 test-art:
 	python3 -m unittest discover -s scripts/art -p "test_*.py"
 	$(BLENDER_RUN) --python scripts/art/blender_test_render.py
+
+# Python tests for the audio pipeline (scripts/audio/). No network, no paid calls.
+test-audio:
+	python3 -m unittest discover -s scripts/audio -p "test_*.py"
+
+# Writes the sound bank sidecar from the cue book (audio-src/build/bank.json),
+# imports the audio, then builds data/audio/sound_bank.tres from it
+# (scripts/audio/process.py, build_sound_bank.gd). Free.
+audio-build:
+	python3 scripts/audio/process.py build
+	$(GODOT) --headless --path . --import
+	$(GODOT) --headless --path . -s scripts/audio/build_sound_bank.gd
+
+# For the Web measurement only (A2 Task 11): ffmpeg tones and noise stand in for every
+# cue (assets/audio/synthetic/, git-ignored) and the bank is built from them. Never
+# commit the result, and run make audio-synthetic-clean before any export (exports ship every resource).
+# Does not run `process.py build`, which would overwrite the synthetic sidecar. Free.
+audio-synthetic:
+	python3 scripts/audio/process.py synthetic
+	$(GODOT) --headless --path . --import
+	$(GODOT) --headless --path . -s scripts/audio/build_sound_bank.gd
+
+# Undoes audio-synthetic: removes the synthetic files, restores the real bank, and
+# rebuilds it so the import cache matches. Free.
+audio-synthetic-clean:
+	rm -rf assets/audio/synthetic
+	git checkout data/audio/sound_bank.tres
+	$(MAKE) audio-build
 
 # Renders UNIT's Meshy candidates into art-src/units/UNIT/review/candidates.png (free).
 art-candidates:

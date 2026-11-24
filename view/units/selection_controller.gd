@@ -75,13 +75,22 @@ extends Control
 ## armed it passes on, which is how the pause menu (earlier in the HUD's
 ## tree, so later in the unhandled input order) gets it.
 
+## What an order asks, for the units' replies: a move, an attack (attack-move
+## or ground attack), a special, a retreat, or anything else.
+enum OrderKind { MOVE, ATTACK, SPECIAL, RETREAT, OTHER }
+
 signal formation_changed(kind: Formations.Kind)
 signal side_changed(side: UnitType.Faction)
 signal armed_order_changed(order: ArmedOrder)
 ## An order was sent for the selection (move, attack-move, ground attack,
 ## stop, special, heal, interact, guard, scatter, retreat, a route point),
-## for the acknowledgement sound.
-signal order_given
+## with the ids it was given to and its kind, for the acknowledgement sound
+## and the units' replies.
+signal order_given(ids: PackedInt32Array, kind: OrderKind)
+## The player picked units (a click, a box, a type, Enter), the selection
+## after the change. Fires even when the pick changed nothing; a unit dying
+## out of the selection is not one.
+signal player_selected(ids: PackedInt32Array)
 ## The next move's turn from its automatic facing changed, in ROTATE_STEPs
 ## (0..ROTATE_STEPS-1), for the control bar.
 signal rotation_changed(steps: int)
@@ -297,30 +306,34 @@ func current_group() -> int:
 
 func stop_selected() -> void:
 	if not selection.is_empty() and not paused:
-		_world.enqueue(StopUnitsCommand.new(_world.tick, selection.ids()))
+		var ids: PackedInt32Array = selection.ids()
+		_world.enqueue(StopUnitsCommand.new(_world.tick, ids))
 		_forget_last_order()
-		order_given.emit()
+		order_given.emit(ids, OrderKind.OTHER)
 
 
 func guard_selected() -> void:
 	if not selection.is_empty() and not paused:
-		_world.enqueue(GuardCommand.new(_world.tick, selection.ids()))
+		var ids: PackedInt32Array = selection.ids()
+		_world.enqueue(GuardCommand.new(_world.tick, ids))
 		_forget_last_order()
-		order_given.emit()
+		order_given.emit(ids, OrderKind.OTHER)
 
 
 func scatter_selected() -> void:
 	if not selection.is_empty() and not paused:
-		_world.enqueue(ScatterCommand.new(_world.tick, selection.ids()))
+		var ids: PackedInt32Array = selection.ids()
+		_world.enqueue(ScatterCommand.new(_world.tick, ids))
 		_forget_last_order()
-		order_given.emit()
+		order_given.emit(ids, OrderKind.OTHER)
 
 
 func retreat_selected() -> void:
 	if not selection.is_empty() and not paused:
-		_world.enqueue(RetreatCommand.new(_world.tick, selection.ids(), formation))
+		var ids: PackedInt32Array = selection.ids()
+		_world.enqueue(RetreatCommand.new(_world.tick, ids, formation))
 		_forget_last_order()
-		order_given.emit()
+		order_given.emit(ids, OrderKind.RETREAT)
 
 
 ## Each selected unit uses its special: Sappers drop a charge, Longbows nock
@@ -330,8 +343,9 @@ func retreat_selected() -> void:
 func use_special_selected() -> void:
 	if selection.is_empty() or paused:
 		return
-	_world.enqueue(UseSpecialCommand.new(_world.tick, selection.ids()))
-	order_given.emit()
+	var ids: PackedInt32Array = selection.ids()
+	_world.enqueue(UseSpecialCommand.new(_world.tick, ids))
+	order_given.emit(ids, OrderKind.SPECIAL)
 	if _has_healer():
 		arm(ArmedOrder.HEAL)
 
@@ -408,10 +422,12 @@ func select_at(at: Vector2, additive: bool) -> void:
 	if unit_id < 0:
 		if not additive:
 			selection.clear()
-	elif additive:
-		selection.toggle(unit_id)
 	else:
-		selection.select(PackedInt32Array([unit_id]))
+		if additive:
+			selection.toggle(unit_id)
+		else:
+			selection.select(PackedInt32Array([unit_id]))
+		player_selected.emit(selection.ids())
 
 
 ## Selects (or, additive, adds) the units whose sprites' middles are in rect.
@@ -426,6 +442,7 @@ func box_select(rect: Rect2, additive: bool) -> void:
 		selection.add(ids)
 	else:
 		selection.select(ids)
+	player_selected.emit(selection.ids())
 
 
 ## Selects (or adds) every unit on screen of the type under the screen point.
@@ -442,11 +459,13 @@ func select_type_at(at: Vector2, additive: bool) -> void:
 		selection.add(ids)
 	else:
 		selection.select(ids)
+	player_selected.emit(selection.ids())
 
 
 ## Enter: every unit of yours on screen.
 func select_all_visible() -> void:
 	selection.select(_visible_selectable())
+	player_selected.emit(selection.ids())
 
 
 ## `: nothing.
@@ -493,7 +512,7 @@ func order_world(point: Vector3, attack: bool, queue: bool, facing: Vector2 = Ve
 		"ids": ids, "x": x, "z": z, "formation": formation, "attack": attack,
 		"facing_x": roundi(recorded.x * FixedMath.DIR_ONE), "facing_z": roundi(recorded.y * FixedMath.DIR_ONE),
 	}
-	order_given.emit()
+	order_given.emit(ids, OrderKind.ATTACK if attack else OrderKind.MOVE)
 	_units.show_marker(point, UnitsView.MarkerKind.ATTACK_MOVE if attack else UnitsView.MarkerKind.MOVE)
 	if armed_order != ArmedOrder.NONE and armed_order != ArmedOrder.WAYPOINT:
 		arm(ArmedOrder.NONE)
@@ -575,12 +594,13 @@ func ground_attack_at(at: Vector2) -> void:
 	var hit: Vector3 = _pick_ground(at)
 	if hit == Vector3.INF:
 		return
+	var ids: PackedInt32Array = selection.ids()
 	_world.enqueue(GroundAttackCommand.new(
-		_world.tick, selection.ids(), _to_milli(hit.x), _to_milli(hit.z)
+		_world.tick, ids, _to_milli(hit.x), _to_milli(hit.z)
 	))
 	_forget_last_order()
 	if not selection.is_empty():
-		order_given.emit()
+		order_given.emit(ids, OrderKind.ATTACK)
 	_units.show_marker(hit, UnitsView.MarkerKind.GROUND_ATTACK)
 	if armed_order != ArmedOrder.NONE:
 		arm(ArmedOrder.NONE)
@@ -939,7 +959,7 @@ func _order_route_point(point: Vector3, attack: bool, facing: Vector2) -> void:
 		if mode >= 0:
 			_world.enqueue(PatrolCommand.new(_world.tick, ids, mode as UnitRoute.Mode))
 			_forget_last_order()
-			order_given.emit()
+			order_given.emit(ids, OrderKind.MOVE)
 			notice.emit("Patrol: loop" if mode == UnitRoute.Mode.LOOP else "Patrol: back and forth")
 			if armed_order == ArmedOrder.WAYPOINT:
 				arm(ArmedOrder.NONE)
@@ -952,7 +972,7 @@ func _order_route_point(point: Vector3, attack: bool, facing: Vector2) -> void:
 		roundi(facing.x * FixedMath.DIR_ONE), roundi(facing.y * FixedMath.DIR_ONE)
 	))
 	_forget_last_order()
-	order_given.emit()
+	order_given.emit(ids, OrderKind.ATTACK if attack else OrderKind.MOVE)
 	if not open or ids != _route_ids:
 		_route_clicks.clear()
 		# Points the selection already has (given before, or by another view)
@@ -971,12 +991,13 @@ func _turn_unit(unit_id: int, direction: Vector2) -> void:
 	var unit: Unit = _world.get_unit(unit_id)
 	if unit == null or not unit.is_alive() or paused:
 		return
+	var ids: PackedInt32Array = PackedInt32Array([unit_id])
 	_world.enqueue(MoveUnitsCommand.new(
-		_world.tick, PackedInt32Array([unit_id]), unit.x, unit.z, formation,
+		_world.tick, ids, unit.x, unit.z, formation,
 		roundi(direction.x * FixedMath.DIR_ONE), roundi(direction.y * FixedMath.DIR_ONE)
 	))
 	_forget_last_order()
-	order_given.emit()
+	order_given.emit(ids, OrderKind.OTHER)
 
 
 # Any order but a move or attack-move replaces the last one: the arrow keys
@@ -1013,7 +1034,7 @@ func _reissue_last_order() -> void:
 		_world.enqueue(AttackMoveCommand.new(_world.tick, ids, x, z, kind, fx, fz))
 	else:
 		_world.enqueue(MoveUnitsCommand.new(_world.tick, ids, x, z, kind, fx, fz))
-	order_given.emit()
+	order_given.emit(ids, OrderKind.OTHER)
 
 
 # The facing a move to `point` gets by itself (UnitOrders.order_facing): from
@@ -1061,9 +1082,10 @@ func _order_heal(at: Vector2) -> void:
 	var target: Unit = _world.get_unit(target_id) if target_id >= 0 else null
 	if target == null or not target.is_alive():
 		return
-	_world.enqueue(HealCommand.new(_world.tick, selection.ids(), target_id))
+	var ids: PackedInt32Array = selection.ids()
+	_world.enqueue(HealCommand.new(_world.tick, ids, target_id))
 	_forget_last_order()
-	order_given.emit()
+	order_given.emit(ids, OrderKind.SPECIAL)
 	_units.show_marker(_units.sprite_position(target_id), UnitsView.MarkerKind.MOVE)
 	arm(ArmedOrder.NONE)
 
@@ -1086,9 +1108,10 @@ func _order_interact(at: Vector2) -> bool:
 			target_id = unit_id
 	if target_id < 0 or not _someone_can(target_id):
 		return false
-	_world.enqueue(InteractCommand.new(_world.tick, selection.ids(), target_id))
+	var ids: PackedInt32Array = selection.ids()
+	_world.enqueue(InteractCommand.new(_world.tick, ids, target_id))
 	_forget_last_order()
-	order_given.emit()
+	order_given.emit(ids, OrderKind.MOVE)
 	var target: SimEntity = _world.get_entity(target_id)
 	_units.show_marker(Vector3(target.x, target.y, target.z) / float(World.UNITS_PER_METER), UnitsView.MarkerKind.MOVE)
 	if armed_order != ArmedOrder.NONE and armed_order != ArmedOrder.WAYPOINT:

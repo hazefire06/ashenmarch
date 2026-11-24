@@ -17,6 +17,7 @@ func _fields() -> Dictionary:
 		"js_bytes": 400e6, "how": "measured", "video": 200e6, "textures": 190e6, "static": 50e6,
 		"art": 188e6, "types": 10, "art_load_ms": 850, "pck": 196e6, "wire": 60e6, "s3tc": true,
 		"ticks": 1800, "seconds": 61,
+		"audio_decoded": 200e6, "audio_files": 10e6, "audio_play": 15e6, "mix": 48000.0, "audio_load_ms": 900,
 	}
 
 
@@ -56,8 +57,9 @@ func test_the_verdict() -> void:
 func test_the_web_line_adds_the_page_and_the_gpu() -> void:
 	assert_eq(
 		BudgetRun.web_line(_fields()),
-		"BUDGET tab=600 limit=1000 PASS js_wasm=400 (measured) video=200 textures=190 art=188 types=10"
+		"BUDGET tab=800 limit=1000 PASS js_wasm=400 (measured) video=200 textures=190 art=188 types=10"
 		+ " art_load=850 pck=196 wire=60 s3tc=yes ticks=1800 seconds=61 on=web"
+		+ " audio=235 audio_cap=270 PASS decoded=200 files=10 play=15 mix=48000 audio_load=900 audio_in_tab=added"
 	)
 
 
@@ -73,7 +75,7 @@ func test_a_fallback_count_is_unknown_not_a_pass() -> void:
 	# so it would pass a tab well over the limit.
 	var f: Dictionary = _fields()
 	f["how"] = "fallback"
-	assert_string_contains(BudgetRun.web_line(f), "tab=600 limit=1000 UNKNOWN js_wasm=400 (fallback)")
+	assert_string_contains(BudgetRun.web_line(f), "tab=800 limit=1000 UNKNOWN js_wasm=400 (fallback)")
 
 
 func test_the_page_fields_read_only_what_the_page_should_send() -> void:
@@ -90,9 +92,26 @@ func test_the_page_fields_read_only_what_the_page_should_send() -> void:
 	)
 
 
+func test_an_audio_fail_shows_even_when_the_tab_passes() -> void:
+	var f: Dictionary = _fields()
+	f["audio_decoded"] = 250e6
+	var line: String = BudgetRun.web_line(f)
+	assert_string_contains(line, "tab=850 limit=1000 PASS")
+	assert_string_contains(line, "audio=285 audio_cap=270 FAIL decoded=250")
+
+
+func test_the_page_asks_for_no_audio_with_audio_0() -> void:
+	assert_true(BudgetRun.audio_off_in_query("?budget=1&audio=0"))
+	assert_false(BudgetRun.audio_off_in_query("?budget=1"))
+	assert_false(BudgetRun.audio_off_in_query("?budget=1&audio=1"))
+	assert_false(BudgetRun.audio_off_in_query(""))
+	assert_false(BudgetRun.audio_off_in_query("?audios=0"))
+
+
 func test_the_desktop_line_has_no_verdict() -> void:
 	var line: String = BudgetRun.desktop_line(_fields())
 	assert_string_starts_with(line, "BUDGET video=200 textures=190 static=50 art=188 types=10 art_load=850 ticks=1800 seconds=61 on=")
+	assert_true(line.ends_with(" audio_files=10 audio_load=900"), line)
 	assert_false(line.contains("PASS"))
 
 

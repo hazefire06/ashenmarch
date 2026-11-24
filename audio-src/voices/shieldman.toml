@@ -1,0 +1,194 @@
+unit = "shieldman"
+
+[voice.shieldman_old]
+description = "a gruff older Highland Scots man, gravelly, battle-weary, dry humour"
+model = "eleven_v4_turbo"
+
+[voice.shieldman_young]
+description = "a younger Highland Scots man, keen, quick, cocky"
+model = "eleven_v4_turbo"
+
+[line.select_1]
+trigger = "select"
+text = "Aye? Whit is it?"
+picks = { shieldman_old = 1, shieldman_young = 3 }
+
+[line.select_2]
+trigger = "select"
+text = "Point me at somethin' ugly."
+picks = { shieldman_old = 3, shieldman_young = 3 }
+
+[line.select_3]
+trigger = "select"
+text = "Shield's up, heid's doon. Whit's the plan?"
+picks = { shieldman_old = 2, shieldman_young = 2 }
+
+[line.select_4]
+trigger = "select"
+text = "Somebody need a wallop?"
+picks = { shieldman_old = 3, shieldman_young = 3 }
+
+[line.select_5]
+trigger = "select"
+text = "Ah'm listenin'. Make it quick, there's fightin' tae dae."
+picks = { shieldman_old = 3, shieldman_young = 3 }
+
+[line.move_1]
+trigger = "move"
+text = "Right ye are!"
+picks = { shieldman_old = 3, shieldman_young = 3 }
+
+[line.move_2]
+trigger = "move"
+text = "Quick march, ya numpties!"
+picks = { shieldman_old = 3, shieldman_young = 3 }
+
+[line.move_3]
+trigger = "move"
+text = "Marchin'. Grumblin'. Same thing."
+picks = { shieldman_old = 3, shieldman_young = 3 }
+
+[line.move_4]
+trigger = "move"
+text = "If it's a trap, ah'm blamin' you."
+picks = { shieldman_old = 3, shieldman_young = 2 }
+
+[line.move_5]
+trigger = "move"
+text = "Onward! Mind the puddles."
+picks = { shieldman_old = 3, shieldman_young = 3 }
+
+[line.attack_1]
+trigger = "attack"
+text = "Get intae them!"
+picks = { shieldman_old = 3, shieldman_young = 3 }
+
+[line.attack_2]
+trigger = "attack"
+text = "Gie it laldy, lads!"
+picks = { shieldman_old = 3, shieldman_young = 3 }
+
+[line.attack_3]
+trigger = "attack"
+text = "Time fer a stramash!"
+picks = { shieldman_old = 3, shieldman_young = 3 }
+
+[line.attack_4]
+trigger = "attack"
+text = "Ah'll skelp ye intae next week!"
+picks = { shieldman_old = 3, shieldman_young = 3 }
+
+[line.attack_5]
+trigger = "attack"
+text = "Charge! Ach, wait, ah'm already chargin'!"
+picks = { shieldman_old = 3, shieldman_young = 3 }
+
+[line.kill_1]
+trigger = "kill"
+text = "An' STAY doon!"
+picks = { shieldman_old = 3, shieldman_young = 3 }
+
+[line.kill_2]
+trigger = "kill"
+text = "Ye were deid already, ye just didnae ken."
+picks = { shieldman_old = 3, shieldman_young = 2 }
+
+[line.kill_3]
+trigger = "kill"
+text = "Is that it? Ah've had fiercer porridge."
+picks = { shieldman_old = 2, shieldman_young = 3 }
+
+[line.kill_4]
+trigger = "kill"
+text = "That's one fer the sang!"
+picks = { shieldman_old = 2, shieldman_young = 3 }
+
+[line.kill_5]
+trigger = "kill"
+text = "Next!"
+picks = { shieldman_old = 3, shieldman_young = 2 }
+
+[line.hurt_1]
+trigger = "hurt"
+text = "It's just a scratch! A big scratch!"
+picks = { shieldman_old = 3, shieldman_young = 3 }
+
+[line.hurt_2]
+trigger = "hurt"
+text = "Ah've had worse frae ma granny!"
+picks = { shieldman_old = 3, shieldman_young = 2 }
+
+[line.hurt_3]
+trigger = "hurt"
+text = "Warden! Ah need a wee herb!"
+picks = { shieldman_old = 1, shieldman_young = 2 }
+
+[line.hurt_4]
+trigger = "hurt"
+text = "Ah'm fine! Ah'm fine! Ah'm no' fine."
+picks = { shieldman_old = 1, shieldman_young = 2 }
+
+[line.death_1]
+trigger = "death"
+text = "Tell ma mither… ah wis braw…"
+picks = { shieldman_old = 1, shieldman_young = 1 }
+
+[line.death_2]
+trigger = "death"
+text = "Avenge me… or don't, ah'm no' fussy…"
+picks = { shieldman_old = 3, shieldman_young = 3 }
+
+[line.death_3]
+trigger = "death"
+text = "Ach… no' like this…"
+picks = { shieldman_old = 3, shieldman_young = 3 }
+
+[line.annoyed_1]
+trigger = "annoyed"
+text = "Poke me again an' see whit happens."
+picks = { shieldman_old = 2, shieldman_young = 1 }
+
+[line.annoyed_2]
+trigger = "annoyed"
+text = "Ah've got a shield, no' a lot o' patience."
+picks = { shieldman_old = 2, shieldman_young = 3 }
+
+[line.annoyed_3]
+trigger = "annoyed"
+text = "Ye know ah can see ye, aye?"
+picks = { shieldman_old = 3 }
+
+[line.status_burning_1]
+trigger = "status_burning"
+text = "Whit's that smell? Ach, it's me, ah'm on fire!"
+picks = { shieldman_old = 1, shieldman_young = 2 }
+
+[line.status_paralyzed_1]
+trigger = "status_paralyzed"
+text = "Cannae… move… ma… legs…"
+picks = { shieldman_old = 3, shieldman_young = 3 }
+
+[line.status_confused_1]
+trigger = "status_confused"
+text = "Which side am ah on again?"
+picks = { shieldman_old = 2, shieldman_young = 3 }
+
+[line.formation_rabble_1]
+trigger = "formation_rabble"
+text = "Rabble? Finally, somethin' we're good at."
+picks = { shieldman_old = 3, shieldman_young = 3 }
+
+[line.formation_wedge_1]
+trigger = "formation_wedge"
+text = "Pointy end first!"
+picks = { shieldman_old = 2, shieldman_young = 2 }
+
+[line.victory_1]
+trigger = "victory"
+text = "That's them sorted. Who's fer a dram?"
+picks = { shieldman_old = 1 }
+
+[line.victory_2]
+trigger = "victory"
+text = "We won! Ah think. Did we win?"
+picks = { shieldman_old = 2, shieldman_young = 2 }
