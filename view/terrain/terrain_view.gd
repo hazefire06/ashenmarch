@@ -1,9 +1,10 @@
 class_name TerrainView
 extends Node3D
-## Draws a Terrain as chunked, flat-shaded placeholder meshes colored by
-## height, ground type, and water depth, and darker where a structure blocks
-## the sample (a house, a wall), since blocked samples are raised but not
-## otherwise marked. build() reads the whole terrain;
+## Draws a Terrain as chunked, smooth-shaded meshes textured by ground type
+## (six blended layers, WorldTextures: each sample's ground, mud along
+## shores, rock on steep faces), tinted by water depth, and darker where a
+## structure blocks the sample but no structure model covers it. build() reads
+## the whole terrain;
 ## rebuild_region() re-reads the heights in part of it, after explosions scar
 ## the ground. Never writes the terrain.
 ##
@@ -19,12 +20,20 @@ const TERRAIN_SHADER: Shader = preload("res://view/terrain/terrain.gdshader")
 const FIRE_TEXEL: Array[int] = [0, 128, 255]
 ## Blocked texel value (R8) of a blocked sample; an open one is 0.
 const BLOCKED_TEXEL: int = 255
+## The texture settings the shader is given (terrain.gdshader explains each).
+const TILE_M: float = 3.0
+const BORDER_JITTER: float = 0.35
+const ROCK_NORMAL_Y: float = 0.707
+const ROCK_BAND: float = 0.1
+## Mud lies on the riverbed and fades out over this many meters of dry bank.
+const MUD_REACH_M: float = 3.0
 
 ## Index array shared by every full-size chunk, made by build().
 var _shared_indices: PackedInt32Array = PackedInt32Array()
 var _material: ShaderMaterial
 ## Heights the view draws under structures (sample index to milli-units), kept
-## by build() for rebuild_region().
+## by build() for rebuild_region(). Its keys are the samples a structure
+## model covers.
 var _view_heights: Dictionary[int, int] = {}
 var _fire_image: Image
 var _fire_texture: ImageTexture
@@ -166,21 +175,21 @@ func _chunk_mesh(terrain: Terrain, chunk_x: int, chunk_z: int) -> ArrayMesh:
 
 
 func _make_material(terrain: Terrain) -> ShaderMaterial:
-	var lowest: int = terrain.heights[0]
-	var highest: int = terrain.heights[0]
-	for h: int in terrain.heights:
-		lowest = mini(lowest, h)
-		highest = maxi(highest, h)
 	var mm_per_m: float = float(World.UNITS_PER_METER)
 	var material: ShaderMaterial = ShaderMaterial.new()
 	material.shader = TERRAIN_SHADER
-	material.set_shader_parameter(
-		"height_ramp", ImageTexture.create_from_image(TerrainPalette.height_ramp_image())
-	)
+	material.set_shader_parameter("ground_albedo", WorldTextures.albedo())
+	material.set_shader_parameter("ground_normal", WorldTextures.normal())
+	material.set_shader_parameter("detail_noise", WorldTextures.detail_noise())
+	var weights: Array[Image] = _ground_weight_images(terrain)
+	material.set_shader_parameter("ground_weights_a", ImageTexture.create_from_image(weights[0]))
+	material.set_shader_parameter("ground_weights_b", ImageTexture.create_from_image(weights[1]))
+	material.set_shader_parameter("tile_m", TILE_M)
+	material.set_shader_parameter("border_jitter", BORDER_JITTER)
+	material.set_shader_parameter("rock_normal_y", ROCK_NORMAL_Y)
+	material.set_shader_parameter("rock_band", ROCK_BAND)
 	material.set_shader_parameter("water_tint", ImageTexture.create_from_image(_water_tint_image(terrain)))
-	material.set_shader_parameter("ground_tint", ImageTexture.create_from_image(_ground_tint_image(terrain)))
 	material.set_shader_parameter("blocked_map", ImageTexture.create_from_image(_blocked_image(terrain)))
-	material.set_shader_parameter("ground_kind", ImageTexture.create_from_image(_ground_kind_image(terrain)))
 	_apply_grade(material)
 	material.set_shader_parameter(
 		"blocked_tint", Vector2(TerrainPalette.BLOCKED_DARKEN, TerrainPalette.BLOCKED_DESATURATE)
@@ -191,8 +200,6 @@ func _make_material(terrain: Terrain) -> ShaderMaterial:
 	material.set_shader_parameter("fire_state", _fire_texture)
 	material.set_shader_parameter("wetness", 0.0)
 	material.set_shader_parameter("snow_cover", 0.0)
-	material.set_shader_parameter("height_min", lowest / mm_per_m)
-	material.set_shader_parameter("height_max", highest / mm_per_m)
 	material.set_shader_parameter("cell_size", terrain.cell_size / mm_per_m)
 	material.set_shader_parameter("sample_count", Vector2(terrain.size_x, terrain.size_z))
 	return material
@@ -213,28 +220,71 @@ static func _no_recolor() -> PackedColorArray:
 	return none
 
 
-## R8, one texel per sample: its Terrain.Ground, so the shader can recolor each
-## ground type. The sim never changes a sample's ground, so it is written once.
-func _ground_kind_image(terrain: Terrain) -> Image:
-	return Image.create_from_data(terrain.size_x, terrain.size_z, false, Image.FORMAT_R8, terrain.ground)
-
-
-## RGBA8, one texel per sample: TerrainPalette.ground_tint of its ground.
-func _ground_tint_image(terrain: Terrain) -> Image:
-	var by_ground: Array[PackedByteArray] = []
-	for ground: int in Terrain.GROUND_COUNT:
-		var c: Color = TerrainPalette.ground_tint(ground)
-		by_ground.append(PackedByteArray([c.r8, c.g8, c.b8, c.a8]))
+## Two RGBA8 images, one texel per sample, of the six layer weights (255 is
+## all of it) and the samples a structure model covers; terrain.gdshader reads
+## them as ground_weights_a and ground_weights_b. A sample weighs its own
+## ground, less the mud laid on it near water; the six always sum to 255.
+func _ground_weight_images(terrain: Terrain) -> Array[Image]:
+	var mud: PackedFloat32Array = _mud(terrain)
 	var count: int = terrain.size_x * terrain.size_z
-	var data: PackedByteArray = PackedByteArray()
-	data.resize(count * 4)
+	var a: PackedByteArray = PackedByteArray()
+	var b: PackedByteArray = PackedByteArray()
+	a.resize(count * 4)
+	b.resize(count * 4)
 	for k: int in count:
-		var texel: PackedByteArray = by_ground[terrain.ground[k]]
-		data[k * 4] = texel[0]
-		data[k * 4 + 1] = texel[1]
-		data[k * 4 + 2] = texel[2]
-		data[k * 4 + 3] = texel[3]
-	return Image.create_from_data(terrain.size_x, terrain.size_z, false, Image.FORMAT_RGBA8, data)
+		var mud_byte: int = roundi(mud[k] * 255.0)
+		# Grass, brush, wood and sand are a's four channels, rock is b's first:
+		# the Terrain.Ground order.
+		var ground: int = terrain.ground[k]
+		if ground < Terrain.Ground.ROCK:
+			a[k * 4 + ground] = 255 - mud_byte
+		else:
+			b[k * 4] = 255 - mud_byte
+		b[k * 4 + 1] = mud_byte
+		b[k * 4 + 2] = 255 if _view_heights.has(k) else 0
+	return [
+		Image.create_from_data(terrain.size_x, terrain.size_z, false, Image.FORMAT_RGBA8, a),
+		Image.create_from_data(terrain.size_x, terrain.size_z, false, Image.FORMAT_RGBA8, b),
+	]
+
+
+## Mud per sample, 0..1: all of it under water, fading to none MUD_REACH_M
+## from the nearest water sample. The nearest water to any dry sample is on the
+## shore, so only shore samples spread it.
+func _mud(terrain: Terrain) -> PackedFloat32Array:
+	var w: int = terrain.size_x
+	var h: int = terrain.size_z
+	var mud: PackedFloat32Array = PackedFloat32Array()
+	mud.resize(w * h)
+	var cell_m: float = terrain.cell_size / float(World.UNITS_PER_METER)
+	var reach: int = ceili(MUD_REACH_M / cell_m)
+	for j: int in h:
+		for i: int in w:
+			var k: int = j * w + i
+			if terrain.water[k] == 0:
+				continue
+			mud[k] = 1.0
+			if not _is_shore(terrain, i, j):
+				continue
+			for dj: int in range(-reach, reach + 1):
+				for di: int in range(-reach, reach + 1):
+					var x: int = i + di
+					var z: int = j + dj
+					if x < 0 or z < 0 or x >= w or z >= h:
+						continue
+					var near: float = 1.0 - sqrt(float(di * di + dj * dj)) * cell_m / MUD_REACH_M
+					mud[z * w + x] = maxf(mud[z * w + x], near)
+	return mud
+
+
+## Whether water sample (i, j) has a dry sample beside it.
+static func _is_shore(terrain: Terrain, i: int, j: int) -> bool:
+	for step: Vector2i in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+		var x: int = i + step.x
+		var z: int = j + step.y
+		if x >= 0 and z >= 0 and x < terrain.size_x and z < terrain.size_z and terrain.water[z * terrain.size_x + x] == 0:
+			return true
+	return false
 
 
 ## R8, one texel per sample: BLOCKED_TEXEL where a structure blocks it, so the
