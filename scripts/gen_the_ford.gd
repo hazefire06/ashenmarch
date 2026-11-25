@@ -272,7 +272,9 @@ func _build_hamlet(map: MapBuilder) -> void:
 	var gap: Vector2 = Vector2(length / 2.0 - GATE_WIDTH_M / 2.0, length / 2.0 + GATE_WIDTH_M / 2.0)
 	map.wall(points, PALISADE_THICKNESS_M, PALISADE_HEIGHT_M, [gap])
 	for house: Vector4 in HAMLET_HOUSES:
-		map.house(house.x, house.y, house.z, house.w, HOUSE_HEIGHT_M)
+		var center: Vector2 = Vector2(house.x, house.y)
+		var road_point: Vector2 = MapBuilder.nearest_on_polyline(center, ROAD)
+		map.house(house.x, house.y, house.z, house.w, HOUSE_HEIGHT_M, road_point)
 
 
 ## (ground height, water depth) in meters at (x, z) meters.

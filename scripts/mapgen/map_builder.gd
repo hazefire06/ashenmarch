@@ -40,6 +40,11 @@ var levels: PackedByteArray = PackedByteArray()
 var grounds: PackedByteArray = PackedByteArray()
 ## 1 where a structure makes the sample solid, else 0.
 var blocked: PackedByteArray = PackedByteArray()
+## Water surface height in meters per sample (ground plus depth), 0.0 where dry.
+## Written to water.png for the view; the sim reads only the depth levels.
+var water_m: PackedFloat32Array = PackedFloat32Array()
+## The houses and walls stamped so far, written to structures.tres for the view.
+var structures: Array[StructureRecord] = []
 
 
 func _init(
@@ -56,6 +61,7 @@ func _init(
 	levels.resize(count)
 	grounds.resize(count)
 	blocked.resize(count)
+	water_m.resize(count)
 
 
 ## Fills the whole map in two passes, because ground types need the slope,
@@ -71,6 +77,7 @@ func fill(height_and_depth: Callable, ground_type: Callable) -> void:
 			var k: int = j * size_x + i
 			heights_m[k] = sample.x
 			levels[k] = level(sample.y)
+			water_m[k] = sample.x + sample.y if levels[k] >= 1 else 0.0
 	for j: int in size_z:
 		for i: int in size_x:
 			var k: int = j * size_x + i
@@ -131,7 +138,13 @@ static func profile(keys: Array[Vector2], at: float) -> float:
 ## WOOD, so it burns and stops projectiles. A sample belongs to the footprint
 ## if its position lies in [center - size / 2, center + size / 2), so a 6 m
 ## house covers 6 samples a side. Returns the number of samples stamped.
-func house(cx_m: float, cz_m: float, w_m: float, d_m: float, height_m: float = 3.0) -> int:
+## face_toward_m (Vector2.INF for none) and model are recorded for the view:
+## the house faces the axis direction toward that point, and model hints at a
+## model (&"mill").
+func house(
+	cx_m: float, cz_m: float, w_m: float, d_m: float, height_m: float = 3.0,
+	face_toward_m: Vector2 = Vector2.INF, model: StringName = &""
+) -> int:
 	var rect: Rect2i = _footprint(cx_m - w_m / 2.0, cz_m - d_m / 2.0, cx_m + w_m / 2.0, cz_m + d_m / 2.0)
 	if rect.get_area() == 0:
 		return 0
@@ -140,14 +153,24 @@ func house(cx_m: float, cz_m: float, w_m: float, d_m: float, height_m: float = 3
 		for i: int in range(rect.position.x, rect.end.x):
 			top = maxf(top, heights_m[j * size_x + i])
 	top += height_m
+	var record: StructureRecord = StructureRecord.new()
+	record.kind = &"house"
+	record.model = model
+	record.center_m = Vector2(cx_m, cz_m)
+	record.size_m = Vector2(w_m, d_m)
+	record.base_m = top - height_m
+	record.height_m = height_m
+	record.facing = _axis_toward(Vector2(cx_m, cz_m), face_toward_m)
 	var wet: int = 0
 	for j: int in range(rect.position.y, rect.end.y):
 		for i: int in range(rect.position.x, rect.end.x):
 			var k: int = j * size_x + i
+			record.samples.append(k)
 			wet += 1 if levels[k] != 0 else 0
 			heights_m[k] = top
 			blocked[k] = 1
 			grounds[k] = Terrain.Ground.WOOD
+	structures.append(record)
 	_warn_if_wet(wet, "house at (%.1f, %.1f)" % [cx_m, cz_m])
 	return rect.get_area()
 
@@ -175,12 +198,21 @@ func wall(points_m: PackedVector2Array, thickness_m: float, height_m: float, gap
 			if not _in_gap(start + a.distance_to(_closest_on_segment(p, a, b)), gaps):
 				solid[k] = true
 		start += a.distance_to(b)
+	var record: StructureRecord = StructureRecord.new()
+	record.kind = &"wall"
+	record.points_m = points_m
+	record.thickness_m = thickness_m
+	record.height_m = height_m
+	record.gaps_m = PackedVector2Array(gaps)
 	var wet: int = 0
 	for k: int in solid:
+		record.samples.append(k)
 		wet += 1 if levels[k] != 0 else 0
 		heights_m[k] += height_m
 		blocked[k] = 1
 		grounds[k] = Terrain.Ground.ROCK
+	record.samples.sort()
+	structures.append(record)
 	_warn_if_wet(wet, "wall from %s" % points_m[0])
 
 
@@ -283,18 +315,36 @@ func mask_raster() -> PngRaster:
 	return raster
 
 
+## The water PNG: 16-bit gray like the height PNG, on the same 0..max_height_m
+## scale, holding the water surface height (0 where dry).
+func water_raster() -> PngRaster:
+	var raster: PngRaster = PngRaster.create(size_x, size_z, 1, 16)
+	for j: int in size_z:
+		for i: int in size_x:
+			var raw: int = clampi(roundi(water_m[j * size_x + i] / max_height_m * 65535.0), 0, 65535)
+			raster.set_sample(i, j, 0, raw)
+	return raster
+
+
 ## Writes <out_dir>/height.png, mask.png, and <name>.tres (a MapInfo), plus
-## each PNG's keep-importer file, which has to exist before Godot first scans
+## water.png and structures.tres for the view, and each PNG's keep-importer file, which has to exist before Godot first scans
 ## the PNG (otherwise it imports it as a texture, and an export drops the
 ## file). out_dir ends in a slash, like "res://maps/riverside/". Returns the
 ## MapInfo, or null if anything failed to write.
 func save(out_dir: String, name: String, display_name: String, herb_plants: PackedInt32Array = PackedInt32Array()) -> MapInfo:
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(out_dir))
 	var ok: bool = true
-	for file: String in ["height.png", "mask.png"]:
+	for file: String in ["height.png", "mask.png", "water.png"]:
 		ok = _write_text(out_dir + file + ".import", "[remap]\n\nimporter=\"keep\"\n") and ok
 	ok = _write_bytes(out_dir + "height.png", PngCodec.encode(height_raster())) and ok
 	ok = _write_bytes(out_dir + "mask.png", PngCodec.encode(mask_raster())) and ok
+	ok = _write_bytes(out_dir + "water.png", PngCodec.encode(water_raster())) and ok
+	var recorded: MapStructures = MapStructures.new()
+	recorded.records = structures
+	var structures_err: Error = ResourceSaver.save(recorded, out_dir + "structures.tres")
+	if structures_err != OK:
+		push_error("saving structures.tres: %s" % error_string(structures_err))
+		ok = false
 	var info: MapInfo = MapInfo.new()
 	info.display_name = display_name
 	info.heightmap_path = out_dir + "height.png"
@@ -361,6 +411,29 @@ func _samples_near(a: Vector2, b: Vector2, reach_m: float) -> PackedInt32Array:
 			if p.distance_to(_closest_on_segment(p, a, b)) <= reach_m:
 				found.append(j * size_x + i)
 	return found
+
+
+# The axis direction from `from` toward `to`, the larger component winning
+# (a tie goes to x); ZERO when `to` is INF or on top of `from`.
+static func _axis_toward(from: Vector2, to: Vector2) -> Vector2i:
+	if not to.is_finite():
+		return Vector2i.ZERO
+	var d: Vector2 = to - from
+	if d == Vector2.ZERO:
+		return Vector2i.ZERO
+	if absf(d.x) >= absf(d.y):
+		return Vector2i(int(signf(d.x)), 0)
+	return Vector2i(0, int(signf(d.y)))
+
+
+## The point on a polyline nearest to p, in meters.
+static func nearest_on_polyline(p: Vector2, points_m: PackedVector2Array) -> Vector2:
+	var best: Vector2 = points_m[0]
+	for s: int in points_m.size() - 1:
+		var q: Vector2 = _closest_on_segment(p, points_m[s], points_m[s + 1])
+		if p.distance_to(q) < p.distance_to(best):
+			best = q
+	return best
 
 
 static func _closest_on_segment(p: Vector2, a: Vector2, b: Vector2) -> Vector2:

@@ -149,7 +149,11 @@ func _initialize() -> void:
 		PLATEAU_CENTER, top_radius, PLATEAU_TOP_M, CLIFF_WIDTH_M,
 		[ramp(NW_RAMP_FOOT), ramp(SE_RAMP_FOOT)]
 	)
-	map.house(MILL_CENTER.x, MILL_CENTER.y, MILL_SIZE_M, MILL_SIZE_M, MILL_HEIGHT_M)
+	# The mill faces its yard, to the south.
+	map.house(
+		MILL_CENTER.x, MILL_CENTER.y, MILL_SIZE_M, MILL_SIZE_M, MILL_HEIGHT_M,
+		MILL_CENTER + Vector2(0.0, MILL_SIZE_M), &"mill"
+	)
 
 	var info: MapInfo = map.save(_out_dir(), "old_mill", "Old Mill", HERB_PLANTS)
 	if info == null:

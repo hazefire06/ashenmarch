@@ -160,7 +160,9 @@ func _build_village(map: MapBuilder, wood: FastNoiseLite, brush: FastNoiseLite) 
 	for spot: Vector3 in VILLAGE_BRUSH_PATCHES:
 		map.patch(Vector2(spot.x, spot.y), spot.z, brush, VILLAGE_PATCH_THRESHOLD, Terrain.Ground.BRUSH)
 	for house: Vector4 in VILLAGE_HOUSES:
-		map.house(house.x, house.y, house.z, house.w, VILLAGE_HOUSE_HEIGHT_M)
+		map.house(
+			house.x, house.y, house.z, house.w, VILLAGE_HOUSE_HEIGHT_M, VILLAGE_SQUARE
+		)
 	# A one-point polyline is a disc.
 	map.road(PackedVector2Array([VILLAGE_SQUARE, VILLAGE_SQUARE]), VILLAGE_PLAZA_RADIUS_M * 2.0)
 	for lane: PackedVector2Array in VILLAGE_LANES:

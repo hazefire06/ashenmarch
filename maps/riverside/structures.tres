@@ -1,0 +1,96 @@
+[gd_resource type="Resource" script_class="MapStructures" format=3]
+
+[ext_resource type="Script" path="res://view/structures/structure_record.gd" id="1_mgmlj"]
+[ext_resource type="Script" path="res://view/structures/map_structures.gd" id="2_4mwfb"]
+
+[sub_resource type="Resource" id="Resource_dp8wy"]
+script = ExtResource("1_mgmlj")
+center_m = Vector2(447, 355)
+size_m = Vector2(7, 6)
+base_m = 16.791931
+height_m = 3.0
+facing = Vector2i(0, 1)
+points_m = PackedVector2Array()
+gaps_m = PackedVector2Array()
+samples = PackedInt32Array(180668, 180669, 180670, 180671, 180672, 180673, 180674, 181180, 181181, 181182, 181183, 181184, 181185, 181186, 181692, 181693, 181694, 181695, 181696, 181697, 181698, 182204, 182205, 182206, 182207, 182208, 182209, 182210, 182716, 182717, 182718, 182719, 182720, 182721, 182722, 183228, 183229, 183230, 183231, 183232, 183233, 183234)
+
+[sub_resource type="Resource" id="Resource_sjijj"]
+script = ExtResource("1_mgmlj")
+center_m = Vector2(463, 360)
+size_m = Vector2(6, 6)
+base_m = 17.707182
+height_m = 3.0
+facing = Vector2i(-1, 0)
+points_m = PackedVector2Array()
+gaps_m = PackedVector2Array()
+samples = PackedInt32Array(183244, 183245, 183246, 183247, 183248, 183249, 183756, 183757, 183758, 183759, 183760, 183761, 184268, 184269, 184270, 184271, 184272, 184273, 184780, 184781, 184782, 184783, 184784, 184785, 185292, 185293, 185294, 185295, 185296, 185297, 185804, 185805, 185806, 185807, 185808, 185809)
+
+[sub_resource type="Resource" id="Resource_cbwv5"]
+script = ExtResource("1_mgmlj")
+center_m = Vector2(466, 377)
+size_m = Vector2(6, 8)
+base_m = 16.947733
+height_m = 3.0
+facing = Vector2i(-1, 0)
+points_m = PackedVector2Array()
+gaps_m = PackedVector2Array()
+samples = PackedInt32Array(191439, 191440, 191441, 191442, 191443, 191444, 191951, 191952, 191953, 191954, 191955, 191956, 192463, 192464, 192465, 192466, 192467, 192468, 192975, 192976, 192977, 192978, 192979, 192980, 193487, 193488, 193489, 193490, 193491, 193492, 193999, 194000, 194001, 194002, 194003, 194004, 194511, 194512, 194513, 194514, 194515, 194516, 195023, 195024, 195025, 195026, 195027, 195028)
+
+[sub_resource type="Resource" id="Resource_pd527"]
+script = ExtResource("1_mgmlj")
+center_m = Vector2(459, 392)
+size_m = Vector2(7, 6)
+base_m = 17.569834
+height_m = 3.0
+facing = Vector2i(0, -1)
+points_m = PackedVector2Array()
+gaps_m = PackedVector2Array()
+samples = PackedInt32Array(199624, 199625, 199626, 199627, 199628, 199629, 199630, 200136, 200137, 200138, 200139, 200140, 200141, 200142, 200648, 200649, 200650, 200651, 200652, 200653, 200654, 201160, 201161, 201162, 201163, 201164, 201165, 201166, 201672, 201673, 201674, 201675, 201676, 201677, 201678, 202184, 202185, 202186, 202187, 202188, 202189, 202190)
+
+[sub_resource type="Resource" id="Resource_daim8"]
+script = ExtResource("1_mgmlj")
+center_m = Vector2(443, 396)
+size_m = Vector2(8, 6)
+base_m = 17.422169
+height_m = 3.0
+facing = Vector2i(0, -1)
+points_m = PackedVector2Array()
+gaps_m = PackedVector2Array()
+samples = PackedInt32Array(201655, 201656, 201657, 201658, 201659, 201660, 201661, 201662, 202167, 202168, 202169, 202170, 202171, 202172, 202173, 202174, 202679, 202680, 202681, 202682, 202683, 202684, 202685, 202686, 203191, 203192, 203193, 203194, 203195, 203196, 203197, 203198, 203703, 203704, 203705, 203706, 203707, 203708, 203709, 203710, 204215, 204216, 204217, 204218, 204219, 204220, 204221, 204222)
+
+[sub_resource type="Resource" id="Resource_sm3sk"]
+script = ExtResource("1_mgmlj")
+center_m = Vector2(428, 390)
+size_m = Vector2(6, 7)
+base_m = 18.434471
+height_m = 3.0
+facing = Vector2i(1, 0)
+points_m = PackedVector2Array()
+gaps_m = PackedVector2Array()
+samples = PackedInt32Array(198569, 198570, 198571, 198572, 198573, 198574, 199081, 199082, 199083, 199084, 199085, 199086, 199593, 199594, 199595, 199596, 199597, 199598, 200105, 200106, 200107, 200108, 200109, 200110, 200617, 200618, 200619, 200620, 200621, 200622, 201129, 201130, 201131, 201132, 201133, 201134, 201641, 201642, 201643, 201644, 201645, 201646)
+
+[sub_resource type="Resource" id="Resource_qelbn"]
+script = ExtResource("1_mgmlj")
+center_m = Vector2(425, 372)
+size_m = Vector2(6, 8)
+base_m = 19.093843
+height_m = 3.0
+facing = Vector2i(1, 0)
+points_m = PackedVector2Array()
+gaps_m = PackedVector2Array()
+samples = PackedInt32Array(188838, 188839, 188840, 188841, 188842, 188843, 189350, 189351, 189352, 189353, 189354, 189355, 189862, 189863, 189864, 189865, 189866, 189867, 190374, 190375, 190376, 190377, 190378, 190379, 190886, 190887, 190888, 190889, 190890, 190891, 191398, 191399, 191400, 191401, 191402, 191403, 191910, 191911, 191912, 191913, 191914, 191915, 192422, 192423, 192424, 192425, 192426, 192427)
+
+[sub_resource type="Resource" id="Resource_5ogld"]
+script = ExtResource("1_mgmlj")
+center_m = Vector2(478, 398)
+size_m = Vector2(8, 5)
+base_m = 14.361024
+height_m = 3.0
+facing = Vector2i(-1, 0)
+points_m = PackedVector2Array()
+gaps_m = PackedVector2Array()
+samples = PackedInt32Array(203226, 203227, 203228, 203229, 203230, 203231, 203232, 203233, 203738, 203739, 203740, 203741, 203742, 203743, 203744, 203745, 204250, 204251, 204252, 204253, 204254, 204255, 204256, 204257, 204762, 204763, 204764, 204765, 204766, 204767, 204768, 204769, 205274, 205275, 205276, 205277, 205278, 205279, 205280, 205281)
+
+[resource]
+script = ExtResource("2_4mwfb")
+records = Array[ExtResource("1_mgmlj")]([SubResource("Resource_dp8wy"), SubResource("Resource_sjijj"), SubResource("Resource_cbwv5"), SubResource("Resource_pd527"), SubResource("Resource_daim8"), SubResource("Resource_sm3sk"), SubResource("Resource_qelbn"), SubResource("Resource_5ogld")])
