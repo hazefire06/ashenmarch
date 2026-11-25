@@ -38,3 +38,7 @@ assets/audio/synthetic/
 audio-src/manifest.json.lock
 # Audition previews and pages (process.py batch); local listening files.
 audio-src/audition/
+# World source packs: the downloaded archives and the unpacked kit stay local; only the files
+# art-src/world/world.toml names (and each pack's licence) are committed.
+art-src/world/**/*.zip
+art-src/world/quaternius/megakit/

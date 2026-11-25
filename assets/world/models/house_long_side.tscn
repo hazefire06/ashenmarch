@@ -1,0 +1,8 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://assets/world/models/house_long_side/house_long_side.gltf" id="1_clpir"]
+
+[node name="HouseLongSide" type="Node3D" unique_id=2075496044]
+
+[node name="house_long_side2" type="Node3D" parent="." unique_id=872908528 instance=ExtResource("1_clpir")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.008544829, -0.0126161575)

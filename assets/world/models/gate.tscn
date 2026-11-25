@@ -1,0 +1,7 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://assets/world/models/gate/gate.gltf" id="1_jpquk"]
+
+[node name="Gate" type="Node3D" unique_id=2053244959]
+
+[node name="gate2" type="Node3D" parent="." unique_id=1294525983 instance=ExtResource("1_jpquk")]
