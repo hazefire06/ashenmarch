@@ -35,6 +35,36 @@ func _lowest_vertex_y(chunk: MeshInstance3D) -> float:
 	return lowest
 
 
+func test_a_scar_under_a_structure_keeps_its_ground_hidden() -> void:
+	var terrain: Terrain = _terrain()
+	var house: StructureRecord = StructureRecord.new()
+	house.kind = &"house"
+	house.center_m = Vector2(72.0, 12.0)
+	house.size_m = Vector2(6.0, 6.0)
+	house.base_m = 0.25
+	var covered: PackedInt32Array = PackedInt32Array()
+	for j: int in range(9, 15):
+		for i: int in range(69, 75):
+			covered.append(j * terrain.size_x + i)
+			terrain.heights[j * terrain.size_x + i] = 4 * M
+	house.samples = covered
+	var structures: MapStructures = MapStructures.new()
+	structures.records = [house]
+	var view: TerrainView = TerrainView.new()
+	add_child_autofree(view)
+	view.build(terrain, structures)
+	view.rebuild_region(terrain, terrain.scar(72 * M, 12 * M, 2 * M, 300))
+	var vertices: PackedVector3Array = _chunk(view, 1, 0).mesh.surface_get_arrays(0)[Mesh.ARRAY_VERTEX]
+	var checked: int = 0
+	for v: Vector3 in vertices:
+		var i: int = roundi(v.x)
+		var j: int = roundi(v.z)
+		if i >= 69 and i <= 74 and j >= 9 and j <= 14:
+			checked += 1
+			assert_almost_eq(v.y, 0.25, 0.0001, "vertex (%d, %d)" % [i, j])
+	assert_eq(checked, 36)
+
+
 func test_build_makes_one_named_chunk_per_block_of_cells() -> void:
 	var view: TerrainView = _view_of(_terrain())
 	assert_eq(view.get_child_count(), 6)

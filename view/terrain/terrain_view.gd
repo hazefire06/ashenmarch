@@ -23,6 +23,9 @@ const BLOCKED_TEXEL: int = 255
 ## Index array shared by every full-size chunk, made by build().
 var _shared_indices: PackedInt32Array = PackedInt32Array()
 var _material: ShaderMaterial
+## Heights the view draws under structures (sample index to milli-units), kept
+## by build() for rebuild_region().
+var _view_heights: Dictionary[int, int] = {}
 var _fire_image: Image
 var _fire_texture: ImageTexture
 ## Cells burning at the last update_fire().
@@ -35,8 +38,13 @@ var _grade_recolor: PackedColorArray = _no_recolor()
 var _grade_water: Color = Color(0.0, 0.0, 0.0, 0.0)
 
 
-## Replaces any existing chunks with meshes for this terrain.
-func build(terrain: Terrain) -> void:
+## Replaces any existing chunks with meshes for this terrain. With structures,
+## the samples under each are drawn at their natural ground height, so the
+## sim's raised slab is never seen; the sim's heights are untouched.
+func build(terrain: Terrain, structures: MapStructures = null) -> void:
+	_view_heights = {}
+	if structures != null:
+		_view_heights = structures.view_heights(terrain)
 	for child: Node in get_children():
 		# Out of the tree now, so a rebuild in the same frame can reuse the names.
 		remove_child(child)
@@ -152,7 +160,8 @@ func _chunk_mesh(terrain: Terrain, chunk_x: int, chunk_z: int) -> ArrayMesh:
 	var full: Vector2i = Vector2i(TerrainMeshBuilder.CHUNK_CELLS, TerrainMeshBuilder.CHUNK_CELLS)
 	var is_full: bool = TerrainMeshBuilder.chunk_cells(terrain, chunk_x, chunk_z) == full
 	return TerrainMeshBuilder.build_chunk(
-		terrain, chunk_x, chunk_z, _shared_indices if is_full else PackedInt32Array()
+		terrain, chunk_x, chunk_z,
+		_shared_indices if is_full else PackedInt32Array(), _view_heights
 	)
 
 

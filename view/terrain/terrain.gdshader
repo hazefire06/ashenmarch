@@ -1,7 +1,7 @@
 shader_type spatial;
 render_mode diffuse_lambert, specular_disabled;
 
-// Flat-shaded placeholder terrain: banded height colors (TerrainPalette),
+// Smooth-shaded terrain: banded height colors (TerrainPalette),
 // tinted by ground type, darker and greyer where a structure blocks the
 // sample, charred where the sim's fire has been, darkened when wet, whitened by
 // snow on faces that point up, glowing where it burns now, and the water-depth
@@ -58,12 +58,7 @@ void vertex() {
 }
 
 void fragment() {
-	// Face normal from screen-space derivatives, so the mesh can share
-	// vertices and stay indexed. VERTEX is the view-space position, so a
-	// normal facing the camera has a negative dot product with it.
-	vec3 n = normalize(cross(dFdx(VERTEX), dFdy(VERTEX)));
-	NORMAL = dot(n, VERTEX) > 0.0 ? -n : n;
-
+	// NORMAL is the mesh's smooth vertex normal (TerrainMeshBuilder).
 	float t = clamp((world_pos.y - height_min) / max(height_max - height_min, 0.001), 0.0, 1.0);
 	vec3 ground = texture(height_ramp, vec2(t, 0.5)).rgb;
 	// Texel (i, j) is sample (i, j). Nearest filtering picks the nearest

@@ -104,6 +104,55 @@ func test_triangles_face_up() -> void:
 		assert_gt((c - a).cross(b - a).y, 0.0, "triangle %d faces up" % (n / 3))
 
 
+func test_normals_are_smooth_and_match_the_slope() -> void:
+	# Rises 1 m per 2 m along x: 1000 mm per sample, 2000 mm spacing.
+	var size: int = 8
+	var heights: PackedInt32Array = PackedInt32Array()
+	for j: int in size:
+		for i: int in size:
+			heights.append(i * 1000)
+	var t: Terrain = _terrain(size, size, heights, 2000)
+	var arrays: Array = TerrainMeshBuilder.build_chunk(t, 0, 0).surface_get_arrays(0)
+	var normals: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
+	assert_eq(normals.size(), size * size)
+	var want: Vector3 = Vector3(-0.5, 1.0, 0.0).normalized()
+	var off: int = 0
+	for n: Vector3 in normals:
+		if n.distance_to(want) > 0.01:
+			off += 1
+	assert_eq(off, 0, "normals off the slope")
+
+
+func test_normals_agree_across_a_chunk_edge() -> void:
+	var size: int = 130
+	var heights: PackedInt32Array = PackedInt32Array()
+	for k: int in size * size:
+		heights.append((k * 7919) % 5000)
+	var t: Terrain = _terrain(size, size, heights, 2000)
+	var a: PackedVector3Array = TerrainMeshBuilder.build_chunk(t, 0, 0).surface_get_arrays(0)[Mesh.ARRAY_NORMAL]
+	var b: PackedVector3Array = TerrainMeshBuilder.build_chunk(t, 1, 0).surface_get_arrays(0)[Mesh.ARRAY_NORMAL]
+	# Row 5: chunk 0's last column (i = 64) is chunk 1's first.
+	var from_zero: Vector3 = a[5 * (CHUNK + 1) + CHUNK]
+	var from_one: Vector3 = b[5 * (CHUNK + 1)]
+	assert_true(from_zero.is_equal_approx(from_one), "%s vs %s" % [from_zero, from_one])
+
+
+func test_view_heights_lower_covered_vertices_only() -> void:
+	var size: int = 6
+	var heights: PackedInt32Array = PackedInt32Array()
+	for k: int in size * size:
+		heights.append(3000 + k * 10)
+	var t: Terrain = _terrain(size, size, heights, 2000)
+	var covered: int = 2 * size + 3
+	var view_heights: Dictionary[int, int] = {covered: 500}
+	var vertices: PackedVector3Array = TerrainMeshBuilder.build_chunk(
+		t, 0, 0, PackedInt32Array(), view_heights
+	).surface_get_arrays(0)[Mesh.ARRAY_VERTEX]
+	for k: int in vertices.size():
+		var want: float = 0.5 if k == covered else heights[k] / 1000.0
+		assert_almost_eq(vertices[k].y, want, 0.0001, "vertex %d" % k)
+
+
 func _flat_terrain(samples_x: int, samples_z: int) -> Terrain:
 	var heights: PackedInt32Array = PackedInt32Array()
 	heights.resize(samples_x * samples_z)
