@@ -195,6 +195,8 @@ var _music: Music
 var _barks: Barks
 
 @onready var _terrain_view: TerrainView = $TerrainView
+@onready var _water_view: WaterView = $WaterView
+@onready var _structures_view: StructuresView = $StructuresView
 @onready var _units_view: UnitsView = $Units
 @onready var _gibs: Gibs = $Gibs
 @onready var _projectiles_view: ProjectilesView = $Projectiles
@@ -237,7 +239,15 @@ func _ready() -> void:
 	# The World's copy, which explosions scar. The views draw this one.
 	var terrain: Terrain = world.terrain
 	var loaded_ms: int = Time.get_ticks_msec()
-	_terrain_view.build(terrain)
+	var map_info: MapInfo = _map_info()
+	var structures: MapStructures = null
+	var water_m: PackedFloat32Array = PackedFloat32Array()
+	if map_info != null:
+		structures = MapStructures.load_beside(map_info.heightmap_path)
+		water_m = WaterMap.load_beside(map_info.heightmap_path, terrain, map_info.max_height)
+	_terrain_view.build(terrain, structures)
+	_water_view.build(terrain, water_m, structures)
+	_structures_view.build(structures, terrain)
 	_camera.setup(terrain)
 	_place_camera()
 	_overhead_map.setup(terrain, _camera, world)
@@ -290,7 +300,9 @@ func _ready() -> void:
 		var look: Atmosphere = (
 			launch.skirmish.map.atmosphere if launch.is_skirmish() else launch.mission.atmosphere
 		)
-		AtmosphereView.new(_world_environment, _sun, _terrain_view, _precipitation).apply(look)
+		AtmosphereView.new(
+			_world_environment, _sun, _terrain_view, _precipitation, _water_view, _structures_view
+		).apply(look)
 	_ai_debug.setup(world)
 	_mission_hud.show_world(world)
 	_objectives.show_world(world)
@@ -443,6 +455,9 @@ func _advance() -> void:
 		_skirmish_hud.show_world(world)
 	_terrain_view.update_fire(world.fire)
 	_terrain_view.set_weather(world.weather)
+	_water_view.set_weather(world.weather)
+	_structures_view.set_weather(world.weather)
+	_structures_view.update_fire(world.fire, world.terrain)
 	# Only a launched mission freezes; the sandbox plays on whatever it decides.
 	if launch != null and world.mission != null and world.mission.outcome != MissionRuntime.Outcome.NONE:
 		_freeze()
@@ -624,6 +639,17 @@ func _map_id() -> StringName:
 	if launch == null:
 		return &""
 	return launch.skirmish.map.id if launch.is_skirmish() else launch.mission.id
+
+
+# The map this game is played on (its world files sit beside the heightmap):
+# the launch's mission or skirmish map (a replay's launch has one too), or
+# the sandbox's Riverside.
+func _map_info() -> MapInfo:
+	if launch == null:
+		return load(MAP_PATH) as MapInfo
+	if launch.is_skirmish():
+		return launch.skirmish.map.map if launch.skirmish.map != null else null
+	return launch.mission.map if launch.mission != null else null
 
 
 # The world to play: the launch's mission, set up by MissionSetup, or the
