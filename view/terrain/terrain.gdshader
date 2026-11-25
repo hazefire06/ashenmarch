@@ -23,7 +23,8 @@ uniform sampler2D ground_weights_b : filter_linear, repeat_disable;
 // Tiling greyscale noise (WorldTextures.detail_noise).
 uniform sampler2D detail_noise : filter_linear_mipmap, repeat_enable;
 uniform float tile_m = 3.0;
-// How far noise moves a border between layers, in samples.
+// How hard noise pushes one layer over another within a border, 0..1. Any
+// value is safe: the push fades to nothing where a layer's weight is 0 or 1.
 uniform float border_jitter = 0.35;
 // World normal y below which a face turns to rock (0.707 is 45 degrees, the
 // walkable limit), fully rock rock_band lower.
@@ -70,11 +71,11 @@ const float TINT_NOISE_M = 48.0;
 // Each layer reads the border noise this far (in noise tiles) from the last,
 // so neighboring layers push their border in different places.
 const vec2 LAYER_NOISE_STEP = vec2(0.37, 0.71);
-// Half the width, in weight, of a layer's border once noise has moved it.
-// At most 0.5 - border_jitter, so noise alone never makes a layer appear.
-const float BORDER_EDGE = 0.15;
-// Share of the plain filtered weight kept under the noisy one, so a spot no
-// layer claims still draws the nearest ground.
+// How far, in samples, noise bends where the weights are read, so borders
+// wander off the sample grid.
+const float BORDER_WARP = 0.6;
+// Share of the plain filtered weight kept under the noisy one, so a spot
+// where noise pushes every layer down still draws the nearest ground.
 const float BORDER_FLOOR = 0.02;
 // How far the slow noise lightens or darkens the ground, either way.
 const float TINT_VARIATION = 0.07;
@@ -96,18 +97,34 @@ void fragment() {
 	vec3 up_normal = normalize(world_normal);
 	// Texel (i, j) is sample (i, j), so sample centers sit on texel centers.
 	vec2 uv = (world_pos.xz / cell_size + 0.5) / sample_count;
-	vec4 wa = texture(ground_weights_a, uv);
-	vec4 wb = texture(ground_weights_b, uv);
+	// Borders: the weights are read where noise bends them to (off the
+	// grid), averaged over four reads half a sample apart, so a border is a
+	// gradient about two samples wide and a staircase of samples rounds off.
+	// Averaging and filtering keep the six summing to 1.
+	vec2 noise_uv = world_pos.xz / BORDER_NOISE_M;
+	vec2 bend = vec2(texture(detail_noise, noise_uv + vec2(0.5, 0.0)).r,
+		texture(detail_noise, noise_uv + vec2(0.0, 0.5)).r) - 0.5;
+	vec2 weights_uv = uv + bend * 2.0 * BORDER_WARP / sample_count;
+	vec2 half_sample = 0.5 / sample_count;
+	vec4 wa = vec4(0.0);
+	vec4 wb = vec4(0.0);
+	for (int corner = 0; corner < 4; corner++) {
+		vec2 at = weights_uv + half_sample * vec2(corner % 2 == 0 ? -1.0 : 1.0, corner < 2 ? -1.0 : 1.0);
+		wa += texture(ground_weights_a, at) * 0.25;
+		wb += texture(ground_weights_b, at) * 0.25;
+	}
 	float raw[6] = float[6](wa.r, wa.g, wa.b, wa.a, wb.r, wb.g);
 
-	// Noise moves each layer's border, then a narrow smoothstep draws it.
+	// Within a border, noise pushes each layer up or down, so the gradient
+	// breaks into patches. The push scales with raw * (1 - raw): nothing
+	// where a layer is absent or alone, whatever border_jitter is, so noise
+	// never makes a layer appear.
 	float w[6];
 	float total = 0.0;
-	vec2 noise_uv = world_pos.xz / BORDER_NOISE_M;
 	for (int i = 0; i < LAYER_COUNT; i++) {
-		float n = texture(detail_noise, noise_uv + LAYER_NOISE_STEP * float(i)).r;
-		float moved = raw[i] + (n - 0.5) * 2.0 * border_jitter;
-		w[i] = smoothstep(0.5 - BORDER_EDGE, 0.5 + BORDER_EDGE, moved) + raw[i] * BORDER_FLOOR;
+		float n = texture(detail_noise, noise_uv + LAYER_NOISE_STEP * float(i + 1)).r;
+		float push = (n - 0.5) * 2.0 * border_jitter * 4.0 * raw[i] * (1.0 - raw[i]);
+		w[i] = clamp(raw[i] + push, 0.0, 1.0) + raw[i] * BORDER_FLOOR;
 		total += w[i];
 	}
 	// Rock on faces too steep to walk, over whatever the map says; the
