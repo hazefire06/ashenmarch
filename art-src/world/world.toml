@@ -1,0 +1,10 @@
+# The world art sources, read by scripts/art/world_assets.py (make world-assets). Only CC0 packs from ambientcg, polyhaven, quaternius
+# or kenney are accepted. Paths are relative to art-src/world/. Fill this in when the packs are downloaded.
+#
+# [source.<id>]            name, url, licence = "CC0", site = "ambientcg" | "polyhaven" | "quaternius" | "kenney"
+# [ground.<layer>]         for grass, brush, forest, sand, rock, mud: source, albedo, normal
+# [models.<name>]          source, file (.glb or .gltf)
+
+[ground]
+
+[models]

@@ -12,3 +12,8 @@ art-src/**/*.gif filter=lfs diff=lfs merge=lfs -text
 audio-src/**/*.mp3 filter=lfs diff=lfs merge=lfs -text
 audio-src/**/*.wav filter=lfs diff=lfs merge=lfs -text
 audio-src/**/*.ogg filter=lfs diff=lfs merge=lfs -text
+assets/**/*.glb filter=lfs diff=lfs merge=lfs -text
+assets/**/*.bin filter=lfs diff=lfs merge=lfs -text
+assets/**/*.jpg filter=lfs diff=lfs merge=lfs -text
+art-src/**/*.jpg filter=lfs diff=lfs merge=lfs -text
+art-src/**/*.bin filter=lfs diff=lfs merge=lfs -text
