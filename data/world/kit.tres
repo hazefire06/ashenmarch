@@ -19,34 +19,34 @@ size_m = Vector3(6.008, 3.123, 2)
 [sub_resource type="Resource" id="Resource_bycnb"]
 script = ExtResource("2_nkcmx")
 scene = ExtResource("3_dsibw")
-size_m = Vector3(8.25, 4.965, 8.032)
+size_m = Vector3(6.728, 4.965, 6.725)
 
 [sub_resource type="Resource" id="Resource_kfllu"]
 script = ExtResource("2_nkcmx")
 scene = ExtResource("4_2vldb")
-size_m = Vector3(8.25, 4.965, 9.683)
+size_m = Vector3(6.728, 4.965, 8.725)
 door = Vector2i(1, 0)
 
 [sub_resource type="Resource" id="Resource_2g14d"]
 script = ExtResource("2_nkcmx")
 scene = ExtResource("5_p35uv")
-size_m = Vector3(8.25, 4.965, 9.683)
+size_m = Vector3(6.728, 4.965, 8.725)
 
 [sub_resource type="Resource" id="Resource_8xjku"]
 script = ExtResource("2_nkcmx")
 scene = ExtResource("6_kjykk")
-size_m = Vector3(5.513, 4.496, 7.588)
+size_m = Vector3(4.714, 4.496, 6.724)
 door = Vector2i(1, 0)
 
 [sub_resource type="Resource" id="Resource_h4oc7"]
 script = ExtResource("2_nkcmx")
 scene = ExtResource("7_17dad")
-size_m = Vector3(5.513, 4.494, 9.683)
+size_m = Vector3(4.714, 4.494, 8.725)
 
 [sub_resource type="Resource" id="Resource_jivpk"]
 script = ExtResource("2_nkcmx")
 scene = ExtResource("8_h0vlb")
-size_m = Vector3(9.992, 6.011, 10.002)
+size_m = Vector3(9.992, 6.011, 10.006)
 
 [sub_resource type="Resource" id="Resource_gyp36"]
 script = ExtResource("2_nkcmx")

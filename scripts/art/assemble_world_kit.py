@@ -27,6 +27,21 @@ TEXTURE_SIZE: int = 1024
 OPAQUE: str = "OPAQUE"
 # The house roofs are squashed to this share of their height, so the eaves sit about two thirds of the way up, as the maps assume.
 HOUSE_ROOF_Y: float = 0.4
+# How far a roof reaches past its corner posts, metres. The placer fits the roof's bounds to the footprint, so this is about how far
+# inside the footprint the walls stand: it must stay well under the spec's 0.5 m.
+EAVES_M: float = 0.25
+# Corner_Exterior_Wood's half width: the posts are the outermost part of a building's walls.
+POST_M: float = 0.11
+# How far a Roof_Front_* gable's beams reach out (+z) from its wall.
+GABLE_REACH_M: float = 0.79
+# Each roof's half span in x and its z extent (from the kit's glTF bounds).
+ROOF_SPANS: dict[str, tuple[float, float, float]] = {
+    "Roof_RoundTiles_6x6": (4.12, -3.94, 4.09),
+    "Roof_RoundTiles_6x8": (4.12, -4.83, 4.85),
+    "Roof_RoundTiles_4x6": (2.76, -3.79, 3.79),
+    "Roof_RoundTiles_4x8": (2.76, -4.83, 4.85),
+    "Roof_RoundTiles_8x8": (4.98, -5.08, 5.25),
+}
 
 
 def _mul(a: Matrix, b: Matrix) -> Matrix:
@@ -101,10 +116,12 @@ def _side(look: Look, at: Matrix, modules: int, door: bool) -> list[Placement]:
     return placed
 
 
-def building(look: Look, wide: int, deep: int, door: str, roof: str, gable: str, roof_y: float, roof_fit: Matrix = IDENTITY,
-             gable_fit: Matrix = IDENTITY) -> list[Placement]:
-    """Walls of `wide` x `deep` 2 m modules (x by z) with corner posts, a gabled roof (ridge along z, gables front and back) squashed to
-    roof_y of its height, and a door on the `door` side ("front" is +z, a gable end; "side" is +x, under the eaves)."""
+def building(look: Look, wide: int, deep: int, door: str, roof: str, gable: str, roof_y: float, body: float = 1.0,
+             overhang: float = EAVES_M, gable_y: float = 1.0) -> list[Placement]:
+    """Walls of `wide` x `deep` 2 m modules (x by z), stretched by `body` in x and z, with corner posts, a gabled roof (ridge along z,
+    gables front and back) squashed to roof_y of its height, and a door on the `door` side ("front" is +z, a gable end; "side" is +x,
+    under the eaves). The roof is fitted in x and z to reach `overhang` past the corner posts and no further: the placer scales the
+    whole bounds, the roof's, to the footprint, so a wide overhang would leave the walls standing well inside it."""
     hx, hz = float(wide), float(deep)
     sides = [
         (move(0.0, 0.0, hz), wide, door == "front"),
@@ -112,13 +129,22 @@ def building(look: Look, wide: int, deep: int, door: str, roof: str, gable: str,
         (chain(move(hx, 0.0, 0.0), yaw(90)), deep, door == "side"),
         (chain(move(-hx, 0.0, 0.0), yaw(-90)), deep, False),
     ]
-    placed: list[Placement] = []
+    walls: list[Placement] = []
     for at, modules, has_door in sides:
-        placed += _side(look, at, modules, has_door)
-    placed += [("Corner_Exterior_Wood", move(x, 0.0, z)) for x in (-hx, hx) for z in (-hz, hz)]
+        walls += _side(look, at, modules, has_door)
+    walls += [("Corner_Exterior_Wood", move(x, 0.0, z)) for x in (-hx, hx) for z in (-hz, hz)]
+    stretch = scale(body, 1.0, body)
+    placed: list[Placement] = [(piece, chain(stretch, m)) for piece, m in walls]
+    # The roof spans the corner posts' outsides plus the overhang, in both x and z.
+    half_x, half_z = (hx + POST_M) * body + overhang, (hz + POST_M) * body + overhang
+    span_x, z0, z1 = ROOF_SPANS[roof]
+    fit = chain(scale(half_x / span_x, 1.0, 2.0 * half_z / (z1 - z0)), move(0.0, 0.0, -(z0 + z1) / 2.0))
     top = chain(move(0.0, 3.0, 0.0), scale(1.0, roof_y, 1.0))
-    placed.append((roof, chain(top, roof_fit)))
-    placed += [(gable, chain(top, move(0.0, 0.0, hz), gable_fit)), (gable, chain(top, move(0.0, 0.0, -hz), yaw(180), gable_fit))]
+    placed.append((roof, chain(top, fit)))
+    # The gable front's beams reach GABLE_REACH_M out from the wall; pressed in to stay under the roof's end.
+    gable_fit = scale(body, gable_y, min(1.0, (POST_M * body + overhang) / GABLE_REACH_M))
+    placed += [(gable, chain(top, move(0.0, 0.0, hz * body), gable_fit)),
+               (gable, chain(top, move(0.0, 0.0, -hz * body), yaw(180), gable_fit))]
     return placed
 
 
@@ -139,12 +165,12 @@ def gatehouse() -> list[Placement]:
 
 
 def mill() -> list[Placement]:
-    """The Old Mill: 8 x 8 m of stone walls under the kit's 8 x 8 roof, fitted to a 10 x 10 m plan and squashed to 6 m tall, with four
-    sails crossed on the front gable above the door."""
-    # Roof_RoundTiles_8x8 spans x -4.98..4.98 and z -5.08..5.25, 6.00 above its base; this makes it 10 x 10 m on centre and 3 m tall.
-    fit = chain(scale(10.0 / 9.96, 1.0, 10.0 / 10.33), move(0.0, 0.0, -0.085))
+    """The Old Mill: 4 x 4 modules of stone wall stretched 1.16 (9.3 m; the shutters then reach 5.0) under the kit's 8 x 8 roof fitted to exactly 10 x 10 m and
+    squashed to 6 m tall, with four sails crossed on the front gable above the door."""
+    body = 1.16
     # The 8-wide gable is 5.31 tall under a 6.00 roof; stretched to meet it.
-    placed = building(STONE, 4, 4, "front", "Roof_RoundTiles_8x8", "Roof_Front_Brick8", 0.5, fit, scale(1.0, 6.0 / 5.31, 1.0))
+    placed = building(STONE, 4, 4, "front", "Roof_RoundTiles_8x8", "Roof_Front_Brick8", 0.5, body, 5.0 - (4.0 + POST_M) * body,
+                      6.0 / 5.31)
     hub = move(0.0, 4.05, 4.8)
     placed.append(("Prop_Crate", chain(hub, scale(0.35, 0.35, 0.35), move(0.0, -0.53, 0.0))))
     for angle in (45.0, 135.0, 225.0, 315.0):

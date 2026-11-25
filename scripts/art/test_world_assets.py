@@ -133,14 +133,38 @@ class WorldAssetsTest(unittest.TestCase):
     def test_the_import_file_makes_a_texture_array(self) -> None:
         self.write_toml(toml_for())
         self.assertEqual(self.run_cmd()[0], 0)
-        for name, normal in (("ground_albedo", "0"), ("ground_normal", "1")):
+        for name in ("ground_albedo", "ground_normal"):
             text = (self.root / "assets" / "world" / "textures" / f"{name}.png.import").read_text()
             self.assertIn('importer="2d_array_texture"', text)
             self.assertIn("slices/vertical=6", text)
             self.assertIn("slices/horizontal=1", text)
             self.assertIn("compress/mode=2", text)
             self.assertIn("mipmaps/generate=true", text)
-            self.assertIn(f"compress/normal_map={normal}", text)
+            self.assertNotIn("normal_map", text)  # the 2d_array importer has no such key; Godot would drop it
+
+    def test_a_rerun_keeps_what_godot_wrote_in_the_import_files(self) -> None:
+        self.write_toml(toml_for())
+        self.assertEqual(self.run_cmd()[0], 0)
+        path = self.root / "assets" / "world" / "textures" / "ground_albedo.png.import"
+        # As Godot leaves it after an import: a uid, the imported paths and the dependencies, the params as written.
+        params = path.read_text().split("[params]")[1]
+        imported = ('[remap]\n\nimporter="2d_array_texture"\ntype="CompressedTexture2DArray"\nuid="uid://abc"\n'
+                    'path.s3tc="res://.godot/imported/x.s3tc.ctexarray"\nmetadata={\n"vram_texture": true\n}\n\n[deps]\n\n'
+                    'source_file="res://assets/world/textures/ground_albedo.png"\n\n[params]' + params)
+        path.write_text(imported)
+        self.assertEqual(self.run_cmd()[0], 0)
+        self.assertEqual(path.read_text(), imported)
+
+    def test_a_changed_import_setting_is_put_back_and_the_uid_kept(self) -> None:
+        self.write_toml(toml_for())
+        self.assertEqual(self.run_cmd()[0], 0)
+        path = self.root / "assets" / "world" / "textures" / "ground_normal.png.import"
+        path.write_text(path.read_text().replace("[remap]\n\n", '[remap]\n\nuid="uid://keep"\n').replace("compress/mode=2", "compress/mode=0"))
+        self.assertEqual(self.run_cmd()[0], 0)
+        text = path.read_text()
+        self.assertIn('uid="uid://keep"', text)
+        self.assertIn("compress/mode=2", text)
+        self.assertNotIn("compress/mode=0", text)
 
     def test_licence_rows_are_written_between_the_world_markers_only(self) -> None:
         self.write_toml(toml_for(models='[models.house_a]\nsource = "acg"\nfile = "m/house.glb"\n'))
@@ -207,6 +231,24 @@ class WorldAssetsTest(unittest.TestCase):
         out = self.root / "assets" / "world" / "models" / "hut"
         for rel in ("hut.gltf", "hut.bin", "tex/hut.png"):
             self.assertTrue((out / rel).is_file(), rel)
+
+    def test_a_models_images_are_imported_vram_compressed_with_mipmaps(self) -> None:
+        (self.world / "m").mkdir()
+        (self.world / "m" / "hut.gltf").write_text('{"buffers":[{"uri":"hut.bin","byteLength":1}],"images":[{"uri":"hut.png"}]}')
+        (self.world / "m" / "hut.bin").write_bytes(b"\0")
+        make_image(self.world / "m" / "hut.png", "red")
+        self.write_toml(toml_for(models='[models.hut]\nsource = "acg"\nfile = "m/hut.gltf"\n'))
+        self.assertEqual(self.run_cmd()[0], 0)
+        settings = self.root / "assets" / "world" / "models" / "hut" / "hut.png.import"
+        text = settings.read_text()
+        for line in ('importer="texture"', "compress/mode=2", "mipmaps/generate=true", "detect_3d/compress_to=0"):
+            self.assertIn(line, text)
+        self.assertFalse((self.root / "assets" / "world" / "models" / "hut" / "hut.bin.import").exists())
+        # Godot's own rewrite (its uid, other keys) survives a re-run untouched.
+        godot = text.replace('type="CompressedTexture2D"', 'type="CompressedTexture2D"\nuid="uid://hut"') + "roughness/mode=0\n"
+        settings.write_text(godot)
+        self.assertEqual(self.run_cmd()[0], 0)
+        self.assertEqual(settings.read_text(), godot)
 
     def test_a_gltf_pointing_outside_the_world_folder_is_refused(self) -> None:
         (self.world / "m").mkdir()
