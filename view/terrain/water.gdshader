@@ -45,7 +45,7 @@ float ripple_height(vec2 uv) {
 vec2 ripple_slope(vec2 uv) {
 	float e = 0.004;
 	float h = ripple_height(uv);
-	return vec2(ripple_height(uv + vec2(e, 0.0)) - h, ripple_height(uv + vec2(0.0, e))) / e;
+	return vec2(ripple_height(uv + vec2(e, 0.0)) - h, ripple_height(uv + vec2(0.0, e)) - h) / e;
 }
 
 void vertex() {
