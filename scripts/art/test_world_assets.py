@@ -214,7 +214,38 @@ class WorldAssetsTest(unittest.TestCase):
         self.write_toml(toml_for(models='[models.hut]\nsource = "acg"\nfile = "m/hut.gltf"\n'))
         code, err = self.run_cmd()
         self.assertEqual(code, 1)
-        self.assertIn("art-src/world", err)
+        self.assertIn("must stay inside", err)
+        self.assert_nothing_written()
+
+    def test_a_gltf_uri_of_another_file_type_is_refused(self) -> None:
+        (self.world / "m").mkdir()
+        (self.world / "m" / "evil.sh").write_text("echo hi")
+        (self.world / "m" / "hut.gltf").write_text('{"buffers":[{"uri":"evil.sh","byteLength":1}]}')
+        self.write_toml(toml_for(models='[models.hut]\nsource = "acg"\nfile = "m/hut.gltf"\n'))
+        code, err = self.run_cmd()
+        self.assertEqual(code, 1)
+        self.assertIn("evil.sh", err)
+        self.assert_nothing_written()
+
+    def test_a_gltf_uri_climbing_out_of_the_model_folder_is_refused(self) -> None:
+        deep = self.world / "a" / "b" / "c"
+        deep.mkdir(parents=True)
+        make_image(self.world / "x.png", "red")  # inside art-src/world, so the source check alone passes
+        (deep / "hut.gltf").write_text('{"images":[{"uri":"../../../x.png"}]}')
+        self.write_toml(toml_for(models='[models.hut]\nsource = "acg"\nfile = "a/b/c/hut.gltf"\n'))
+        code, err = self.run_cmd()
+        self.assertEqual(code, 1)
+        self.assertIn("..", err)
+        self.assert_nothing_written()
+        self.assertFalse((self.root / "assets" / "x.png").exists())
+
+    def test_a_jpeg_ground_source_is_refused(self) -> None:
+        self.write_toml(toml_for().replace("tex/grass_a.png", "tex/grass_a.jpeg"))
+        make_image(self.world / "tex" / "grass_a.png", "red")
+        (self.world / "tex" / "grass_a.png").rename(self.world / "tex" / "grass_a.jpeg")
+        code, err = self.run_cmd()
+        self.assertEqual(code, 1)
+        self.assertIn("grass_a.jpeg", err)
         self.assert_nothing_written()
 
     def test_check_reports_missing_and_symlinked_sources(self) -> None:

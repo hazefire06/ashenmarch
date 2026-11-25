@@ -23,7 +23,8 @@ from urllib.parse import unquote
 LAYERS: tuple[str, ...] = ("grass", "brush", "forest", "sand", "rock", "mud")
 SITES: dict[str, str] = {"ambientcg": "ambientCG", "polyhaven": "Poly Haven", "quaternius": "Quaternius", "kenney": "Kenney"}
 LAYER_SIZE: int = 1024
-IMAGE_SUFFIXES: tuple[str, ...] = (".png", ".jpg", ".jpeg")
+IMAGE_SUFFIXES: tuple[str, ...] = (".png", ".jpg")  # the types the LFS globs cover; .jpeg would commit as plain git
+EXTRA_SUFFIXES: tuple[str, ...] = (".png", ".jpg", ".bin")  # all a .gltf may pull in
 MODEL_SUFFIXES: tuple[str, ...] = (".glb", ".gltf")
 BEGIN: str = "<!-- world:begin -->"
 END: str = "<!-- world:end -->"
@@ -108,6 +109,10 @@ def _gltf_extras(world: Path, gltf: Path, where: str) -> tuple[tuple[Path, str],
         if uri.startswith("data:"):
             continue
         rel = unquote(uri)
+        if Path(rel).is_absolute() or ".." in Path(rel).parts or "\\" in rel:
+            raise WorldError(f"{where}: {gltf.name} uri `{rel}` must stay inside the model's folder (no `..`, no absolute path)")
+        if Path(rel).suffix.lower() not in EXTRA_SUFFIXES:
+            raise WorldError(f"{where}: {gltf.name} uri `{rel}` isn't a .png, .jpg or .bin")
         extras.append((_checked(world, str(base / rel), f"{where} ({gltf.name} uri)"), rel))
     return tuple(extras)
 
@@ -300,7 +305,10 @@ def run_import(root: Path) -> None:
                 raise WorldError(f"assets/world/models/{model.name} is a symlink; symlinks are refused")
             _copy(model.file, folder / model.file.name)
             for source, rel in model.extras:
-                _copy(source, folder / rel)
+                target = (folder / rel).resolve()
+                if not target.is_relative_to(folder.resolve()):
+                    raise WorldError(f"assets/world/models/{model.name}: `{rel}` would be written outside the model's folder")
+                _copy(source, target)
     _write(licences, new_text)
 
 
