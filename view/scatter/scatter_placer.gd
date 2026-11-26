@@ -42,7 +42,8 @@ const DENSITY: Array[float] = [0.7, 0.6, 0.5, 0.08, 0.2, 0.5]
 ## What each layer (Layer order) grows: [model, weight, low, high]. low..high
 ## is the height in metres it is sized to, or for a pebble a scale of its
 ## native size. Units are about 1.8 m tall: grass and plants stay at or under
-## 0.8 m, bushes 1.0 m.
+## 0.8 m, bushes 1.0 m. bush_common is in the set but grows nowhere: its leaves
+## are the kit's autumn red, which reads as black blots on the green ground.
 const PALETTES: Array = [
 	[
 		[&"grass_common_short", 5.0, 0.28, 0.45], [&"grass_common_tall", 2.0, 0.45, 0.7],
@@ -52,13 +53,13 @@ const PALETTES: Array = [
 	[
 		[&"grass_common_tall", 2.0, 0.45, 0.75], [&"grass_wispy_short", 2.0, 0.3, 0.55],
 		[&"grass_common_short", 1.5, 0.3, 0.45], [&"fern_1", 1.2, 0.3, 0.5], [&"plant_1", 1.0, 0.3, 0.55],
-		[&"plant_7", 0.8, 0.18, 0.3], [&"flower_4_group", 0.3, 0.3, 0.5],
-		[&"bush_common", 0.2, 0.6, 1.0], [&"bush_common_flowers", 0.12, 0.6, 1.0],
+		[&"plant_7", 0.35, 0.18, 0.3], [&"flower_4_group", 0.3, 0.3, 0.5],
+		[&"bush_common_flowers", 0.3, 0.6, 1.0],
 	],
 	[
-		[&"fern_1", 3.0, 0.3, 0.55], [&"plant_1", 1.5, 0.3, 0.55], [&"plant_7", 1.5, 0.18, 0.3],
+		[&"fern_1", 3.0, 0.3, 0.55], [&"plant_1", 1.5, 0.3, 0.55], [&"plant_7", 0.5, 0.18, 0.3],
 		[&"mushroom_common", 0.8, 0.12, 0.25], [&"grass_wispy_short", 1.0, 0.3, 0.5],
-		[&"clover_1", 0.5, 0.12, 0.2], [&"bush_common", 0.35, 0.6, 1.0], [&"pebble_round_2", 0.2, 0.5, 1.2],
+		[&"clover_1", 0.5, 0.12, 0.2], [&"bush_common_flowers", 0.35, 0.6, 1.0], [&"pebble_round_2", 0.2, 0.5, 1.2],
 	],
 	[
 		[&"pebble_round_1", 0.5, 0.5, 1.5], [&"pebble_round_3", 0.5, 0.5, 1.5], [&"pebble_round_5", 0.5, 0.5, 1.5],
@@ -104,12 +105,16 @@ const CLUMP_MAX: float = 2.0
 ## PATCH_M, never below 0.
 const PATCH_M: float = 9.0
 const PATCH_BASE: float = 0.3
-const PATCH_GAIN: float = 3.0
+const PATCH_GAIN: float = 2.0
 ## How far each kind leans with the ground (Kind order): 0 stands upright, 1
 ## lies along the slope. Grass and plants grow mostly up.
 const TILT: Array[float] = [0.4, 0.5, 0.25, 1.0]
 ## Each item's width and depth vary by this share around its height's scale.
 const SPREAD: float = 0.15
+## Per kind: width and depth over the height's scale. The kit's grass tufts
+## are tall and narrow; sized to stay under a unit's knee they would be a few
+## blades, so they are spread wider to read as cover.
+const WIDEN: Array[float] = [1.8, 1.0, 1.0, 1.0]
 ## The density knob on the Web (WebGL2 on modest GPUs); 1.0 elsewhere.
 const DENSITY_SCALE_WEB: float = 0.4
 
@@ -198,7 +203,7 @@ static func place(
 				var spread_z: float = 1.0 + (rng.randf() - 0.5) * 2.0 * SPREAD
 				var lean: Quaternion = Quaternion.IDENTITY.slerp(Quaternion(Vector3.UP, normal), TILT[kind])
 				var basis: Basis = Basis(lean) * Basis(Vector3.UP, yaw) * Basis.from_scale(
-					Vector3(scale * spread_x, scale, scale * spread_z)
+					Vector3(scale * spread_x * WIDEN[kind], scale, scale * spread_z * WIDEN[kind])
 				)
 				var origin: Vector3 = Vector3(x, ground_height_m(terrain, heights, x, z), z)
 				layout.models.append(layout.names.find(name))

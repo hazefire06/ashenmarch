@@ -21,13 +21,13 @@ const FADE_MARGIN_M: float = 25.0
 ## Per kind: sway (scatter.gdshader's wind), how far the lighting normal
 ## bends up, what fire does (its burn_mode) and whether it casts a shadow.
 const WIND: Array[float] = [0.05, 0.03, 0.008, 0.0]
-const NORMAL_UP: Array[float] = [0.6, 0.45, 0.2, 0.0]
+const NORMAL_UP: Array[float] = [0.6, 0.5, 0.65, 0.0]
 const BURN_MODE: Array[int] = [1, 1, 2, 0]
 const SHADOWS: Array[bool] = [false, false, true, false]
 ## Per kind: how the kit's bright colours are brought toward the ground's
 ## (scatter.gdshader's kit_tint and kit_desaturation).
 const KIT_TINT: Array[Color] = [
-	Color(0.66, 0.7, 0.5), Color(0.72, 0.76, 0.6), Color(0.7, 0.72, 0.6), Color(0.9, 0.9, 0.88),
+	Color(0.66, 0.7, 0.5), Color(0.72, 0.76, 0.6), Color(0.95, 0.95, 0.85), Color(0.9, 0.9, 0.88),
 ]
 const KIT_DESATURATION: Array[float] = [0.4, 0.45, 0.35, 0.2]
 
