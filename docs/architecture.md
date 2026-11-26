@@ -2144,6 +2144,14 @@ Every control `docs/controls-myth2.md` listed as missing, a Classic preset besid
 - **A real pad, by hand.** Everything above was driven by synthetic events. Not yet tried with a pad in hand: on the Mac over Bluetooth and over USB (rumble, the glyphs switching, unplugging and plugging back in), in the Windows VM (the same, and whether F10 opens the window's menu there), and in Chrome (the connect hint, rumble). Nor has Classic been played by hand past the tests.
 - **Turning a guard ends its guard.** Single-unit facing is a move to the unit's own spot with a facing, and a move replaces Guard; press G again after turning. A turn that keeps the order would need its own command kind.
 
+## Corner map and spotting (Phase 12)
+
+The always-on corner map (`view/hud/minimap.gd`) shows your units and the enemies they have spotted. It shares its image, placement and click routing with the Tab overhead map (`MapImage`, `MapClick`).
+
+- **Spotting is display only.** `Visibility.spotted_by` (`sim/units/visibility.gd`) and the view-side `SpottingMemory` decide what the map draws. `UnitType.sight_radius` is read by nothing else: the sim step never reads it, it is not in `state_hash`, and no command or AI decision depends on it. Replays and the goldens are untouched.
+- **A real fog of war would be a sim change.** Hiding enemies from targeting, the AI or auto-acquire means reading sight inside `World.step()`, hashing whatever it keeps, and bumping the replay format. Doing it in the view would desync what a player sees from what the sim does.
+- **Cost.** Spotting updates every 8 ticks and only while the map is shown (it pauses with Tab open or the setting off; a full round-robin of the enemies takes 4 updates). Dots are drawn as small squares: `draw_circle` made one draw call per dot and cost about 6% of the bench's frame rate with 50 dots.
+
 ## Unit art (tracks A1, A3 and A4)
 
 Designed in `docs/specs/2026-10-01-art-audio-design.md` and, for A4, `docs/specs/2026-10-15-art-a4-loading-design.md`; built by `docs/plans/2026-10-03-art-audio-a0-a1.md` (A1), `docs/plans/2026-10-08-art-a3-roster.md` (A3) and `docs/plans/2026-10-15-art-a4-loading.md` (A4).
