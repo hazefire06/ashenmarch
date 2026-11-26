@@ -236,7 +236,7 @@ static func _no_recolor() -> PackedColorArray:
 ## them as ground_weights_a and ground_weights_b. A sample weighs its own
 ## ground, less the mud laid on it near water; the six always sum to 255.
 func _ground_weight_images(terrain: Terrain) -> Array[Image]:
-	var mud: PackedFloat32Array = _mud(terrain)
+	var mud: PackedFloat32Array = mud_weights(terrain)
 	var count: int = terrain.size_x * terrain.size_z
 	var a: PackedByteArray = PackedByteArray()
 	var b: PackedByteArray = PackedByteArray()
@@ -262,7 +262,7 @@ func _ground_weight_images(terrain: Terrain) -> Array[Image]:
 ## Mud per sample, 0..1: all of it under water, fading to none MUD_REACH_M
 ## from the nearest water sample. The nearest water to any dry sample is on the
 ## shore, so only shore samples spread it.
-func _mud(terrain: Terrain) -> PackedFloat32Array:
+static func mud_weights(terrain: Terrain) -> PackedFloat32Array:
 	var w: int = terrain.size_x
 	var h: int = terrain.size_z
 	var mud: PackedFloat32Array = PackedFloat32Array()
