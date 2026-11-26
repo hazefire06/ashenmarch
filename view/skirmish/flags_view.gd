@@ -139,6 +139,23 @@ static func shown_flags(rules: SkirmishRules) -> PackedInt32Array:
 	return out
 
 
+## The flags a map (the Tab map, the corner map) marks now, as {"flag": the
+## rules index, "position": its center in meters (x, z), "color": what it is
+## drawn in}: shown_flags in flag_color, the contested hill flashing in real
+## time. None without a world or outside a skirmish.
+static func map_marks(world: World) -> Array[Dictionary]:
+	var marks: Array[Dictionary] = []
+	if world == null or world.skirmish == null:
+		return marks
+	var runtime: SkirmishRuntime = world.skirmish
+	var flash: int = flash_side(Time.get_ticks_msec() / 1000.0)
+	var mm: float = float(World.UNITS_PER_METER)
+	for flag: int in shown_flags(runtime.rules):
+		var at: Vector2 = Vector2(runtime.rules.flags[2 * flag], runtime.rules.flags[2 * flag + 1]) / mm
+		marks.append({"flag": flag, "position": at, "color": flag_color(runtime, flag, flash)})
+	return marks
+
+
 ## Which side's color the contested hill shows `seconds` of real time in: Light
 ## and Dark in turn, CONTEST_FLASH_SECONDS each.
 static func flash_side(seconds: float) -> int:

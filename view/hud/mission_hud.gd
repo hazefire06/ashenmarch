@@ -35,9 +35,18 @@ func _ready() -> void:
 	_objective.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
 	_objective.offset_top = OBJECTIVE_TOP
 	_objective.offset_bottom = OBJECTIVE_TOP + OBJECTIVE_FONT_SIZE * 1.6
+	# A long line wraps onto a second rather than run under the corner map.
+	_objective.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_banner = _make_label(BANNER_FONT_SIZE, VICTORY_COLOR)
 	_banner.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_banner.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+
+
+## Keeps the message line `clearance` pixels in from both sides, so it stays
+## centred and clear of the corner map (0: the whole width).
+func set_side_clearance(clearance: float) -> void:
+	_objective.offset_left = clearance
+	_objective.offset_right = -clearance
 
 
 ## What the banner says for an outcome: "Victory", "Defeat", "Draw", or "" while

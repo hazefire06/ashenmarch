@@ -81,6 +81,7 @@ var _main: MainView
 var _controller: SelectionController
 var _camera: RtsCamera
 var _map: OverheadMap
+var _minimap: Minimap
 var _bar: ControlBar
 var _clock: float = 0.0
 var _placed: bool = false
@@ -275,6 +276,9 @@ func _a_press() -> void:
 	if _map.visible:
 		_map.click_at(cursor.at, false)
 		return
+	if _on_minimap():
+		_minimap.click_map(cursor.at - _minimap.get_global_rect().position, false)
+		return
 	var hud: Control = _hud_under(cursor.at)
 	if hud != null:
 		# On the HUD, A presses the button there, as a click would.
@@ -315,6 +319,11 @@ func _x_press() -> void:
 	if _map.visible:
 		var attack: bool = _controller.armed_order == SelectionController.ArmedOrder.ATTACK_MOVE
 		if _map.click_at(cursor.at, true, attack) and attack:
+			_controller.arm(SelectionController.ArmedOrder.NONE)
+		return
+	if _on_minimap():
+		var armed: bool = _controller.armed_order == SelectionController.ArmedOrder.ATTACK_MOVE
+		if _minimap.click_map(cursor.at - _minimap.get_global_rect().position, true, armed) and armed:
 			_controller.arm(SelectionController.ArmedOrder.NONE)
 		return
 	if _hud_under(cursor.at) != null:
@@ -571,6 +580,16 @@ func _drop_holds() -> void:
 
 # The HUD panel under a screen point (the control bar, the unit panel, the
 # replay bar), or null.
+## The corner map, which A (the camera) and X (the selection) click like the
+## overhead map while the cursor is over it.
+func set_minimap(minimap: Minimap) -> void:
+	_minimap = minimap
+
+
+func _on_minimap() -> bool:
+	return _minimap != null and _minimap.is_visible_in_tree() and _minimap.get_global_rect().has_point(cursor.at)
+
+
 func _hud_under(at: Vector2) -> Control:
 	for panel: Control in _main.hud_panels():
 		if panel.is_visible_in_tree() and panel.get_global_rect().has_point(at):

@@ -692,10 +692,11 @@ func _notification(what: int) -> void:
 
 
 # The mission view's share of the settings: edge scroll (off while `held`, an
-# overlay up), the corner camera, the pad's cursor and rumble.
+# overlay up), the corner camera, the corner map, the pad's cursor and rumble.
 func _apply_view_settings(main: MainView, held: bool = false) -> void:
 	main.edge_scroll = not held and GameSettings.edge_scroll(settings_path)
 	main.corner_camera = GameSettings.corner_camera(settings_path)
+	main.corner_map = GameSettings.corner_map(settings_path)
 	main.set_pad_settings(
 		GameSettings.cursor_speed(settings_path) / 100.0, GameSettings.cursor_snap(settings_path),
 		GameSettings.rumble(settings_path) / 100.0
