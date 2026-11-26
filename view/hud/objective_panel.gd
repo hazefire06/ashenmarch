@@ -1,7 +1,8 @@
 class_name ObjectivePanel
 extends PanelContainer
 ## The mission's objectives, in a panel at the top right (below the corner
-## map while it is on; MainView places it with place_top): one line for each
+## map while it is on, or beside it when there's no room below; MainView
+## places it with place): one line for each
 ## whose state isn't HIDDEN, in the mission's order.
 ## - "○ text" is active and still to do (cream);
 ## - "✓ text" is done (green);
@@ -68,9 +69,13 @@ func _ready() -> void:
 	_rows.add_child(title)
 
 
-## Hangs the panel `top` pixels from the top of the screen, keeping its right
-## margin.
-func place_top(top: float) -> void:
+## Hangs the panel `top` pixels from the top of the screen and `right`
+## pixels in from its right edge.
+func place(top: float, right: float = MARGIN_RIGHT) -> void:
+	# Wider content grows it leftward, keeping the right margin.
+	grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	offset_left = -(PANEL_WIDTH + right)
+	offset_right = -right
 	offset_top = top
 	reset_size()
 

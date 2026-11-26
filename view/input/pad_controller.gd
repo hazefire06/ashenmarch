@@ -316,15 +316,12 @@ func _a_release() -> void:
 
 
 func _x_press() -> void:
+	# On a map an armed order is placed there (MapClick), as by A.
 	if _map.visible:
-		var attack: bool = _controller.armed_order == SelectionController.ArmedOrder.ATTACK_MOVE
-		if _map.click_at(cursor.at, true, attack) and attack:
-			_controller.arm(SelectionController.ArmedOrder.NONE)
+		_map.click_at(cursor.at, true)
 		return
 	if _on_minimap():
-		var armed: bool = _controller.armed_order == SelectionController.ArmedOrder.ATTACK_MOVE
-		if _minimap.click_map(cursor.at - _minimap.get_global_rect().position, true, armed) and armed:
-			_controller.arm(SelectionController.ArmedOrder.NONE)
+		_minimap.click_map(cursor.at - _minimap.get_global_rect().position, true)
 		return
 	if _hud_under(cursor.at) != null:
 		# Nothing on the ground behind the HUD is ordered.

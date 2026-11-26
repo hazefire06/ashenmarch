@@ -4,7 +4,9 @@ extends RefCounted
 ## does, shared so the two can't drift apart. A left click moves the camera;
 ## the order button (right click, or Option + click) sends the selection there
 ## as a move in its formation, Cmd/Ctrl making it an attack-move and Shift a
-## route point, as in Myth II.
+## route point, as in Myth II. With an order armed from the bar (a move,
+## attack-move, ground attack or route point), any click places that order
+## there instead and disarms it, as a click on the ground does.
 
 ## True to send the selection; false to move the camera.
 var send: bool = false
@@ -34,14 +36,17 @@ static func from_event(click: InputEventMouseButton) -> MapClick:
 	return MapClick.new(sends, click.is_action(InputBindings.ATTACK_MOVE), click.shift_pressed)
 
 
-## Does it at `point` (x, z in meters): the camera's focus goes there, or the
-## selection is sent there through `orders` (nothing, without one).
+## Does it at `point` (x, z in meters): the armed order is placed there, or
+## the camera's focus goes there, or the selection is sent there through
+## `orders` (nothing, without one).
 func perform(point: Vector2, terrain: Terrain, camera: RtsCamera, orders: SelectionController) -> void:
+	var y: float = terrain.height_at(roundi(point.x * World.UNITS_PER_METER), roundi(point.y * World.UNITS_PER_METER))
+	var ground: Vector3 = Vector3(point.x, y / World.UNITS_PER_METER, point.y)
+	if orders != null and orders.place_armed_world(ground):
+		return
 	if not send:
 		if camera != null:
 			camera.focus_on(point)
 		return
-	if orders == null:
-		return
-	var y: float = terrain.height_at(roundi(point.x * World.UNITS_PER_METER), roundi(point.y * World.UNITS_PER_METER))
-	orders.order_world(Vector3(point.x, y / World.UNITS_PER_METER, point.y), attack, queue)
+	if orders != null:
+		orders.order_world(ground, attack, queue)

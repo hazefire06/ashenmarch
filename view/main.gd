@@ -201,6 +201,9 @@ var _sfx: SfxPlayer
 var _ambience: Ambience
 var _music: Music
 var _barks: Barks
+## True while the corner map's layout is being applied (it resizes what it
+## listens to).
+var _laying_out: bool = false
 
 @onready var _terrain_view: TerrainView = $TerrainView
 @onready var _units_view: UnitsView = $Units
@@ -363,6 +366,9 @@ func _ready() -> void:
 	_overhead_map.set_orders(_selection)
 	_minimap.set_orders(_selection)
 	_overhead_map.visibility_changed.connect(_apply_corner_map)
+	_minimap.placed.connect(_apply_corner_map)
+	_objectives.resized.connect(_apply_corner_map)
+	_control_bar.resized.connect(_apply_corner_map)
 	_apply_corner_map()
 	_pad.set_minimap(_minimap)
 	_sfx.connect_selection(_selection)
@@ -860,16 +866,31 @@ func _on_pause_menu_closed() -> void:
 
 
 # The corner map: shown by the setting, but not over the open overhead map.
-# The objectives hang below it while it is on, and where they were without it;
-# the mission's message line keeps clear of it on both sides, so stays centred.
+# The objectives hang below it while it is on (beside it, if below would run
+# into the control bar: a large interface scale), and where they were without
+# it. The mission's message line and a skirmish's score line keep clear of it
+# on both sides, so stay centred. Runs again whenever the map, the objectives
+# or the bar change size.
 func _apply_corner_map() -> void:
-	if _minimap == null or _overhead_map == null:
+	if _minimap == null or _overhead_map == null or _objectives == null or _laying_out:
 		return
+	# Placing the objectives resizes them, which calls this again.
+	_laying_out = true
 	_minimap.visible = corner_map and not _overhead_map.visible
-	_objectives.place_top(
-		_minimap.offset_bottom + Minimap.MARGIN if corner_map else ObjectivePanel.MARGIN_TOP
-	)
-	_mission_hud.set_side_clearance(Minimap.SIZE_PX + 2.0 * Minimap.MARGIN if corner_map else 0.0)
+	var clearance: float = _minimap.size.x + 2.0 * Minimap.MARGIN if corner_map else 0.0
+	_mission_hud.set_side_clearance(clearance)
+	if _skirmish_hud != null:
+		_skirmish_hud.set_side_clearance(clearance)
+	if not corner_map:
+		_objectives.place(ObjectivePanel.MARGIN_TOP)
+	else:
+		var below: float = _minimap.offset_bottom + Minimap.MARGIN
+		var bar_top: float = _control_bar.get_global_rect().position.y
+		if below + _objectives.size.y > bar_top - Minimap.MARGIN:
+			_objectives.place(Minimap.MARGIN, clearance)
+		else:
+			_objectives.place(below)
+	_laying_out = false
 
 
 # The camera's edge scroll: the setting, held off while the pause menu is up.

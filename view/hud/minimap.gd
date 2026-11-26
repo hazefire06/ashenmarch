@@ -2,7 +2,9 @@ class_name Minimap
 extends Control
 ## The corner map (Phase 12): always on, top right, SIZE_PX square (the
 ## interface scale, the window's content scale, scales it like the rest of
-## the HUD). The same shaded, water-tinted picture as the Tab map (MapImage,
+## the HUD), but never more than MAX_HEIGHT_SHARE of the screen's height or
+## MAX_WIDTH_SHARE of its width, so a large interface scale leaves room for
+## the rest. The same shaded, water-tinted picture as the Tab map (MapImage,
 ## built once per map load), north-up, with:
 ## - the viewer's living units as green dots, selected ones white;
 ## - enemies the viewer's troops have spotted as red dots, at where they are
@@ -13,17 +15,24 @@ extends Control
 ## - a skirmish's flags, as the Tab map marks them;
 ## - a thin border.
 ## Clicks work as on the Tab map (MapClick): a left click moves the camera,
-## the order button sends the selection there; the pad's cursor clicks it
-## through click_map.
+## the order button sends the selection there, an armed order is placed there;
+## the pad's cursor clicks it through click_map. The wheel passes through to
+## the camera's zoom.
 ##
 ## The viewer is the side the player commands (in a replay, the side it is
 ## watched from). MainView calls after_step after every tick; spotting is
-## re-evaluated every REFRESH_TICKS ticks, which is also when the dots are
-## redrawn, besides when the camera moves or the selection changes. Display
+## re-evaluated every REFRESH_TICKS ticks. What is drawn (dots, flags, the
+## camera outline) is worked out then, and when the camera moves, the
+## selection changes or the contested hill's flash turns, into arrays that
+## _draw only reads; nothing else redraws it. Hidden, it does no work. Display
 ## only: it reads the World and never writes it, except through the orders
 ## a click gives, which go through SelectionController like any other.
 
 const SIZE_PX: int = 220
+## The most of the screen's height and width the map may take: at 1280x720
+## the height share still allows the full SIZE_PX.
+const MAX_HEIGHT_SHARE: float = 0.31
+const MAX_WIDTH_SHARE: float = 0.25
 ## Pixels from the top and right edges of the screen.
 const MARGIN: float = 12.0
 ## Ticks between spotting updates (about 0.27 s).
@@ -43,6 +52,10 @@ const FLAG_OUTLINE: Color = OverheadMap.MARKER_OUTLINE
 ## stops it: a corner above the horizon never meets the ground.
 const VIEW_REACH: float = 600.0
 
+## The map's size or place changed (a new screen size or interface scale):
+## whatever is laid out around it should follow.
+signal placed
+
 ## What the viewer's troops have spotted. One per map, for one viewer.
 var memory: SpottingMemory = SpottingMemory.new()
 var viewer: UnitType.Faction = UnitType.Faction.LIGHT
@@ -52,24 +65,47 @@ var _camera: RtsCamera
 var _world: World
 var _orders: SelectionController
 var _texture: ImageTexture
-## The camera pose and screen size last drawn, to redraw only on a change.
+## The camera pose, screen size and hill flash last drawn, to redraw only on a
+## change.
 var _drawn_view: Transform3D
 var _drawn_screen: Vector2
+var _drawn_flash: int = -1
+## What _draw draws, worked out by _refresh: dots (positions and colors, in
+## drawing order), flags (positions and colors), and the camera's outline
+## (closed; empty without a camera).
+var _dot_at: PackedVector2Array = PackedVector2Array()
+var _dot_color: PackedColorArray = PackedColorArray()
+var _flag_at: PackedVector2Array = PackedVector2Array()
+var _flag_color: PackedColorArray = PackedColorArray()
+var _outline: PackedVector2Array = PackedVector2Array()
 
 
 func _ready() -> void:
 	InputBindings.install()
-	set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
-	offset_left = -(SIZE_PX + MARGIN)
-	offset_right = -MARGIN
-	offset_top = MARGIN
-	offset_bottom = MARGIN + SIZE_PX
-	size = Vector2(SIZE_PX, SIZE_PX)
 	focus_mode = Control.FOCUS_NONE
-	# STOP: a click or the wheel on the map is the map's, not the ground's.
+	# A click on the map is the map's, not the ground's (_gui_input accepts
+	# every button but the wheel, which goes on to the camera).
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	clip_contents = true
 	texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	fit(get_viewport_rect().size)
+	get_viewport().size_changed.connect(func() -> void: fit(get_viewport_rect().size))
+	visibility_changed.connect(_on_visibility_changed)
+	set_process(visible)
+
+
+## Sizes and places the map for a screen of `screen` (in interface units):
+## SIZE_PX square, or less on a small or heavily scaled screen, MARGIN in from
+## the top-right corner.
+func fit(screen: Vector2) -> void:
+	var side: float = minf(SIZE_PX, minf(screen.y * MAX_HEIGHT_SHARE, screen.x * MAX_WIDTH_SHARE))
+	set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	offset_left = -(side + MARGIN)
+	offset_right = -MARGIN
+	offset_top = MARGIN
+	offset_bottom = MARGIN + side
+	_refresh()
+	placed.emit()
 
 
 ## Builds the picture once from the terrain and forgets what was spotted (a
@@ -82,14 +118,14 @@ func setup(terrain: Terrain, camera: RtsCamera, world: World) -> void:
 	_world = world
 	_texture = ImageTexture.create_from_image(MapImage.build(terrain))
 	memory.clear()
-	queue_redraw()
+	_refresh()
 
 
 ## The controller the map sends the selection with, and whose selection it
 ## shows in white. Without one the map only moves the camera.
 func set_orders(orders: SelectionController) -> void:
 	_orders = orders
-	orders.selection.changed.connect(queue_redraw)
+	orders.selection.changed.connect(_refresh)
 
 
 ## The side whose units and spotting the map shows. A new side forgets the
@@ -98,7 +134,7 @@ func set_viewer(side: UnitType.Faction) -> void:
 	if side != viewer:
 		memory.clear()
 	viewer = side
-	queue_redraw()
+	_refresh()
 
 
 ## After every tick: every REFRESH_TICKS ticks, while shown, spotting is
@@ -107,7 +143,7 @@ func after_step() -> void:
 	if _world == null or not visible or _world.tick % REFRESH_TICKS != 0:
 		return
 	memory.update(_world, viewer)
-	queue_redraw()
+	_refresh()
 
 
 ## A map point (x, z in meters) in this control's own coordinates.
@@ -146,26 +182,13 @@ func click_map(local: Vector2, send: bool, attack: bool = false, queue: bool = f
 	return true
 
 
-## The dots the map draws, in drawing order (marks, enemies, then the
-## viewer's units on top), as {"at": local position, "color": Color}.
+## The dots the map draws now, in drawing order (marks, enemies, then the
+## viewer's units on top), as {"at": local position, "color": Color}. For
+## tests; _draw reads the same arrays directly.
 func dots() -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
-	if _world == null or _terrain == null:
-		return out
-	for mark: Dictionary in memory.marks():
-		var faded: Color = MARK_COLOR
-		faded.a *= mark["alpha"]
-		out.append({"at": map_to_local(mark["position"]), "color": faded})
-	var mm: float = float(World.UNITS_PER_METER)
-	for id: int in memory.spotted():
-		var enemy: Unit = _world.get_unit(id)
-		if enemy != null and enemy.is_alive():
-			out.append({"at": map_to_local(Vector2(enemy.x, enemy.z) / mm), "color": ENEMY_COLOR})
-	for unit: Unit in _world.units:
-		if not unit.is_alive() or unit.faction != viewer:
-			continue
-		var selected: bool = _orders != null and _orders.selection.is_selected(unit.id)
-		out.append({"at": map_to_local(Vector2(unit.x, unit.z) / mm), "color": SELECTED_COLOR if selected else OWN_COLOR})
+	for i: int in _dot_at.size():
+		out.append({"at": _dot_at[i], "color": _dot_color[i]})
 	return out
 
 
@@ -192,46 +215,109 @@ func camera_footprint() -> PackedVector2Array:
 	return corners
 
 
+# Only while shown (set_process follows visibility): redraws when the camera
+# has moved, or the contested hill's flash has turned.
 func _process(_delta: float) -> void:
 	if _camera == null or _camera.get_camera() == null:
 		return
 	var view: Transform3D = _camera.get_camera().global_transform
 	var screen: Vector2 = get_viewport_rect().size
-	# A skirmish's contested hill flashes in real time.
-	var flashing: bool = _world != null and _world.skirmish != null
-	if flashing or view != _drawn_view or screen != _drawn_screen:
+	var flash: int = _contested_flash()
+	if view != _drawn_view or screen != _drawn_screen or flash != _drawn_flash:
 		_drawn_view = view
 		_drawn_screen = screen
-		queue_redraw()
+		_drawn_flash = flash
+		_refresh()
 
 
+# The side the contested hill shows now, or -1 when no hill is contested.
+func _contested_flash() -> int:
+	if _world == null or _world.skirmish == null:
+		return -1
+	var runtime: SkirmishRuntime = _world.skirmish
+	if runtime.rules.mode != SkirmishRules.Mode.KING_OF_THE_HILL or runtime.hill_holder != SkirmishRuntime.CONTESTED:
+		return -1
+	return FlagsView.flash_side(Time.get_ticks_msec() / 1000.0)
+
+
+# Every button press or release is the map's; the wheel goes on to the camera.
 func _gui_input(event: InputEvent) -> void:
 	var click: InputEventMouseButton = event as InputEventMouseButton
+	if click == null or _is_wheel(click.button_index):
+		return
 	var asked: MapClick = MapClick.from_event(click)
-	if asked != null and click_map(click.position, asked.send, asked.attack, asked.queue):
-		accept_event()
+	if asked != null:
+		click_map(click.position, asked.send, asked.attack, asked.queue)
+	accept_event()
 
 
+static func _is_wheel(button: MouseButton) -> bool:
+	return button in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN, MOUSE_BUTTON_WHEEL_LEFT, MOUSE_BUTTON_WHEEL_RIGHT]
+
+
+# Works out what _draw draws from the world, the memory, the selection and
+# the camera as they are now, and asks for a redraw.
+func _refresh() -> void:
+	_dot_at.clear()
+	_dot_color.clear()
+	_flag_at.clear()
+	_flag_color.clear()
+	_outline.clear()
+	queue_redraw()
+	if _terrain == null:
+		return
+	if _world != null:
+		_collect_dots()
+		for mark: Dictionary in FlagsView.map_marks(_world):
+			_flag_at.append(map_to_local(mark["position"]))
+			_flag_color.append(mark["color"])
+	var footprint: PackedVector2Array = camera_footprint()
+	if footprint.size() == 4:
+		for p: Vector2 in footprint:
+			_outline.append(map_to_local(p))
+		_outline.append(_outline[0])
+
+
+func _collect_dots() -> void:
+	for mark: Dictionary in memory.marks():
+		var faded: Color = MARK_COLOR
+		faded.a *= mark["alpha"]
+		_dot_at.append(map_to_local(mark["position"]))
+		_dot_color.append(faded)
+	var mm: float = float(World.UNITS_PER_METER)
+	for id: int in memory.spotted():
+		var enemy: Unit = _world.get_unit(id)
+		if enemy != null and enemy.is_alive():
+			_dot_at.append(map_to_local(Vector2(enemy.x, enemy.z) / mm))
+			_dot_color.append(ENEMY_COLOR)
+	for unit: Unit in _world.units:
+		if not unit.is_alive() or unit.faction != viewer:
+			continue
+		var selected: bool = _orders != null and _orders.selection.is_selected(unit.id)
+		_dot_at.append(map_to_local(Vector2(unit.x, unit.z) / mm))
+		_dot_color.append(SELECTED_COLOR if selected else OWN_COLOR)
+
+
+# Reads the arrays _refresh filled; allocates nothing.
 func _draw() -> void:
 	if _texture == null:
 		return
 	draw_rect(Rect2(Vector2.ZERO, size), BACKDROP_COLOR)
-	var rect: Rect2 = _map_rect()
-	draw_texture_rect(_texture, rect, false)
-	for mark: Dictionary in FlagsView.map_marks(_world):
-		var at: Vector2 = map_to_local(mark["position"])
-		draw_circle(at, FLAG_RADIUS, mark["color"])
-		draw_arc(at, FLAG_RADIUS, 0.0, TAU, 16, FLAG_OUTLINE, 1.0)
-	for dot: Dictionary in dots():
-		draw_circle(dot["at"], DOT_RADIUS, dot["color"])
-	var footprint: PackedVector2Array = camera_footprint()
-	if footprint.size() == 4:
-		var outline: PackedVector2Array = PackedVector2Array()
-		for p: Vector2 in footprint:
-			outline.append(map_to_local(p))
-		outline.append(outline[0])
-		draw_polyline(outline, VIEW_COLOR, 1.0)
+	draw_texture_rect(_texture, _map_rect(), false)
+	for i: int in _flag_at.size():
+		draw_circle(_flag_at[i], FLAG_RADIUS, _flag_color[i])
+		draw_arc(_flag_at[i], FLAG_RADIUS, 0.0, TAU, 16, FLAG_OUTLINE, 1.0)
+	for i: int in _dot_at.size():
+		draw_circle(_dot_at[i], DOT_RADIUS, _dot_color[i])
+	if not _outline.is_empty():
+		draw_polyline(_outline, VIEW_COLOR, 1.0)
 	draw_rect(Rect2(Vector2.ZERO, size).grow(-0.5), BORDER_COLOR, false, 1.0)
+
+
+func _on_visibility_changed() -> void:
+	set_process(visible)
+	if visible:
+		_refresh()
 
 
 # The picture fills the square, keeping the sample aspect ratio, centered.

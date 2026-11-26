@@ -3,7 +3,9 @@ extends PanelContainer
 ## The strip across the top of a replay being watched: play or pause, the
 ## speed (1, 2, 4 or 8 ticks per physics frame), watch again, leave, how far
 ## in it is, and a note when the playback has left the recording (a replay
-## from a build whose rules differ) or reached its end. Says what was pressed;
+## from a build whose rules differ) or reached its end, on a line of its own
+## under the buttons and wrapped to their width, so a long one never widens
+## the bar under the corner map. Says what was pressed;
 ## MainView does it. Its buttons take no focus, like the control bar's, so
 ## the battlefield's keys never press them.
 
@@ -26,9 +28,11 @@ func _init() -> void:
 	grow_horizontal = Control.GROW_DIRECTION_BOTH
 	# Below the mission line and a skirmish's score line, which share the top.
 	position.y = 76
+	var column: VBoxContainer = VBoxContainer.new()
+	add_child(column)
 	var row: HBoxContainer = HBoxContainer.new()
 	row.add_theme_constant_override("separation", 6)
-	add_child(row)
+	column.add_child(row)
 	row.add_child(MenuKit.label("Replay", MenuKit.BODY_SIZE, MenuKit.TEXT_COLOR))
 	_pause = _button(row, "PauseButton", "Pause")
 	_pause.pressed.connect(func() -> void: pause_pressed.emit())
@@ -44,7 +48,10 @@ func _init() -> void:
 	row.add_child(_clock)
 	_note = MenuKit.label("", MenuKit.BODY_SIZE, MenuKit.WARN_COLOR)
 	_note.name = "Note"
-	row.add_child(_note)
+	_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_note.visible = false
+	column.add_child(_note)
 
 
 ## Shows where the playback is: `tick` of `end_tick`, whether it's paused, the
