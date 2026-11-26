@@ -36,6 +36,12 @@ static func rect_to_map(point: Vector2, rect: Rect2, terrain: Terrain) -> Vector
 	return (uv * Vector2(terrain.size_x, terrain.size_z) - Vector2(0.5, 0.5)) * cell
 
 
+## build() as a texture, for a map to draw. MainView makes one per map load
+## and gives it to both maps.
+static func texture(terrain: Terrain) -> ImageTexture:
+	return ImageTexture.create_from_image(build(terrain))
+
+
 ## Builds an RGB8 image with texel (i, j) = sample (i, j): banded height color,
 ## ground tint, water tint, and a hillshade from the neighboring heights. The
 ## colors depend only on the height band, ground type, and water depth, so

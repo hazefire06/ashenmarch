@@ -351,6 +351,22 @@ func test_an_armed_order_is_placed_on_either_map_by_x_and_by_a() -> void:
 				assert_eq(_main._selection.armed_order, SelectionController.ArmedOrder.NONE, "disarmed: " + what)
 
 
+func test_over_the_corner_map_the_cursor_does_not_stick_to_units() -> void:
+	var on_unit: Vector2 = _main._selection.screen_point_of(_soldier.id)
+	var minimap: Minimap = _main.get_node("Hud/Minimap") as Minimap
+	# The map moved over the soldier, so the unit is behind it on screen.
+	minimap.position = on_unit - minimap.size * 0.5
+	_pad.place_cursor(on_unit + Vector2(-60, 0))
+	PadEvents.left_stick(Vector2(1.0, 0.0))
+	while _pad.cursor.at.distance_to(on_unit) > PadController.SNAP_RADIUS * 0.8:
+		_frames(1)
+	PadEvents.left_stick(Vector2.ZERO)
+	_frames(1)
+	assert_true(minimap.get_global_rect().has_point(_pad.cursor.at))
+	assert_gt(_pad.cursor.at.distance_to(on_unit), 1.0, "it stayed where it was let go")
+	assert_false(_pad.cursor.snapped)
+
+
 func test_l3_hands_the_pad_to_the_control_bar_and_b_takes_it_back() -> void:
 	PadEvents.tap(JOY_BUTTON_LEFT_STICK)
 	assert_true(_pad.has_bar_focus())

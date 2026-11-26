@@ -46,11 +46,11 @@ func _ready() -> void:
 ## Builds the map image once from the terrain. The camera supplies the focus
 ## marker and receives clicks. The world, if given, is read for a skirmish's
 ## flags; without one, or with a world that has no skirmish, none are drawn.
-func setup(terrain: Terrain, camera: RtsCamera, world: World = null) -> void:
+func setup(terrain: Terrain, camera: RtsCamera, world: World = null, picture: ImageTexture = null) -> void:
 	_terrain = terrain
 	_camera = camera
 	_world = world
-	_texture = ImageTexture.create_from_image(MapImage.build(terrain))
+	_texture = picture if picture != null else MapImage.texture(terrain)
 	queue_redraw()
 
 
@@ -75,17 +75,18 @@ func _unhandled_input(event: InputEvent) -> void:
 func _gui_input(event: InputEvent) -> void:
 	var click: InputEventMouseButton = event as InputEventMouseButton
 	var asked: MapClick = MapClick.from_event(click)
-	if asked != null and click_at(click.position, asked.send, asked.attack, asked.queue):
+	if asked != null and click_at(click.position, asked.send, asked.attack, asked.queue, asked.order_button):
 		accept_event()
 
 
 ## A click on the map at a screen point: moves the camera there, or (send)
-## sends the selection there, attack-moving or as a route point if asked.
+## sends the selection there, attack-moving or as a route point if asked; an
+## armed order is placed there, or cancelled by the order button (MapClick).
 ## False if the point is off the map.
-func click_at(at: Vector2, send: bool, attack: bool = false, queue: bool = false) -> bool:
+func click_at(at: Vector2, send: bool, attack: bool = false, queue: bool = false, order_button: bool = false) -> bool:
 	if _terrain == null or _camera == null or not _map_rect().has_point(at):
 		return false
-	MapClick.new(send, attack, queue).perform(_screen_to_world(at), _terrain, _camera, _orders)
+	MapClick.new(send, attack, queue, order_button).perform(_screen_to_world(at), _terrain, _camera, _orders)
 	return true
 
 

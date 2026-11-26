@@ -252,8 +252,10 @@ func _ready() -> void:
 	_terrain_view.build(terrain)
 	_camera.setup(terrain)
 	_place_camera()
-	_overhead_map.setup(terrain, _camera, world)
-	_minimap.setup(terrain, _camera, world)
+	# One picture of the map, built once, for both maps.
+	var map_picture: ImageTexture = MapImage.texture(terrain)
+	_overhead_map.setup(terrain, _camera, world, map_picture)
+	_minimap.setup(terrain, _camera, world, map_picture)
 	_gibs.setup(terrain)
 	if launch == null:
 		_spawn_test_squads()

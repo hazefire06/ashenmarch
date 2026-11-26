@@ -496,8 +496,8 @@ func _move_cursor(stick: Vector2, delta: float) -> void:
 	var view: Vector2 = get_viewport().get_visible_rect().size
 	if not _placed:
 		place_cursor(view * 0.5)
-	# Over the overhead map the units are dots: nothing to stick to.
-	var sticky: bool = snap and not _map.visible
+	# Over either map the units are dots: nothing to stick to.
+	var sticky: bool = snap and not _map.visible and not _on_minimap()
 	if stick == Vector2.ZERO:
 		if _was_moving and sticky:
 			# Let go: stick to a unit close by.
@@ -575,8 +575,6 @@ func _drop_holds() -> void:
 	_r3_held = -1.0
 
 
-# The HUD panel under a screen point (the control bar, the unit panel, the
-# replay bar), or null.
 ## The corner map, which A (the camera) and X (the selection) click like the
 ## overhead map while the cursor is over it.
 func set_minimap(minimap: Minimap) -> void:
@@ -587,6 +585,8 @@ func _on_minimap() -> bool:
 	return _minimap != null and _minimap.is_visible_in_tree() and _minimap.get_global_rect().has_point(cursor.at)
 
 
+# The HUD panel under a screen point (the control bar, the unit panel, the
+# replay bar), or null.
 func _hud_under(at: Vector2) -> Control:
 	for panel: Control in _main.hud_panels():
 		if panel.is_visible_in_tree() and panel.get_global_rect().has_point(at):

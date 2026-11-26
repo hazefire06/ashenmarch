@@ -46,6 +46,29 @@ func _lose_sight(mem: SpottingMemory, scene: Dictionary, at_tick: int = 100) -> 
 	_refresh(mem, w)
 
 
+func test_an_enemy_that_dives_between_refreshes_leaves_its_dot_at_once() -> void:
+	var diver_types: Array[UnitType] = [
+		TestUnits.melee(&"scout", {"sight_radius": 30000}),
+		TestUnits.dummy(&"diver", {"hidden_in_deep_water": true}),
+	]
+	var rows: Array[String] = []
+	for j: int in 20:
+		rows.append(".".repeat(22) + "333" + ".".repeat(55))
+	var w: World = World.new(1, TestTerrains.from_ascii(rows), TestUnits.catalog(diver_types))
+	_put(w, 0, LIGHT, 5)
+	var diver: Unit = _put(w, 1, DARK, 18)
+	var mem: SpottingMemory = SpottingMemory.new()
+	_refresh(mem, w)
+	assert_eq(mem.spotted().size(), 1, "spotted on dry ground")
+	# The next update is not the diver's turn to be re-evaluated.
+	mem.update(w, LIGHT)
+	diver.x = 23 * M
+	assert_false(Visibility.seen_by(w, diver, LIGHT), "submerged now")
+	mem.update(w, LIGHT)
+	assert_eq(mem.spotted().size(), 0, "its dot goes on the next update, its turn or not")
+	assert_eq(mem.marks().size(), 1, "leaving a mark where it was seen")
+
+
 func test_spotted_lists_visible_enemies() -> void:
 	var s: Dictionary = _scene()
 	var mem: SpottingMemory = SpottingMemory.new()

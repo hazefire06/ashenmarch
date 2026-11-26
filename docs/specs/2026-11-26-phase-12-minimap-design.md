@@ -22,7 +22,7 @@ Tim: "I want a small 2D map to always be displayed in the upper right hand corne
   - It is data, per the data-driven rule. The sim step never reads it.
 - **New function:** `static func spotted_by(world: World, unit: Unit, viewer: UnitType.Faction) -> bool` in `sim/units/visibility.gd`.
   - It is true when `seen_by` is true and some living unit of the viewer's side is within its `sight_radius` (horizontal) with a clear sight line.
-  - **Sight line:** march the terrain height from eye height (`body_height`) to the target's body centre, one sample per cell. It is blocked if the ground rises above the line. Walls and Old Mill's slab are already in the sim's heights, so they block too.
+  - **Sight line:** march the terrain height from eye height (`body_height`) to the target's body centre, one sample per quarter cell. It is blocked if the ground rises above the line. Walls and Old Mill's slab are already in the sim's heights, so they block too.
   - It uses only integer and fixed-point maths, with no RNG.
 - **Nothing hashed changes:** spotting is a pure function that nothing in the sim step calls. `state_hash()` is unchanged, and `make verify-replays` must print ok=4. If adding the field to UnitType changes a hash, the plan stops and reports before re-recording anything.
 

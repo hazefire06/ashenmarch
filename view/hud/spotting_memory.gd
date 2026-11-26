@@ -44,7 +44,11 @@ func update(world: World, viewer: UnitType.Faction) -> void:
 			_slot[id] = _slot.size() % REFRESH_UPDATES
 		if _slot[id] != _phase:
 			if _spotted.has(id):
-				_spotted[id] = here
+				if Visibility.seen_by(world, unit, viewer):
+					_spotted[id] = here
+				else:
+					# Dived out of sight: not worth waiting for its turn.
+					_lose(id)
 			continue
 		var by: int = Visibility.spotted_by_hint(world, unit, viewer, _spotter.get(id, -1))
 		if by >= 0:
@@ -54,8 +58,7 @@ func update(world: World, viewer: UnitType.Faction) -> void:
 			_spotter[id] = by
 			_marks.erase(id)
 		elif _spotted.has(id):
-			_marks[id] = {"position": _seen_pos[id], "seen_tick": _seen_tick[id]}
-			_forget(id)
+			_lose(id)
 	for id: int in _spotted.keys():
 		if not _is_live(world, id):
 			_forget(id)
@@ -89,6 +92,12 @@ func clear() -> void:
 	_marks.clear()
 	_now = 0
 	_phase = 0
+
+
+# Out of sight: a mark where it was last seen, and nothing else kept.
+func _lose(id: int) -> void:
+	_marks[id] = {"position": _seen_pos[id], "seen_tick": _seen_tick[id]}
+	_forget(id)
 
 
 func _forget(id: int) -> void:

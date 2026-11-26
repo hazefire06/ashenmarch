@@ -2102,7 +2102,7 @@ Every control `docs/controls-myth2.md` listed as missing, a Classic preset besid
 - **`InputDeviceTracker`** (the `InputDevice` autoload) notes the device each event came from, hides the system pointer while the pad is in use, and tells the prompts to switch. It is reached through `InputDeviceTracker.tracker()`, never by the autoload's name: a script run with `-s` is compiled before autoloads are registered.
 - **`PadController`** turns the pad into the same intents and orders the mouse gives, with its own drawn cursor (`PadCursor`; a browser won't let a page move the system pointer), which the tooltip follows (`Pointer`).
   - Buttons are read from their events, not by polling, so a frame stepped by hand (a test) sees every press once; sticks and triggers are polled.
-  - The cursor's speed goes with the square of the stick; over a unit it slows, and let go near one it sticks to it (not over the overhead map, where units are dots). Pushed into the screen's edge, it pans.
+  - The cursor's speed goes with the square of the stick; over a unit it slows, and let go near one it sticks to it (not over the overhead map or the corner map, where units are dots). Pushed into the screen's edge, it pans.
   - LB and RB hold the formation and order wheels (`RadialMenu`). An order wheel's Attack-move then X on the overhead map attack-moves there.
   - L3 puts focus on the control bar, the unit info panel and the replay bar (`HudFocus`). Their rows are linked left/right and up/down explicitly: Godot's geometric search skipped buttons of mixed widths.
 - **Menus:** focus already started on each screen's default; the pad's A and B now drive it, the shoulder buttons turn Settings' tabs, the right stick scrolls a screen's scroll box, and the pause menu carries the game speed and the skirmish scoreboard.
@@ -2150,7 +2150,7 @@ The always-on corner map (`view/hud/minimap.gd`) shows your units and the enemie
 
 - **Spotting is display only.** `Visibility.spotted_by` (`sim/units/visibility.gd`) and the view-side `SpottingMemory` decide what the map draws. `UnitType.sight_radius` is read by nothing else: the sim step never reads it, it is not in `state_hash`, and no command or AI decision depends on it. Replays and the goldens are untouched.
 - **A real fog of war would be a sim change.** Hiding enemies from targeting, the AI or auto-acquire means reading sight inside `World.step()`, hashing whatever it keeps, and bumping the replay format. Doing it in the view would desync what a player sees from what the sim does.
-- **Cost.** Spotting updates every 8 ticks and only while the map is shown (it pauses with Tab open or the setting off; a full round-robin of the enemies takes 4 updates). Dots are drawn as small squares: `draw_circle` made one draw call per dot and cost about 6% of the bench's frame rate with 50 dots.
+- **Cost.** Spotting updates every 8 ticks and only while the map is shown (it pauses with Tab open or the setting off; a full round-robin of the enemies takes 4 updates). Dots are drawn as small squares: `draw_circle` made one draw call per dot and cost about 6% of the bench's frame rate with 50 dots. Round dots would need a pre-baked disc texture drawn with `draw_texture_rect`, not `draw_circle`.
 
 ## Unit art (tracks A1, A3 and A4)
 

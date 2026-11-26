@@ -175,13 +175,13 @@ func test_a_real_right_click_on_the_map_sends_the_selection() -> void:
 	assert_true(CommandCodec.decode(queued[0]) is MoveUnitsCommand)
 
 
-func test_an_armed_order_is_placed_where_either_map_is_clicked() -> void:
+func test_an_armed_order_is_placed_where_either_map_is_left_clicked() -> void:
 	var armed: Array[SelectionController.ArmedOrder] = [
 		SelectionController.ArmedOrder.ATTACK_MOVE, SelectionController.ArmedOrder.GROUND_ATTACK,
 	]
 	var point: Vector2 = Vector2(30.0, 8.0)
 	for order: SelectionController.ArmedOrder in armed:
-		for button: MouseButton in [MOUSE_BUTTON_LEFT, MOUSE_BUTTON_RIGHT]:
+		for button: MouseButton in [MOUSE_BUTTON_LEFT]:
 			for on_tab: bool in [false, true]:
 				var f: Dictionary = _fixture()
 				var controller: SelectionController = f["controller"]
@@ -210,6 +210,42 @@ func test_an_armed_order_is_placed_where_either_map_is_clicked() -> void:
 					assert_almost_eq((command as GroundAttackCommand).z, 8 * M, 1200, what)
 				assert_eq(controller.armed_order, SelectionController.ArmedOrder.NONE, "disarmed: " + what)
 				assert_eq(rig.focus, focus_before, "the camera stayed: " + what)
+
+
+func test_the_order_button_on_either_map_cancels_an_armed_order() -> void:
+	var point: Vector2 = Vector2(30.0, 8.0)
+	# The order button: a right click, or Option + click.
+	var clicks: Array[Array] = [[MOUSE_BUTTON_RIGHT, 0], [MOUSE_BUTTON_LEFT, KEY_MASK_ALT]]
+	for order: SelectionController.ArmedOrder in [
+		SelectionController.ArmedOrder.ATTACK_MOVE, SelectionController.ArmedOrder.GROUND_ATTACK,
+	]:
+		for c: Array in clicks:
+			for on_tab: bool in [false, true]:
+				var f: Dictionary = _fixture()
+				var controller: SelectionController = f["controller"]
+				var rig: RtsCamera = f["rig"]
+				var focus_before: Vector3 = rig.focus
+				controller.arm(order)
+				var what: String = "%s, %s, %s" % [
+					SelectionController.ArmedOrder.keys()[order], c, "Tab map" if on_tab else "corner map"
+				]
+				if on_tab:
+					var overhead: OverheadMap = f["overhead"]
+					overhead._gui_input(_click(c[0], overhead._world_to_screen(point), c[1]))
+				else:
+					var minimap: Minimap = f["minimap"]
+					minimap.click_at(minimap.map_to_local(point), c[0], c[1])
+				assert_eq(_drain(f["world"]), [], "nothing ordered: " + what)
+				assert_eq(controller.armed_order, SelectionController.ArmedOrder.NONE, "cancelled: " + what)
+				assert_eq(rig.focus, focus_before, "the camera stayed: " + what)
+
+
+func test_both_maps_share_one_picture_built_once() -> void:
+	var main: MainView = _main()
+	var minimap: Minimap = main.get_node("Hud/Minimap") as Minimap
+	var overhead: OverheadMap = main.get_node("Hud/OverheadMap") as OverheadMap
+	assert_not_null(minimap._texture)
+	assert_same(minimap._texture, overhead._texture)
 
 
 func test_an_armed_move_is_placed_at_the_map_point() -> void:

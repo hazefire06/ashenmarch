@@ -115,11 +115,11 @@ func fit(screen: Vector2) -> void:
 ## new map is a new world, and the marks are keyed by unit id). The camera
 ## supplies the outline and is moved by clicks; the world is read for units,
 ## spotting and a skirmish's flags.
-func setup(terrain: Terrain, camera: RtsCamera, world: World) -> void:
+func setup(terrain: Terrain, camera: RtsCamera, world: World, picture: ImageTexture = null) -> void:
 	_terrain = terrain
 	_camera = camera
 	_world = world
-	_texture = ImageTexture.create_from_image(MapImage.build(terrain))
+	_texture = picture if picture != null else MapImage.texture(terrain)
 	memory.clear()
 	_refresh()
 
@@ -172,16 +172,19 @@ func click_at(local: Vector2, button: MouseButton, mods: int) -> void:
 	event.meta_pressed = mods & KEY_MASK_META != 0
 	var asked: MapClick = MapClick.from_event(event)
 	if asked != null:
-		click_map(local, asked.send, asked.attack, asked.queue)
+		click_map(local, asked.send, asked.attack, asked.queue, asked.order_button)
 
 
 ## A click at `local` already read: moves the camera there, or (send) sends
-## the selection there, attack-moving or as a route point if asked. The pad's
-## cursor clicks through this. False if the point is off the map.
-func click_map(local: Vector2, send: bool, attack: bool = false, queue: bool = false) -> bool:
+## the selection there, attack-moving or as a route point if asked; an armed
+## order is placed there, or cancelled by the order button (MapClick). The
+## pad's cursor clicks through this. False if the point is off the map.
+func click_map(
+	local: Vector2, send: bool, attack: bool = false, queue: bool = false, order_button: bool = false
+) -> bool:
 	if _terrain == null or not _map_rect().has_point(local):
 		return false
-	MapClick.new(send, attack, queue).perform(local_to_map(local), _terrain, _camera, _orders)
+	MapClick.new(send, attack, queue, order_button).perform(local_to_map(local), _terrain, _camera, _orders)
 	return true
 
 
@@ -250,7 +253,7 @@ func _gui_input(event: InputEvent) -> void:
 		return
 	var asked: MapClick = MapClick.from_event(click)
 	if asked != null:
-		click_map(click.position, asked.send, asked.attack, asked.queue)
+		click_map(click.position, asked.send, asked.attack, asked.queue, asked.order_button)
 	accept_event()
 
 
