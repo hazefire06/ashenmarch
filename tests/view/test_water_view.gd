@@ -124,6 +124,26 @@ func test_depth_map_is_surface_minus_bed_over_four_metres() -> void:
 	assert_eq(depth.get_pixel(0, 0).r, 0.0, "dry")
 
 
+func test_shallow_depths_keep_their_centimetres() -> void:
+	# A ford's water is 5 to 20 cm deep. At 8 bits over 4 m a step is 1.6 cm,
+	# a sixth of a 10 cm ford, which the shallow fade turned into a grid of
+	# cells; half floats keep a shallow depth to well under a millimetre.
+	var terrain: Terrain = TestTerrains.from_ascii(POOL)
+	var water: PackedFloat32Array = _water_for(terrain, 0.1)
+	water[3 * terrain.size_x + 6] = 0.107
+	var depth: Image = (_view(terrain, water).shader_parameter(&"depth_map") as ImageTexture).get_image()
+	assert_eq(depth.get_format(), Image.FORMAT_RH, "half float, filterable on WebGL2")
+	assert_almost_eq(depth.get_pixel(5, 3).r * WaterView.DEPTH_RANGE_M, 0.1, 0.0005)
+	assert_almost_eq(depth.get_pixel(6, 3).r * WaterView.DEPTH_RANGE_M, 0.107, 0.0005)
+
+
+func test_the_water_shader_reads_the_depth_smoothly() -> void:
+	var code: String = WaterView.WATER_SHADER.code
+	assert_string_contains(code, "depth_spread", "the depth is averaged over a spread of reads, as the terrain's water tint is")
+	var ground: String = (load("res://view/terrain/terrain.gdshader") as Shader).code
+	assert_string_contains(ground, "NORMAL_MAP = mix(normal_map, FLAT_NORMAL, tint.a)", "the bed's bumps fade under the water tint")
+
+
 func test_grade_and_rain_reach_the_shader() -> void:
 	var terrain: Terrain = TestTerrains.from_ascii(POOL)
 	var view: WaterView = _view(terrain, _water_for(terrain, 1.0))

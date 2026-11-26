@@ -236,7 +236,10 @@ void fragment() {
 		ground += mix(color[i], recolor.rgb, recolor.a) * w[i];
 		normal_map += bump[i] * w[i];
 	}
-	NORMAL_MAP = normal_map;
+	// Under water the bed's relief is drowned: the ground's normal map fades out
+	// with the water tint, or a ford's shallow bed shows the layer's tiling
+	// bumps as a regular grid through its smooth tint.
+	NORMAL_MAP = mix(normal_map, FLAT_NORMAL, tint.a);
 
 	// Macro variation: value, a warm-cool hue shift and saturation.
 	vec3 macro = clamp((n_macro.rgb - 0.5) * NOISE_SPAN, -1.0, 1.0);

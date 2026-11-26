@@ -191,13 +191,14 @@ func _make_material(terrain: Terrain, water_m: PackedFloat32Array) -> ShaderMate
 	return material
 
 
-## R8, one texel per sample: surface minus bed in metres, 0..DEPTH_RANGE_M
-## scaled to 0..1; dry samples are 0.
+## RH (half float, which WebGL2 filters), one texel per sample: surface minus
+## bed in metres, 0..DEPTH_RANGE_M scaled to 0..1; dry samples are 0. Not R8:
+## a ford is 5 to 20 cm deep, and 8 bits over 4 m steps by 1.6 cm, enough to
+## show each sample's rounding as a grid through the shallow fade.
 static func _depth_image(terrain: Terrain, water_m: PackedFloat32Array) -> Image:
-	var data: PackedByteArray = PackedByteArray()
-	data.resize(water_m.size())
-	for k: int in data.size():
+	var image: Image = Image.create(terrain.size_x, terrain.size_z, false, Image.FORMAT_RH)
+	for k: int in water_m.size():
 		if water_m[k] > 0.0:
 			var depth: float = water_m[k] - terrain.heights[k] / float(World.UNITS_PER_METER)
-			data[k] = roundi(clampf(depth / DEPTH_RANGE_M, 0.0, 1.0) * 255.0)
-	return Image.create_from_data(terrain.size_x, terrain.size_z, false, Image.FORMAT_R8, data)
+			image.set_pixel(k % terrain.size_x, k / terrain.size_x, Color(clampf(depth / DEPTH_RANGE_M, 0.0, 1.0), 0.0, 0.0))
+	return image
