@@ -31,7 +31,9 @@ uniform float border_jitter = 0.35;
 uniform float rock_normal_y = 0.707;
 uniform float rock_band = 0.1;
 // One texel per heightmap sample: water tint color, alpha = blend strength.
-uniform sampler2D water_tint : source_color, filter_nearest, repeat_disable;
+// A dry sample is the shallow water's color at alpha 0, so filtering between
+// samples fades the tint out at a bank without darkening it.
+uniform sampler2D water_tint : source_color, filter_linear, repeat_disable;
 // One texel per sample, R: 1 where a structure blocks it (a house, a wall),
 // else 0. The sim never changes blocked samples, so unlike fire_state this is
 // written once.
@@ -49,8 +51,10 @@ uniform vec4 grade_tint : source_color = vec4(1.0, 1.0, 1.0, 1.0);
 uniform float grade_desaturation = 0.0;
 uniform vec4 ground_recolor[5] : source_color;
 uniform vec4 water_grade : source_color = vec4(0.0, 0.0, 0.0, 0.0);
-// One texel per sample, R: 0 unburnt, about 0.5 burning, 1 scorched.
-uniform sampler2D fire_state : filter_nearest, repeat_disable;
+// One texel per sample, R: 0 unburnt, about 0.5 burning, 1 scorched; G: 1
+// while burning, else 0. Filtered between samples, so G is how much burns
+// and R - 0.5 G how much is scorched.
+uniform sampler2D fire_state : filter_linear, repeat_disable;
 // How wet the ground is and how much snow lies on it, 0..1.
 uniform float wetness = 0.0;
 uniform float snow_cover = 0.0;
@@ -62,6 +66,8 @@ const vec3 CHAR = vec3(0.07, 0.06, 0.05);
 const vec3 EMBER = vec3(0.85, 0.32, 0.07);
 const vec3 SNOW = vec3(0.92, 0.94, 0.97);
 const vec3 FLAT_NORMAL = vec3(0.5, 0.5, 1.0);
+// fire_state's R for a burning cell (TerrainView.FIRE_TEXEL, 128 / 255).
+const float FIRE_BURNING_R = 0.502;
 const int LAYER_COUNT = 6;
 const int ROCK = 4;
 const int MUD = 5;
@@ -97,10 +103,11 @@ void fragment() {
 	vec3 up_normal = normalize(world_normal);
 	// Texel (i, j) is sample (i, j), so sample centers sit on texel centers.
 	vec2 uv = (world_pos.xz / cell_size + 0.5) / sample_count;
-	// Borders: the weights are read where noise bends them to (off the
-	// grid), averaged over four reads half a sample apart, so a border is a
-	// gradient about two samples wide and a staircase of samples rounds off.
-	// Averaging and filtering keep the six summing to 1.
+	// Borders: the weights, the water tint and the fire are read where noise
+	// bends them to (off the grid), averaged over four reads half a sample
+	// apart, so a border (a bank, the edge of a burn) is a gradient about two
+	// samples wide and a staircase of samples rounds off. Averaging and
+	// filtering keep the six weights summing to 1.
 	vec2 noise_uv = world_pos.xz / BORDER_NOISE_M;
 	vec2 bend = vec2(texture(detail_noise, noise_uv + vec2(0.5, 0.0)).r,
 		texture(detail_noise, noise_uv + vec2(0.0, 0.5)).r) - 0.5;
@@ -108,11 +115,17 @@ void fragment() {
 	vec2 half_sample = 0.5 / sample_count;
 	vec4 wa = vec4(0.0);
 	vec4 wb = vec4(0.0);
+	vec4 tint = vec4(0.0);
+	vec2 fire = vec2(0.0);
 	for (int corner = 0; corner < 4; corner++) {
 		vec2 at = weights_uv + half_sample * vec2(corner % 2 == 0 ? -1.0 : 1.0, corner < 2 ? -1.0 : 1.0);
 		wa += texture(ground_weights_a, at) * 0.25;
 		wb += texture(ground_weights_b, at) * 0.25;
+		tint += texture(water_tint, at) * 0.25;
+		fire += texture(fire_state, at).rg * 0.25;
 	}
+	float burning = fire.g;
+	float scorched = clamp(fire.r - FIRE_BURNING_R * fire.g, 0.0, 1.0);
 	float raw[6] = float[6](wa.r, wa.g, wa.b, wa.a, wb.r, wb.g);
 
 	// Within a border, noise pushes each layer up or down, so the gradient
@@ -177,22 +190,16 @@ void fragment() {
 	float luma = dot(ground, vec3(0.2126, 0.7152, 0.0722));
 	ground = mix(ground, vec3(luma), grade_desaturation) * grade_tint.rgb;
 
-	float fire = texture(fire_state, uv).r;
-	if (fire > 0.75) {
-		ground = mix(ground, CHAR, 0.85);
-	}
+	ground = mix(ground, CHAR, 0.85 * scorched);
 
 	// Wet ground is darker and a little cooler.
 	ground *= mix(vec3(1.0), vec3(0.66, 0.70, 0.76), wetness);
 	// Snow settles on faces that point up, not on steep ones. It can cover
 	// burnt ground, but a burning cell melts its own.
 	ground = mix(ground, SNOW, snow_cover * smoothstep(0.55, 0.85, up_normal.y));
-	if (fire > 0.25 && fire <= 0.75) {
-		ground = mix(ground, EMBER, 0.6);
-		EMISSION = EMBER * 0.5;
-	}
+	ground = mix(ground, EMBER, 0.6 * burning);
+	EMISSION = EMBER * 0.5 * burning;
 
-	vec4 tint = texture(water_tint, uv);
 	ground = mix(ground, mix(tint.rgb, water_grade.rgb, water_grade.a), tint.a);
 
 	// A blocked sample reads as solid, unless a structure model stands on it.

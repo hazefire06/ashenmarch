@@ -18,6 +18,10 @@ extends Node3D
 const TERRAIN_SHADER: Shader = preload("res://view/terrain/terrain.gdshader")
 ## Fire texel value (R8) by Fire.Cell.
 const FIRE_TEXEL: Array[int] = [0, 128, 255]
+## Fire texel G of a burning cell; any other is 0. The shader filters the
+## fire between samples, and R alone would blend unburnt into scorched
+## through "burning", so the glow has a channel of its own.
+const FIRE_GLOW_TEXEL: int = 255
 ## Blocked texel value (R8) of a blocked sample; an open one is 0.
 const BLOCKED_TEXEL: int = 255
 ## The texture settings the shader is given (terrain.gdshader explains each).
@@ -112,8 +116,9 @@ func update_fire(fire: Fire) -> void:
 	var cells: Array = fire.burn_end.keys() if recount else []
 	cells.append_array(Array(fire.changed))
 	for k: int in cells:
-		var value: int = FIRE_TEXEL[fire.state[k]]
-		_fire_image.set_pixel(k % w, k / w, Color8(value, 0, 0))
+		var cell: int = fire.state[k]
+		var glow: int = FIRE_GLOW_TEXEL if cell == Fire.Cell.BURNING else 0
+		_fire_image.set_pixel(k % w, k / w, Color8(FIRE_TEXEL[cell], glow, 0))
 	_fire_texture.update(_fire_image)
 
 
@@ -154,9 +159,15 @@ func shader_parameter(uniform: StringName) -> Variant:
 	return null if _material == null else _material.get_shader_parameter(uniform)
 
 
-## The fire texel (R8) at sample (i, j), for tests.
+## The fire texel's R (FIRE_TEXEL) at sample (i, j), for tests.
 func fire_texel(i: int, j: int) -> int:
 	return _fire_image.get_pixel(i, j).r8
+
+
+## The fire texel's G (FIRE_GLOW_TEXEL while burning, else 0) at sample
+## (i, j), for tests.
+func fire_glow_texel(i: int, j: int) -> int:
+	return _fire_image.get_pixel(i, j).g8
 
 
 static func _chunk_name(chunk_x: int, chunk_z: int) -> String:
@@ -194,7 +205,7 @@ func _make_material(terrain: Terrain) -> ShaderMaterial:
 	material.set_shader_parameter(
 		"blocked_tint", Vector2(TerrainPalette.BLOCKED_DARKEN, TerrainPalette.BLOCKED_DESATURATE)
 	)
-	_fire_image = Image.create(terrain.size_x, terrain.size_z, false, Image.FORMAT_R8)
+	_fire_image = Image.create(terrain.size_x, terrain.size_z, false, Image.FORMAT_RG8)
 	_burning_seen = 0
 	_fire_texture = ImageTexture.create_from_image(_fire_image)
 	material.set_shader_parameter("fire_state", _fire_texture)
@@ -303,6 +314,11 @@ func _water_tint_image(terrain: Terrain) -> Image:
 	for depth: int in Terrain.MAX_WATER_DEPTH + 1:
 		var c: Color = TerrainPalette.water_color(depth)
 		by_depth.append(PackedByteArray([c.r8, c.g8, c.b8, c.a8]))
+	# Dry ground: the shallow water's color, at no strength. The shader
+	# filters between samples, so a bank fades the water's strength out
+	# without darkening its color toward the dry texel's.
+	var shallow: Color = TerrainPalette.water_color(1)
+	by_depth[0] = PackedByteArray([shallow.r8, shallow.g8, shallow.b8, 0])
 	var count: int = terrain.size_x * terrain.size_z
 	var data: PackedByteArray = PackedByteArray()
 	data.resize(count * 4)

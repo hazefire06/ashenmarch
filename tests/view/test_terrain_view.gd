@@ -329,6 +329,41 @@ func test_the_fire_texture_follows_the_fire() -> void:
 	assert_eq(view.fire_texel(5, 5), TerrainView.FIRE_TEXEL[Fire.Cell.SCORCHED])
 
 
+func test_the_fire_glow_is_its_own_channel() -> void:
+	# The shader filters fire_state between samples. Filtering R alone from
+	# unburnt (0) to scorched (255) would pass through "burning" and ring
+	# every scorched patch with embers, so G holds the burning cells alone.
+	var rows: Array[String] = []
+	for j: int in 11:
+		rows.append("sssss" + ("." if j == 5 else "s") + "sssss")
+	var world: World = World.new(1, TestTerrains.from_ascii(rows), TestTerrains.catalog())
+	var view: TerrainView = _view_of(world.terrain)
+	world.ignite(5 * M, 5 * M, 0)
+	view.update_fire(world.fire)
+	assert_eq(view.fire_glow_texel(5, 5), 255, "burning")
+	assert_eq(view.fire_glow_texel(4, 5), 0, "unburnt")
+	for _t: int in Fire.BURN_TICKS[Terrain.Ground.GRASS] + 1:
+		world.step()
+		view.update_fire(world.fire)
+	assert_eq(view.fire_texel(5, 5), TerrainView.FIRE_TEXEL[Fire.Cell.SCORCHED])
+	assert_eq(view.fire_glow_texel(5, 5), 0, "scorched no longer glows")
+
+
+func test_dry_samples_carry_the_shallow_water_color() -> void:
+	# The shader filters water_tint between samples. A dry texel is the
+	# shallow water's color at alpha 0, so a bank fades the water out
+	# instead of darkening it toward black.
+	var terrain: Terrain = TestTerrains.from_ascii(["..12", "..34"] as Array[String])
+	var image: Image = (_view_of(terrain).shader_parameter(&"water_tint") as ImageTexture).get_image()
+	var shallow: Color = TerrainPalette.water_color(1)
+	var dry: Color = image.get_pixel(0, 0)
+	assert_eq(dry.a8, 0, "no tint on dry ground")
+	assert_eq(Color(dry.r, dry.g, dry.b).to_rgba32(), Color(shallow.r, shallow.g, shallow.b).to_rgba32())
+	for depth: int in range(1, Terrain.MAX_WATER_DEPTH + 1):
+		var at: Vector2i = Vector2i(2 + (depth - 1) % 2, (depth - 1) / 2)
+		assert_eq(image.get_pixel(at.x, at.y).to_rgba32(), TerrainPalette.water_color(depth).to_rgba32(), "depth %d" % depth)
+
+
 func test_the_weather_reaches_the_shader() -> void:
 	var world: World = World.new(1, _terrain(), TestTerrains.catalog())
 	var view: TerrainView = _view_of(world.terrain)
