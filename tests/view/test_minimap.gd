@@ -240,6 +240,20 @@ func test_the_order_button_on_either_map_cancels_an_armed_order() -> void:
 				assert_eq(rig.focus, focus_before, "the camera stayed: " + what)
 
 
+func test_in_classic_a_left_click_still_places_an_armed_order() -> void:
+	InputBindings.reset(InputBindings.Preset.CLASSIC)
+	var f: Dictionary = _fixture()
+	var controller: SelectionController = f["controller"]
+	var minimap: Minimap = f["minimap"]
+	controller.arm(SelectionController.ArmedOrder.GROUND_ATTACK)
+	minimap.click_at(minimap.map_to_local(Vector2(30.0, 8.0)), MOUSE_BUTTON_LEFT, 0)
+	var queued: Array = _drain(f["world"])
+	assert_eq(queued.size(), 1, "the select click places it, as on the ground")
+	if queued.size() == 1:
+		assert_true(CommandCodec.decode(queued[0]) is GroundAttackCommand)
+	assert_eq(controller.armed_order, SelectionController.ArmedOrder.NONE)
+
+
 func test_both_maps_share_one_picture_built_once() -> void:
 	var main: MainView = _main()
 	var minimap: Minimap = main.get_node("Hud/Minimap") as Minimap
