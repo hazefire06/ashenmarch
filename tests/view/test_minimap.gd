@@ -212,6 +212,68 @@ func test_an_armed_order_is_placed_where_either_map_is_clicked() -> void:
 				assert_eq(rig.focus, focus_before, "the camera stayed: " + what)
 
 
+func test_an_armed_move_is_placed_at_the_map_point() -> void:
+	var f: Dictionary = _fixture()
+	var controller: SelectionController = f["controller"]
+	var minimap: Minimap = f["minimap"]
+	controller.arm(SelectionController.ArmedOrder.MOVE)
+	minimap.click_at(minimap.map_to_local(Vector2(30.0, 8.0)), MOUSE_BUTTON_LEFT, 0)
+	var queued: Array = _drain(f["world"])
+	assert_eq(queued.size(), 1)
+	if queued.size() == 1:
+		var command: SimCommand = CommandCodec.decode(queued[0])
+		assert_true(command is MoveUnitsCommand)
+		assert_almost_eq((command as MoveUnitsCommand).x, 30 * M, 1200)
+		assert_almost_eq((command as MoveUnitsCommand).z, 8 * M, 1200)
+	assert_eq(controller.armed_order, SelectionController.ArmedOrder.NONE, "disarmed")
+
+
+func test_an_armed_route_point_stays_armed_as_on_the_ground() -> void:
+	var f: Dictionary = _fixture()
+	var controller: SelectionController = f["controller"]
+	var minimap: Minimap = f["minimap"]
+	controller.arm(SelectionController.ArmedOrder.WAYPOINT)
+	minimap.click_at(minimap.map_to_local(Vector2(30.0, 8.0)), MOUSE_BUTTON_LEFT, 0)
+	var queued: Array = _drain(f["world"])
+	assert_eq(queued.size(), 1)
+	if queued.size() == 1:
+		assert_true(CommandCodec.decode(queued[0]) is RoutePointCommand)
+	assert_eq(controller.armed_order, SelectionController.ArmedOrder.WAYPOINT, "still armed for the next point")
+
+
+func test_an_armed_heal_falls_back_to_a_plain_click_and_stays_armed() -> void:
+	var f: Dictionary = _fixture()
+	var controller: SelectionController = f["controller"]
+	var minimap: Minimap = f["minimap"]
+	var rig: RtsCamera = f["rig"]
+	controller.arm(SelectionController.ArmedOrder.HEAL)
+	minimap.click_at(minimap.map_to_local(Vector2(30.0, 8.0)), MOUSE_BUTTON_LEFT, 0)
+	assert_eq(_drain(f["world"]), [], "nobody ordered")
+	assert_almost_eq(rig.focus.x, 30.0, 0.2, "the camera moved")
+	assert_almost_eq(rig.focus.z, 8.0, 0.2)
+	assert_eq(controller.armed_order, SelectionController.ArmedOrder.HEAL, "still armed")
+
+
+func test_an_armed_order_that_cannot_be_given_leaves_the_click_to_the_camera() -> void:
+	var f: Dictionary = _fixture()
+	var controller: SelectionController = f["controller"]
+	var minimap: Minimap = f["minimap"]
+	var rig: RtsCamera = f["rig"]
+	controller.paused = true
+	# Pausing disarms; set the order behind its back, as a stale arm would be.
+	controller.armed_order = SelectionController.ArmedOrder.ATTACK_MOVE
+	minimap.click_at(minimap.map_to_local(Vector2(30.0, 8.0)), MOUSE_BUTTON_LEFT, 0)
+	assert_eq(_drain(f["world"]), [], "nothing can be ordered while paused")
+	assert_almost_eq(rig.focus.x, 30.0, 0.2, "but the click still moves the camera")
+	controller.paused = false
+	controller.armed_order = SelectionController.ArmedOrder.GROUND_ATTACK
+	controller.selection.clear()
+	controller.armed_order = SelectionController.ArmedOrder.GROUND_ATTACK
+	minimap.click_at(minimap.map_to_local(Vector2(10.0, 30.0)), MOUSE_BUTTON_LEFT, 0)
+	assert_eq(_drain(f["world"]), [], "nobody selected")
+	assert_almost_eq(rig.focus.z, 30.0, 0.2, "the camera moved")
+
+
 func test_the_wheel_over_the_map_zooms_the_camera() -> void:
 	get_window().size = Vector2i(1280, 720)
 	var f: Dictionary = _fixture()
@@ -320,6 +382,33 @@ func test_after_step_waits_for_every_eighth_tick_and_for_the_map_to_show() -> vo
 	assert_true(minimap.is_processing())
 	minimap.after_step()
 	assert_eq(minimap.memory.spotted().size(), 1, "on tick 8, shown")
+
+
+func test_a_contested_hill_redraws_only_when_its_flash_turns() -> void:
+	var f: Dictionary = _fixture()
+	var world: World = f["world"]
+	var rules: SkirmishRules = SkirmishRules.for_map(
+		ViewFixtures.skirmish_map(), SkirmishRules.Mode.KING_OF_THE_HILL, 10, LIGHT
+	)
+	assert_true(world.start_mission(MissionScript.new(), 0))
+	assert_true(world.start_skirmish(rules))
+	world.skirmish.hill_holder = SkirmishRuntime.CONTESTED
+	var minimap: Minimap = f["minimap"]
+	(f["overhead"] as OverheadMap).visible = false
+	var now: Array[float] = [0.0]
+	minimap.clock = func() -> float: return now[0]
+	minimap.setup(world.terrain, f["rig"], world)
+	await wait_process_frames(3)
+	var draws: Array[int] = [0]
+	minimap.draw.connect(func() -> void: draws[0] += 1)
+	await wait_process_frames(4)
+	assert_eq(draws[0], 0, "the same flash side: nothing drawn")
+	now[0] = FlagsView.CONTEST_FLASH_SECONDS * 1.5
+	await wait_process_frames(4)
+	assert_eq(draws[0], 1, "the flash turned: one redraw")
+	now[0] = FlagsView.CONTEST_FLASH_SECONDS * 1.9
+	await wait_process_frames(4)
+	assert_eq(draws[0], 1, "still the same side: no more")
 
 
 func test_a_quiet_skirmish_map_does_not_redraw_every_frame() -> void:

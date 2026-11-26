@@ -616,9 +616,12 @@ func ground_attack_world(hit: Vector3) -> void:
 
 ## Gives the armed order at a point on the ground (meters), as a click on a
 ## map does (MapClick): a move, an attack-move, a ground attack or a route
-## point, disarming as on the ground. False, doing nothing, with none armed or
-## one a map can't place (a heal needs a unit).
+## point, disarming as on the ground. False, doing nothing, with none armed,
+## one a map can't place (a heal needs a unit), or none that could be given
+## now (paused, or nobody selected): the click is then the map's own.
 func place_armed_world(point: Vector3) -> bool:
+	if paused or selection.is_empty():
+		return false
 	match armed_order:
 		ArmedOrder.MOVE:
 			order_world(point, false, false)

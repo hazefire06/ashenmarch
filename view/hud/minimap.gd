@@ -56,6 +56,8 @@ const VIEW_REACH: float = 600.0
 ## whatever is laid out around it should follow.
 signal placed
 
+## Real seconds now, for the contested hill's flash; a test sets its own.
+var clock: Callable = func() -> float: return Time.get_ticks_msec() / 1000.0
 ## What the viewer's troops have spotted. One per map, for one viewer.
 var memory: SpottingMemory = SpottingMemory.new()
 var viewer: UnitType.Faction = UnitType.Faction.LIGHT
@@ -237,7 +239,7 @@ func _contested_flash() -> int:
 	var runtime: SkirmishRuntime = _world.skirmish
 	if runtime.rules.mode != SkirmishRules.Mode.KING_OF_THE_HILL or runtime.hill_holder != SkirmishRuntime.CONTESTED:
 		return -1
-	return FlagsView.flash_side(Time.get_ticks_msec() / 1000.0)
+	return FlagsView.flash_side(clock.call())
 
 
 # Every button press or release is the map's; the wheel goes on to the camera.
