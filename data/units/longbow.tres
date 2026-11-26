@@ -19,6 +19,7 @@ melee_reach = 500
 melee_windup_ticks = 6
 melee_cooldown_ticks = 24
 acquire_radius = 8000
+sight_radius = 60000
 ranged_projectile = &"arrow"
 ranged_launch_speed = 34000
 ranged_lob_grade_permille = 600

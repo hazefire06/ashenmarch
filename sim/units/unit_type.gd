@@ -142,6 +142,9 @@ const ALL_ROLES_MASK: int = (1 << Role.MELEE) | (1 << Role.RANGED) | (1 << Role.
 ## Milli-units, body edge to body edge: how far an attack-moving unit looks
 ## for enemies to fight.
 @export var acquire_radius: int = 0
+## Milli-units: how far this unit spots enemies for the player's corner map.
+## Display only: the sim step never reads it, so it can't change a hash or a replay.
+@export var sight_radius: int = 50000
 ## Roles this unit attacks first when choosing a target, as bits
 ## (1 << Role): 1 melee, 2 ranged, 4 support. 0: nearest enemy.
 @export_flags("Melee", "Ranged", "Support") var preferred_target_roles: int = 0
