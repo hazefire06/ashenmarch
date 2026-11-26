@@ -9,8 +9,10 @@ extends RefCounted
 ##   desaturation, and per-ground-type recolor, and the water's tint;
 ## - ash, through PrecipitationView.set_ash, a view-only fall that is
 ##   independent of the sim's snow;
-## - the water, through WaterView.set_grade (the water tint), and the structure
-##   models, through StructuresView.set_grade (the ground's tint and desaturation).
+## - the water, through WaterView.set_grade (the water tint), the structure
+##   models, through StructuresView.set_grade (the ground's tint and
+##   desaturation), and the ground scatter, through ScatterView.set_grade (the
+##   ground's tint, desaturation and per-ground-type recolor).
 ## It reads the Atmosphere and never changes it, and the sim never sees any of
 ## it. MainView applies a mission's atmosphere once, after its views are set up.
 ##
@@ -27,13 +29,15 @@ var _terrain: TerrainView
 var _precipitation: PrecipitationView
 var _water: WaterView
 var _structures: StructuresView
+var _scatter: ScatterView
 
 
 ## The nodes the atmosphere is applied to; any may be null, which skips that
 ## part (a test of the sky alone needs no terrain).
 func _init(
 	world_environment: WorldEnvironment, sun: DirectionalLight3D, terrain: TerrainView,
-	precipitation: PrecipitationView, water: WaterView = null, structures: StructuresView = null
+	precipitation: PrecipitationView, water: WaterView = null, structures: StructuresView = null,
+	scatter: ScatterView = null
 ) -> void:
 	_world_environment = world_environment
 	_sun = sun
@@ -41,6 +45,7 @@ func _init(
 	_precipitation = precipitation
 	_water = water
 	_structures = structures
+	_scatter = scatter
 
 
 ## Applies every part of the atmosphere. A null one is skipped, so the scene
@@ -59,6 +64,8 @@ func apply(atmosphere: Atmosphere) -> void:
 		_water.set_grade(atmosphere.water_tint)
 	if _structures != null:
 		_structures.set_grade(atmosphere.terrain_tint, atmosphere.terrain_desaturation)
+	if _scatter != null:
+		_scatter.set_grade(atmosphere.terrain_tint, atmosphere.terrain_desaturation, atmosphere.ground_recolor)
 	if _precipitation != null:
 		_precipitation.set_ash(atmosphere.ash_fall, atmosphere.ash_color)
 

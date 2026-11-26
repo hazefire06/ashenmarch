@@ -15,6 +15,10 @@ extends Node3D
 ## set_grade() (Phase 8) passes on a mission's look for the ground and water;
 ## it survives build() and rebuild_region() too, and unset it changes nothing.
 
+## After rebuild_region() redraws part of the ground (an explosion's scar),
+## so the ground scatter can follow it.
+signal region_rebuilt(terrain: Terrain, cells: Rect2i)
+
 const TERRAIN_SHADER: Shader = preload("res://view/terrain/terrain.gdshader")
 ## Fire texel value (R8) by Fire.Cell.
 const FIRE_TEXEL: Array[int] = [0, 128, 255]
@@ -99,6 +103,7 @@ func rebuild_region(terrain: Terrain, cells: Rect2i) -> void:
 			var chunk: MeshInstance3D = get_node_or_null(_chunk_name(cx, cz)) as MeshInstance3D
 			if chunk != null:
 				chunk.mesh = _chunk_mesh(terrain, cx, cz)
+	region_rebuilt.emit(terrain, cells)
 
 
 ## Brings the fire texture up to date with the cells that changed this tick
@@ -120,6 +125,12 @@ func update_fire(fire: Fire) -> void:
 		var glow: int = FIRE_GLOW_TEXEL if cell == Fire.Cell.BURNING else 0
 		_fire_image.set_pixel(k % w, k / w, Color8(FIRE_TEXEL[cell], glow, 0))
 	_fire_texture.update(_fire_image)
+
+
+## The fire texture update_fire() keeps (one RG8 texel per sample; see
+## FIRE_TEXEL), for the ground scatter to read. Null before build().
+func fire_texture() -> Texture2D:
+	return _fire_texture
 
 
 ## Passes the ground's wetness and snow cover on to the shader.

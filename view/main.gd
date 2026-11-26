@@ -197,6 +197,7 @@ var _barks: Barks
 @onready var _terrain_view: TerrainView = $TerrainView
 @onready var _water_view: WaterView = $WaterView
 @onready var _structures_view: StructuresView = $StructuresView
+@onready var _scatter_view: ScatterView = $ScatterView
 @onready var _units_view: UnitsView = $Units
 @onready var _gibs: Gibs = $Gibs
 @onready var _projectiles_view: ProjectilesView = $Projectiles
@@ -248,6 +249,8 @@ func _ready() -> void:
 	_terrain_view.build(terrain, structures)
 	_water_view.build(terrain, water_m, structures)
 	_structures_view.build(structures, terrain)
+	_scatter_view.build(terrain, structures, water_m, _scatter_name(map_info), _terrain_view.fire_texture())
+	_terrain_view.region_rebuilt.connect(_scatter_view.rebuild_region)
 	_camera.setup(terrain)
 	_place_camera()
 	_overhead_map.setup(terrain, _camera, world)
@@ -301,7 +304,7 @@ func _ready() -> void:
 			launch.skirmish.map.atmosphere if launch.is_skirmish() else launch.mission.atmosphere
 		)
 		AtmosphereView.new(
-			_world_environment, _sun, _terrain_view, _precipitation, _water_view, _structures_view
+			_world_environment, _sun, _terrain_view, _precipitation, _water_view, _structures_view, _scatter_view
 		).apply(look)
 	_ai_debug.setup(world)
 	_mission_hud.show_world(world)
@@ -458,6 +461,7 @@ func _advance() -> void:
 	_water_view.set_weather(world.weather)
 	_structures_view.set_weather(world.weather)
 	_structures_view.update_fire(world.fire, world.terrain)
+	_scatter_view.set_weather(world.weather)
 	# Only a launched mission freezes; the sandbox plays on whatever it decides.
 	if launch != null and world.mission != null and world.mission.outcome != MissionRuntime.Outcome.NONE:
 		_freeze()
@@ -639,6 +643,12 @@ func _map_id() -> StringName:
 	if launch == null:
 		return &""
 	return launch.skirmish.map.id if launch.is_skirmish() else launch.mission.id
+
+
+# The name that seeds a map's ground scatter: its folder under maps/, so a
+# map gets the same scatter in the campaign, in skirmish and in a replay.
+static func _scatter_name(map_info: MapInfo) -> String:
+	return map_info.heightmap_path.get_base_dir().get_file() if map_info != null else ""
 
 
 # The map this game is played on (its world files sit beside the heightmap):
