@@ -290,6 +290,37 @@ func test_world_textures_fall_back_without_assets() -> void:
 	assert_same(WorldTextures.detail_noise(), noise, "made once")
 
 
+func test_detail_noise_has_four_independent_channels() -> void:
+	# The ground shader takes four noise values from one read; the water
+	# shader reads R alone.
+	var image: Image = (WorldTextures.detail_noise() as ImageTexture).get_image()
+	assert_eq(image.get_format(), Image.FORMAT_RGBA8)
+	var differ: Array[int] = [0, 0, 0]
+	var count: int = 0
+	for j: int in range(0, WorldTextures.NOISE_SIZE, 16):
+		for i: int in range(0, WorldTextures.NOISE_SIZE, 16):
+			var c: Color = image.get_pixel(i, j)
+			differ[0] += 1 if absf(c.r - c.g) > 0.05 else 0
+			differ[1] += 1 if absf(c.r - c.b) > 0.05 else 0
+			differ[2] += 1 if absf(c.g - c.a) > 0.05 else 0
+			count += 1
+	for d: int in differ:
+		assert_gt(d, count / 2, "each channel is its own noise")
+
+
+func test_the_ground_look_knobs_are_uniforms() -> void:
+	# So they can be tuned live; each has a default in the shader.
+	var declared: Array[String] = []
+	for uniform: Dictionary in _material(_view_of(_terrain())).shader.get_shader_uniform_list():
+		declared.append(uniform["name"])
+	for knob: String in [
+		"far_scale", "far_angle", "far_near_m", "far_far_m", "far_share", "far_noise",
+		"macro_m", "macro_value", "macro_hue", "macro_saturation",
+		"border_width", "bend_large", "bend_large_m", "bend_fine", "height_blend",
+	]:
+		assert_has(declared, knob)
+
+
 func test_the_fallback_layers_are_the_flat_ground_colors() -> void:
 	# The headless renderer keeps no layer data, so the colors are checked
 	# before they become the array.

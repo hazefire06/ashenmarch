@@ -20,9 +20,36 @@ uniform sampler2DArray ground_normal : hint_normal, filter_linear_mipmap, repeat
 // model covers the sample, A unused. The six weights sum to 1.
 uniform sampler2D ground_weights_a : filter_linear, repeat_disable;
 uniform sampler2D ground_weights_b : filter_linear, repeat_disable;
-// Tiling greyscale noise (WorldTextures.detail_noise).
+// Tiling noise, four independent channels (WorldTextures.detail_noise).
 uniform sampler2D detail_noise : filter_linear_mipmap, repeat_enable;
 uniform float tile_m = 3.0;
+// Anti-tiling: each layer is also read far_scale times larger, turned by
+// far_angle (radians), and mixed in from far_near_m to far_far_m from the
+// camera, up to far_share, give or take far_noise by place. Two periods at
+// an odd ratio and angle, mixed unevenly, show no repeat.
+uniform float far_scale = 3.7;
+uniform float far_angle = 0.61;
+uniform float far_near_m = 12.0;
+uniform float far_far_m = 50.0;
+uniform float far_share = 0.75;
+uniform float far_noise = 0.35;
+// Macro variation: over patches about a fifth of macro_m across, the ground
+// is lighter or darker by up to macro_value, warmer or cooler by macro_hue,
+// and more or less saturated by macro_saturation, so no field is one tone.
+uniform float macro_m = 160.0;
+uniform float macro_value = 0.12;
+uniform float macro_hue = 0.04;
+uniform float macro_saturation = 0.12;
+// Borders: the weights are read over a spread of +-border_width samples, at a
+// place bent by up to bend_large samples (noise repeating every bend_large_m
+// meters, a lazy wander) plus bend_fine (a fine breakup). Then height_blend:
+// within a border the brighter (higher) texel of two layers wins, by this
+// much slack, so dirt shows between grass blades. Larger is plainer.
+uniform float border_width = 1.5;
+uniform float bend_large = 2.5;
+uniform float bend_large_m = 90.0;
+uniform float bend_fine = 0.6;
+uniform float height_blend = 0.8;
 // How hard noise pushes one layer over another within a border, 0..1. Any
 // value is safe: the push fades to nothing where a layer's weight is 0 or 1.
 uniform float border_jitter = 0.35;
@@ -71,20 +98,16 @@ const float FIRE_BURNING_R = 0.502;
 const int LAYER_COUNT = 6;
 const int ROCK = 4;
 const int MUD = 5;
-// Meters per repeat of detail_noise along borders, and for the slow tint.
+// Meters per repeat of the fine border noise.
 const float BORDER_NOISE_M = 6.0;
-const float TINT_NOISE_M = 48.0;
-// Each layer reads the border noise this far (in noise tiles) from the last,
-// so neighboring layers push their border in different places.
-const vec2 LAYER_NOISE_STEP = vec2(0.37, 0.71);
-// How far, in samples, noise bends where the weights are read, so borders
-// wander off the sample grid.
-const float BORDER_WARP = 0.6;
 // Share of the plain filtered weight kept under the noisy one, so a spot
 // where noise pushes every layer down still draws the nearest ground.
 const float BORDER_FLOOR = 0.02;
-// How far the slow noise lightens or darkens the ground, either way.
-const float TINT_VARIATION = 0.07;
+// detail_noise mostly sits within 0.5 +- 1/3; this maps that onto -1..1.
+const float NOISE_SPAN = 3.0;
+const vec3 LUMA = vec3(0.2126, 0.7152, 0.0722);
+// The macro hue shift: warm one way, cool the other.
+const vec3 WARM = vec3(1.0, 0.2, -1.0);
 
 varying vec3 world_pos;
 varying vec3 world_normal;
@@ -103,22 +126,27 @@ void fragment() {
 	vec3 up_normal = normalize(world_normal);
 	// Texel (i, j) is sample (i, j), so sample centers sit on texel centers.
 	vec2 uv = (world_pos.xz / cell_size + 0.5) / sample_count;
+	// Every noise value below comes from these four reads.
+	vec4 n_macro = texture(detail_noise, world_pos.xz / macro_m);
+	vec4 n_large = texture(detail_noise, world_pos.xz / bend_large_m + vec2(0.31, 0.47));
+	vec4 n_fine = texture(detail_noise, world_pos.xz / BORDER_NOISE_M);
+	vec4 n_fine2 = texture(detail_noise, world_pos.xz / BORDER_NOISE_M + vec2(0.53, 0.19));
+
 	// Borders: the weights, the water tint and the fire are read where noise
-	// bends them to (off the grid), averaged over four reads half a sample
-	// apart, so a border (a bank, the edge of a burn) is a gradient about two
-	// samples wide and a staircase of samples rounds off. Averaging and
-	// filtering keep the six weights summing to 1.
-	vec2 noise_uv = world_pos.xz / BORDER_NOISE_M;
-	vec2 bend = vec2(texture(detail_noise, noise_uv + vec2(0.5, 0.0)).r,
-		texture(detail_noise, noise_uv + vec2(0.0, 0.5)).r) - 0.5;
-	vec2 weights_uv = uv + bend * 2.0 * BORDER_WARP / sample_count;
-	vec2 half_sample = 0.5 / sample_count;
+	// bends them to (off the grid, a lazy wander plus a fine breakup),
+	// averaged over four reads border_width samples apart, so a border (a
+	// bank, the edge of a burn) is a gradient two or three samples wide and a
+	// staircase of samples rounds off. Averaging and filtering keep the six
+	// weights summing to 1.
+	vec2 bend = (n_large.rg - 0.5) * 2.0 * bend_large + (n_fine.rg - 0.5) * 2.0 * bend_fine;
+	vec2 weights_uv = uv + bend / sample_count;
+	vec2 spread = border_width / sample_count;
 	vec4 wa = vec4(0.0);
 	vec4 wb = vec4(0.0);
 	vec4 tint = vec4(0.0);
 	vec2 fire = vec2(0.0);
 	for (int corner = 0; corner < 4; corner++) {
-		vec2 at = weights_uv + half_sample * vec2(corner % 2 == 0 ? -1.0 : 1.0, corner < 2 ? -1.0 : 1.0);
+		vec2 at = weights_uv + spread * vec2(corner % 2 == 0 ? -1.0 : 1.0, corner < 2 ? -1.0 : 1.0);
 		wa += texture(ground_weights_a, at) * 0.25;
 		wb += texture(ground_weights_b, at) * 0.25;
 		tint += texture(water_tint, at) * 0.25;
@@ -132,11 +160,11 @@ void fragment() {
 	// breaks into patches. The push scales with raw * (1 - raw): nothing
 	// where a layer is absent or alone, whatever border_jitter is, so noise
 	// never makes a layer appear.
+	float push_noise[6] = float[6](n_fine.b, n_fine.a, n_fine2.r, n_fine2.g, n_fine2.b, n_fine2.a);
 	float w[6];
 	float total = 0.0;
 	for (int i = 0; i < LAYER_COUNT; i++) {
-		float n = texture(detail_noise, noise_uv + LAYER_NOISE_STEP * float(i + 1)).r;
-		float push = (n - 0.5) * 2.0 * border_jitter * 4.0 * raw[i] * (1.0 - raw[i]);
+		float push = (push_noise[i] - 0.5) * 2.0 * border_jitter * 4.0 * raw[i] * (1.0 - raw[i]);
 		w[i] = clamp(raw[i] + push, 0.0, 1.0) + raw[i] * BORDER_FLOOR;
 		total += w[i];
 	}
@@ -148,6 +176,51 @@ void fragment() {
 	}
 	w[ROCK] += steep;
 
+	// Each layer near and far (anti-tiling). Every layer is read on every
+	// fragment: mipmapped reads inside a branch that differs between
+	// neighboring pixels pick the wrong mip level. Normal maps only matter
+	// close up, so they are read at the near scale alone.
+	vec2 near_uv = world_pos.xz / tile_m;
+	float turn_c = cos(far_angle);
+	float turn_s = sin(far_angle);
+	vec2 far_uv = mat2(vec2(turn_c, turn_s), vec2(-turn_s, turn_c)) * world_pos.xz / (tile_m * far_scale)
+		+ vec2(0.37, 0.61);
+	float view_m = length(CAMERA_POSITION_WORLD - world_pos);
+	float far_mix = clamp(smoothstep(far_near_m, far_far_m, view_m) * far_share
+		+ (n_large.b - 0.5) * 2.0 * far_noise, 0.0, 1.0);
+	vec3 color[6];
+	vec3 bump[6];
+	for (int i = 0; i < LAYER_COUNT; i++) {
+		vec3 near = texture(ground_albedo, vec3(near_uv, float(i))).rgb;
+		vec3 far = texture(ground_albedo, vec3(far_uv, float(i))).rgb;
+		color[i] = mix(near, far, far_mix);
+		bump[i] = texture(ground_normal, vec3(near_uv, float(i))).rgb;
+	}
+	// Steep rock is triplanar, so a cliff's rock isn't smeared down it, and
+	// its flat-ground normal map, wrong on a cliff, is flattened there.
+	vec3 side = pow(abs(up_normal), vec3(4.0));
+	side /= side.x + side.y + side.z;
+	vec3 rock_x = texture(ground_albedo, vec3(world_pos.zy / tile_m, float(ROCK))).rgb;
+	vec3 rock_z = texture(ground_albedo, vec3(world_pos.xy / tile_m, float(ROCK))).rgb;
+	color[ROCK] = mix(color[ROCK], rock_x * side.x + color[ROCK] * side.y + rock_z * side.z, steep);
+	bump[ROCK] = mix(bump[ROCK], FLAT_NORMAL, steep);
+
+	// Height blend: brightness stands in for height. A layer keeps its weight
+	// in proportion to how close its weight plus height comes to the top one,
+	// within height_blend; a layer of weight 0 stays 0.
+	float top = 0.0;
+	for (int i = 0; i < LAYER_COUNT; i++) {
+		top = max(top, w[i] > 0.0 ? w[i] + dot(color[i], LUMA) : 0.0);
+	}
+	total = 0.0;
+	for (int i = 0; i < LAYER_COUNT; i++) {
+		w[i] *= max(w[i] + dot(color[i], LUMA) - top + height_blend, 0.0);
+		total += w[i];
+	}
+	for (int i = 0; i < LAYER_COUNT; i++) {
+		w[i] /= max(total, 0.0001);
+	}
+
 	// Mud takes the recolor of the ground under it (grass where it is all mud).
 	vec4 under = vec4(0.0);
 	float under_weight = 0.0;
@@ -156,38 +229,22 @@ void fragment() {
 		under_weight += w[i];
 	}
 	vec4 mud_recolor = under_weight > 0.001 ? under / under_weight : ground_recolor[0];
-
-	// Every layer is read on every fragment: mipmapped reads inside a branch
-	// that differs between neighboring pixels pick the wrong mip level.
-	vec2 tile_uv = world_pos.xz / tile_m;
 	vec3 ground = vec3(0.0);
 	vec3 normal_map = vec3(0.0);
 	for (int i = 0; i < LAYER_COUNT; i++) {
-		vec3 color = texture(ground_albedo, vec3(tile_uv, float(i))).rgb;
-		vec3 bump = texture(ground_normal, vec3(tile_uv, float(i))).rgb;
 		vec4 recolor = i == MUD ? mud_recolor : ground_recolor[i];
-		ground += mix(color, recolor.rgb, recolor.a) * w[i];
-		normal_map += bump * w[i];
+		ground += mix(color[i], recolor.rgb, recolor.a) * w[i];
+		normal_map += bump[i] * w[i];
 	}
-	// Steep rock is triplanar, so a cliff's rock isn't smeared down it, and
-	// its flat-ground normal map, wrong on a cliff, is flattened there.
-	vec3 side = pow(abs(up_normal), vec3(4.0));
-	side /= side.x + side.y + side.z;
-	vec3 rock_down = texture(ground_albedo, vec3(tile_uv, float(ROCK))).rgb;
-	vec3 rock_x = texture(ground_albedo, vec3(world_pos.zy / tile_m, float(ROCK))).rgb;
-	vec3 rock_z = texture(ground_albedo, vec3(world_pos.xy / tile_m, float(ROCK))).rgb;
-	vec3 rock_triplanar = rock_x * side.x + rock_down * side.y + rock_z * side.z;
-	vec4 rock_recolor = ground_recolor[ROCK];
-	ground += (mix(rock_triplanar, rock_recolor.rgb, rock_recolor.a)
-		- mix(rock_down, rock_recolor.rgb, rock_recolor.a)) * w[ROCK] * steep;
-	vec3 rock_bump = texture(ground_normal, vec3(tile_uv, float(ROCK))).rgb;
-	normal_map += (FLAT_NORMAL - rock_bump) * w[ROCK] * steep;
 	NORMAL_MAP = normal_map;
 
-	// A slow, gentle light and dark so no patch repeats exactly.
-	float slow = texture(detail_noise, world_pos.xz / TINT_NOISE_M).r;
-	ground *= mix(1.0 - TINT_VARIATION, 1.0 + TINT_VARIATION, slow);
-	float luma = dot(ground, vec3(0.2126, 0.7152, 0.0722));
+	// Macro variation: value, a warm-cool hue shift and saturation.
+	vec3 macro = clamp((n_macro.rgb - 0.5) * NOISE_SPAN, -1.0, 1.0);
+	ground *= 1.0 + macro_value * macro.x;
+	ground *= 1.0 + macro_hue * macro.y * WARM;
+	float tone = dot(ground, LUMA);
+	ground = max(mix(vec3(tone), ground, 1.0 + macro_saturation * macro.z), vec3(0.0));
+	float luma = dot(ground, LUMA);
 	ground = mix(ground, vec3(luma), grade_desaturation) * grade_tint.rgb;
 
 	ground = mix(ground, CHAR, 0.85 * scorched);

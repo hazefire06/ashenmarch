@@ -49,15 +49,27 @@ static func normal() -> TextureLayered:
 	return _normal
 
 
-## NOISE_SIZE square, seamless greyscale noise with mipmaps, for breaking up
-## ground borders and tiling.
+## NOISE_SIZE square, seamless RGBA noise with mipmaps, for breaking up
+## ground borders, tiling and flat tones. Each channel is its own noise (R
+## seed 0, then 1, 2, 3), so one read gives four values; the water reads R.
 static func detail_noise() -> Texture2D:
 	if _noise == null:
-		var noise: FastNoiseLite = FastNoiseLite.new()
-		noise.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
-		noise.frequency = NOISE_FREQUENCY
-		noise.fractal_octaves = 3
-		var image: Image = noise.get_seamless_image(NOISE_SIZE, NOISE_SIZE)
+		var channels: Array[PackedByteArray] = []
+		for seed: int in 4:
+			var noise: FastNoiseLite = FastNoiseLite.new()
+			noise.seed = seed
+			noise.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
+			noise.frequency = NOISE_FREQUENCY
+			noise.fractal_octaves = 3
+			var grey: Image = noise.get_seamless_image(NOISE_SIZE, NOISE_SIZE)
+			grey.convert(Image.FORMAT_L8)
+			channels.append(grey.get_data())
+		var data: PackedByteArray = PackedByteArray()
+		data.resize(NOISE_SIZE * NOISE_SIZE * 4)
+		for k: int in NOISE_SIZE * NOISE_SIZE:
+			for c: int in 4:
+				data[k * 4 + c] = channels[c][k]
+		var image: Image = Image.create_from_data(NOISE_SIZE, NOISE_SIZE, false, Image.FORMAT_RGBA8, data)
 		image.generate_mipmaps()
 		_noise = ImageTexture.create_from_image(image)
 	return _noise
