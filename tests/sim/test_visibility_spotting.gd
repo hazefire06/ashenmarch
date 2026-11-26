@@ -108,3 +108,27 @@ func test_only_dead_viewers_spot_nothing() -> void:
 	var foe: Unit = _put(w, 1, DARK, 25)
 	viewer.kill()
 	assert_false(Visibility.spotted_by(w, foe, LIGHT))
+
+
+func test_one_vertex_wide_wall_off_grid_blocks() -> void:
+	# A 2 m wall on one column of vertices is a bilinear tent: a sample half a
+	# cell off its peak sees only 1 m of it, under the sight line.
+	var w: World = _world(_terrain({15: 2000}))
+	var viewer: Unit = _put(w, 0, LIGHT, 5)
+	var foe: Unit = _put(w, 1, DARK, 25)
+	viewer.x = 5500
+	foe.x = 25500
+	viewer.y = w.terrain.height_at(viewer.x, viewer.z)
+	foe.y = w.terrain.height_at(foe.x, foe.z)
+	assert_false(Visibility.spotted_by(w, foe, LIGHT))
+
+
+func test_a_clear_second_viewer_spots_what_a_blocked_one_cannot() -> void:
+	var slab: Dictionary = {}
+	for i: int in range(14, 17):
+		slab[i] = 8000
+	var w: World = _world(_terrain(slab))
+	_put(w, 0, LIGHT, 5)
+	_put(w, 0, LIGHT, 20)
+	var foe: Unit = _put(w, 1, DARK, 25)
+	assert_true(Visibility.spotted_by(w, foe, LIGHT))

@@ -65,16 +65,20 @@ static func spotted_by(world: World, unit: Unit, viewer: UnitType.Faction) -> bo
 
 
 ## True if no terrain stands between from_unit's eye (its body height above the
-## ground) and to_unit's body centre (half its body height up). Marches one
-## terrain sample per cell in integer maths; blocked when the ground at any
-## intermediate sample is above the line.
+## ground) and to_unit's body centre (half its body height up). Marches in
+## integer maths, a sample every quarter cell; blocked when the ground at any
+## intermediate sample is above the line. The fine spacing keeps a wall one
+## vertex wide (a bilinear tent) from slipping between samples: the nearest
+## one is within an eighth of a cell of its peak, so over 87 % of its height.
+## hover_height and unit.y are ignored (display only; a Drifter is judged from
+## the ground).
 static func clear_sight(world: World, from_unit: Unit, to_unit: Unit) -> bool:
 	var terrain: Terrain = world.terrain
 	var eye_y: int = terrain.height_at(from_unit.x, from_unit.z) + from_unit.type.body_height
 	var target_y: int = terrain.height_at(to_unit.x, to_unit.z) + to_unit.type.body_height / 2
 	var dx: int = to_unit.x - from_unit.x
 	var dz: int = to_unit.z - from_unit.z
-	var steps: int = maxi(absi(dx), absi(dz)) / terrain.cell_size
+	var steps: int = maxi(absi(dx), absi(dz)) * 4 / terrain.cell_size
 	for s: int in range(1, steps):
 		var x: int = from_unit.x + dx * s / steps
 		var z: int = from_unit.z + dz * s / steps

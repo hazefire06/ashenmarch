@@ -2,7 +2,8 @@ class_name SpottingMemory
 extends RefCounted
 ## What the corner map remembers about enemies the player's troops have
 ## spotted: which are spotted now, and a fading mark where each was last seen.
-## Display only; meant to be updated every 8 ticks, never from the sim step.
+## Display only; call clear() when the world changes (a new mission or a
+## restart), since marks are keyed by unit id. Meant to be updated every 8 ticks, never from the sim step.
 
 ## 10 s at 30 ticks/s.
 const FADE_TICKS: int = 300
@@ -49,7 +50,7 @@ func marks() -> Array[Dictionary]:
 	for id: int in _marks:
 		var mark: Dictionary = _marks[id]
 		var age: int = _now - int(mark["seen_tick"])
-		out.append({"position": mark["position"], "alpha": 1.0 - float(age) / FADE_TICKS})
+		out.append({"position": mark["position"], "alpha": clampf(1.0 - float(age) / FADE_TICKS, 0.0, 1.0)})
 	return out
 
 
