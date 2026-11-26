@@ -44,6 +44,7 @@ const SELECTED_COLOR: Color = OverheadMap.SELECTED_DOT_COLOR
 const ENEMY_COLOR: Color = Color(1.0, 0.28, 0.22, 1.0)
 ## A last-seen mark's color at full strength; its alpha fades with the mark.
 const MARK_COLOR: Color = Color(0.8, 0.2, 0.16, 0.6)
+## Half the side of a unit dot, a square (draw_circle costs a draw call per dot).
 const DOT_RADIUS: float = 2.0
 const VIEW_COLOR: Color = Color(1.0, 0.95, 0.6, 0.85)
 const FLAG_RADIUS: float = 4.0
@@ -310,7 +311,7 @@ func _draw() -> void:
 		draw_circle(_flag_at[i], FLAG_RADIUS, _flag_color[i])
 		draw_arc(_flag_at[i], FLAG_RADIUS, 0.0, TAU, 16, FLAG_OUTLINE, 1.0)
 	for i: int in _dot_at.size():
-		draw_circle(_dot_at[i], DOT_RADIUS, _dot_color[i])
+		draw_rect(Rect2(_dot_at[i] - Vector2(DOT_RADIUS, DOT_RADIUS), Vector2(DOT_RADIUS, DOT_RADIUS) * 2.0), _dot_color[i])
 	if not _outline.is_empty():
 		draw_polyline(_outline, VIEW_COLOR, 1.0)
 	draw_rect(Rect2(Vector2.ZERO, size).grow(-0.5), BORDER_COLOR, false, 1.0)
