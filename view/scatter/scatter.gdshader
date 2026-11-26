@@ -10,7 +10,8 @@ render_mode diffuse_lambert, specular_disabled, cull_disabled;
 //
 // In the vertex stage: grass and plants sway with TIME (cosmetic), every item
 // shrinks into the ground over the last fade_margin metres before fade_end
-// from the camera, and the sim's fire (fire_state, one texel per sample, read
+// from fade_centre (where the camera looks, on the ground: the scatter is
+// drawn round what the player is looking at, the same area at every zoom), and the sim's fire (fire_state, one texel per sample, read
 // at the item's sample) takes grass and plants away once their cell is
 // scorched and leaves bushes as charred stumps.
 
@@ -42,8 +43,9 @@ uniform int burn_mode = 0;
 // Sway in model units at one model unit of height (it grows with the square
 // of the height, so the base stays put).
 uniform float wind = 0.0;
-// Metres from the camera at which an item has shrunk away, and over how many
-// metres before that it shrinks.
+// Metres (along the ground) from fade_centre at which an item has shrunk
+// away, and over how many metres before that it shrinks.
+uniform vec3 fade_centre = vec3(0.0, 0.0, 0.0);
 uniform float fade_end = 120.0;
 uniform float fade_margin = 25.0;
 // How far the lighting normal bends toward straight up, so thin blades and
@@ -64,8 +66,7 @@ varying float v_charred;
 
 void vertex() {
 	vec3 origin = MODEL_MATRIX[3].xyz;
-	vec3 camera = INV_VIEW_MATRIX[3].xyz;
-	float fade = 1.0 - smoothstep(fade_end - fade_margin, fade_end, distance(origin, camera));
+	float fade = 1.0 - smoothstep(fade_end - fade_margin, fade_end, distance(origin.xz, fade_centre.xz));
 
 	ivec2 cell = ivec2(clamp(floor(origin.xz / cell_size + 0.5), vec2(0.0), sample_count - 1.0));
 	vec2 fire = texelFetch(fire_state, cell, 0).rg;

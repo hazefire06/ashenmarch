@@ -2,9 +2,12 @@ class_name ScatterView
 extends Node3D
 ## Draws the ground scatter (A5, view only): what ScatterPlacer lays out for a
 ## map, as one MultiMeshInstance3D per model per CHUNK_M square, so the camera
-## culls whole chunks, and each chunk stops drawing past its kind's fade range
-## (the shader shrinks items into the ground just before). Units walk through
-## all of it; the sim never sees it.
+## culls whole chunks. It is drawn round the focus, the ground point the camera
+## looks at (set_focus; _process follows the viewport's camera): each kind out
+## to its FADE_END_M, shrinking into the ground over the last FADE_MARGIN_M,
+## and chunks wholly beyond that are hidden. So the cost is the same at every
+## zoom, and the scatter is where the player looks. Units walk through all of
+## it; the sim never sees it.
 ##
 ## Every surface is drawn with scatter.gdshader, one material per kit surface
 ## and kind, shared by every chunk. set_grade() and set_weather() reach them
@@ -13,17 +16,23 @@ extends Node3D
 ## ground) moves the items there back onto the new ground.
 
 const SCATTER_SHADER: Shader = preload("res://view/scatter/scatter.gdshader")
-const CHUNK_M: float = 48.0
-## Per ScatterPlacer.Kind (grass, plant, bush, pebble): metres from the camera
-## at which items have shrunk away; the last FADE_MARGIN_M of it they shrink.
-const FADE_END_M: Array[float] = [115.0, 130.0, 190.0, 160.0]
-const FADE_MARGIN_M: float = 25.0
+const CHUNK_M: float = 96.0
+## Per ScatterPlacer.Kind (grass, plant, bush, pebble): metres along the
+## ground from the focus at which items have shrunk away; the last
+## FADE_MARGIN_M of it they shrink. The frame-rate knobs (make bench).
+const FADE_END_M: Array[float] = [65.0, 50.0, 70.0, 60.0]
+const FADE_MARGIN_M: float = 20.0
+## Nothing is drawn while the camera is further than this from the focus (the
+## widest zooms, where tufts would be smaller than a pixel).
+const CAMERA_CUTOFF_M: float = 200.0
+## The focus moves on only when the camera's look point has moved this far.
+const FOCUS_STEP_M: float = 1.0
 ## Per kind: sway (scatter.gdshader's wind), how far the lighting normal
 ## bends up, what fire does (its burn_mode) and whether it casts a shadow.
 const WIND: Array[float] = [0.05, 0.03, 0.008, 0.0]
 const NORMAL_UP: Array[float] = [0.6, 0.5, 0.65, 0.0]
 const BURN_MODE: Array[int] = [1, 1, 2, 0]
-const SHADOWS: Array[bool] = [false, false, true, false]
+const SHADOWS: Array[bool] = [false, false, false, false]
 ## Per kind: how the kit's bright colours are brought toward the ground's
 ## (scatter.gdshader's kit_tint and kit_desaturation).
 const KIT_TINT: Array[Color] = [
@@ -39,6 +48,7 @@ var _terrain: Terrain
 var _view_heights: Dictionary[int, int] = {}
 var _heights: PackedInt32Array = PackedInt32Array()
 var _count: int = 0
+var _focus: Vector3 = Vector3(INF, 0.0, INF)
 var _grade_tint: Color = Color.WHITE
 var _grade_desaturation: float = 0.0
 var _recolor: PackedColorArray = _no_recolor()
@@ -60,6 +70,7 @@ func build(
 	_materials = []
 	_groups = []
 	_count = 0
+	_focus = Vector3(INF, 0.0, INF)
 	_terrain = terrain
 	_view_heights = {}
 	if structures != null:
@@ -97,13 +108,67 @@ func build(
 		for part: Array in parts[key.z]:
 			var instance: MultiMeshInstance3D = _chunk(part[0], part[1], placements, grounds, centre)
 			instance.name = "Scatter_%d_%d_%s" % [key.x, key.y, layout.names[key.z]]
-			instance.visibility_range_end = FADE_END_M[kind] + CHUNK_M * 0.75
+			instance.visibility_range_end = CAMERA_CUTOFF_M + CHUNK_M
 			instance.cast_shadow = (
 				GeometryInstance3D.SHADOW_CASTING_SETTING_ON if SHADOWS[kind] else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 			)
 			add_child(instance)
-			_groups.append({"multimesh": instance.multimesh, "placements": placements, "local": part[1], "centre": centre})
+			_groups.append({
+				"multimesh": instance.multimesh, "placements": placements, "local": part[1], "centre": centre,
+				"node": instance, "kind": kind,
+			})
 		_count += items.size()
+
+
+## Follows the viewport's camera: its look point on the ground becomes the
+## focus once it has moved FOCUS_STEP_M.
+func _process(_delta: float) -> void:
+	if _groups.is_empty() or not is_inside_tree():
+		return
+	var camera: Camera3D = get_viewport().get_camera_3d()
+	if camera == null:
+		return
+	var look: Vector3 = look_point(camera.global_transform)
+	if Vector2(look.x - _focus.x, look.z - _focus.z).length() >= FOCUS_STEP_M:
+		set_focus(look)
+
+
+## Draws the scatter round focus (world space; its y is unused): each kind
+## out to its FADE_END_M along the ground, chunks wholly beyond that hidden.
+func set_focus(focus: Vector3) -> void:
+	_focus = focus
+	for material: ShaderMaterial in _materials:
+		material.set_shader_parameter("fade_centre", focus)
+	var at: Vector2 = Vector2(focus.x, focus.z)
+	for group: Dictionary in _groups:
+		var centre: Vector3 = group["centre"]
+		var half: float = CHUNK_M * 0.5
+		var nearest: Vector2 = Vector2(clampf(at.x, centre.x - half, centre.x + half), clampf(at.y, centre.z - half, centre.z + half))
+		(group["node"] as Node3D).visible = nearest.distance_to(at) < FADE_END_M[group["kind"]]
+
+
+## The focus set_focus() last had, for tests.
+func focus() -> Vector3:
+	return _focus
+
+
+## Where a camera at view looks at the ground: along its forward ray to the
+## drawn ground (a few steps of following the ground's height), or straight
+## below it when it looks up.
+func look_point(view: Transform3D) -> Vector3:
+	var forward: Vector3 = -view.basis.z
+	var below: Vector3 = view.origin
+	if _terrain == null:
+		return below
+	var ground: float = ScatterPlacer.ground_height_m(_terrain, _heights, below.x, below.z)
+	if forward.y > -0.05:
+		return Vector3(below.x, ground, below.z)
+	var hit: Vector3 = below
+	for step: int in 4:
+		var t: float = (view.origin.y - ground) / -forward.y
+		hit = view.origin + forward * maxf(t, 0.0)
+		ground = ScatterPlacer.ground_height_m(_terrain, _heights, hit.x, hit.z)
+	return hit
 
 
 ## Items placed, for tests and the budget report.

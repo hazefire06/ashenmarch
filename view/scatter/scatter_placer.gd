@@ -37,7 +37,7 @@ const KINDS: Dictionary[StringName, int] = {
 
 ## Items per square metre on each layer (Layer order), before the clumping
 ## and the density knob. The tuning knobs for how much scatter there is.
-const DENSITY: Array[float] = [0.7, 0.6, 0.5, 0.08, 0.2, 0.5]
+const DENSITY: Array[float] = [0.35, 0.32, 0.28, 0.06, 0.14, 0.28]
 
 ## What each layer (Layer order) grows: [model, weight, low, high]. low..high
 ## is the height in metres it is sized to, or for a pebble a scale of its
@@ -46,38 +46,37 @@ const DENSITY: Array[float] = [0.7, 0.6, 0.5, 0.08, 0.2, 0.5]
 ## are the kit's autumn red, which reads as black blots on the green ground.
 const PALETTES: Array = [
 	[
-		[&"grass_common_short", 5.0, 0.28, 0.45], [&"grass_common_tall", 2.0, 0.45, 0.7],
-		[&"grass_wispy_short", 2.5, 0.3, 0.5], [&"clover_1", 0.5, 0.12, 0.2], [&"clover_2", 0.5, 0.12, 0.2],
-		[&"flower_3_group", 0.35, 0.3, 0.45], [&"flower_4_group", 0.35, 0.3, 0.5],
+		[&"grass_common_short", 6.0, 0.28, 0.45], [&"grass_common_tall", 2.0, 0.45, 0.7],
+		[&"clover_1", 0.6, 0.12, 0.2], [&"flower_3_group", 0.4, 0.3, 0.45],
 	],
 	[
-		[&"grass_common_tall", 2.0, 0.45, 0.75], [&"grass_wispy_short", 2.0, 0.3, 0.55],
-		[&"grass_common_short", 1.5, 0.3, 0.45], [&"fern_1", 1.2, 0.3, 0.5], [&"plant_1", 1.0, 0.3, 0.55],
-		[&"plant_7", 0.35, 0.18, 0.3], [&"flower_4_group", 0.3, 0.3, 0.5],
-		[&"bush_common_flowers", 0.3, 0.6, 1.0],
+		[&"grass_common_tall", 2.0, 0.45, 0.75], [&"grass_common_short", 2.5, 0.3, 0.45],
+		[&"fern_1", 1.3, 0.3, 0.5], [&"plant_1", 1.3, 0.3, 0.55], [&"bush_common_flowers", 0.25, 0.6, 1.0],
 	],
 	[
-		[&"fern_1", 3.0, 0.3, 0.55], [&"plant_1", 1.5, 0.3, 0.55], [&"plant_7", 0.5, 0.18, 0.3],
-		[&"mushroom_common", 0.8, 0.12, 0.25], [&"grass_wispy_short", 1.0, 0.3, 0.5],
-		[&"clover_1", 0.5, 0.12, 0.2], [&"bush_common_flowers", 0.35, 0.6, 1.0], [&"pebble_round_2", 0.2, 0.5, 1.2],
+		[&"fern_1", 3.0, 0.3, 0.55], [&"plant_1", 2.0, 0.3, 0.55], [&"mushroom_common", 0.4, 0.12, 0.25],
+		[&"grass_common_tall", 0.6, 0.3, 0.5], [&"bush_common_flowers", 0.3, 0.6, 1.0],
 	],
 	[
-		[&"pebble_round_1", 0.5, 0.5, 1.5], [&"pebble_round_3", 0.5, 0.5, 1.5], [&"pebble_round_5", 0.5, 0.5, 1.5],
-		[&"pebble_square_1", 0.3, 0.5, 1.5], [&"pebble_square_3", 0.3, 0.5, 1.5],
-		[&"grass_wispy_short", 1.5, 0.2, 0.4],
+		[&"pebble_round_1", 0.8, 0.5, 1.5], [&"pebble_square_1", 0.6, 0.5, 1.5],
+		[&"grass_wispy_short", 1.4, 0.2, 0.4],
 	],
 	[
-		[&"pebble_round_1", 1.0, 0.5, 2.0], [&"pebble_round_2", 1.0, 0.5, 2.0], [&"pebble_round_3", 1.0, 0.5, 2.0],
-		[&"pebble_round_4", 1.0, 0.5, 2.0], [&"pebble_round_5", 1.0, 0.5, 2.0],
-		[&"pebble_square_1", 1.0, 0.5, 2.0], [&"pebble_square_2", 1.0, 0.5, 2.0], [&"pebble_square_3", 1.0, 0.5, 2.0],
-		[&"pebble_square_4", 1.0, 0.5, 2.0], [&"pebble_square_5", 1.0, 0.5, 2.0], [&"pebble_square_6", 1.0, 0.5, 2.0],
-		[&"grass_wispy_short", 0.6, 0.2, 0.35],
+		[&"pebble_round_1", 1.0, 0.5, 2.0], [&"pebble_round_3", 1.0, 0.5, 2.0], [&"pebble_square_1", 1.0, 0.5, 2.0],
+		[&"grass_wispy_short", 0.25, 0.2, 0.35],
 	],
 	[
-		[&"grass_wispy_tall", 3.0, 0.55, 0.8], [&"grass_wispy_short", 1.0, 0.3, 0.5],
+		[&"grass_wispy_tall", 3.0, 0.55, 0.8], [&"grass_wispy_short", 0.8, 0.3, 0.5],
 		[&"pebble_round_3", 0.3, 0.5, 1.0],
 	],
 ]
+## The weights also keep the triangle count down: the kit's wispy grass (494
+## triangles), flower groups (755 and 1690), mushrooms (880) and bushes (1368)
+## are a few times the common grass tuft's 155, so they are the accents. And
+## every model a chunk holds is a draw call of its own, so each palette uses
+## few, and the set's other plants, flowers and pebbles grow nowhere for now
+## (make bench: each model a chunk draws costs about as much as a thousand
+## grass tufts).
 ## Models that grow in patches (flower beds, clover drifts) rather than
 ## evenly: their weight follows a second noise.
 const PATCHY: Array[StringName] = [&"clover_1", &"clover_2", &"flower_3_group", &"flower_4_group"]
@@ -114,7 +113,7 @@ const SPREAD: float = 0.15
 ## Per kind: width and depth over the height's scale. The kit's grass tufts
 ## are tall and narrow; sized to stay under a unit's knee they would be a few
 ## blades, so they are spread wider to read as cover.
-const WIDEN: Array[float] = [1.8, 1.0, 1.0, 1.0]
+const WIDEN: Array[float] = [2.0, 1.0, 1.0, 1.0]
 ## The density knob on the Web (WebGL2 on modest GPUs); 1.0 elsewhere.
 const DENSITY_SCALE_WEB: float = 0.4
 

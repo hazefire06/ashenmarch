@@ -42,7 +42,7 @@ func test_every_placed_item_is_drawn_once_per_mesh() -> void:
 
 
 func test_chunks_hold_only_their_own_square() -> void:
-	var terrain: Terrain = TestTerrains.from_ascii(_rows(70, 40, "."))
+	var terrain: Terrain = TestTerrains.from_ascii(_rows(220, 40, "."))
 	var view: ScatterView = _view(terrain)
 	var instances: Array[MultiMeshInstance3D] = _instances(view)
 	assert_gt(instances.size(), 4, "several chunks and models")
@@ -146,6 +146,45 @@ func _height_near(view: ScatterView, at: Vector2) -> float:
 			if Vector2(spot.x, spot.z).distance_to(at) < 2.5:
 				lowest = minf(lowest, spot.y)
 	return lowest
+
+
+func test_the_focus_reaches_every_material_and_hides_far_chunks() -> void:
+	var terrain: Terrain = TestTerrains.from_ascii(_rows(400, 60, "b"))
+	var view: ScatterView = _view(terrain)
+	view.set_focus(Vector3(20.0, 0.0, 30.0))
+	for material: ShaderMaterial in view.materials():
+		assert_eq(material.get_shader_parameter(&"fade_centre"), Vector3(20.0, 0.0, 30.0))
+	var near: int = 0
+	var far: int = 0
+	for instance: MultiMeshInstance3D in _instances(view):
+		if instance.position.x < ScatterView.CHUNK_M:
+			assert_true(instance.visible, "%s by the focus is drawn" % instance.name)
+			near += 1
+		elif instance.position.x - ScatterView.CHUNK_M * 0.5 > 20.0 + ScatterView.FADE_END_M.max():
+			assert_false(instance.visible, "%s far from the focus is hidden" % instance.name)
+			far += 1
+	assert_gt(near, 0)
+	assert_gt(far, 0)
+	view.set_focus(Vector3(380.0, 0.0, 30.0))
+	for instance: MultiMeshInstance3D in _instances(view):
+		if instance.position.x < ScatterView.CHUNK_M:
+			assert_false(instance.visible, "the far end once the focus moves")
+
+
+func test_the_look_point_is_where_the_camera_ray_meets_the_ground() -> void:
+	var terrain: Terrain = TestTerrains.ramp_x(100, 100, 200)
+	var view: ScatterView = _view(terrain)
+	var down: Transform3D = Transform3D(Basis(Vector3.RIGHT, -PI / 2.0), Vector3(40.0, 50.0, 40.0))
+	var below: Vector3 = view.look_point(down)
+	assert_almost_eq(below.x, 40.0, 0.01)
+	assert_almost_eq(below.z, 40.0, 0.01)
+	assert_almost_eq(below.y, 8.0, 0.01, "on the ramp, 0.2 m up per metre")
+	var tilted: Transform3D = Transform3D.IDENTITY.looking_at(Vector3(0.0, -1.0, -1.0), Vector3.UP)
+	tilted.origin = Vector3(50.0, 40.0, 80.0)
+	var hit: Vector3 = view.look_point(tilted)
+	assert_almost_eq(hit.y, ScatterPlacer.ground_height_m(terrain, ScatterPlacer.view_height_array(terrain, {}), hit.x, hit.z), 0.05, "on the ground")
+	assert_almost_eq(hit.x, 50.0, 0.01, "straight ahead")
+	assert_lt(hit.z, 80.0, "in front of the camera")
 
 
 func test_nothing_is_drawn_without_a_scatter_set() -> void:
