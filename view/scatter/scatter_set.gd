@@ -24,9 +24,10 @@ func find(name: StringName) -> ScatterModel:
 	return null
 
 
-## Native height in metres per model name, what ScatterPlacer sizes by.
-func native_heights() -> Dictionary[StringName, float]:
-	var heights: Dictionary[StringName, float] = {}
+## Native bounds in metres per model name, what ScatterPlacer sizes and
+## spaces by.
+func native_sizes() -> Dictionary[StringName, Vector3]:
+	var sizes: Dictionary[StringName, Vector3] = {}
 	for model: ScatterModel in models:
-		heights[model.name] = model.size_m.y
-	return heights
+		sizes[model.name] = model.size_m
+	return sizes

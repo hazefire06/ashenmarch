@@ -6,13 +6,14 @@ extends GutTest
 const SEED: int = 12345
 
 
-## Every model the placer can choose, one metre tall (pebbles 0.1 m), so a
-## test can read an item's height from its scale.
-static func _heights() -> Dictionary[StringName, float]:
-	var heights: Dictionary[StringName, float] = {}
+## Every model the placer can choose, one metre tall (pebbles 0.1 m) and
+## `width` times as wide, so a test can read an item's height from its scale.
+static func _sizes(width: float = 1.0) -> Dictionary[StringName, Vector3]:
+	var sizes: Dictionary[StringName, Vector3] = {}
 	for name: StringName in ScatterPlacer.KINDS:
-		heights[name] = 0.1 if ScatterPlacer.KINDS[name] == ScatterPlacer.Kind.PEBBLE else 1.0
-	return heights
+		var tall: float = 0.1 if ScatterPlacer.KINDS[name] == ScatterPlacer.Kind.PEBBLE else 1.0
+		sizes[name] = Vector3(tall * width, tall, tall * width)
+	return sizes
 
 
 static func _rows(size_x: int, size_z: int, letter: String) -> Array[String]:
@@ -24,12 +25,12 @@ static func _rows(size_x: int, size_z: int, letter: String) -> Array[String]:
 
 static func _place(
 	terrain: Terrain, structures: MapStructures = null, water_m: PackedFloat32Array = PackedFloat32Array(),
-	seed: int = SEED, density: float = 1.0
+	seed: int = SEED, density: float = 1.0, width: float = 1.0
 ) -> ScatterLayout:
 	var view_heights: Dictionary[int, int] = {}
 	if structures != null:
 		view_heights = structures.view_heights(terrain)
-	return ScatterPlacer.place(terrain, view_heights, water_m, structures, _heights(), seed, density)
+	return ScatterPlacer.place(terrain, view_heights, water_m, structures, _sizes(width), seed, density)
 
 
 ## The names a layer's palette can choose.
@@ -109,6 +110,35 @@ func test_nothing_stands_on_or_beside_a_structure() -> void:
 		var at: Vector3 = layout.transforms[n].origin
 		var near: bool = at.x > 10.0 - reach and at.x < 17.0 + reach and at.z > 10.0 - reach and at.z < 15.0 + reach
 		assert_false(near, "item %d at %s is on or beside the house" % [n, at])
+
+
+func test_a_wide_item_keeps_its_edge_off_a_structure() -> void:
+	# Every model three times as wide as it is tall: a 0.4 m tuft is 1.2 m
+	# across, more before WIDEN. Its edge, not just its centre, stays out.
+	var terrain: Terrain = TestTerrains.from_ascii(_rows(30, 30, "b"))
+	var wall: StructureRecord = StructureRecord.new()
+	wall.kind = &"house"
+	var samples: PackedInt32Array = PackedInt32Array()
+	for i: int in range(5, 25):
+		samples.append(15 * terrain.size_x + i)
+	wall.samples = samples
+	var structures: MapStructures = MapStructures.new()
+	structures.records = [wall]
+	var layout: ScatterLayout = _place(terrain, structures, PackedFloat32Array(), SEED, 1.0, 3.0)
+	assert_gt(layout.size(), 0)
+	var near: int = 0
+	for n: int in layout.size():
+		var at: Vector3 = layout.transforms[n].origin
+		var scale: Vector3 = layout.transforms[n].basis.get_scale()
+		var tall: float = _sizes(3.0)[layout.names[layout.models[n]]].y
+		var radius: float = 0.5 * 3.0 * tall * maxf(scale.x, scale.z)
+		if at.x < 5.0 - 2.0 or at.x > 24.0 + 2.0:
+			continue
+		var gap: float = absf(at.z - 15.0) - radius
+		assert_gte(gap, 0.5 + ScatterPlacer.STRUCTURE_MARGIN_M - 0.001, "item %d at %s, %.2f m across, reaches the wall" % [n, at, radius * 2.0])
+		if gap < 3.0:
+			near += 1
+	assert_gt(near, 0, "items still grow close to the wall")
 
 
 func test_nothing_stands_on_a_blocked_sample() -> void:
@@ -229,7 +259,7 @@ func test_sizes_stay_low() -> void:
 		for n: int in layout.size():
 			var name: StringName = layout.names[layout.models[n]]
 			var kind: int = ScatterPlacer.KINDS[name]
-			var tall: float = layout.transforms[n].basis.get_scale().y * _heights()[name]
+			var tall: float = layout.transforms[n].basis.get_scale().y * _sizes()[name].y
 			if kind == ScatterPlacer.Kind.PEBBLE:
 				var factor: float = layout.transforms[n].basis.get_scale().y
 				assert_between(factor, 0.5 * 0.85, 2.0 * 1.15, "%s scaled %.2f" % [name, factor])

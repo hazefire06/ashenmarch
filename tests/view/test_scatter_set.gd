@@ -24,7 +24,8 @@ func test_every_palette_entry_names_a_known_model() -> void:
 			assert_true(ScatterPlacer.KINDS.has(entry[0]), "%s has a kind" % entry[0])
 
 
-func test_native_heights_cover_the_set() -> void:
-	var heights: Dictionary[StringName, float] = ScatterSet.shared().native_heights()
-	assert_eq(heights.size(), ScatterPlacer.KINDS.size())
-	assert_almost_eq(heights[&"pebble_round_1"], 0.095, 0.01)
+func test_native_sizes_cover_the_set() -> void:
+	var sizes: Dictionary[StringName, Vector3] = ScatterSet.shared().native_sizes()
+	assert_eq(sizes.size(), ScatterPlacer.KINDS.size())
+	assert_almost_eq(sizes[&"pebble_round_1"].y, 0.095, 0.01)
+	assert_almost_eq(sizes[&"bush_common_flowers"].x, 1.915, 0.01)

@@ -73,10 +73,9 @@ const PALETTES: Array = [
 ## The weights also keep the triangle count down: the kit's wispy grass (494
 ## triangles), flower groups (755 and 1690), mushrooms (880) and bushes (1368)
 ## are a few times the common grass tuft's 155, so they are the accents. And
-## every model a chunk holds is a draw call of its own, so each palette uses
-## few, and the set's other plants, flowers and pebbles grow nowhere for now
-## (make bench: each model a chunk draws costs about as much as a thousand
-## grass tufts).
+## each model used is a draw call of its own (ScatterView), so the palettes
+## share a few: the set's other plants, flowers and pebbles grow nowhere for
+## now.
 ## Models that grow in patches (flower beds, clover drifts) rather than
 ## evenly: their weight follows a second noise.
 const PATCHY: Array[StringName] = [&"clover_1", &"clover_2", &"flower_3_group", &"flower_4_group"]
@@ -135,16 +134,17 @@ static func seed_for(map_name: String) -> int:
 ## The layout for a map. view_heights are the heights the view draws under
 ## structures (MapStructures.view_heights), water_m the water surface per
 ## sample (WaterMap.load_beside; empty for none), structures may be null.
-## native_heights names the models there are (ScatterSet.native_heights);
-## palette entries without one are skipped. density_scale multiplies every
+## native_sizes holds each model's native bounds (ScatterSet.native_sizes):
+## its height sizes it, its width keeps its edge off structures; palette
+## entries without one are skipped. density_scale multiplies every
 ## density (0 places nothing).
 static func place(
 	terrain: Terrain, view_heights: Dictionary[int, int], water_m: PackedFloat32Array,
-	structures: MapStructures, native_heights: Dictionary[StringName, float], seed: int,
+	structures: MapStructures, native_sizes: Dictionary[StringName, Vector3], seed: int,
 	density_scale: float = 1.0
 ) -> ScatterLayout:
 	var layout: ScatterLayout = ScatterLayout.new()
-	var palettes: Array = _usable_palettes(native_heights, layout)
+	var palettes: Array = _usable_palettes(native_sizes, layout)
 	if density_scale <= 0.0 or layout.names.is_empty():
 		return layout
 	var heights: PackedInt32Array = view_height_array(terrain, view_heights)
@@ -188,18 +188,22 @@ static func place(
 					continue
 				if wet > DRY_DEPTH_M and rng.randf() >= WADING_SHARE:
 					continue
-				if _kept_out(terrain, keep, x, z, cell_m):
-					continue
 				var entry: Array = _pick(palettes[layer], patch.get_noise_2d(x, z), rng)
 				if entry.is_empty():
 					continue
 				var name: StringName = entry[0]
 				var kind: int = KINDS[name]
+				var native: Vector3 = native_sizes[name]
 				var size: float = lerpf(entry[2], entry[3], rng.randf())
-				var scale: float = size if kind == Kind.PEBBLE else size / maxf(native_heights[name], 0.001)
+				var scale: float = size if kind == Kind.PEBBLE else size / maxf(native.y, 0.001)
 				var yaw: float = rng.randf() * TAU
 				var spread_x: float = 1.0 + (rng.randf() - 0.5) * 2.0 * SPREAD
 				var spread_z: float = 1.0 + (rng.randf() - 0.5) * 2.0 * SPREAD
+				# The footprint's radius, whatever the yaw: half the native
+				# width or depth, whichever is larger, at the larger spread.
+				var radius: float = 0.5 * maxf(native.x, native.z) * scale * WIDEN[kind] * maxf(spread_x, spread_z)
+				if _kept_out(terrain, keep, x, z, cell_m, radius):
+					continue
 				var lean: Quaternion = Quaternion.IDENTITY.slerp(Quaternion(Vector3.UP, normal), TILT[kind])
 				var basis: Basis = Basis(lean) * Basis(Vector3.UP, yaw) * Basis.from_scale(
 					Vector3(scale * spread_x * WIDEN[kind], scale, scale * spread_z * WIDEN[kind])
@@ -290,10 +294,11 @@ static func keep_out(terrain: Terrain, structures: MapStructures) -> PackedByteA
 	return keep
 
 
-## Whether (x, z) is within half a cell plus STRUCTURE_MARGIN_M of a kept-out
-## sample, along x and z alike.
-static func _kept_out(terrain: Terrain, keep: PackedByteArray, x: float, z: float, cell_m: float) -> bool:
-	var reach: float = 0.5 * cell_m + STRUCTURE_MARGIN_M
+## Whether an item centred on (x, z) with this footprint radius comes within
+## half a cell plus STRUCTURE_MARGIN_M of a kept-out sample, along x and z
+## alike: its edge is kept out, not just its centre.
+static func _kept_out(terrain: Terrain, keep: PackedByteArray, x: float, z: float, cell_m: float, radius: float) -> bool:
+	var reach: float = 0.5 * cell_m + STRUCTURE_MARGIN_M + radius
 	var span: int = ceili(reach / cell_m)
 	var ci: int = roundi(x / cell_m)
 	var cj: int = roundi(z / cell_m)
@@ -321,14 +326,14 @@ static func _cell(terrain: Terrain, heights: PackedInt32Array, x_m: float, z_m: 
 	return [clampf(fx - i, 0.0, 1.0), clampf(fz - j, 0.0, 1.0), h]
 
 
-## PALETTES without the entries native_heights lacks, and layout.names filled
+## PALETTES without the entries native_sizes lacks, and layout.names filled
 ## with every model that is left.
-static func _usable_palettes(native_heights: Dictionary[StringName, float], layout: ScatterLayout) -> Array:
+static func _usable_palettes(native_sizes: Dictionary[StringName, Vector3], layout: ScatterLayout) -> Array:
 	var result: Array = []
 	for palette: Array in PALETTES:
 		var usable: Array = []
 		for entry: Array in palette:
-			if native_heights.has(entry[0]):
+			if native_sizes.has(entry[0]):
 				usable.append(entry)
 				if not layout.names.has(entry[0]):
 					layout.names.append(entry[0])
