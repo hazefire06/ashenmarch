@@ -1,25 +1,25 @@
-shader_type spatial;
-render_mode diffuse_lambert, specular_disabled, cull_disabled;
-
-// The ground scatter (A5, view only): grass tufts, plants, bushes and pebbles,
-// drawn as MultiMesh instances by ScatterView, one material per kit surface
-// and kind. It does to an item what terrain.gdshader does to the ground under
-// it, in the same order: the ground's recolor (the instance's custom R is its
-// Terrain.Ground), the grade, the fire, wetness and snow. The constants match
-// world_model.gdshader's, so a burnt bush matches a burnt house and its yard.
+// The ground scatter (A5, view only): grass tufts, plants, bushes and
+// pebbles, drawn as MultiMesh instances by ScatterView, one material per kit
+// surface and kind. Included by scatter_opaque.gdshader and, defining CUTOUT
+// (alpha scissor), by scatter_cutout.gdshader. It does to an item what
+// terrain.gdshader does to the ground under it, in the same order: the
+// ground's recolor (the instance's custom R is its Terrain.Ground), the grade,
+// the fire, wetness and snow. The constants match world_model.gdshader's, so
+// a burnt bush matches a burnt house and its yard.
 //
-// In the vertex stage: grass and plants sway with TIME (cosmetic), every item
+// In the vertex stage: grass and plants sway with TIME (cosmetic); every item
 // shrinks into the ground over the last fade_margin metres before fade_end
-// from fade_centre (where the camera looks, on the ground: the scatter is
-// drawn round what the player is looking at, the same area at every zoom), and the sim's fire (fire_state, one texel per sample, read
-// at the item's sample) takes grass and plants away once their cell is
-// scorched and leaves bushes as charred stumps.
+// from fade_centre (the ground point the camera looks at); and the sim's fire
+// (fire_state, one texel per sample, read at the item's sample) takes grass
+// and plants away once their cell is scorched and leaves bushes as charred
+// stumps.
 
 uniform sampler2D albedo_texture : source_color, hint_default_white, filter_linear_mipmap, repeat_enable;
 uniform vec4 albedo_color : source_color = vec4(1.0, 1.0, 1.0, 1.0);
-// Leaves and flowers are cut out of their cards at this alpha; 0 for the
-// solid models (grass blades, mushrooms, pebbles).
-uniform float alpha_cutoff = 0.0;
+#ifdef CUTOUT
+// Leaves and flowers are cut out of their cards at this alpha.
+uniform float alpha_cutoff = 0.2;
+#endif
 // The kit is bright and saturated; these bring an item toward the ground's
 // photographic colours before anything else: a multiplier, then a drain
 // toward its own gray.
@@ -108,6 +108,8 @@ void fragment() {
 	color = mix(color, EMBER, 0.6 * v_burning);
 	EMISSION = EMBER * 0.4 * v_burning;
 	ALBEDO = color;
-	ALPHA = alpha_cutoff > 0.0 ? texel.a : 1.0;
+#ifdef CUTOUT
+	ALPHA = texel.a;
 	ALPHA_SCISSOR_THRESHOLD = alpha_cutoff;
+#endif
 }

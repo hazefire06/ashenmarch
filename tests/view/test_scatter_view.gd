@@ -1,6 +1,6 @@
 extends GutTest
-## ScatterView: the placer's layout as chunked MultiMeshInstance3Ds with the
-## scatter shader, graded, weathered and lit by the terrain's fire texture,
+## ScatterView: the placer's layout as one MultiMeshInstance3D per model mesh,
+## given only the items near the focus, with the scatter shaders, graded, weathered and lit by the terrain's fire texture,
 ## and following the ground when an explosion scars it. What the shader does
 ## with its parameters is checked by eye (make capture).
 
@@ -26,36 +26,55 @@ func _instances(view: ScatterView) -> Array[MultiMeshInstance3D]:
 	return found
 
 
-func test_every_placed_item_is_drawn_once_per_mesh() -> void:
+func test_one_multimesh_per_model_mesh_holding_every_item() -> void:
 	var terrain: Terrain = TestTerrains.from_ascii(_rows(70, 40, "b"))
 	var view: ScatterView = _view(terrain)
 	var layout: ScatterLayout = ScatterPlacer.place(
-		terrain, {}, PackedFloat32Array(), null, ScatterSet.shared().native_heights(), ScatterPlacer.seed_for("test")
+		terrain, {}, PackedFloat32Array(), null, ScatterSet.shared().native_sizes(), ScatterPlacer.seed_for("test")
 	)
 	assert_eq(view.instance_count(), layout.size())
-	var drawn: int = 0
+	var names: Dictionary[String, int] = {}
 	for instance: MultiMeshInstance3D in _instances(view):
 		assert_not_null(instance, "only multimeshes")
-		drawn += instance.multimesh.instance_count
 		assert_true(instance.multimesh.use_custom_data, "the custom data carries the ground")
-	assert_eq(drawn, layout.size(), "every model in the set has one mesh")
+		names[String(instance.name)] = names.get(String(instance.name), 0) + 1
+	assert_eq(names.size(), _instances(view).size(), "one draw per model mesh: no chunks")
+	var held: int = 0
+	for origins: PackedVector3Array in view.drawn_origins():
+		held += origins.size()
+	assert_gte(held, layout.size(), "every item is held (a model with two meshes holds it twice)")
+	view.set_focus(Vector3(35.0, 0.0, 20.0))
+	var submitted: int = 0
+	for instance: MultiMeshInstance3D in _instances(view):
+		submitted += instance.multimesh.instance_count
+	assert_eq(submitted, held, "a focus in the middle of a small map submits everything")
 
 
-func test_chunks_hold_only_their_own_square() -> void:
-	var terrain: Terrain = TestTerrains.from_ascii(_rows(220, 40, "."))
+func test_only_items_near_the_focus_are_submitted() -> void:
+	var terrain: Terrain = TestTerrains.from_ascii(_rows(400, 60, "b"))
 	var view: ScatterView = _view(terrain)
+	for instance: MultiMeshInstance3D in _instances(view):
+		assert_eq(instance.multimesh.instance_count, 0, "nothing before the first focus")
+	view.set_focus(Vector3(30.0, 0.0, 30.0))
 	var instances: Array[MultiMeshInstance3D] = _instances(view)
-	assert_gt(instances.size(), 4, "several chunks and models")
-	var origins: Array[PackedVector3Array] = view.drawn_origins()
-	assert_eq(origins.size(), instances.size())
-	for c: int in instances.size():
-		var instance: MultiMeshInstance3D = instances[c]
-		var centre: Vector3 = instance.position
-		assert_gt(instance.visibility_range_end, 0.0, "each chunk stops drawing far away")
-		assert_eq(instance.multimesh.instance_count, origins[c].size())
-		for at: Vector3 in origins[c]:
-			assert_lte(absf(at.x - centre.x), ScatterView.CHUNK_M * 0.5 + 1.0, "%s within its chunk" % instance.name)
-			assert_lte(absf(at.z - centre.z), ScatterView.CHUNK_M * 0.5 + 1.0, "%s within its chunk" % instance.name)
+	var submitted: Array[PackedVector3Array] = view.submitted_origins()
+	var all: Array[PackedVector3Array] = view.drawn_origins()
+	var diagonal: float = ScatterView.BUCKET_M * sqrt(2.0)
+	var total: int = 0
+	for g: int in instances.size():
+		var model: String = String(instances[g].name).trim_prefix("Scatter_")
+		var reach: float = ScatterView.FADE_END_M[ScatterPlacer.KINDS[StringName(model)]]
+		assert_eq(instances[g].multimesh.instance_count, submitted[g].size(), "%s: the buffer holds what was chosen" % model)
+		for at: Vector3 in submitted[g]:
+			assert_lt(Vector2(at.x - 30.0, at.z - 30.0).length(), reach + diagonal, "%s at %s is beyond reach" % [model, at])
+		var within: int = 0
+		for at: Vector3 in all[g]:
+			if Vector2(at.x - 30.0, at.z - 30.0).length() < reach:
+				within += 1
+		assert_gte(submitted[g].size(), within, "%s: everything in reach is submitted" % model)
+		assert_lt(submitted[g].size(), all[g].size(), "%s: the far end of the map is not" % model)
+		total += submitted[g].size()
+	assert_gt(total, 0)
 
 
 func test_every_surface_uses_the_scatter_shader_with_the_fire() -> void:
@@ -66,7 +85,7 @@ func test_every_surface_uses_the_scatter_shader_with_the_fire() -> void:
 	var view: ScatterView = _view(terrain, terrain_view.fire_texture())
 	assert_gt(view.materials().size(), 3)
 	for material: ShaderMaterial in view.materials():
-		assert_eq(material.shader, ScatterView.SCATTER_SHADER)
+		assert_has([ScatterView.OPAQUE_SHADER, ScatterView.CUTOUT_SHADER], material.shader)
 		assert_eq(material.get_shader_parameter(&"fire_state"), terrain_view.fire_texture())
 		assert_eq(material.get_shader_parameter(&"sample_count"), Vector2(40, 40))
 	for instance: MultiMeshInstance3D in _instances(view):
@@ -80,12 +99,65 @@ func test_leaves_are_cut_out_and_grass_blades_are_solid() -> void:
 	var cut: int = 0
 	var solid: int = 0
 	for material: ShaderMaterial in view.materials():
-		if material.get_shader_parameter(&"alpha_cutoff") > 0.0:
+		if material.shader == ScatterView.CUTOUT_SHADER:
+			assert_gt(material.get_shader_parameter(&"alpha_cutoff"), 0.0, "the kit's own cutoff")
 			cut += 1
 		else:
+			assert_eq(material.shader, ScatterView.OPAQUE_SHADER)
 			solid += 1
 	assert_gt(cut, 0, "the leaf cards are alpha-scissored")
 	assert_gt(solid, 0, "the grass blades are not")
+
+
+func test_only_the_cutout_shader_can_discard() -> void:
+	var opaque: Array[String] = []
+	for uniform: Dictionary in ScatterView.OPAQUE_SHADER.get_shader_uniform_list():
+		opaque.append(uniform["name"])
+	var cutout: Array[String] = []
+	for uniform: Dictionary in ScatterView.CUTOUT_SHADER.get_shader_uniform_list():
+		cutout.append(uniform["name"])
+	assert_does_not_have(opaque, "alpha_cutoff", "the opaque shader writes no alpha scissor")
+	assert_has(cutout, "alpha_cutoff")
+	assert_string_contains(ScatterView.CUTOUT_SHADER.code, "#define CUTOUT")
+	assert_false(ScatterView.OPAQUE_SHADER.code.contains("CUTOUT"))
+
+
+func test_each_kind_burns_its_own_way() -> void:
+	var view: ScatterView = _view(TestTerrains.from_ascii(_rows(60, 60, "b")))
+	var seen: Dictionary[int, bool] = {}
+	for instance: MultiMeshInstance3D in _instances(view):
+		var model: String = String(instance.name).trim_prefix("Scatter_")
+		var kind: int = ScatterPlacer.KINDS[StringName(model)]
+		var mesh: Mesh = instance.multimesh.mesh
+		for i: int in mesh.get_surface_count():
+			var material: ShaderMaterial = mesh.surface_get_material(i) as ShaderMaterial
+			assert_eq(material.get_shader_parameter(&"burn_mode"), ScatterView.BURN_MODE[kind], "%s burns as its kind" % model)
+		seen[kind] = true
+	assert_true(seen.has(ScatterPlacer.Kind.GRASS) and seen.has(ScatterPlacer.Kind.BUSH), "grass and bushes both checked")
+	assert_eq(ScatterView.BURN_MODE[ScatterPlacer.Kind.GRASS], 1, "scorched grass is gone")
+	assert_eq(ScatterView.BURN_MODE[ScatterPlacer.Kind.PLANT], 1, "scorched plants are gone")
+	assert_eq(ScatterView.BURN_MODE[ScatterPlacer.Kind.BUSH], 2, "a scorched bush is a charred stump")
+	assert_eq(ScatterView.BURN_MODE[ScatterPlacer.Kind.PEBBLE], 0, "pebbles don't burn")
+
+
+func test_the_sims_fire_reaches_the_scatters_fire_texture() -> void:
+	var rows: Array[String] = []
+	for j: int in 11:
+		rows.append("sssss" + ("." if j == 5 else "s") + "sssss")
+	var world: World = World.new(1, TestTerrains.from_ascii(rows), TestTerrains.catalog())
+	var terrain_view: TerrainView = TerrainView.new()
+	add_child_autofree(terrain_view)
+	terrain_view.build(world.terrain)
+	var view: ScatterView = _view(world.terrain, terrain_view.fire_texture())
+	assert_gt(view.materials().size(), 0)
+	world.ignite(5000, 5000, 0)
+	terrain_view.update_fire(world.fire)
+	# The headless renderer keeps no texture data, so the check is that every
+	# material holds the very texture TerrainView updates, and that it updated.
+	assert_eq(terrain_view.fire_texel(5, 5), TerrainView.FIRE_TEXEL[Fire.Cell.BURNING])
+	assert_eq(terrain_view.fire_glow_texel(5, 5), TerrainView.FIRE_GLOW_TEXEL)
+	for material: ShaderMaterial in view.materials():
+		assert_same(material.get_shader_parameter(&"fire_state"), terrain_view.fire_texture(), "the scatter reads the live fire")
 
 
 func test_grade_and_weather_reach_every_material_and_survive_a_rebuild() -> void:
@@ -148,27 +220,20 @@ func _height_near(view: ScatterView, at: Vector2) -> float:
 	return lowest
 
 
-func test_the_focus_reaches_every_material_and_hides_far_chunks() -> void:
+func test_the_focus_reaches_every_material_and_moves_the_submission() -> void:
 	var terrain: Terrain = TestTerrains.from_ascii(_rows(400, 60, "b"))
 	var view: ScatterView = _view(terrain)
 	view.set_focus(Vector3(20.0, 0.0, 30.0))
 	for material: ShaderMaterial in view.materials():
 		assert_eq(material.get_shader_parameter(&"fade_centre"), Vector3(20.0, 0.0, 30.0))
-	var near: int = 0
-	var far: int = 0
-	for instance: MultiMeshInstance3D in _instances(view):
-		if instance.position.x < ScatterView.CHUNK_M:
-			assert_true(instance.visible, "%s by the focus is drawn" % instance.name)
-			near += 1
-		elif instance.position.x - ScatterView.CHUNK_M * 0.5 > 20.0 + ScatterView.FADE_END_M.max():
-			assert_false(instance.visible, "%s far from the focus is hidden" % instance.name)
-			far += 1
-	assert_gt(near, 0)
-	assert_gt(far, 0)
+	var near_start: Array[PackedVector3Array] = view.submitted_origins()
+	view.set_focus(Vector3(21.0, 0.0, 30.0))
+	assert_eq(view.submitted_origins(), near_start, "a step under REFRESH_M moves only the fade")
+	assert_eq(view.materials()[0].get_shader_parameter(&"fade_centre"), Vector3(21.0, 0.0, 30.0))
 	view.set_focus(Vector3(380.0, 0.0, 30.0))
-	for instance: MultiMeshInstance3D in _instances(view):
-		if instance.position.x < ScatterView.CHUNK_M:
-			assert_false(instance.visible, "the far end once the focus moves")
+	for origins: PackedVector3Array in view.submitted_origins():
+		for at: Vector3 in origins:
+			assert_gt(at.x, 380.0 - ScatterView.FADE_END_M.max() - ScatterView.BUCKET_M * 1.5, "the far end once the focus moves")
 
 
 func test_the_look_point_is_where_the_camera_ray_meets_the_ground() -> void:
@@ -195,13 +260,14 @@ func test_nothing_is_drawn_without_a_scatter_set() -> void:
 	assert_eq(view.get_child_count(), 0)
 
 
-func test_the_scatter_shader_declares_its_uniforms() -> void:
-	var names: Array[String] = []
-	for uniform: Dictionary in ScatterView.SCATTER_SHADER.get_shader_uniform_list():
-		names.append(uniform["name"])
-	for wanted: String in [
-		"albedo_texture", "albedo_color", "alpha_cutoff", "grade_tint", "grade_desaturation", "ground_recolor",
-		"wetness", "snow_cover", "fire_state", "cell_size", "sample_count", "burn_mode", "wind",
-		"fade_end", "fade_margin", "normal_up",
-	]:
-		assert_has(names, wanted, "set_shader_parameter would silently ignore a missing uniform")
+func test_the_scatter_shaders_declare_their_uniforms() -> void:
+	for shader: Shader in [ScatterView.OPAQUE_SHADER, ScatterView.CUTOUT_SHADER]:
+		var names: Array[String] = []
+		for uniform: Dictionary in shader.get_shader_uniform_list():
+			names.append(uniform["name"])
+		for wanted: String in [
+			"albedo_texture", "albedo_color", "grade_tint", "grade_desaturation", "ground_recolor", "kit_tint",
+			"kit_desaturation", "wetness", "snow_cover", "fire_state", "cell_size", "sample_count", "burn_mode",
+			"wind", "fade_centre", "fade_end", "fade_margin", "normal_up",
+		]:
+			assert_has(names, wanted, "%s: set_shader_parameter would silently ignore a missing uniform" % shader.resource_path)

@@ -1,22 +1,33 @@
 class_name ScatterView
 extends Node3D
 ## Draws the ground scatter (A5, view only): what ScatterPlacer lays out for a
-## map, as one MultiMeshInstance3D per model per CHUNK_M square, so the camera
-## culls whole chunks. It is drawn round the focus, the ground point the camera
-## looks at (set_focus; _process follows the viewport's camera): each kind out
-## to its FADE_END_M, shrinking into the ground over the last FADE_MARGIN_M,
-## and chunks wholly beyond that are hidden. So the cost is the same at every
-## zoom, and the scatter is where the player looks. Units walk through all of
-## it; the sim never sees it.
+## map, round the focus, the ground point the camera looks at (set_focus;
+## _process follows the viewport's camera). Each kind reaches out to its
+## FADE_END_M from the focus, shrinking into the ground over the last
+## FADE_MARGIN_M, so the cost is the same at every zoom and the scatter is
+## where the player looks. Units walk through all of it; the sim never sees it.
 ##
-## Every surface is drawn with scatter.gdshader, one material per kit surface
-## and kind, shared by every chunk. set_grade() and set_weather() reach them
-## all and survive build(); the fire comes from TerrainView's fire texture,
-## read per item in the shader. rebuild_region() (after an explosion scars the
-## ground) moves the items there back onto the new ground.
+## One MultiMeshInstance3D per model mesh, so a model is one draw call. Its
+## items are kept in BUCKET_M squares, each a ready-made slice of instance
+## buffer, and only the buckets within the model's reach of the focus are
+## submitted, rebuilt when the focus has moved REFRESH_M: items far from the
+## focus are never sent to the GPU at all.
+##
+## Every surface is drawn with the scatter shaders, one material per kit
+## surface and kind. set_grade() and set_weather() reach them all and survive
+## build(); the fire comes from TerrainView's fire texture, read per item in
+## the shader. rebuild_region() (after an explosion scars the ground) moves the
+## items there back onto the new ground.
 
-const SCATTER_SHADER: Shader = preload("res://view/scatter/scatter.gdshader")
-const CHUNK_M: float = 96.0
+## Solid models, and leaf and flower cards cut out by alpha. Two shaders, so
+## only the cards can discard (a discard costs early depth testing on tile
+## GPUs); both include scatter.gdshaderinc.
+const OPAQUE_SHADER: Shader = preload("res://view/scatter/scatter_opaque.gdshader")
+const CUTOUT_SHADER: Shader = preload("res://view/scatter/scatter_cutout.gdshader")
+## Side of the squares items are kept in. A bucket is submitted when any of it
+## is within reach, so at most a bucket's diagonal of items past the fade is
+## sent, already shrunk to nothing.
+const BUCKET_M: float = 16.0
 ## Per ScatterPlacer.Kind (grass, plant, bush, pebble): metres along the
 ## ground from the focus at which items have shrunk away; the last
 ## FADE_MARGIN_M of it they shrink. The frame-rate knobs (make bench).
@@ -25,30 +36,40 @@ const FADE_MARGIN_M: float = 20.0
 ## Nothing is drawn while the camera is further than this from the focus (the
 ## widest zooms, where tufts would be smaller than a pixel).
 const CAMERA_CUTOFF_M: float = 200.0
-## The focus moves on only when the camera's look point has moved this far.
+## The shader's fade follows the focus once the look point has moved
+## FOCUS_STEP_M; the submitted buckets once it has moved REFRESH_M (well
+## inside FADE_MARGIN_M, so nothing pops at the edge).
 const FOCUS_STEP_M: float = 1.0
-## Per kind: sway (scatter.gdshader's wind), how far the lighting normal
+const REFRESH_M: float = 4.0
+## Floats per instance in a MultiMesh buffer: a 3 x 4 transform by rows, then
+## the custom color.
+const STRIDE: int = 16
+## Per kind: sway (scatter.gdshaderinc's wind), how far the lighting normal
 ## bends up, what fire does (its burn_mode) and whether it casts a shadow.
 const WIND: Array[float] = [0.05, 0.03, 0.008, 0.0]
 const NORMAL_UP: Array[float] = [0.6, 0.5, 0.65, 0.0]
 const BURN_MODE: Array[int] = [1, 1, 2, 0]
 const SHADOWS: Array[bool] = [false, false, false, false]
 ## Per kind: how the kit's bright colours are brought toward the ground's
-## (scatter.gdshader's kit_tint and kit_desaturation).
+## (scatter.gdshaderinc's kit_tint and kit_desaturation).
 const KIT_TINT: Array[Color] = [
 	Color(0.66, 0.7, 0.5), Color(0.72, 0.76, 0.6), Color(0.95, 0.95, 0.85), Color(0.9, 0.9, 0.88),
 ]
 const KIT_DESATURATION: Array[float] = [0.4, 0.45, 0.35, 0.2]
 
 var _materials: Array[ShaderMaterial] = []
-## Per MultiMeshInstance3D: its multimesh, the items' placements (world
-## space, before the model's own transform) and that transform (local).
+## Per model mesh (one MultiMeshInstance3D each): "multimesh", "node", "kind",
+## "local" (the mesh's transform in the model), "placements" (every item of
+## the model, world space, before local), "grounds" (each item's
+## Terrain.Ground), "buckets" (Vector2i -> PackedInt32Array of item indices)
+## and "slices" (Vector2i -> PackedFloat32Array, those items' buffer).
 var _groups: Array[Dictionary] = []
 var _terrain: Terrain
 var _view_heights: Dictionary[int, int] = {}
 var _heights: PackedInt32Array = PackedInt32Array()
 var _count: int = 0
 var _focus: Vector3 = Vector3(INF, 0.0, INF)
+var _submitted_at: Vector3 = Vector3(INF, 0.0, INF)
 var _grade_tint: Color = Color.WHITE
 var _grade_desaturation: float = 0.0
 var _recolor: PackedColorArray = _no_recolor()
@@ -58,7 +79,8 @@ var _snow_cover: float = 0.0
 
 ## Replaces any scatter with the layout for this map. map_name seeds it
 ## (ScatterPlacer.seed_for), so a map always gets the same scatter.
-## fire_texture is TerrainView.fire_texture() (null: nothing burns).
+## fire_texture is TerrainView.fire_texture() (null: nothing burns). Nothing
+## is submitted until the first set_focus().
 func build(
 	terrain: Terrain, structures: MapStructures, water_m: PackedFloat32Array, map_name: String,
 	fire_texture: Texture2D = null, scatter_set: ScatterSet = ScatterSet.shared(),
@@ -71,57 +93,63 @@ func build(
 	_groups = []
 	_count = 0
 	_focus = Vector3(INF, 0.0, INF)
+	_submitted_at = Vector3(INF, 0.0, INF)
 	_terrain = terrain
 	_view_heights = {}
 	if structures != null:
 		_view_heights = structures.view_heights(terrain)
 	_heights = ScatterPlacer.view_height_array(terrain, _view_heights)
 	var layout: ScatterLayout = ScatterPlacer.place(
-		terrain, _view_heights, water_m, structures, scatter_set.native_heights(),
+		terrain, _view_heights, water_m, structures, scatter_set.native_sizes(),
 		ScatterPlacer.seed_for(map_name), density_scale
 	)
+	_count = layout.size()
 	if layout.size() == 0:
 		return
 	var cache: Dictionary[String, ShaderMaterial] = {}
-	# Per model in layout.names: [[mesh, local transform], ...].
-	var parts: Array[Array] = []
-	for name: StringName in layout.names:
-		parts.append(_parts(scatter_set.find(name), ScatterPlacer.KINDS[name], terrain, fire_texture, cache))
-	var by_chunk: Dictionary[Vector3i, PackedInt32Array] = {}
+	var by_model: Array[PackedInt32Array] = []
+	by_model.resize(layout.names.size())
 	for n: int in layout.size():
-		var at: Vector3 = layout.transforms[n].origin
-		var key: Vector3i = Vector3i(floori(at.x / CHUNK_M), floori(at.z / CHUNK_M), layout.models[n])
-		if not by_chunk.has(key):
-			by_chunk[key] = PackedInt32Array()
-		by_chunk[key].append(n)
-	var keys: Array[Vector3i] = by_chunk.keys()
-	keys.sort()
-	for key: Vector3i in keys:
-		var kind: int = ScatterPlacer.KINDS[layout.names[key.z]]
-		var centre: Vector3 = Vector3((key.x + 0.5) * CHUNK_M, 0.0, (key.y + 0.5) * CHUNK_M)
-		var items: PackedInt32Array = by_chunk[key]
+		by_model[layout.models[n]].append(n)
+	for m: int in layout.names.size():
+		var name: StringName = layout.names[m]
+		var kind: int = ScatterPlacer.KINDS[name]
 		var placements: Array[Transform3D] = []
 		var grounds: PackedByteArray = PackedByteArray()
-		for n: int in items:
+		for n: int in by_model[m]:
 			placements.append(layout.transforms[n])
 			grounds.append(layout.grounds[n])
-		for part: Array in parts[key.z]:
-			var instance: MultiMeshInstance3D = _chunk(part[0], part[1], placements, grounds, centre)
-			instance.name = "Scatter_%d_%d_%s" % [key.x, key.y, layout.names[key.z]]
-			instance.visibility_range_end = CAMERA_CUTOFF_M + CHUNK_M
+		if placements.is_empty():
+			continue
+		for part: Array in _parts(scatter_set.find(name), kind, terrain, fire_texture, cache):
+			var multimesh: MultiMesh = MultiMesh.new()
+			multimesh.transform_format = MultiMesh.TRANSFORM_3D
+			multimesh.use_custom_data = true
+			multimesh.mesh = part[0]
+			var instance: MultiMeshInstance3D = MultiMeshInstance3D.new()
+			instance.name = "Scatter_%s" % name
+			instance.multimesh = multimesh
 			instance.cast_shadow = (
 				GeometryInstance3D.SHADOW_CASTING_SETTING_ON if SHADOWS[kind] else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 			)
 			add_child(instance)
-			_groups.append({
-				"multimesh": instance.multimesh, "placements": placements, "local": part[1], "centre": centre,
-				"node": instance, "kind": kind,
-			})
-		_count += items.size()
+			var group: Dictionary = {
+				"multimesh": multimesh, "node": instance, "kind": kind, "local": part[1],
+				"placements": placements, "grounds": grounds, "buckets": {}, "slices": {}, "submitted": PackedInt32Array(),
+			}
+			for n: int in placements.size():
+				var key: Vector2i = _bucket_of(placements[n].origin)
+				if not group["buckets"].has(key):
+					group["buckets"][key] = PackedInt32Array()
+				group["buckets"][key].append(n)
+			for key: Vector2i in group["buckets"]:
+				group["slices"][key] = _slice(group, group["buckets"][key])
+			_groups.append(group)
 
 
 ## Follows the viewport's camera: its look point on the ground becomes the
-## focus once it has moved FOCUS_STEP_M.
+## focus once it has moved FOCUS_STEP_M; past CAMERA_CUTOFF_M from it nothing
+## is drawn.
 func _process(_delta: float) -> void:
 	if _groups.is_empty() or not is_inside_tree():
 		return
@@ -129,22 +157,49 @@ func _process(_delta: float) -> void:
 	if camera == null:
 		return
 	var look: Vector3 = look_point(camera.global_transform)
-	if Vector2(look.x - _focus.x, look.z - _focus.z).length() >= FOCUS_STEP_M:
+	var near: bool = camera.global_position.distance_to(look) <= CAMERA_CUTOFF_M
+	if near != visible:
+		visible = near
+	if near and Vector2(look.x - _focus.x, look.z - _focus.z).length() >= FOCUS_STEP_M:
 		set_focus(look)
 
 
 ## Draws the scatter round focus (world space; its y is unused): each kind
-## out to its FADE_END_M along the ground, chunks wholly beyond that hidden.
+## out to its FADE_END_M along the ground. The buckets within reach are
+## submitted again once the focus has moved REFRESH_M since they last were.
 func set_focus(focus: Vector3) -> void:
 	_focus = focus
 	for material: ShaderMaterial in _materials:
 		material.set_shader_parameter("fade_centre", focus)
+	if Vector2(focus.x - _submitted_at.x, focus.z - _submitted_at.z).length() < REFRESH_M:
+		return
+	_submitted_at = focus
 	var at: Vector2 = Vector2(focus.x, focus.z)
 	for group: Dictionary in _groups:
-		var centre: Vector3 = group["centre"]
-		var half: float = CHUNK_M * 0.5
-		var nearest: Vector2 = Vector2(clampf(at.x, centre.x - half, centre.x + half), clampf(at.y, centre.z - half, centre.z + half))
-		(group["node"] as Node3D).visible = nearest.distance_to(at) < FADE_END_M[group["kind"]]
+		var reach: float = FADE_END_M[group["kind"]]
+		var first: Vector2i = _bucket_of(Vector3(at.x - reach, 0.0, at.y - reach))
+		var last: Vector2i = _bucket_of(Vector3(at.x + reach, 0.0, at.y + reach))
+		var buffer: PackedFloat32Array = PackedFloat32Array()
+		var submitted: PackedInt32Array = PackedInt32Array()
+		var slices: Dictionary = group["slices"]
+		for bz: int in range(first.y, last.y + 1):
+			for bx: int in range(first.x, last.x + 1):
+				var key: Vector2i = Vector2i(bx, bz)
+				if not slices.has(key):
+					continue
+				var nearest: Vector2 = Vector2(
+					clampf(at.x, bx * BUCKET_M, (bx + 1) * BUCKET_M), clampf(at.y, bz * BUCKET_M, (bz + 1) * BUCKET_M)
+				)
+				if nearest.distance_to(at) >= reach:
+					continue
+				buffer.append_array(slices[key])
+				submitted.append_array(group["buckets"][key])
+		var multimesh: MultiMesh = group["multimesh"]
+		multimesh.instance_count = submitted.size()
+		if not submitted.is_empty():
+			multimesh.buffer = buffer
+		group["submitted"] = submitted
+		(group["node"] as Node3D).visible = not submitted.is_empty()
 
 
 ## The focus set_focus() last had, for tests.
@@ -176,8 +231,8 @@ func instance_count() -> int:
 	return _count
 
 
-## Where each drawn item stands on the ground (the middle of its model's
-## base), world space, per chunk instance in child order, for tests (the
+## Where each item stands on the ground (the middle of its model's base),
+## world space, one array per model mesh in child order, for tests (the
 ## headless renderer keeps no multimesh data).
 func drawn_origins() -> Array[PackedVector3Array]:
 	var result: Array[PackedVector3Array] = []
@@ -185,6 +240,19 @@ func drawn_origins() -> Array[PackedVector3Array]:
 		var origins: PackedVector3Array = PackedVector3Array()
 		for placed: Transform3D in group["placements"]:
 			origins.append(placed.origin)
+		result.append(origins)
+	return result
+
+
+## Where each submitted item stands, world space, one array per model mesh in
+## child order, for tests: what the GPU is given since the last set_focus().
+func submitted_origins() -> Array[PackedVector3Array]:
+	var result: Array[PackedVector3Array] = []
+	for group: Dictionary in _groups:
+		var origins: PackedVector3Array = PackedVector3Array()
+		var placements: Array[Transform3D] = group["placements"]
+		for n: int in group["submitted"]:
+			origins.append(placements[n].origin)
 		result.append(origins)
 	return result
 
@@ -221,7 +289,7 @@ func set_weather(weather: Weather) -> void:
 
 ## Puts the items standing in cells (a rectangle of samples, what
 ## Terrain.scar() returns, plus a sample's margin) back on the ground the
-## terrain now has. TerrainView.region_rebuilt calls it.
+## terrain now has, and submits again. TerrainView.region_rebuilt calls it.
 func rebuild_region(terrain: Terrain, cells: Rect2i) -> void:
 	if not cells.has_area() or terrain != _terrain or _groups.is_empty():
 		return
@@ -232,22 +300,29 @@ func rebuild_region(terrain: Terrain, cells: Rect2i) -> void:
 			_heights[k] = _view_heights.get(k, terrain.heights[k])
 	var cell_m: float = terrain.cell_size / float(World.UNITS_PER_METER)
 	var area: Rect2 = Rect2(Vector2(dirty.position) * cell_m, Vector2(dirty.size) * cell_m)
+	var first: Vector2i = _bucket_of(Vector3(area.position.x, 0.0, area.position.y))
+	var last: Vector2i = _bucket_of(Vector3(area.end.x, 0.0, area.end.y))
 	for group: Dictionary in _groups:
-		var centre: Vector3 = group["centre"]
-		var chunk: Rect2 = Rect2(centre.x - CHUNK_M * 0.5, centre.z - CHUNK_M * 0.5, CHUNK_M, CHUNK_M)
-		if not chunk.grow(cell_m).intersects(area):
-			continue
-		var multimesh: MultiMesh = group["multimesh"]
 		var placements: Array[Transform3D] = group["placements"]
-		var local: Transform3D = group["local"]
-		for n: int in placements.size():
-			var at: Vector3 = placements[n].origin
-			if not area.has_point(Vector2(at.x, at.z)):
-				continue
-			var placed: Transform3D = placements[n]
-			placed.origin.y = ScatterPlacer.ground_height_m(terrain, _heights, at.x, at.z)
-			placements[n] = placed
-			multimesh.set_instance_transform(n, Transform3D(Basis.IDENTITY, -centre) * placements[n] * local)
+		for bz: int in range(first.y, last.y + 1):
+			for bx: int in range(first.x, last.x + 1):
+				var key: Vector2i = Vector2i(bx, bz)
+				if not group["buckets"].has(key):
+					continue
+				var moved: bool = false
+				for n: int in group["buckets"][key]:
+					var at: Vector3 = placements[n].origin
+					if not area.has_point(Vector2(at.x, at.z)):
+						continue
+					var placed: Transform3D = placements[n]
+					placed.origin.y = ScatterPlacer.ground_height_m(terrain, _heights, at.x, at.z)
+					placements[n] = placed
+					moved = true
+				if moved:
+					group["slices"][key] = _slice(group, group["buckets"][key])
+	if _focus.x != INF:
+		_submitted_at = Vector3(INF, 0.0, INF)
+		set_focus(_focus)
 
 
 ## [mesh, local transform] for each mesh of model, its surfaces drawn with
@@ -281,13 +356,13 @@ func _material_for(
 	if cache.has(key):
 		return cache[key]
 	var material: ShaderMaterial = ShaderMaterial.new()
-	material.shader = SCATTER_SHADER
-	material.set_shader_parameter("alpha_cutoff", 0.0)
+	material.shader = OPAQUE_SHADER
 	if source is BaseMaterial3D:
 		var base: BaseMaterial3D = source as BaseMaterial3D
 		material.set_shader_parameter("albedo_texture", base.albedo_texture)
 		material.set_shader_parameter("albedo_color", base.albedo_color)
 		if base.transparency == BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR:
+			material.shader = CUTOUT_SHADER
 			material.set_shader_parameter("alpha_cutoff", base.alpha_scissor_threshold)
 	if fire_texture != null:
 		material.set_shader_parameter("fire_state", fire_texture)
@@ -307,24 +382,37 @@ func _material_for(
 	return material
 
 
-## A MultiMeshInstance3D at centre drawing mesh once per placement (times
-## local), each with its ground in the custom data's R.
-static func _chunk(
-	mesh: Mesh, local: Transform3D, placements: Array[Transform3D], grounds: PackedByteArray, centre: Vector3
-) -> MultiMeshInstance3D:
-	var multimesh: MultiMesh = MultiMesh.new()
-	multimesh.transform_format = MultiMesh.TRANSFORM_3D
-	multimesh.use_custom_data = true
-	multimesh.mesh = mesh
-	multimesh.instance_count = placements.size()
-	var to_chunk: Transform3D = Transform3D(Basis.IDENTITY, -centre)
-	for n: int in placements.size():
-		multimesh.set_instance_transform(n, to_chunk * placements[n] * local)
-		multimesh.set_instance_custom_data(n, Color(grounds[n] / 255.0, 0.0, 0.0, 0.0))
-	var instance: MultiMeshInstance3D = MultiMeshInstance3D.new()
-	instance.multimesh = multimesh
-	instance.position = centre
-	return instance
+## The bucket a world position falls in.
+static func _bucket_of(at: Vector3) -> Vector2i:
+	return Vector2i(floori(at.x / BUCKET_M), floori(at.z / BUCKET_M))
+
+
+## The instance buffer of group's items at indices: each placement times the
+## mesh's local transform, by rows, then its ground in the custom color's R.
+static func _slice(group: Dictionary, indices: PackedInt32Array) -> PackedFloat32Array:
+	var placements: Array[Transform3D] = group["placements"]
+	var grounds: PackedByteArray = group["grounds"]
+	var local: Transform3D = group["local"]
+	var buffer: PackedFloat32Array = PackedFloat32Array()
+	buffer.resize(indices.size() * STRIDE)
+	var o: int = 0
+	for n: int in indices:
+		var t: Transform3D = placements[n] * local
+		buffer[o] = t.basis.x.x
+		buffer[o + 1] = t.basis.y.x
+		buffer[o + 2] = t.basis.z.x
+		buffer[o + 3] = t.origin.x
+		buffer[o + 4] = t.basis.x.y
+		buffer[o + 5] = t.basis.y.y
+		buffer[o + 6] = t.basis.z.y
+		buffer[o + 7] = t.origin.y
+		buffer[o + 8] = t.basis.x.z
+		buffer[o + 9] = t.basis.y.z
+		buffer[o + 10] = t.basis.z.z
+		buffer[o + 11] = t.origin.z
+		buffer[o + 12] = grounds[n] / 255.0
+		o += STRIDE
+	return buffer
 
 
 func _apply_grade(material: ShaderMaterial) -> void:
