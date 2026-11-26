@@ -250,6 +250,65 @@ class WorldAssetsTest(unittest.TestCase):
         self.assertEqual(self.run_cmd()[0], 0)
         self.assertEqual(settings.read_text(), godot)
 
+    def write_tufts(self) -> None:
+        """Two models in one pack folder sharing a texture."""
+        (self.world / "n").mkdir(parents=True, exist_ok=True)
+        (self.world / "n" / "a.gltf").write_text('{"buffers":[{"uri":"a.bin","byteLength":1}],"images":[{"uri":"tuft.png"}]}')
+        (self.world / "n" / "a.bin").write_bytes(b"\0")
+        (self.world / "n" / "b.gltf").write_text('{"buffers":[{"uri":"b.bin","byteLength":1}],"images":[{"uri":"tuft.png"}]}')
+        (self.world / "n" / "b.bin").write_bytes(b"\1")
+        make_image(self.world / "n" / "tuft.png", "green")
+        models = ('[models.tuft_a]\nsource = "acg"\nfile = "n/a.gltf"\nfolder = "nature"\n'
+                  '[models.tuft_b]\nsource = "acg"\nfile = "n/b.gltf"\nfolder = "nature"\n')
+        self.write_toml(toml_for(models=models))
+
+    def test_models_in_one_folder_share_their_textures(self) -> None:
+        self.write_tufts()
+        self.assertEqual(self.run_cmd()[0], 0)
+        out = self.root / "assets" / "world" / "models" / "nature"
+        self.assertEqual(sorted(x.name for x in out.iterdir()), ["a.bin", "a.gltf", "b.bin", "b.gltf", "tuft.png", "tuft.png.import"])
+        self.assertFalse((self.root / "assets" / "world" / "models" / "tuft_a").exists())
+        block = self.licences.read_text().split(world_assets.BEGIN)[1]
+        self.assertEqual(block.count("`assets/world/models/nature/tuft.png`"), 1, "a shared file has one row")
+        self.assertIn("tuft_a, tuft_b", block)
+        for shipped in ("a.gltf", "a.bin", "b.gltf", "b.bin"):
+            self.assertIn(f"`assets/world/models/nature/{shipped}`", block)
+
+    def test_two_different_files_for_one_place_in_a_folder_are_refused(self) -> None:
+        self.write_tufts()
+        # A second pack's tuft.png lands on the same place in the folder as the first's.
+        (self.world / "m").mkdir()
+        (self.world / "m" / "b.gltf").write_text('{"images":[{"uri":"tuft.png"}]}')
+        make_image(self.world / "m" / "tuft.png", "red")
+        self.write_toml(toml_for(models='[models.tuft_a]\nsource = "acg"\nfile = "n/a.gltf"\nfolder = "nature"\n'
+                                        '[models.tuft_c]\nsource = "acg"\nfile = "m/b.gltf"\nfolder = "nature"\n'))
+        code, err = self.run_cmd()
+        self.assertEqual(code, 1)
+        self.assertIn("tuft.png", err)
+        self.assertIn("nature", err)
+        self.assert_nothing_written()
+
+    def test_a_bad_folder_name_is_refused(self) -> None:
+        self.write_tufts()
+        for bad in ("../up", "a/b", "", "sp ace"):
+            with self.subTest(folder=bad):
+                text = (self.world / "world.toml").read_text().replace('folder = "nature"', f'folder = "{bad}"', 1)
+                (self.world / "world.toml").write_text(text)
+                code, err = self.run_cmd()
+                self.assertEqual(code, 1)
+                self.assertIn("folder", err)
+                self.assert_nothing_written()
+                self.write_tufts()
+
+    def test_a_folder_is_only_for_gltf_models(self) -> None:
+        (self.world / "m").mkdir()
+        (self.world / "m" / "house.glb").write_bytes(b"glTF-fake")
+        self.write_toml(toml_for(models='[models.house_a]\nsource = "acg"\nfile = "m/house.glb"\nfolder = "village"\n'))
+        code, err = self.run_cmd()
+        self.assertEqual(code, 1)
+        self.assertIn("folder", err)
+        self.assert_nothing_written()
+
     def test_a_gltf_pointing_outside_the_world_folder_is_refused(self) -> None:
         (self.world / "m").mkdir()
         (self.world / "m" / "hut.gltf").write_text('{"buffers":[{"uri":"../../secret.bin","byteLength":1}]}')
