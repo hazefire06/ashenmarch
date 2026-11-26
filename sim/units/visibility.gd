@@ -86,3 +86,30 @@ static func clear_sight(world: World, from_unit: Unit, to_unit: Unit) -> bool:
 		if terrain.height_at(x, z) > line_y:
 			return false
 	return true
+
+
+## Like spotted_by for an enemy of the viewer, but returns the id of a viewer
+## unit that spots it, or -1. hint_id (a viewer unit that spotted it before, or
+## -1) is tried first, and every candidate passes a cheap squared-range check
+## before the line-of-sight march. A unit of the viewer's own side returns its
+## own id. Display only.
+static func spotted_by_hint(world: World, unit: Unit, viewer: UnitType.Faction, hint_id: int) -> int:
+	if unit.faction == viewer:
+		return unit.id
+	if not seen_by(world, unit, viewer):
+		return -1
+	if hint_id >= 0 and _spots(world, world.entities.get(hint_id) as Unit, unit, viewer):
+		return hint_id
+	for other: Unit in world.units:
+		if other.id != hint_id and _spots(world, other, unit, viewer):
+			return other.id
+	return -1
+
+
+static func _spots(world: World, other: Unit, unit: Unit, viewer: UnitType.Faction) -> bool:
+	if other == null or other.faction != viewer or not other.is_alive():
+		return false
+	var reach: int = other.type.sight_radius
+	var dx: int = unit.x - other.x
+	var dz: int = unit.z - other.z
+	return dx * dx + dz * dz <= reach * reach and clear_sight(world, other, unit)

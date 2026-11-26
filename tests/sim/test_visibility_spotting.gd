@@ -132,3 +132,35 @@ func test_a_clear_second_viewer_spots_what_a_blocked_one_cannot() -> void:
 	_put(w, 0, LIGHT, 20)
 	var foe: Unit = _put(w, 1, DARK, 25)
 	assert_true(Visibility.spotted_by(w, foe, LIGHT))
+
+
+func test_hint_returns_the_spotter_and_falls_back_when_stale() -> void:
+	var w: World = _world(_terrain())
+	var near: Unit = _put(w, 0, LIGHT, 20)
+	var far: Unit = _put(w, 0, LIGHT, 2)
+	var foe: Unit = _put(w, 1, DARK, 25)
+	assert_eq(Visibility.spotted_by_hint(w, foe, LIGHT, near.id), near.id)
+	assert_eq(Visibility.spotted_by_hint(w, foe, LIGHT, -1), near.id if near.id < far.id else far.id)
+	# Out of range: the hint is the unit 23 m away (sight 30 m is fine), so
+	# push it out of range and expect the other.
+	far.x = 70 * M - 1
+	assert_eq(Visibility.spotted_by_hint(w, foe, LIGHT, far.id), near.id)
+	# Dead hint.
+	near.kill()
+	far.x = 5 * M
+	assert_eq(Visibility.spotted_by_hint(w, foe, LIGHT, near.id), far.id)
+	# Unknown hint id.
+	assert_eq(Visibility.spotted_by_hint(w, foe, LIGHT, 9999), far.id)
+	far.kill()
+	assert_eq(Visibility.spotted_by_hint(w, foe, LIGHT, far.id), -1)
+
+
+func test_hint_blocked_by_terrain_falls_back() -> void:
+	var slab: Dictionary = {}
+	for i: int in range(14, 17):
+		slab[i] = 8000
+	var w: World = _world(_terrain(slab))
+	var blocked: Unit = _put(w, 0, LIGHT, 5)
+	var clear: Unit = _put(w, 0, LIGHT, 20)
+	var foe: Unit = _put(w, 1, DARK, 25)
+	assert_eq(Visibility.spotted_by_hint(w, foe, LIGHT, blocked.id), clear.id)
