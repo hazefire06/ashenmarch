@@ -37,6 +37,25 @@ func test_a_burst_is_five_to_seven_chunks() -> void:
 		assert_between(made, Gibs.MIN_CHUNKS, Gibs.MAX_CHUNKS, "burst %d" % burst)
 
 
+func test_every_burst_shows_the_units_color() -> void:
+	# Blood is random per chunk, so without a guarantee a burst is all blood
+	# now and then (0.4^5 to 0.4^7), and a unit's colour can vanish from it.
+	var gibs: Gibs = _gibs_over(TestTerrains.flat(8, 8))
+	var unit_color: Color = Color(0.2, 0.4, 0.6)
+	for burst: int in 400:
+		var before: int = _chunks(gibs).size()
+		gibs.spawn(Vector3(4.0, 30.0, 4.0), Vector3(1.0, 0.0, 0.0), unit_color)
+		var chunks: Array[RigidBody3D] = _chunks(gibs)
+		var shown: bool = false
+		for k: int in range(before, chunks.size()):
+			var mesh: MeshInstance3D = chunks[k].get_child(0) as MeshInstance3D
+			if (mesh.material_override as StandardMaterial3D).albedo_color == unit_color:
+				shown = true
+		assert_true(shown, "burst %d has a chunk in the unit's colour" % burst)
+		if not shown:
+			return
+
+
 func test_chunks_use_their_own_layers() -> void:
 	var gibs: Gibs = _gibs_over(TestTerrains.flat(8, 8))
 	gibs.spawn(Vector3(4.0, 30.0, 4.0), Vector3.ZERO, Color.RED)
