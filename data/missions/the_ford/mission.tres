@@ -58,10 +58,11 @@ deploy = PackedInt32Array(192000, 300000)
 deploy_facing_x = 0
 deploy_facing_z = -1
 deploy_formation = 4
-; The camera looks 15 m up the road from the squad, (192, 285) m: the squad in
-; the lower middle of the view, clear of the control bar, and the river beyond.
-; (It looked at (192, 255), which put the squad under the bar.)
-camera_start = PackedInt32Array(192000, 285000)
-; Close in, RtsCamera's default framing (A5).
-camera_distance = 40000
+; The camera looks 5 m up the road from the squad, (192, 295) m, close in
+; (RtsCamera's default framing, A5): the squad in the lower middle of the
+; view, clear of the control bar, and the road on toward the river beyond.
+; (It looked at (192, 255), which put the squad under the bar, then from 75 m
+; at (192, 285).)
+camera_start = PackedInt32Array(192000, 295000)
+camera_distance = 22000
 atmosphere = ExtResource("5_atm01")

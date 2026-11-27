@@ -161,10 +161,10 @@ const LANDING_GUARD: Vector2 = Vector2(192.0, 145.0)
 const DRIFTER_WEST: Array[Vector2] = [Vector2(110.0, 192.0), Vector2(150.0, 190.0)]
 const DRIFTER_EAST: Array[Vector2] = [Vector2(240.0, 195.0), Vector2(300.0, 200.0)]
 const RIPPER_SPAWN: Vector2 = Vector2(330.0, 140.0)
-## Where the mission camera starts looking: 15 m up the road from the deploy
-## point, so the squad stands in the lower middle of the view, clear of the
-## control bar, with the river ahead of it.
-const CAMERA_START: Vector2 = Vector2(192.0, 285.0)
+## Where the mission camera starts looking: 5 m up the road from the deploy
+## point, so at the close default framing (A5) the squad stands in the lower
+## middle of the view, clear of the control bar, with the road ahead of it.
+const CAMERA_START: Vector2 = Vector2(192.0, 295.0)
 
 ## Worn trails for the view (A5, trails.tres; the sim never sees them): the
 ## escort's road from the south edge through the deploy area, across the ford

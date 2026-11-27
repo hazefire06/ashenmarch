@@ -395,7 +395,7 @@ func test_the_plan_deploys_the_rosters_at_tier_two() -> void:
 func test_the_deploy_points_facings_formation_and_cameras() -> void:
 	var deploys: Array[Vector2i] = [Vector2i(290, 180), Vector2i(192, 300), Vector2i(156, 158)]
 	var facings: Array[Vector2i] = [Vector2i(0, 1), Vector2i(0, -1), Vector2i(0, -1)]
-	var cameras: Array[Vector2i] = [Vector2i(290, 200), Vector2i(192, 285), Vector2i(158, 172)]
+	var cameras: Array[Vector2i] = [Vector2i(290, 186), Vector2i(192, 295), Vector2i(157, 165)]
 	for i: int in MISSION_IDS.size():
 		var mission: MissionDef = _mission(i)
 		assert_eq(_pair(mission.deploy), deploys[i] * M, "%s deploy" % MISSION_IDS[i])

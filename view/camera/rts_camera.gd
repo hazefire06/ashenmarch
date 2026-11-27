@@ -19,7 +19,7 @@ const MAX_DISTANCE: float = 250.0
 ## tactics games, so soldiers are large on screen; and at PITCH_DEFAULT, the
 ## elevation the unit sprites are rendered at (50 degrees), so they look as
 ## drawn.
-const DEFAULT_DISTANCE: float = 40.0
+const DEFAULT_DISTANCE: float = 22.0
 const PITCH_NEAR: float = deg_to_rad(35.0)
 const PITCH_DEFAULT: float = deg_to_rad(50.0)
 const PITCH_FAR: float = deg_to_rad(65.0)

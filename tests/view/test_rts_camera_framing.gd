@@ -11,7 +11,7 @@ const MISSIONS: Array[String] = [
 
 
 func test_the_default_is_close_and_at_the_sprites_elevation() -> void:
-	assert_lte(RtsCamera.DEFAULT_DISTANCE, 45.0, "close: soldiers large on screen")
+	assert_lte(RtsCamera.DEFAULT_DISTANCE, 25.0, "close: soldiers large on screen")
 	assert_almost_eq(rad_to_deg(RtsCamera.pitch_at(RtsCamera.DEFAULT_DISTANCE)), 50.0, 0.01)
 
 
@@ -37,4 +37,4 @@ func test_the_campaign_missions_open_at_the_default_framing() -> void:
 		assert_almost_eq(mission.camera_distance / 1000.0, RtsCamera.DEFAULT_DISTANCE, 0.001, path)
 		var focus: Vector2 = Vector2(mission.camera_start[0], mission.camera_start[1])
 		var squad: Vector2 = Vector2(mission.deploy[0], mission.deploy[1])
-		assert_lt(focus.distance_to(squad) / 1000.0, 25.0, "%s looks near its squad" % path)
+		assert_lt(focus.distance_to(squad) / 1000.0, 10.0, "%s looks near its squad" % path)

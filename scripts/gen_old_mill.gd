@@ -100,7 +100,7 @@ const LANE_HALF_M: float = 5.0
 
 ## What the mission data and tests are written against.
 const DEPLOY: Vector2 = Vector2(156.0, 158.0)
-const CAMERA_START: Vector2 = Vector2(158.0, 172.0)
+const CAMERA_START: Vector2 = Vector2(157.0, 165.0)
 ## Edge spawn zones: north, west, south, east. The east one is across the
 ## millstream from the plateau.
 const SPAWN_N: Vector2 = Vector2(150.0, 14.0)
