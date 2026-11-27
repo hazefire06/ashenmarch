@@ -478,3 +478,25 @@ func test_without_trails_the_mask_is_empty() -> void:
 	var view: TerrainView = _view_of(_terrain())
 	assert_true(view.trail_mask().is_empty())
 	assert_not_null(view.shader_parameter(&"trail_mask"), "the shader still gets a (clear) texture")
+
+
+func test_the_shore_is_weighted_out_to_its_reach() -> void:
+	# B's alpha: how near the water a sample is, for sand to show only on the
+	# banks (the mostly-grass palette).
+	var terrain: Terrain = TestTerrains.from_ascii(["1.........", "1.........", "1........."] as Array[String])
+	var b: Image = _weights(_view_of(terrain), &"ground_weights_b")
+	assert_eq(b.get_pixel(0, 1).a8, 255, "the water itself")
+	assert_gt(b.get_pixel(4, 1).a8, 0, "4 m up the bank")
+	assert_gt(b.get_pixel(2, 1).a8, b.get_pixel(4, 1).a8, "more nearer the water")
+	assert_eq(b.get_pixel(int(TerrainView.SHORE_REACH_M) + 1, 1).a8, 0, "none past the reach")
+
+
+func test_the_mostly_grass_knobs_are_uniforms() -> void:
+	var declared: Array[String] = []
+	for uniform: Dictionary in _material(_view_of(_terrain())).shader.get_shader_uniform_list():
+		declared.append(uniform["name"])
+	for knob: String in [
+		"grass_tint", "brush_tint", "brush_detail", "forest_tint", "forest_detail", "undergrowth_tint",
+		"dry_tint", "sand_shore_low", "sand_shore_high", "rock_flat", "rock_grass_tint",
+	]:
+		assert_has(declared, knob)

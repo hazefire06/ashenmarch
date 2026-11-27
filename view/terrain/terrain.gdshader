@@ -17,7 +17,8 @@ uniform sampler2DArray ground_albedo : source_color, filter_linear_mipmap, repea
 uniform sampler2DArray ground_normal : hint_normal, filter_linear_mipmap, repeat_enable;
 // One texel per heightmap sample, filtered between samples. A: the grass,
 // brush, forest and sand weights. B: R rock, G mud, B 1 where a structure
-// model covers the sample, A unused. The six weights sum to 1.
+// model covers the sample, A the shore (1 at the water, 0 by
+// TerrainView.SHORE_REACH_M up the bank). The six weights sum to 1.
 uniform sampler2D ground_weights_a : filter_linear, repeat_disable;
 uniform sampler2D ground_weights_b : filter_linear, repeat_disable;
 // Tiling noise, four independent channels (WorldTextures.detail_noise).
@@ -50,6 +51,29 @@ uniform float bend_large = 2.5;
 uniform float bend_large_m = 90.0;
 uniform float bend_fine = 0.6;
 uniform float height_blend = 0.8;
+// The mostly-grass palette: one continuous grass, as the reference shows,
+// rather than the map's six grounds at full strength.
+// - grass_tint darkens and deepens the grass layer, the base everywhere.
+// - Brush and forest are that grass, darker (brush_tint, forest_tint), with
+//   brush_detail or forest_detail of their own texture (by undergrowth_tint)
+//   showing through as undergrowth.
+// - Sand shows only near water, where the shore weight passes
+//   sand_shore_low..sand_shore_high (banks, beaches); inland it is the grass
+//   by dry_tint, a faint dry-grass tint.
+// - Rock shows on steep faces (triplanar), and on flat rock ground as
+//   rock_flat of it over the grass by rock_grass_tint.
+// - Mud stays itself, at the water's edge.
+uniform vec3 grass_tint = vec3(0.62, 0.74, 0.6);
+uniform vec3 brush_tint = vec3(0.86, 0.9, 0.8);
+uniform float brush_detail = 0.18;
+uniform vec3 forest_tint = vec3(0.68, 0.76, 0.66);
+uniform float forest_detail = 0.22;
+uniform vec3 undergrowth_tint = vec3(0.55, 0.58, 0.45);
+uniform vec3 dry_tint = vec3(1.12, 1.04, 0.8);
+uniform float sand_shore_low = 0.1;
+uniform float sand_shore_high = 0.45;
+uniform float rock_flat = 0.35;
+uniform vec3 rock_grass_tint = vec3(0.88, 0.9, 0.84);
 // How hard noise pushes one layer over another within a border, 0..1. Any
 // value is safe: the push fades to nothing where a layer's weight is 0 or 1.
 uniform float border_jitter = 0.35;
@@ -223,6 +247,22 @@ void fragment() {
 	color[ROCK] = mix(color[ROCK], rock_x * side.x + color[ROCK] * side.y + rock_z * side.z, steep);
 	bump[ROCK] = mix(bump[ROCK], FLAT_NORMAL, steep);
 
+	// The mostly-grass palette (see grass_tint). The trails keep the sand
+	// layer's own colour for their dirt.
+	vec3 sand_color = color[SAND];
+	float shore = smoothstep(sand_shore_low, sand_shore_high, wb.a);
+	float rocky = max(steep, rock_flat);
+	vec3 grass = color[0] * grass_tint;
+	color[0] = grass;
+	color[1] = mix(grass * brush_tint, color[1] * undergrowth_tint, brush_detail);
+	color[2] = mix(grass * forest_tint, color[2] * undergrowth_tint, forest_detail);
+	color[SAND] = mix(grass * dry_tint, color[SAND], shore);
+	color[ROCK] = mix(grass * rock_grass_tint, color[ROCK], rocky);
+	bump[1] = mix(bump[0], bump[1], brush_detail);
+	bump[2] = mix(bump[0], bump[2], forest_detail);
+	bump[SAND] = mix(bump[0], bump[SAND], shore);
+	bump[ROCK] = mix(bump[0], bump[ROCK], rocky);
+
 	// Height blend: brightness stands in for height. A layer keeps its weight
 	// in proportion to how close its weight plus height comes to the top one,
 	// within height_blend; a layer of weight 0 stays 0.
@@ -260,7 +300,7 @@ void fragment() {
 	float trail_noise = texture(detail_noise, world_pos.xz / trail_noise_m).g;
 	float worn = trail_strength * smoothstep(trail_edge_low, trail_edge_high,
 		trail.r + (trail_noise - 0.5) * 2.0 * trail_breakup * trail.r * (1.0 - trail.r) * 4.0);
-	vec3 dirt = mix(color[MUD], color[SAND], trail_sand) * trail_tint.rgb;
+	vec3 dirt = mix(color[MUD], sand_color, trail_sand) * trail_tint.rgb;
 	dirt = mix(dirt, ground_recolor[SAND].rgb, ground_recolor[SAND].a);
 	dirt *= 1.0 - trail_rut_dark * smoothstep(0.25, 0.7, trail.g);
 	ground = mix(ground, dirt, worn);

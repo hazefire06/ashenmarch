@@ -35,6 +35,9 @@ const ROCK_NORMAL_Y: float = 0.707
 const ROCK_BAND: float = 0.1
 ## Mud lies on the riverbed and fades out over this many meters of dry bank.
 const MUD_REACH_M: float = 3.0
+## The shore weight (ground_weights_b's alpha) fades from 1 at the water to 0
+## this many metres up the bank; the shader shows sand only where it is high.
+const SHORE_REACH_M: float = 6.0
 
 ## Index array shared by every full-size chunk, made by build().
 var _shared_indices: PackedInt32Array = PackedInt32Array()
@@ -258,11 +261,13 @@ static func _no_recolor() -> PackedColorArray:
 
 
 ## Two RGBA8 images, one texel per sample, of the six layer weights (255 is
-## all of it) and the samples a structure model covers; terrain.gdshader reads
-## them as ground_weights_a and ground_weights_b. A sample weighs its own
-## ground, less the mud laid on it near water; the six always sum to 255.
+## all of it), the samples a structure model covers and how near the water
+## each is (shore_weights); terrain.gdshader reads them as ground_weights_a
+## and ground_weights_b. A sample weighs its own ground, less the mud laid on
+## it near water; the six always sum to 255.
 func _ground_weight_images(terrain: Terrain) -> Array[Image]:
 	var mud: PackedFloat32Array = mud_weights(terrain)
+	var shore: PackedFloat32Array = shore_weights(terrain, SHORE_REACH_M)
 	var count: int = terrain.size_x * terrain.size_z
 	var a: PackedByteArray = PackedByteArray()
 	var b: PackedByteArray = PackedByteArray()
@@ -279,6 +284,7 @@ func _ground_weight_images(terrain: Terrain) -> Array[Image]:
 			b[k * 4] = 255 - mud_byte
 		b[k * 4 + 1] = mud_byte
 		b[k * 4 + 2] = 255 if _view_heights.has(k) else 0
+		b[k * 4 + 3] = roundi(shore[k] * 255.0)
 	return [
 		Image.create_from_data(terrain.size_x, terrain.size_z, false, Image.FORMAT_RGBA8, a),
 		Image.create_from_data(terrain.size_x, terrain.size_z, false, Image.FORMAT_RGBA8, b),
@@ -286,32 +292,43 @@ func _ground_weight_images(terrain: Terrain) -> Array[Image]:
 
 
 ## Mud per sample, 0..1: all of it under water, fading to none MUD_REACH_M
-## from the nearest water sample. The nearest water to any dry sample is on the
-## shore, so only shore samples spread it.
+## from the nearest water sample.
 static func mud_weights(terrain: Terrain) -> PackedFloat32Array:
+	return shore_weights(terrain, MUD_REACH_M)
+
+
+## Per sample, 0..1: 1 under water, fading linearly to 0 reach_m from the
+## nearest water sample. The nearest water to any dry sample is on the shore,
+## so only shore samples spread it.
+static func shore_weights(terrain: Terrain, reach_m: float) -> PackedFloat32Array:
 	var w: int = terrain.size_x
 	var h: int = terrain.size_z
-	var mud: PackedFloat32Array = PackedFloat32Array()
-	mud.resize(w * h)
+	var weights: PackedFloat32Array = PackedFloat32Array()
+	weights.resize(w * h)
 	var cell_m: float = terrain.cell_size / float(World.UNITS_PER_METER)
-	var reach: int = ceili(MUD_REACH_M / cell_m)
+	var reach: int = ceili(reach_m / cell_m)
+	# The fade by offset, worked out once.
+	var fade: PackedFloat32Array = PackedFloat32Array()
+	fade.resize((2 * reach + 1) * (2 * reach + 1))
+	for dj: int in range(-reach, reach + 1):
+		for di: int in range(-reach, reach + 1):
+			fade[(dj + reach) * (2 * reach + 1) + di + reach] = 1.0 - sqrt(float(di * di + dj * dj)) * cell_m / reach_m
 	for j: int in h:
 		for i: int in w:
 			var k: int = j * w + i
 			if terrain.water[k] == 0:
 				continue
-			mud[k] = 1.0
+			weights[k] = 1.0
 			if not _is_shore(terrain, i, j):
 				continue
-			for dj: int in range(-reach, reach + 1):
-				for di: int in range(-reach, reach + 1):
-					var x: int = i + di
-					var z: int = j + dj
-					if x < 0 or z < 0 or x >= w or z >= h:
-						continue
-					var near: float = 1.0 - sqrt(float(di * di + dj * dj)) * cell_m / MUD_REACH_M
-					mud[z * w + x] = maxf(mud[z * w + x], near)
-	return mud
+			for dj: int in range(maxi(-reach, -j), mini(reach, h - 1 - j) + 1):
+				var row: int = (j + dj) * w
+				var fade_row: int = (dj + reach) * (2 * reach + 1) + reach
+				for di: int in range(maxi(-reach, -i), mini(reach, w - 1 - i) + 1):
+					var near: float = fade[fade_row + di]
+					if near > weights[row + i + di]:
+						weights[row + i + di] = near
+	return weights
 
 
 ## Whether water sample (i, j) has a dry sample beside it.
