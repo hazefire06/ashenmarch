@@ -1,8 +1,8 @@
 class_name SettingsMenu
 extends MenuScreen
 ## The Settings overlay, in three tabs:
-## - Display: fullscreen, window size, vsync, frame cap, 3D render scale and
-##   interface scale.
+## - Display: fullscreen, window size, vsync, frame cap, 3D render scale,
+##   interface scale, and the interface's corner map (Phase 12).
 ## - Audio: a volume per bus.
 ## - Controls: the preset (Modern or Classic), edge scroll, the corner camera,
 ##   every rebindable action, the group keys (Modern's two modifiers, or
@@ -430,6 +430,10 @@ func _display_tab() -> Control:
 	_add_choice(tab, "UiScale", "Interface size", scales,
 		Array(GameSettings.UI_SCALE_CHOICES).find(GameSettings.ui_scale(_path)), func(index: int) -> void:
 			_saved(GameSettings.set_display(GameSettings.UI_SCALE, GameSettings.UI_SCALE_CHOICES[index], _path))
+	)
+	var corner_map: CheckBox = _add_toggle(tab, "CornerMapCheck", "Corner map", GameSettings.corner_map(_path))
+	corner_map.toggled.connect(func(on: bool) -> void:
+		_saved_or_undo(GameSettings.set_corner_map(on, _path), corner_map, on)
 	)
 	_add_slider(tab, "RenderScale", "3D resolution", GameSettings.RENDER_SCALE_MIN, 100, 5,
 		GameSettings.render_scale(_path), func(percent: int) -> void:

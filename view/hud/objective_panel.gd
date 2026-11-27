@@ -1,6 +1,8 @@
 class_name ObjectivePanel
 extends PanelContainer
-## The mission's objectives, in a panel at the top right: one line for each
+## The mission's objectives, in a panel at the top right (below the corner
+## map while it is on, or beside it when there's no room below; MainView
+## places it with place): one line for each
 ## whose state isn't HIDDEN, in the mission's order.
 ## - "○ text" is active and still to do (cream);
 ## - "✓ text" is done (green);
@@ -14,9 +16,10 @@ extends PanelContainer
 ## the mission's SET_OBJECTIVE text, is MissionHud's.) Reads the World; never
 ## writes it, and never takes mouse input, so it can't block a click.
 
-## Pixels from the top and right of the screen. The stats label owns the
-## top-left corner, and the mission's message line runs along the top (MissionHud,
-## down to about 100 px) and can be long, so the panel hangs below it.
+## Pixels from the top and right of the screen without the corner map. The
+## stats label owns the top-left corner, and the mission's message line runs
+## along the top (MissionHud, down to about 100 px) and can be long, so the
+## panel hangs below it.
 const MARGIN_TOP: float = 108.0
 const MARGIN_RIGHT: float = 12.0
 const PANEL_WIDTH: float = 300.0
@@ -64,6 +67,17 @@ func _ready() -> void:
 	title.add_theme_font_size_override("font_size", TITLE_FONT_SIZE)
 	title.add_theme_color_override("font_color", TITLE_COLOR)
 	_rows.add_child(title)
+
+
+## Hangs the panel `top` pixels from the top of the screen and `right`
+## pixels in from its right edge.
+func place(top: float, right: float = MARGIN_RIGHT) -> void:
+	# Wider content grows it leftward, keeping the right margin.
+	grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	offset_left = -(PANEL_WIDTH + right)
+	offset_right = -right
+	offset_top = top
+	reset_size()
 
 
 ## Brings the panel up to date with the world as it is now. Rebuilds the lines

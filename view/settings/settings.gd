@@ -28,6 +28,9 @@ extends RefCounted
 ## Phase 10 file loads as it was), its one group key ([controls]
 ## classic_group_modifier), and the pad's rebinds ([padbinds]).
 ##
+## Phase 12 adds [display] corner_map, whether the corner map is shown (on by
+## default), applied by the App with edge scroll.
+##
 ## The [skirmish] section remembers the last skirmish setup (map, mode, time,
 ## budget, side, start, the AI's army and the player's own army), so the
 ## skirmish screen opens where the player left it. Not a setting the player
@@ -42,6 +45,9 @@ const CONTROLS: String = "controls"
 const FULLSCREEN: String = "fullscreen"
 const EDGE_SCROLL: String = "edge_scroll"
 const CORNER_CAMERA: String = "corner_camera"
+## Phase 12: whether the corner map (Minimap) is shown, in [display]. On
+## unless turned off.
+const CORNER_MAP: String = "corner_map"
 const CURSOR_SPEED: String = "pad_cursor_speed"
 const CURSOR_SNAP: String = "pad_cursor_snap"
 const RUMBLE: String = "pad_rumble"
@@ -150,6 +156,15 @@ static func set_pad_setting(key: String, value: Variant, path: String = DEFAULT_
 ## Saves the fullscreen choice. Returns the error from the write, or OK.
 static func set_fullscreen(enabled: bool, path: String = DEFAULT_PATH) -> Error:
 	return _set_value(path, DISPLAY, FULLSCREEN, enabled)
+
+
+## Whether the mission view shows the corner map. On by default.
+static func corner_map(path: String = DEFAULT_PATH) -> bool:
+	return _get_bool(path, DISPLAY, CORNER_MAP, true)
+
+
+static func set_corner_map(enabled: bool, path: String = DEFAULT_PATH) -> Error:
+	return _set_value(path, DISPLAY, CORNER_MAP, enabled)
 
 
 ## Saves the edge scroll choice. Returns the error from the write, or OK.

@@ -81,6 +81,7 @@ var _main: MainView
 var _controller: SelectionController
 var _camera: RtsCamera
 var _map: OverheadMap
+var _minimap: Minimap
 var _bar: ControlBar
 var _clock: float = 0.0
 var _placed: bool = false
@@ -275,6 +276,9 @@ func _a_press() -> void:
 	if _map.visible:
 		_map.click_at(cursor.at, false)
 		return
+	if _on_minimap():
+		_minimap.click_map(cursor.at - _minimap.get_global_rect().position, false)
+		return
 	var hud: Control = _hud_under(cursor.at)
 	if hud != null:
 		# On the HUD, A presses the button there, as a click would.
@@ -312,10 +316,12 @@ func _a_release() -> void:
 
 
 func _x_press() -> void:
+	# On a map an armed order is placed there (MapClick), as by A.
 	if _map.visible:
-		var attack: bool = _controller.armed_order == SelectionController.ArmedOrder.ATTACK_MOVE
-		if _map.click_at(cursor.at, true, attack) and attack:
-			_controller.arm(SelectionController.ArmedOrder.NONE)
+		_map.click_at(cursor.at, true)
+		return
+	if _on_minimap():
+		_minimap.click_map(cursor.at - _minimap.get_global_rect().position, true)
 		return
 	if _hud_under(cursor.at) != null:
 		# Nothing on the ground behind the HUD is ordered.
@@ -490,8 +496,8 @@ func _move_cursor(stick: Vector2, delta: float) -> void:
 	var view: Vector2 = get_viewport().get_visible_rect().size
 	if not _placed:
 		place_cursor(view * 0.5)
-	# Over the overhead map the units are dots: nothing to stick to.
-	var sticky: bool = snap and not _map.visible
+	# Over either map the units are dots: nothing to stick to.
+	var sticky: bool = snap and not _map.visible and not _on_minimap()
 	if stick == Vector2.ZERO:
 		if _was_moving and sticky:
 			# Let go: stick to a unit close by.
@@ -567,6 +573,16 @@ func _drop_holds() -> void:
 		_controller.show_health_held(false)
 	_view_held = -1.0
 	_r3_held = -1.0
+
+
+## The corner map, which A (the camera) and X (the selection) click like the
+## overhead map while the cursor is over it.
+func set_minimap(minimap: Minimap) -> void:
+	_minimap = minimap
+
+
+func _on_minimap() -> bool:
+	return _minimap != null and _minimap.is_visible_in_tree() and _minimap.get_global_rect().has_point(cursor.at)
 
 
 # The HUD panel under a screen point (the control bar, the unit panel, the

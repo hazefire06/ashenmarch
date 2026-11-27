@@ -291,7 +291,7 @@ func _glide(delta: float) -> void:
 # What the corner camera asks for now: (turn, orbit), or zero when it is off,
 # the mouse is out of the window or over a button.
 func _corner() -> Vector2:
-	if not corner_camera or not _mouse_in_window or _mouse_over_button():
+	if not corner_camera or not _mouse_in_window or _mouse_over_button() or _mouse_over_map():
 		return Vector2.ZERO
 	return corner_turn(_mouse_position(), get_viewport().get_visible_rect().size)
 
@@ -304,6 +304,12 @@ func _mouse_position() -> Vector2:
 
 func _mouse_over_button() -> bool:
 	return get_viewport().gui_get_hovered_control() is BaseButton
+
+
+# The corner map sits in the top-right corner's hot zone: clicking it mustn't
+# turn the camera.
+func _mouse_over_map() -> bool:
+	return get_viewport().gui_get_hovered_control() is Minimap
 
 
 func _apply_transform() -> void:

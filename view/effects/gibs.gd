@@ -146,8 +146,11 @@ func update_heights_in(terrain: Terrain, cells: Rect2i) -> void:
 ## zero throws them straight up). color is the unit's color.
 func spawn(at: Vector3, blow_dir: Vector3, color: Color) -> void:
 	var fling: Vector3 = blow_dir.normalized()
-	for _i: int in randi_range(MIN_CHUNKS, MAX_CHUNKS):
-		var chunk: RigidBody3D = _make_chunk(BLOOD_COLOR if randf() < BLOOD_CHANCE else color)
+	for i: int in randi_range(MIN_CHUNKS, MAX_CHUNKS):
+		# The first chunk is always the unit's colour, so a burst never comes
+		# out all blood and the unit can still be told by what's left of it.
+		var blood: bool = i > 0 and randf() < BLOOD_CHANCE
+		var chunk: RigidBody3D = _make_chunk(BLOOD_COLOR if blood else color)
 		add_child(chunk)
 		chunk.global_position = at + _random_vector(SPAWN_JITTER)
 		chunk.linear_velocity = (

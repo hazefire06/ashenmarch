@@ -180,7 +180,16 @@ func _build_line() -> void:
 	_line.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
 	_line.offset_top = MissionHud.OBJECTIVE_TOP
 	_line.offset_bottom = MissionHud.OBJECTIVE_TOP + LINE_FONT_SIZE * 1.6
+	# A long line wraps onto a second rather than run under the corner map.
+	_line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	add_child(_line)
+
+
+## Keeps the score line `clearance` pixels in from both sides, so it stays
+## centred and clear of the corner map (0: the whole width).
+func set_side_clearance(clearance: float) -> void:
+	_line.offset_left = clearance
+	_line.offset_right = -clearance
 
 
 func _build_board() -> void:

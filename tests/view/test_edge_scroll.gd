@@ -164,12 +164,16 @@ func test_wasd_still_works_with_edge_scroll_on() -> void:
 class MouseCamera extends RtsCamera:
 	var mouse: Vector2 = Vector2(-100.0, -100.0)
 	var over_button: bool = false
+	var over_map: bool = false
 
 	func _mouse_position() -> Vector2:
 		return mouse
 
 	func _mouse_over_button() -> bool:
 		return over_button
+
+	func _mouse_over_map() -> bool:
+		return over_map
 
 
 func _camera() -> MouseCamera:
@@ -206,6 +210,18 @@ func test_the_corner_camera_turns_instead_of_panning() -> void:
 	var off_yaw: float = off.yaw
 	off._process(0.5)
 	assert_eq(off.yaw, off_yaw, "off by default")
+
+
+func test_the_corner_camera_leaves_the_corner_map_alone() -> void:
+	var camera: MouseCamera = _corner_camera(Vector2(SIZE.x - 20.0, 20.0))
+	camera.mouse = Vector2(get_viewport().get_visible_rect().size.x - 2.0, 2.0)
+	camera.over_map = true
+	var yaw: float = camera.yaw
+	camera._process(0.5)
+	assert_eq(camera.yaw, yaw, "the top-right corner over the map doesn't turn")
+	camera.over_map = false
+	camera._process(0.5)
+	assert_ne(camera.yaw, yaw, "off the map it does")
 
 
 func test_the_pad_pans_orbits_and_zooms_the_camera() -> void:

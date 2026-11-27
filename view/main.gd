@@ -1,7 +1,9 @@
 class_name MainView
 extends Node3D
 ## Entry scene: loads the map and unit catalog, owns the World, and advances
-## it one tick per physics frame. The terrain view, camera, overhead map, and
+## it one tick per physics frame. The terrain view, camera, overhead map, the
+## corner map (Minimap, hidden while the overhead map is open, and by its
+## Settings toggle, corner_map; the objectives hang below it), and
 ## unit, projectile, explosion, fire, and weather views read the World; only
 ## commands change it. The gas cloud and herb plant views read it too, and so
 ## do the mission HUD, the objective panel, and the F5 AI overlay. Units whose
@@ -127,6 +129,12 @@ var edge_scroll: bool = false:
 	set(value):
 		edge_scroll = value
 		_apply_edge_scroll()
+## Whether the corner map is shown (Settings: Corner map). Set it before the
+## scene enters the tree or at any time after.
+var corner_map: bool = true:
+	set(value):
+		corner_map = value
+		_apply_corner_map()
 ## Whether a screen corner turns or orbits the camera (RtsCamera.corner_camera);
 ## the Settings toggle. Off while the pause menu is open, like edge scroll.
 var corner_camera: bool = false:
@@ -195,6 +203,9 @@ var _sfx: SfxPlayer
 var _ambience: Ambience
 var _music: Music
 var _barks: Barks
+## True while the corner map's layout is being applied (it resizes what it
+## listens to).
+var _laying_out: bool = false
 
 @onready var _terrain_view: TerrainView = $TerrainView
 @onready var _water_view: WaterView = $WaterView
@@ -215,6 +226,7 @@ var _barks: Barks
 @onready var _selection: SelectionController = $Hud/Selection
 @onready var _control_bar: ControlBar = $Hud/ControlBar
 @onready var _overhead_map: OverheadMap = $Hud/OverheadMap
+@onready var _minimap: Minimap = $Hud/Minimap
 @onready var _tooltip: UnitTooltip = $Hud/UnitTooltip
 @onready var _info_panel: UnitInfoPanel = $Hud/UnitInfoPanel
 @onready var _stats_label: Label = $Hud/StatsLabel
@@ -260,7 +272,10 @@ func _ready() -> void:
 	_terrain_view.region_rebuilt.connect(_scatter_view.rebuild_region)
 	_camera.setup(terrain)
 	_place_camera()
-	_overhead_map.setup(terrain, _camera, world)
+	# One picture of the map, built once, for both maps.
+	var map_picture: ImageTexture = MapImage.texture(terrain)
+	_overhead_map.setup(terrain, _camera, world, map_picture)
+	_minimap.setup(terrain, _camera, world, map_picture)
 	_gibs.setup(terrain)
 	if launch == null:
 		_spawn_test_squads()
@@ -325,6 +340,7 @@ func _ready() -> void:
 	_selection.side_changed.connect(_sfx.set_viewer)
 	_selection.side_changed.connect(_ambience.set_viewer)
 	_selection.side_changed.connect(_music.set_viewer)
+	_selection.side_changed.connect(_minimap.set_viewer)
 	_barks = Barks.new()
 	_barks.name = "Barks"
 	add_child(_barks)
@@ -341,6 +357,8 @@ func _ready() -> void:
 		_ambience.set_viewer(launch.player_faction())
 		_music.set_viewer(launch.player_faction())
 		_barks.set_viewer(launch.player_faction())
+	# The commanding side; a replay's is the side it was played from.
+	_minimap.set_viewer(_selection.side)
 	_control_bar.setup(_selection, world)
 	if launch != null and launch.is_skirmish():
 		_control_bar.set_skirmish(launch.player_faction())
@@ -370,6 +388,13 @@ func _ready() -> void:
 		_pause_menu.set_scoreboard_visible(true)
 		_pause_menu.scoreboard_requested.connect(_skirmish_hud.toggle_scoreboard)
 	_overhead_map.set_orders(_selection)
+	_minimap.set_orders(_selection)
+	_overhead_map.visibility_changed.connect(_apply_corner_map)
+	_minimap.placed.connect(_apply_corner_map)
+	_objectives.resized.connect(_apply_corner_map)
+	_control_bar.resized.connect(_apply_corner_map)
+	_apply_corner_map()
+	_pad.set_minimap(_minimap)
 	_sfx.connect_selection(_selection)
 	_pause_menu.opened.connect(_on_pause_menu_opened)
 	_pause_menu.closed.connect(_on_pause_menu_closed)
@@ -452,6 +477,7 @@ func _advance() -> void:
 	_gas_view.after_step()
 	_plants_view.after_step()
 	_ai_debug.after_step()
+	_minimap.after_step()
 	_barks.after_step()
 	_sfx.after_step()
 	_ambience.after_step()
@@ -886,6 +912,34 @@ func _on_pause_menu_opened() -> void:
 func _on_pause_menu_closed() -> void:
 	_apply_pause()
 	_apply_edge_scroll()
+
+
+# The corner map: shown by the setting, but not over the open overhead map.
+# The objectives hang below it while it is on (beside it, if below would run
+# into the control bar: a large interface scale), and where they were without
+# it. The mission's message line and a skirmish's score line keep clear of it
+# on both sides, so stay centred. Runs again whenever the map, the objectives
+# or the bar change size.
+func _apply_corner_map() -> void:
+	if _minimap == null or _overhead_map == null or _objectives == null or _laying_out:
+		return
+	# Placing the objectives resizes them, which calls this again.
+	_laying_out = true
+	_minimap.visible = corner_map and not _overhead_map.visible
+	var clearance: float = _minimap.size.x + 2.0 * Minimap.MARGIN if corner_map else 0.0
+	_mission_hud.set_side_clearance(clearance)
+	if _skirmish_hud != null:
+		_skirmish_hud.set_side_clearance(clearance)
+	if not corner_map:
+		_objectives.place(ObjectivePanel.MARGIN_TOP)
+	else:
+		var below: float = _minimap.offset_bottom + Minimap.MARGIN
+		var bar_top: float = _control_bar.get_global_rect().position.y
+		if below + _objectives.size.y > bar_top - Minimap.MARGIN:
+			_objectives.place(Minimap.MARGIN, clearance)
+		else:
+			_objectives.place(below)
+	_laying_out = false
 
 
 # The camera's edge scroll: the setting, held off while the pause menu is up.
