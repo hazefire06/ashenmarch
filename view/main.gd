@@ -94,7 +94,7 @@ const TEST_SAPPER_COUNT: int = 3
 const TEST_WARDEN_COUNT: int = 3
 ## Where the camera starts: south of the squads at the ford, looking north.
 const CAMERA_START: Vector2 = Vector2(285.0, 245.0)
-const CAMERA_START_DISTANCE: float = 75.0
+const CAMERA_START_DISTANCE: float = RtsCamera.DEFAULT_DISTANCE
 ## How far ahead of the player's skirmish army the camera starts looking, in
 ## meters, so the block isn't under the control bar.
 const SKIRMISH_CAMERA_LEAD: float = 15.0

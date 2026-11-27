@@ -62,4 +62,6 @@ deploy_formation = 4
 ; the lower middle of the view, clear of the control bar, and the river beyond.
 ; (It looked at (192, 255), which put the squad under the bar.)
 camera_start = PackedInt32Array(192000, 285000)
+; Close in, RtsCamera's default framing (A5).
+camera_distance = 40000
 atmosphere = ExtResource("5_atm01")

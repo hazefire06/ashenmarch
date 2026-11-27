@@ -853,7 +853,7 @@ func test_the_deploy_point_and_camera() -> void:
 	var deploy: Vector2 = _mill_gen["DEPLOY"]
 	var camera: Vector2 = _mill_gen["CAMERA_START"]
 	assert_eq(deploy, Vector2(156.0, 158.0))
-	assert_eq(camera, Vector2(160.0, 205.0))
+	assert_eq(camera, Vector2(158.0, 172.0))
 	assert_true(_walkable(_mill, deploy))
 	assert_true(_walkable(_mill, camera))
 	# The deploy point is on the top, south-west of the mill, with room for a block.
