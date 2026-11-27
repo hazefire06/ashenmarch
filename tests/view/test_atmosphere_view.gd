@@ -186,3 +186,16 @@ func test_the_shipped_atmospheres_apply() -> void:
 			PrecipitationView.visible_count(PrecipitationView.ASH_MAX, roundi(atmosphere.ash_fall * 1000.0)),
 			path
 		)
+
+
+func test_it_gives_the_water_the_sky_to_reflect() -> void:
+	var terrain: Terrain = TestTerrains.from_ascii(["....", ".11.", ".11.", "...."] as Array[String])
+	var water_m: PackedFloat32Array = PackedFloat32Array()
+	water_m.resize(16)
+	for k: int in 16:
+		water_m[k] = 0.5 if terrain.water[k] != 0 else 0.0
+	var water: WaterView = WaterView.new()
+	add_child_autofree(water)
+	water.build(terrain, water_m)
+	AtmosphereView.new(_environment, _sun, _terrain, _precipitation, water).apply(_look())
+	assert_eq(water.shader_parameter(&"sky_color"), Color(0.42, 0.2, 0.1), "the mission's sky")

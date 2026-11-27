@@ -9,7 +9,8 @@ extends RefCounted
 ##   desaturation, and per-ground-type recolor, and the water's tint;
 ## - ash, through PrecipitationView.set_ash, a view-only fall that is
 ##   independent of the sim's snow;
-## - the water, through WaterView.set_grade (the water tint), the structure
+## - the water, through WaterView.set_grade (the water tint) and set_sky (the
+##   background colour, which it reflects at grazing angles), the structure
 ##   models, through StructuresView.set_grade (the ground's tint and
 ##   desaturation), and the ground scatter, through ScatterView.set_grade (the
 ##   ground's tint, desaturation and per-ground-type recolor).
@@ -62,6 +63,7 @@ func apply(atmosphere: Atmosphere) -> void:
 		)
 	if _water != null:
 		_water.set_grade(atmosphere.water_tint)
+		_water.set_sky(atmosphere.background_color)
 	if _structures != null:
 		_structures.set_grade(atmosphere.terrain_tint, atmosphere.terrain_desaturation)
 	if _scatter != null:

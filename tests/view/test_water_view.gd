@@ -157,3 +157,25 @@ func test_grade_and_rain_reach_the_shader() -> void:
 	# A grade set before the next build still applies.
 	view.build(terrain, _water_for(terrain, 1.0))
 	assert_eq(view.shader_parameter(&"water_grade"), Color(0.0, 0.0, 0.0, 0.8))
+
+
+func test_the_sky_reaches_the_shader_and_survives_a_build() -> void:
+	var terrain: Terrain = TestTerrains.from_ascii(POOL)
+	var view: WaterView = _view(terrain, _water_for(terrain, 1.0))
+	view.set_sky(Color(0.5, 0.3, 0.2))
+	assert_eq(view.shader_parameter(&"sky_color"), Color(0.5, 0.3, 0.2))
+	view.build(terrain, _water_for(terrain, 1.0))
+	assert_eq(view.shader_parameter(&"sky_color"), Color(0.5, 0.3, 0.2), "kept for the next build")
+
+
+func test_the_dark_reflective_look_has_its_knobs() -> void:
+	var terrain: Terrain = TestTerrains.from_ascii(POOL)
+	var view: WaterView = _view(terrain, _water_for(terrain, 1.0))
+	var declared: Array[String] = []
+	for uniform: Dictionary in WaterView.WATER_SHADER.get_shader_uniform_list():
+		declared.append(uniform["name"])
+	for knob: String in ["sky_color", "fresnel_strength", "fresnel_power", "fresnel_floor", "sun_specular", "sun_roughness"]:
+		assert_has(declared, knob)
+	assert_not_null(view.shader_parameter(&"sky_color"), "set from the first build")
+	assert_eq(view.shader_parameter(&"deep_color"), WaterView.DEEP_COLOR)
+	assert_lt(WaterView.DEEP_COLOR.get_luminance(), 0.08, "deep water is dark")

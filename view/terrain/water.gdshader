@@ -9,6 +9,11 @@
 //
 // The ripples bend the normal with the shared tiling detail noise, scrolling
 // two copies in different directions. ripple_strength grows with rain.
+//
+// The look is dark and reflective (A5): a dark deep colour, and a fresnel
+// blend toward sky_color (the mission's sky) at grazing angles, which also
+// makes the sheet more opaque there; the sun's highlight is the light's own
+// specular, sun_specular strong at sun_roughness. No reflection viewport.
 shader_type spatial;
 render_mode blend_mix, depth_draw_never, cull_back;
 
@@ -28,6 +33,15 @@ uniform float depth_spread = 0.75;
 // Colors of shallow and deep water, mixed by depth.
 uniform vec4 shallow_color : source_color = vec4(0.27, 0.46, 0.47, 1.0);
 uniform vec4 deep_color : source_color = vec4(0.04, 0.17, 0.24, 1.0);
+// The sky reflected at grazing angles (WaterView.set_sky): its share is
+// fresnel_floor + (1 - fresnel_floor) * (1 - N.V)^fresnel_power, times
+// fresnel_strength.
+uniform vec4 sky_color : source_color = vec4(0.53, 0.6, 0.66, 1.0);
+uniform float fresnel_strength : hint_range(0.0, 1.0) = 0.75;
+uniform float fresnel_power = 4.0;
+uniform float fresnel_floor = 0.04;
+uniform float sun_specular : hint_range(0.0, 1.0) = 0.5;
+uniform float sun_roughness : hint_range(0.0, 1.0) = 0.12;
 // A mission's grade, blended over the water's own color by its alpha.
 uniform vec4 water_grade : source_color = vec4(0.0, 0.0, 0.0, 0.0);
 // Opacity at the shore, rising to deep_alpha with depth.
@@ -74,10 +88,14 @@ void fragment() {
 	depth = clamp(depth, 0.0, 1.0);
 	vec3 color = mix(shallow_color.rgb, deep_color.rgb, sqrt(depth));
 	color = mix(color, water_grade.rgb, water_grade.a);
-	float glancing = pow(1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0), 3.0);
+	float facing = clamp(dot(NORMAL, VIEW), 0.0, 1.0);
+	float fresnel = fresnel_floor + (1.0 - fresnel_floor) * pow(1.0 - facing, fresnel_power);
+	float sky_share = fresnel * fresnel_strength;
+	color = mix(color, sky_color.rgb, sky_share);
 
 	ALBEDO = color;
-	ROUGHNESS = 0.08;
-	SPECULAR = 0.7;
-	ALPHA = clamp(mix(shallow_alpha, deep_alpha, sqrt(depth)) * smoothstep(0.0, 0.08, depth + 0.001) + glancing * 0.15 * step(0.001, depth), 0.0, 1.0);
+	ROUGHNESS = sun_roughness;
+	SPECULAR = sun_specular;
+	float wet = smoothstep(0.0, 0.08, depth + 0.001);
+	ALPHA = clamp((mix(shallow_alpha, deep_alpha, sqrt(depth)) + sky_share * 0.5) * wet, 0.0, 1.0);
 }

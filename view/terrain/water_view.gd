@@ -18,12 +18,20 @@ const DEPTH_RANGE_M: float = 4.0
 ## Ripple strength with no rain, and in the heaviest rain.
 const RIPPLE_CALM: float = 0.3
 const RIPPLE_STORM: float = 1.2
+## The dark, reflective look (A5): deep water is nearly black-green, and at
+## grazing angles the surface takes the sky's colour (set_sky, the mission's
+## background), as the Compatibility renderer has no reflection.
+const DEEP_COLOR: Color = Color(0.015, 0.06, 0.08)
+const SHALLOW_COLOR: Color = Color(0.13, 0.22, 0.22)
+## The sky before set_sky: main.tscn's own background.
+const DEFAULT_SKY: Color = Color(0.53, 0.6, 0.66)
 
 var _material: ShaderMaterial
 var _cell_count: int = 0
 ## The grade set_grade() last passed on; alpha 0 changes nothing.
 var _grade: Color = Color(0.0, 0.0, 0.0, 0.0)
 var _ripple_strength: float = RIPPLE_CALM
+var _sky: Color = DEFAULT_SKY
 
 
 ## Replaces any existing water with meshes for water_m, the surface height in
@@ -59,6 +67,14 @@ func set_grade(water_grade: Color) -> void:
 	_grade = water_grade
 	if _material != null:
 		_material.set_shader_parameter("water_grade", _grade)
+
+
+## The sky the surface reflects at grazing angles (the mission's background
+## colour). Survives build().
+func set_sky(sky: Color) -> void:
+	_sky = sky
+	if _material != null:
+		_material.set_shader_parameter("sky_color", _sky)
 
 
 ## Rain roughens the ripples.
@@ -183,7 +199,9 @@ func _make_material(terrain: Terrain, water_m: PackedFloat32Array) -> ShaderMate
 	material.set_shader_parameter("sample_count", Vector2(terrain.size_x, terrain.size_z))
 	material.set_shader_parameter("cell_size", terrain.cell_size / float(World.UNITS_PER_METER))
 	material.set_shader_parameter("depth_range", DEPTH_RANGE_M)
-	material.set_shader_parameter("deep_color", Color(0.04, 0.17, 0.24))
+	material.set_shader_parameter("deep_color", DEEP_COLOR)
+	material.set_shader_parameter("shallow_color", SHALLOW_COLOR)
+	material.set_shader_parameter("sky_color", _sky)
 	material.set_shader_parameter("shallow_alpha", 0.25)
 	material.set_shader_parameter("ripple_speed", 0.03)
 	material.set_shader_parameter("ripple_strength", _ripple_strength)
