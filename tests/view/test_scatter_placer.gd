@@ -428,3 +428,41 @@ func test_some_reeds_carry_a_seed_head_at_their_tip() -> void:
 			nearest = minf(nearest, Vector2(head.x, head.z).distance_to(Vector2(stem.origin.x, stem.origin.z)))
 		assert_lt(nearest, 0.15, "over a stem")
 		assert_gt(head.y, 0.6, "up at its tip, not on the ground (%s)" % head)
+
+
+## Each placed item's footprint radius on the ground: half its widest
+## horizontal span.
+static func _footprint_radius(placed: Transform3D, name: StringName, width: float = 1.0) -> float:
+	var native: Vector3 = _sizes(width)[ScatterPlacer.model_of(name)]
+	var span: float = maxf(native.x * placed.basis.get_scale().x, native.z * placed.basis.get_scale().z)
+	return span / 2.0
+
+
+func test_no_item_spreads_wider_than_its_kind_allows() -> void:
+	# The kit's fern is 2.83 m across at 0.84 m tall: sized by height alone it
+	# would cover a squad. Wide models here are 3 times their height.
+	var rows: Array[String] = _rows(30, 30, ".")
+	for j: int in range(0, 10):
+		rows[j] = "b".repeat(30)
+	for j: int in range(10, 20):
+		rows[j] = "w".repeat(30)
+	var terrain: Terrain = TestTerrains.from_ascii(rows)
+	var layout: ScatterLayout = _place(terrain, null, PackedFloat32Array(), SEED, 1.0, 3.0)
+	assert_gt(layout.size(), 50)
+	for n: int in layout.size():
+		var name: StringName = layout.names[layout.models[n]]
+		var kind: int = ScatterPlacer.kind_of(name)
+		var span: float = 2.0 * _footprint_radius(layout.transforms[n], name, 3.0)
+		assert_lte(span, ScatterPlacer.MAX_SPAN_M[kind] + 0.001, "%s spans %.2f m" % [name, span])
+
+
+func test_no_item_rooted_beside_a_trail_spreads_onto_it() -> void:
+	var terrain: Terrain = TestTerrains.from_ascii(_rows(61, 61, "b"))
+	var mask: TrailMask = _trail_mask(3.0)
+	var layout: ScatterLayout = ScatterPlacer.place(terrain, {}, PackedFloat32Array(), null, _sizes(), SEED, 1.0, mask)
+	for n: int in layout.size():
+		var placed: Transform3D = layout.transforms[n]
+		var radius: float = _footprint_radius(placed, layout.names[layout.models[n]])
+		for step: int in 8:
+			var edge: Vector2 = Vector2(placed.origin.x, placed.origin.z) + Vector2.from_angle(TAU * step / 8.0) * radius
+			assert_lt(mask.wear_at(edge.x, edge.y), ScatterPlacer.TRAIL_CLEAR, "item %d's edge lies on the trail" % n)

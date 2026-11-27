@@ -48,7 +48,7 @@ const REED_MODEL: StringName = &"grass_wispy_tall"
 const REED_HEAD: StringName = &"reed_head"
 const REED_HEAD_MODEL: StringName = &"pebble_round_1"
 const REED_HEAD_SHARE: float = 0.35
-const REED_HEAD_SIZE_M: Vector2 = Vector2(0.07, 0.24)
+const REED_HEAD_SIZE_M: Vector2 = Vector2(0.09, 0.3)
 const REED_HEAD_AT: float = 0.82
 const REED_MAX_DEPTH_M: float = 0.3
 const REED_BANK_M: float = 1.5
@@ -148,6 +148,11 @@ const WIDEN: Array[float] = [2.0, 1.0, 1.0, 1.0, 0.4, 1.0]
 ## and below that an item stays with the odds 1 - wear / TRAIL_CLEAR, so the
 ## scatter thins toward the worn ground.
 const TRAIL_CLEAR: float = 0.55
+## Per kind (Kind order): the widest an item may spread across the ground,
+## metres, whatever its height asks. The kit's fern is 2.83 m across at
+## 0.84 m tall, and the wispy grass is widened twice over: sized by height
+## alone, a few would cover a squad.
+const MAX_SPAN_M: Array[float] = [0.8, 0.8, 1.2, 1.0, 0.8, 0.15]
 ## The density knob on the Web (WebGL2 on modest GPUs); 1.0 elsewhere.
 const DENSITY_SCALE_WEB: float = 0.4
 
@@ -239,10 +244,6 @@ static func place(
 					layer = Layer.MUD
 				if rng.randf() * max_density >= DENSITY[layer]:
 					continue
-				if trails != null:
-					var wear: float = trails.wear_at(x, z)
-					if wear >= TRAIL_CLEAR or (wear > 0.0 and rng.randf() < wear / TRAIL_CLEAR):
-						continue
 				var wet: float = water_depth_m(terrain, depth, x, z)
 				if wet > (REED_DEPTH_M if layer == Layer.MUD else DRY_DEPTH_M):
 					continue
@@ -259,11 +260,18 @@ static func place(
 				var yaw: float = rng.randf() * TAU
 				var spread_x: float = 1.0 + (rng.randf() - 0.5) * 2.0 * SPREAD
 				var spread_z: float = 1.0 + (rng.randf() - 0.5) * 2.0 * SPREAD
+				# No wider than the kind's MAX_SPAN_M, at the larger spread.
+				var widest: float = maxf(native.x, native.z) * WIDEN[kind] * maxf(spread_x, spread_z)
+				scale = minf(scale, MAX_SPAN_M[kind] / maxf(widest, 0.001))
 				# The footprint's radius, whatever the yaw: half the native
 				# width or depth, whichever is larger, at the larger spread.
-				var radius: float = 0.5 * maxf(native.x, native.z) * scale * WIDEN[kind] * maxf(spread_x, spread_z)
+				var radius: float = 0.5 * widest * scale
 				if _kept_out(terrain, keep, x, z, cell_m, radius):
 					continue
+				if trails != null:
+					var wear: float = footprint_wear(trails, x, z, radius)
+					if wear >= TRAIL_CLEAR or (wear > 0.0 and rng.randf() < wear / TRAIL_CLEAR):
+						continue
 				var lean: Quaternion = Quaternion.IDENTITY.slerp(Quaternion(Vector3.UP, normal), TILT[kind])
 				var basis: Basis = Basis(lean) * Basis(Vector3.UP, yaw) * Basis.from_scale(
 					Vector3(scale * spread_x * WIDEN[kind], scale, scale * spread_z * WIDEN[kind])
@@ -312,11 +320,13 @@ static func _place_reeds(
 				var headed: bool = rng.randf() < REED_HEAD_SHARE
 				if water_depth_m(terrain, depth, at.x, at.y) > REED_MAX_DEPTH_M:
 					continue
-				if trails != null and trails.wear_at(at.x, at.y) >= TRAIL_CLEAR:
-					continue
-				var scale: float = height / maxf(native.y, 0.001)
+				var scale: float = minf(
+					height / maxf(native.y, 0.001), MAX_SPAN_M[Kind.REED] / maxf(maxf(native.x, native.z) * WIDEN[Kind.REED], 0.001)
+				)
 				var footprint: float = 0.5 * maxf(native.x, native.z) * scale * WIDEN[Kind.REED]
 				if _kept_out(terrain, keep, at.x, at.y, cell_m, footprint):
+					continue
+				if trails != null and footprint_wear(trails, at.x, at.y, footprint) >= TRAIL_CLEAR:
 					continue
 				var normal: Vector3 = ground_normal(terrain, heights, at.x, at.y)
 				var lean: Quaternion = Quaternion.IDENTITY.slerp(Quaternion(Vector3.UP, normal), TILT[Kind.REED])
@@ -347,6 +357,16 @@ static func _place_reeds(
 				layout.models.append(head_model)
 				layout.transforms.append(Transform3D(head_basis, foot + Basis(lean) * Vector3(0.0, height * REED_HEAD_AT, 0.0)))
 				layout.grounds.append(ground)
+
+
+## The most wear a trail mask has under a footprint centred on (x_m, z_m) of
+## this radius: its centre and eight points round its edge.
+static func footprint_wear(trails: TrailMask, x_m: float, z_m: float, radius: float) -> float:
+	var wear: float = trails.wear_at(x_m, z_m)
+	for step: int in 8:
+		var edge: Vector2 = Vector2(x_m, z_m) + Vector2.from_angle(TAU * step / 8.0) * radius
+		wear = maxf(wear, trails.wear_at(edge.x, edge.y))
+	return wear
 
 
 ## The heights the view draws (milli-units per sample): the sim's, with

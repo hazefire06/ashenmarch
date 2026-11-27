@@ -57,7 +57,7 @@ const SHADOWS: Array[bool] = [false, false, false, false, false, false]
 ## dark brown.
 const KIT_TINT: Array[Color] = [
 	Color(0.52, 0.6, 0.38), Color(0.62, 0.68, 0.5), Color(0.95, 0.95, 0.85), Color(0.9, 0.9, 0.88),
-	Color(0.55, 0.58, 0.32), Color(0.42, 0.26, 0.14),
+	Color(0.66, 0.68, 0.4), Color(0.42, 0.26, 0.14),
 ]
 const KIT_DESATURATION: Array[float] = [0.4, 0.45, 0.35, 0.2, 0.25, 0.6]
 
