@@ -497,6 +497,6 @@ func test_the_mostly_grass_knobs_are_uniforms() -> void:
 		declared.append(uniform["name"])
 	for knob: String in [
 		"grass_tint", "brush_tint", "brush_detail", "forest_tint", "forest_detail", "undergrowth_tint",
-		"dry_tint", "sand_shore_low", "sand_shore_high", "rock_flat", "rock_grass_tint",
+		"dry_tint", "sand_shore_low", "sand_shore_high", "sand_shore_share", "rock_flat", "rock_grass_tint", "bed_tint",
 	]:
 		assert_has(declared, knob)

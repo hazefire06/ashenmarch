@@ -58,20 +58,22 @@ uniform float height_blend = 0.8;
 //   brush_detail or forest_detail of their own texture (by undergrowth_tint)
 //   showing through as undergrowth.
 // - Sand shows only near water, where the shore weight passes
-//   sand_shore_low..sand_shore_high (banks, beaches); inland it is the grass
-//   by dry_tint, a faint dry-grass tint.
+//   sand_shore_low..sand_shore_high (banks, beaches), and then only
+//   sand_shore_share of it over the grass; inland it is the grass by
+//   dry_tint, a faint dry-grass tint.
 // - Rock shows on steep faces (triplanar), and on flat rock ground as
 //   rock_flat of it over the grass by rock_grass_tint.
 // - Mud stays itself, at the water's edge.
-uniform vec3 grass_tint = vec3(0.62, 0.74, 0.6);
+uniform vec3 grass_tint = vec3(0.52, 0.7, 0.42);
 uniform vec3 brush_tint = vec3(0.86, 0.9, 0.8);
 uniform float brush_detail = 0.18;
 uniform vec3 forest_tint = vec3(0.68, 0.76, 0.66);
 uniform float forest_detail = 0.22;
 uniform vec3 undergrowth_tint = vec3(0.55, 0.58, 0.45);
 uniform vec3 dry_tint = vec3(1.12, 1.04, 0.8);
-uniform float sand_shore_low = 0.1;
-uniform float sand_shore_high = 0.45;
+uniform float sand_shore_low = 0.35;
+uniform float sand_shore_high = 0.75;
+uniform float sand_shore_share = 0.5;
 uniform float rock_flat = 0.35;
 uniform vec3 rock_grass_tint = vec3(0.88, 0.9, 0.84);
 // How hard noise pushes one layer over another within a border, 0..1. Any
@@ -91,13 +93,13 @@ uniform sampler2D trail_mask : hint_default_black, filter_linear, repeat_disable
 uniform vec2 trail_origin = vec2(0.0, 0.0);
 uniform vec2 trail_size = vec2(1.0, 1.0);
 uniform float trail_strength = 0.9;
-uniform float trail_edge_low = 0.2;
-uniform float trail_edge_high = 0.65;
+uniform float trail_edge_low = 0.15;
+uniform float trail_edge_high = 0.55;
 uniform float trail_breakup = 0.45;
 uniform float trail_noise_m = 1.7;
-uniform float trail_sand = 0.4;
-uniform vec4 trail_tint : source_color = vec4(0.82, 0.76, 0.68, 1.0);
-uniform float trail_rut_dark = 0.35;
+uniform float trail_sand = 0.65;
+uniform vec4 trail_tint : source_color = vec4(0.95, 0.9, 0.8, 1.0);
+uniform float trail_rut_dark = 0.22;
 // One texel per heightmap sample: water tint color, alpha = blend strength.
 // A dry sample is the shallow water's color at alpha 0, so filtering between
 // samples fades the tint out at a bank without darkening it.
@@ -119,6 +121,10 @@ uniform vec4 grade_tint : source_color = vec4(1.0, 1.0, 1.0, 1.0);
 uniform float grade_desaturation = 0.0;
 uniform vec4 ground_recolor[5] : source_color;
 uniform vec4 water_grade : source_color = vec4(0.0, 0.0, 0.0, 0.0);
+// The water tint's colour is multiplied by this on the 3D ground (the overhead
+// map keeps the palette's): the bed under the dark water surface (A5) reads
+// dark too, not a pale band along each bank.
+uniform vec3 bed_tint = vec3(0.45, 0.5, 0.5);
 // One texel per sample, R: 0 unburnt, about 0.5 burning, 1 scorched; G: 1
 // while burning, else 0. Filtered between samples, so G is how much burns
 // and R - 0.5 G how much is scorched.
@@ -256,11 +262,11 @@ void fragment() {
 	color[0] = grass;
 	color[1] = mix(grass * brush_tint, color[1] * undergrowth_tint, brush_detail);
 	color[2] = mix(grass * forest_tint, color[2] * undergrowth_tint, forest_detail);
-	color[SAND] = mix(grass * dry_tint, color[SAND], shore);
+	color[SAND] = mix(grass * dry_tint, color[SAND], shore * sand_shore_share);
 	color[ROCK] = mix(grass * rock_grass_tint, color[ROCK], rocky);
 	bump[1] = mix(bump[0], bump[1], brush_detail);
 	bump[2] = mix(bump[0], bump[2], forest_detail);
-	bump[SAND] = mix(bump[0], bump[SAND], shore);
+	bump[SAND] = mix(bump[0], bump[SAND], shore * sand_shore_share);
 	bump[ROCK] = mix(bump[0], bump[ROCK], rocky);
 
 	// Height blend: brightness stands in for height. A layer keeps its weight
@@ -330,7 +336,7 @@ void fragment() {
 	ground = mix(ground, EMBER, 0.6 * burning);
 	EMISSION = EMBER * 0.5 * burning;
 
-	ground = mix(ground, mix(tint.rgb, water_grade.rgb, water_grade.a), tint.a);
+	ground = mix(ground, mix(tint.rgb * bed_tint, water_grade.rgb, water_grade.a), tint.a);
 
 	// A blocked sample reads as solid, unless a structure model stands on it.
 	// Both read the nearest sample, the sim's rule for blocked samples.
