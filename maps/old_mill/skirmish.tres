@@ -25,4 +25,6 @@ spawns = PackedInt32Array(68000, 40000, 232000, 292000)
 spawn_facing = PackedInt32Array(98, 117, -66, -135)
 flags = PackedInt32Array(166000, 157000, 119000, 104000, 214000, 210000)
 hill = 0
+; Close in, RtsCamera's default framing (A5).
+camera_distance = 22000
 atmosphere = ExtResource("3_atm01")

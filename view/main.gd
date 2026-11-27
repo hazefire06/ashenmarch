@@ -95,9 +95,11 @@ const TEST_WARDEN_COUNT: int = 3
 ## Where the camera starts: south of the squads at the ford, looking north.
 const CAMERA_START: Vector2 = Vector2(285.0, 245.0)
 const CAMERA_START_DISTANCE: float = RtsCamera.DEFAULT_DISTANCE
-## How far ahead of the player's skirmish army the camera starts looking, in
-## meters, so the block isn't under the control bar.
-const SKIRMISH_CAMERA_LEAD: float = 15.0
+## How far ahead of the player's skirmish army the camera starts looking, as a
+## share of the camera's distance, so the block isn't under the control bar:
+## 15 m at the 75 m skirmishes used to open at, 4.4 m at today's 22 m (a fixed
+## 15 m would put the army behind a close camera).
+const SKIRMISH_CAMERA_LEAD: float = 0.2
 ## Weight of the newest sample in the sim-time moving average.
 const SIM_TIME_SMOOTHING: float = 0.05
 ## Real seconds between the mission being decided and mission_ended: long
@@ -702,8 +704,8 @@ func _load_catalog() -> UnitCatalog:
 
 
 # The sandbox starts south of the squads at the ford, looking north; a mission
-# starts where its MissionDef says (and the camera's own default, the middle of
-# the map, if it says nothing).
+# starts where its MissionDef says, looking the way its squad deploys facing
+# (and the camera's own default, the middle of the map, if it says nothing).
 func _place_camera() -> void:
 	if launch == null:
 		_camera.set_pose(CAMERA_START, 0.0, CAMERA_START_DISTANCE)
@@ -715,8 +717,11 @@ func _place_camera() -> void:
 	if mission.camera_start.size() != 2:
 		return
 	var mm: float = float(World.UNITS_PER_METER)
+	# Looking the way the squad faces, over its shoulders, as a skirmish does.
+	var facing: Vector2 = Vector2(mission.deploy_facing_x, mission.deploy_facing_z)
+	var yaw: float = 0.0 if facing == Vector2.ZERO else atan2(-facing.x, -facing.y)
 	_camera.set_pose(
-		Vector2(mission.camera_start[0], mission.camera_start[1]) / mm, 0.0, mission.camera_distance / mm
+		Vector2(mission.camera_start[0], mission.camera_start[1]) / mm, yaw, mission.camera_distance / mm
 	)
 
 
@@ -730,8 +735,9 @@ func _place_skirmish_camera() -> void:
 	var facing: Vector2 = Vector2(setup.map.facing(setup.player_spawn)).normalized()
 	if facing == Vector2.ZERO:
 		facing = Vector2(0.0, -1.0)
-	var focus: Vector2 = Vector2(at) / mm + facing * SKIRMISH_CAMERA_LEAD
-	_camera.set_pose(focus, atan2(-facing.x, -facing.y), setup.map.camera_distance / mm)
+	var distance: float = setup.map.camera_distance / mm
+	var focus: Vector2 = Vector2(at) / mm + facing * SKIRMISH_CAMERA_LEAD * distance
+	_camera.set_pose(focus, atan2(-facing.x, -facing.y), distance)
 
 
 # A skirmish's own views: its flags in the world, and under the HUD its score

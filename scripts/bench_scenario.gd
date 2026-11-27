@@ -8,6 +8,9 @@ extends RefCounted
 ## extra arrows change the world from outside the command stream.
 
 const MAP_PATH: String = "res://maps/riverside/skirmish.tres"
+## The camera's distance from the army, milli-units: the skirmish default
+## before A5's closer framing.
+const BENCH_CAMERA_DISTANCE: int = 75000
 const LIGHT_ARMY: Dictionary[StringName, int] = {
 	&"shieldman": 15, &"reaver": 10, &"longbow": 15, &"sapper": 10,
 }
@@ -36,7 +39,10 @@ func _init(catalog: UnitCatalog, target_projectiles: int = 200) -> void:
 ## The skirmish to play.
 static func setup() -> SkirmishSetup:
 	var s: SkirmishSetup = SkirmishSetup.new()
-	s.map = load(MAP_PATH) as SkirmishMap
+	# A copy with the camera at the 75 m the bench was measured at before A5
+	# brought the default in, so runs stay comparable with BASE.
+	s.map = (load(MAP_PATH) as SkirmishMap).duplicate() as SkirmishMap
+	s.map.camera_distance = BENCH_CAMERA_DISTANCE
 	s.rules = SkirmishRules.for_map(s.map, SkirmishRules.Mode.BODY_COUNT, 30, UnitType.Faction.LIGHT)
 	s.budget = 1_000_000
 	var light: Army = Army.new(UnitType.Faction.LIGHT)

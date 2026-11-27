@@ -38,3 +38,26 @@ func test_the_campaign_missions_open_at_the_default_framing() -> void:
 		var focus: Vector2 = Vector2(mission.camera_start[0], mission.camera_start[1])
 		var squad: Vector2 = Vector2(mission.deploy[0], mission.deploy[1])
 		assert_lt(focus.distance_to(squad) / 1000.0, 10.0, "%s looks near its squad" % path)
+
+
+func test_the_skirmish_maps_open_at_the_default_framing() -> void:
+	for id: String in ["riverside", "the_ford", "old_mill"]:
+		var map: SkirmishMap = load("res://maps/%s/skirmish.tres" % id) as SkirmishMap
+		assert_almost_eq(map.camera_distance / 1000.0, RtsCamera.DEFAULT_DISTANCE, 0.001, id)
+
+
+func test_the_bench_keeps_its_old_75_m_camera() -> void:
+	# So make bench stays comparable with runs before the closer default.
+	assert_eq(BenchScenario.setup().map.camera_distance, 75000)
+	var shared: SkirmishMap = load(BenchScenario.MAP_PATH) as SkirmishMap
+	assert_ne(shared.camera_distance, 75000, "without changing the shared map")
+
+
+func test_a_skirmish_army_opens_in_front_of_the_camera() -> void:
+	# The focus leads the army by a share of the distance; the camera stands
+	# its horizontal reach behind the focus, so the lead must be shorter.
+	for distance: float in [RtsCamera.DEFAULT_DISTANCE, 75.0]:
+		var reach: float = distance * cos(RtsCamera.pitch_at(distance))
+		var lead: float = MainView.SKIRMISH_CAMERA_LEAD * distance
+		assert_lt(lead, reach * 0.5, "at %.0f m the army stands well in front of the camera" % distance)
+	assert_almost_eq(MainView.SKIRMISH_CAMERA_LEAD * 75.0, 15.0, 0.001, "the 75 m bench keeps its old 15 m lead")

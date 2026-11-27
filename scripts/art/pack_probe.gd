@@ -25,7 +25,9 @@ extends SceneTree
 ## differences any change of a frame's place in a sheet brings, since mipmaps
 ## average fixed squares of the sheet.
 
-const DISTANCES: Array[float] = [RtsCamera.MIN_DISTANCE, MainView.CAMERA_START_DISTANCE, RtsCamera.MAX_DISTANCE]
+## The middle one is the 75 m the probe was written for (the opening distance
+## before A5's closer default), fixed so its results stay comparable.
+const DISTANCES: Array[float] = [RtsCamera.MIN_DISTANCE, 75.0, RtsCamera.MAX_DISTANCE]
 const PITCH_DEG: float = 50.0
 const SIZE: int = 1024
 ## The largest channel difference, of 255, still counted as the same pixel.
