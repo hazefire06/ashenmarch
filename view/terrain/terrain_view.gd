@@ -39,6 +39,8 @@ const MUD_REACH_M: float = 3.0
 ## Index array shared by every full-size chunk, made by build().
 var _shared_indices: PackedInt32Array = PackedInt32Array()
 var _material: ShaderMaterial
+## The worn trails build() baked (empty without any), shared with the scatter.
+var _trail_mask: TrailMask = TrailMask.bake(null, Vector2.ZERO)
 ## Heights the view draws under structures (sample index to milli-units), kept
 ## by build() for rebuild_region(). Its keys are the samples a structure
 ## model covers.
@@ -57,11 +59,15 @@ var _grade_water: Color = Color(0.0, 0.0, 0.0, 0.0)
 
 ## Replaces any existing chunks with meshes for this terrain. With structures,
 ## the samples under each are drawn at their natural ground height, so the
-## sim's raised slab is never seen; the sim's heights are untouched.
-func build(terrain: Terrain, structures: MapStructures = null) -> void:
+## sim's raised slab is never seen; the sim's heights are untouched. trails
+## (the map's MapTrails, or null) are baked into a TrailMask and worn into the
+## ground as dirt.
+func build(terrain: Terrain, structures: MapStructures = null, trails: MapTrails = null) -> void:
 	_view_heights = {}
 	if structures != null:
 		_view_heights = structures.view_heights(terrain)
+	var mm_per_m: float = float(World.UNITS_PER_METER)
+	_trail_mask = TrailMask.bake(trails, Vector2(terrain.extent_x(), terrain.extent_z()) / mm_per_m)
 	for child: Node in get_children():
 		# Out of the tree now, so a rebuild in the same frame can reuse the names.
 		remove_child(child)
@@ -131,6 +137,12 @@ func update_fire(fire: Fire) -> void:
 ## FIRE_TEXEL), for the ground scatter to read. Null before build().
 func fire_texture() -> Texture2D:
 	return _fire_texture
+
+
+## The worn trails build() baked, for the ground scatter to keep off. Empty
+## before build() or without trails.
+func trail_mask() -> TrailMask:
+	return _trail_mask
 
 
 ## Passes the ground's wetness and snow cover on to the shader.
@@ -212,6 +224,9 @@ func _make_material(terrain: Terrain) -> ShaderMaterial:
 	material.set_shader_parameter("rock_band", ROCK_BAND)
 	material.set_shader_parameter("water_tint", ImageTexture.create_from_image(_water_tint_image(terrain)))
 	material.set_shader_parameter("blocked_map", ImageTexture.create_from_image(_blocked_image(terrain)))
+	material.set_shader_parameter("trail_mask", _trail_mask.texture())
+	material.set_shader_parameter("trail_origin", _trail_mask.origin_m())
+	material.set_shader_parameter("trail_size", _trail_mask.size_m())
 	_apply_grade(material)
 	material.set_shader_parameter(
 		"blocked_tint", Vector2(TerrainPalette.BLOCKED_DARKEN, TerrainPalette.BLOCKED_DESATURATE)

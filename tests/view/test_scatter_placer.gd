@@ -299,3 +299,37 @@ static func _barycentric(p: Vector2, a: Vector2, b: Vector2, c: Vector2) -> Vect
 	var v: float = (v2.x * v1.y - v1.x * v2.y) / den
 	var w: float = (v0.x * v2.y - v2.x * v0.y) / den
 	return Vector3(1.0 - v - w, v, w)
+
+
+## A grass map 60 m square with one trail along z = 30, and its mask.
+func _trail_mask(width_m: float) -> TrailMask:
+	var record: TrailRecord = TrailRecord.new()
+	record.points_m = PackedVector2Array([Vector2(0, 30), Vector2(60, 30)])
+	record.width_m = width_m
+	record.fade_ends = false
+	var trails: MapTrails = MapTrails.new()
+	trails.records = [record]
+	return TrailMask.bake(trails, Vector2(60, 60))
+
+
+func test_nothing_stands_on_a_trail_and_it_thins_at_the_edges() -> void:
+	var terrain: Terrain = TestTerrains.from_ascii(_rows(61, 61, "."))
+	var mask: TrailMask = _trail_mask(3.0)
+	var layout: ScatterLayout = ScatterPlacer.place(terrain, {}, PackedFloat32Array(), null, _sizes(), SEED, 1.0, mask)
+	var bare: ScatterLayout = _place(terrain)
+	var on_edge: int = 0
+	var bare_edge: int = 0
+	for n: int in layout.size():
+		var at: Vector3 = layout.transforms[n].origin
+		assert_lt(mask.wear_at(at.x, at.z), ScatterPlacer.TRAIL_CLEAR, "item %d at %s is on the trail" % [n, at])
+		var wear: float = mask.wear_at(at.x, at.z)
+		if wear > 0.1:
+			on_edge += 1
+	for n: int in bare.size():
+		var at: Vector3 = bare.transforms[n].origin
+		var wear: float = mask.wear_at(at.x, at.z)
+		if wear > 0.1 and wear < ScatterPlacer.TRAIL_CLEAR:
+			bare_edge += 1
+	assert_gt(bare_edge, 20, "the edge band has room for items")
+	assert_lt(on_edge, bare_edge * 0.75, "fewer at the trail's edge (%d) than without it (%d)" % [on_edge, bare_edge])
+	assert_gt(layout.size(), bare.size() * 0.8, "the rest of the map keeps its scatter")

@@ -80,11 +80,12 @@ var _snow_cover: float = 0.0
 ## Replaces any scatter with the layout for this map. map_name seeds it
 ## (ScatterPlacer.seed_for), so a map always gets the same scatter.
 ## fire_texture is TerrainView.fire_texture() (null: nothing burns). Nothing
-## is submitted until the first set_focus().
+## is submitted until the first set_focus(). trails (TerrainView.trail_mask(),
+## or null) keep the scatter off the worn ground.
 func build(
 	terrain: Terrain, structures: MapStructures, water_m: PackedFloat32Array, map_name: String,
 	fire_texture: Texture2D = null, scatter_set: ScatterSet = ScatterSet.shared(),
-	density_scale: float = ScatterPlacer.default_density_scale()
+	density_scale: float = ScatterPlacer.default_density_scale(), trails: TrailMask = null
 ) -> void:
 	for child: Node in get_children():
 		remove_child(child)
@@ -101,7 +102,7 @@ func build(
 	_heights = ScatterPlacer.view_height_array(terrain, _view_heights)
 	var layout: ScatterLayout = ScatterPlacer.place(
 		terrain, _view_heights, water_m, structures, scatter_set.native_sizes(),
-		ScatterPlacer.seed_for(map_name), density_scale
+		ScatterPlacer.seed_for(map_name), density_scale, trails
 	)
 	_count = layout.size()
 	if layout.size() == 0:

@@ -57,6 +57,23 @@ uniform float border_jitter = 0.35;
 // walkable limit), fully rock rock_band lower.
 uniform float rock_normal_y = 0.707;
 uniform float rock_band = 0.1;
+// Worn trails (TrailMask): R the wear, G a road's two wheel ruts, over the
+// rectangle trail_origin .. trail_origin + trail_size (metres) and clear
+// outside it. The wear becomes dirt (mud and sand, by trail_sand) where wear
+// plus a fine breakup noise (trail_breakup, repeating every trail_noise_m)
+// passes trail_edge_low..trail_edge_high, so grass breaks into the dirt at the
+// edges; trail_strength scales it all. The ruts are trail_rut_dark darker.
+uniform sampler2D trail_mask : hint_default_black, filter_linear, repeat_disable;
+uniform vec2 trail_origin = vec2(0.0, 0.0);
+uniform vec2 trail_size = vec2(1.0, 1.0);
+uniform float trail_strength = 0.9;
+uniform float trail_edge_low = 0.2;
+uniform float trail_edge_high = 0.65;
+uniform float trail_breakup = 0.45;
+uniform float trail_noise_m = 1.7;
+uniform float trail_sand = 0.4;
+uniform vec4 trail_tint : source_color = vec4(0.82, 0.76, 0.68, 1.0);
+uniform float trail_rut_dark = 0.35;
 // One texel per heightmap sample: water tint color, alpha = blend strength.
 // A dry sample is the shallow water's color at alpha 0, so filtering between
 // samples fades the tint out at a bank without darkening it.
@@ -96,6 +113,7 @@ const vec3 FLAT_NORMAL = vec3(0.5, 0.5, 1.0);
 // fire_state's R for a burning cell (TerrainView.FIRE_TEXEL, 128 / 255).
 const float FIRE_BURNING_R = 0.502;
 const int LAYER_COUNT = 6;
+const int SAND = 3;
 const int ROCK = 4;
 const int MUD = 5;
 // Meters per repeat of the fine border noise.
@@ -236,6 +254,18 @@ void fragment() {
 		ground += mix(color[i], recolor.rgb, recolor.a) * w[i];
 		normal_map += bump[i] * w[i];
 	}
+	// Worn trails: dirt where the wear, broken up by fine noise, is high;
+	// darker in a road's ruts. Graded as the sand of a road would be.
+	vec2 trail = texture(trail_mask, (world_pos.xz - trail_origin) / trail_size).rg;
+	float trail_noise = texture(detail_noise, world_pos.xz / trail_noise_m).g;
+	float worn = trail_strength * smoothstep(trail_edge_low, trail_edge_high,
+		trail.r + (trail_noise - 0.5) * 2.0 * trail_breakup * trail.r * (1.0 - trail.r) * 4.0);
+	vec3 dirt = mix(color[MUD], color[SAND], trail_sand) * trail_tint.rgb;
+	dirt = mix(dirt, ground_recolor[SAND].rgb, ground_recolor[SAND].a);
+	dirt *= 1.0 - trail_rut_dark * smoothstep(0.25, 0.7, trail.g);
+	ground = mix(ground, dirt, worn);
+	normal_map = mix(normal_map, bump[MUD], worn);
+
 	// Under water the bed's relief is drowned: the ground's normal map fades out
 	// with the water tint, or a ford's shallow bed shows the layer's tiling
 	// bumps as a regular grid through its smooth tint.

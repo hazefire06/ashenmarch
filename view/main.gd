@@ -242,14 +242,19 @@ func _ready() -> void:
 	var loaded_ms: int = Time.get_ticks_msec()
 	var map_info: MapInfo = _map_info()
 	var structures: MapStructures = null
+	var trails: MapTrails = null
 	var water_m: PackedFloat32Array = PackedFloat32Array()
 	if map_info != null:
 		structures = MapStructures.load_beside(map_info.heightmap_path)
+		trails = MapTrails.load_beside(map_info.heightmap_path)
 		water_m = WaterMap.load_beside(map_info.heightmap_path, terrain, map_info.max_height)
-	_terrain_view.build(terrain, structures)
+	_terrain_view.build(terrain, structures, trails)
 	_water_view.build(terrain, water_m, structures)
 	_structures_view.build(structures, terrain)
-	_scatter_view.build(terrain, structures, water_m, _scatter_name(map_info), _terrain_view.fire_texture())
+	_scatter_view.build(
+		terrain, structures, water_m, _scatter_name(map_info), _terrain_view.fire_texture(), ScatterSet.shared(),
+		ScatterPlacer.default_density_scale(), _terrain_view.trail_mask()
+	)
 	_terrain_view.region_rebuilt.connect(_scatter_view.rebuild_region)
 	_camera.setup(terrain)
 	_place_camera()

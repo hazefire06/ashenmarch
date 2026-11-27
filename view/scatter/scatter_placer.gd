@@ -113,6 +113,10 @@ const SPREAD: float = 0.15
 ## are tall and narrow; sized to stay under a unit's knee they would be a few
 ## blades, so they are spread wider to read as cover.
 const WIDEN: Array[float] = [2.0, 1.0, 1.0, 1.0]
+## Trails (TrailMask): nothing stands where the wear is TRAIL_CLEAR or more,
+## and below that an item stays with the odds 1 - wear / TRAIL_CLEAR, so the
+## scatter thins toward the worn ground.
+const TRAIL_CLEAR: float = 0.55
 ## The density knob on the Web (WebGL2 on modest GPUs); 1.0 elsewhere.
 const DENSITY_SCALE_WEB: float = 0.4
 
@@ -137,11 +141,12 @@ static func seed_for(map_name: String) -> int:
 ## native_sizes holds each model's native bounds (ScatterSet.native_sizes):
 ## its height sizes it, its width keeps its edge off structures; palette
 ## entries without one are skipped. density_scale multiplies every
-## density (0 places nothing).
+## density (0 places nothing). trails (TerrainView.trail_mask(), or null) keep
+## the scatter off the worn ground.
 static func place(
 	terrain: Terrain, view_heights: Dictionary[int, int], water_m: PackedFloat32Array,
 	structures: MapStructures, native_sizes: Dictionary[StringName, Vector3], seed: int,
-	density_scale: float = 1.0
+	density_scale: float = 1.0, trails: TrailMask = null
 ) -> ScatterLayout:
 	var layout: ScatterLayout = ScatterLayout.new()
 	var palettes: Array = _usable_palettes(native_sizes, layout)
@@ -183,6 +188,10 @@ static func place(
 					layer = Layer.MUD
 				if rng.randf() * max_density >= DENSITY[layer]:
 					continue
+				if trails != null:
+					var wear: float = trails.wear_at(x, z)
+					if wear >= TRAIL_CLEAR or (wear > 0.0 and rng.randf() < wear / TRAIL_CLEAR):
+						continue
 				var wet: float = water_depth_m(terrain, depth, x, z)
 				if wet > (REED_DEPTH_M if layer == Layer.MUD else DRY_DEPTH_M):
 					continue

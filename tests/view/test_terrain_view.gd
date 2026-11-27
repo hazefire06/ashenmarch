@@ -447,3 +447,34 @@ func test_a_cell_lit_between_steps_still_shows() -> void:
 	world.step()
 	view.update_fire(world.fire)
 	assert_eq(view.fire_texel(5, 5), TerrainView.FIRE_TEXEL[Fire.Cell.BURNING])
+
+
+func test_trails_are_baked_and_reach_the_shader() -> void:
+	var record: TrailRecord = TrailRecord.new()
+	record.points_m = PackedVector2Array([Vector2(10, 20), Vector2(120, 40)])
+	record.width_m = 3.4
+	var trails: MapTrails = MapTrails.new()
+	trails.records = [record]
+	var view: TerrainView = TerrainView.new()
+	add_child_autofree(view)
+	view.build(_terrain(), null, trails)
+	var mask: TrailMask = view.trail_mask()
+	assert_false(mask.is_empty())
+	assert_gt(mask.wear_at(65.0, 30.0), 0.9, "worn along the route")
+	var declared: Array[String] = []
+	for uniform: Dictionary in _material(view).shader.get_shader_uniform_list():
+		declared.append(uniform["name"])
+	for knob: String in [
+		"trail_mask", "trail_origin", "trail_size", "trail_strength", "trail_edge_low", "trail_edge_high",
+		"trail_breakup", "trail_noise_m", "trail_sand", "trail_tint", "trail_rut_dark",
+	]:
+		assert_has(declared, knob)
+	assert_same(view.shader_parameter(&"trail_mask"), mask.texture())
+	assert_eq(view.shader_parameter(&"trail_origin"), mask.origin_m())
+	assert_eq(view.shader_parameter(&"trail_size"), mask.size_m())
+
+
+func test_without_trails_the_mask_is_empty() -> void:
+	var view: TerrainView = _view_of(_terrain())
+	assert_true(view.trail_mask().is_empty())
+	assert_not_null(view.shader_parameter(&"trail_mask"), "the shader still gets a (clear) texture")
