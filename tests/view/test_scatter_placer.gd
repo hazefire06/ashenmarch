@@ -85,7 +85,9 @@ func test_nothing_stands_in_deep_water() -> void:
 	for n: int in layout.size():
 		var at: Vector3 = layout.transforms[n].origin
 		var depth: float = ScatterPlacer.water_depth_m(terrain, ScatterPlacer.depths(terrain, water_m), at.x, at.z)
-		assert_lte(depth, ScatterPlacer.REED_DEPTH_M, "item %d at %s is in %.2f m of water" % [n, at, depth])
+		var reed: bool = layout.names[layout.models[n]] in [ScatterPlacer.REED, ScatterPlacer.REED_HEAD]
+		var limit: float = ScatterPlacer.REED_MAX_DEPTH_M if reed else ScatterPlacer.REED_DEPTH_M
+		assert_lte(depth, limit, "item %d at %s is in %.2f m of water" % [n, at, depth])
 		var inside: bool = at.x > 9.0 and at.x < 20.0 and at.z > 9.0 and at.z < 20.0
 		assert_false(inside, "item %d at %s is inside the pond" % [n, at])
 
@@ -333,3 +335,96 @@ func test_nothing_stands_on_a_trail_and_it_thins_at_the_edges() -> void:
 	assert_gt(bare_edge, 20, "the edge band has room for items")
 	assert_lt(on_edge, bare_edge * 0.75, "fewer at the trail's edge (%d) than without it (%d)" % [on_edge, bare_edge])
 	assert_gt(layout.size(), bare.size() * 0.8, "the rest of the map keeps its scatter")
+
+
+## A 60 x 40 m bank on each side of a channel along x: the water surface at
+## 1 m, the bed shelving from 0.1 m deep at the edge to 1.5 m in the middle,
+## and dry ground 0.1 m above the water. Returns [terrain, water_m].
+static func _channel() -> Array:
+	var rows: Array[String] = _rows(60, 40, ".")
+	# Depth by row from the channel's edge inward (both banks).
+	var depth_by_row: Dictionary[int, float] = {
+		14: 0.08, 15: 0.18, 16: 0.28, 17: 0.6, 18: 1.0, 19: 1.5, 20: 1.5, 21: 1.0, 22: 0.6, 23: 0.28, 24: 0.18, 25: 0.08,
+	}
+	for j: int in depth_by_row:
+		rows[j] = "1".repeat(60)
+	var terrain: Terrain = TestTerrains.from_ascii(rows)
+	var water_m: PackedFloat32Array = PackedFloat32Array()
+	water_m.resize(terrain.size_x * terrain.size_z)
+	for j: int in terrain.size_z:
+		for i: int in terrain.size_x:
+			var k: int = j * terrain.size_x + i
+			if depth_by_row.has(j):
+				terrain.heights[k] = roundi((1.0 - depth_by_row[j]) * 1000.0)
+				water_m[k] = 1.0
+			else:
+				terrain.heights[k] = 1100
+	return [terrain, water_m]
+
+
+func _reeds(layout: ScatterLayout) -> Array[Transform3D]:
+	var result: Array[Transform3D] = []
+	for n: int in layout.size():
+		if layout.names[layout.models[n]] == ScatterPlacer.REED:
+			result.append(layout.transforms[n])
+	return result
+
+
+func test_reeds_stand_in_the_shallows_and_on_the_bank() -> void:
+	var made: Array = _channel()
+	var terrain: Terrain = made[0]
+	var water_m: PackedFloat32Array = made[1]
+	var layout: ScatterLayout = _place(terrain, null, water_m)
+	var reeds: Array[Transform3D] = _reeds(layout)
+	assert_gt(reeds.size(), 30, "reeds along the channel")
+	var depth: PackedFloat32Array = ScatterPlacer.depths(terrain, water_m)
+	var wading: int = 0
+	for placed: Transform3D in reeds:
+		var at: Vector3 = placed.origin
+		var wet: float = ScatterPlacer.water_depth_m(terrain, depth, at.x, at.z)
+		assert_lte(wet, ScatterPlacer.REED_MAX_DEPTH_M + 0.001, "a reed at %s is in %.2f m of water" % [at, wet])
+		assert_true(at.z > 14.0 - ScatterPlacer.REED_BANK_M - 1.0 and at.z < 25.0 + ScatterPlacer.REED_BANK_M + 1.0, "and by the water (%s)" % at)
+		if wet > 0.02:
+			wading += 1
+		var height: float = placed.basis.get_scale().y * _sizes()[ScatterPlacer.REED_MODEL].y
+		assert_between(height, 0.8, 1.7, "reed-tall")
+	assert_gt(wading, reeds.size() / 4, "many stand in the water (%d of %d)" % [wading, reeds.size()])
+
+
+func test_reeds_grow_in_clumps_not_a_fringe() -> void:
+	var made: Array = _channel()
+	var reeds: Array[Transform3D] = _reeds(_place(made[0], null, made[1]))
+	# Most reeds have neighbours close by...
+	var crowded: int = 0
+	for a: Transform3D in reeds:
+		var near: int = 0
+		for b: Transform3D in reeds:
+			if a != b and Vector2(a.origin.x, a.origin.z).distance_to(Vector2(b.origin.x, b.origin.z)) < 1.0:
+				near += 1
+		if near >= 3:
+			crowded += 1
+	assert_gt(crowded, reeds.size() * 0.7, "in clumps (%d of %d crowded)" % [crowded, reeds.size()])
+	# ...and stretches of the bank have none.
+	var bins: PackedInt32Array = PackedInt32Array()
+	bins.resize(30)
+	for placed: Transform3D in reeds:
+		bins[clampi(floori(placed.origin.x / 2.0), 0, 29)] += 1
+	assert_gt(bins.count(0), 6, "gaps along the bank (%s)" % bins)
+
+
+func test_some_reeds_carry_a_seed_head_at_their_tip() -> void:
+	var made: Array = _channel()
+	var layout: ScatterLayout = _place(made[0], null, made[1])
+	var stems: Array[Transform3D] = _reeds(layout)
+	var heads: Array[Vector3] = []
+	for n: int in layout.size():
+		if layout.names[layout.models[n]] == ScatterPlacer.REED_HEAD:
+			heads.append(layout.transforms[n].origin)
+	assert_gt(heads.size(), stems.size() / 6, "a share of the stems (%d heads, %d stems)" % [heads.size(), stems.size()])
+	assert_lt(heads.size(), stems.size(), "not every one")
+	for head: Vector3 in heads:
+		var nearest: float = INF
+		for stem: Transform3D in stems:
+			nearest = minf(nearest, Vector2(head.x, head.z).distance_to(Vector2(stem.origin.x, stem.origin.z)))
+		assert_lt(nearest, 0.15, "over a stem")
+		assert_gt(head.y, 0.6, "up at its tip, not on the ground (%s)" % head)

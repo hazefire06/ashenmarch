@@ -16,7 +16,7 @@ extends RefCounted
 ## odds of that layer's density. Then the water, the structures and the
 ## palettes decide what, if anything, stands there.
 
-enum Kind { GRASS, PLANT, BUSH, PEBBLE }
+enum Kind { GRASS, PLANT, BUSH, PEBBLE, REED, REED_HEAD }
 ## The ground layers, in WorldTextures.LAYERS order. The first five are the
 ## Terrain.Ground values; MUD is laid along the water.
 enum Layer { GRASS, BRUSH, FOREST, SAND, ROCK, MUD }
@@ -34,6 +34,37 @@ const KINDS: Dictionary[StringName, int] = {
 	&"pebble_square_1": Kind.PEBBLE, &"pebble_square_2": Kind.PEBBLE, &"pebble_square_3": Kind.PEBBLE,
 	&"pebble_square_4": Kind.PEBBLE, &"pebble_square_5": Kind.PEBBLE, &"pebble_square_6": Kind.PEBBLE,
 }
+
+## Reeds (Kind.REED): the kit's wispy tall grass, drawn tall and narrow, in
+## clumps standing in water up to REED_MAX_DEPTH_M deep and on the bank up to
+## REED_BANK_M from it. Placed by their own pass (_place_reeds), under the name
+## REED, which is REED_MODEL in the scatter set.
+const REED: StringName = &"reed"
+const REED_MODEL: StringName = &"grass_wispy_tall"
+## A share of the stems carry a seed head (Kind.REED_HEAD, named REED_HEAD): a
+## kit pebble stretched to REED_HEAD_SIZE_M (width, height), dark brown, its
+## base REED_HEAD_AT of the way up the stem. It is what makes a clump read as
+## reeds rather than tall grass.
+const REED_HEAD: StringName = &"reed_head"
+const REED_HEAD_MODEL: StringName = &"pebble_round_1"
+const REED_HEAD_SHARE: float = 0.35
+const REED_HEAD_SIZE_M: Vector2 = Vector2(0.07, 0.24)
+const REED_HEAD_AT: float = 0.82
+const REED_MAX_DEPTH_M: float = 0.3
+const REED_BANK_M: float = 1.5
+## Per shallow or bank sample, the odds a clump starts there, times the
+## clumping noise's smoothstep REED_CLUMP_LOW..REED_CLUMP_HIGH (noise over
+## REED_CLUMP_M): clumps gather in stretches of the bank, with bare stretches
+## between.
+const REED_CLUMP_CHANCE: float = 0.3
+const REED_CLUMP_M: float = 16.0
+const REED_CLUMP_LOW: float = 0.0
+const REED_CLUMP_HIGH: float = 0.35
+## A clump: this many stems within a radius of REED_RADIUS_M, each
+## REED_HEIGHT_M tall, the outer ones a fifth shorter.
+const REED_STEMS: Vector2i = Vector2i(6, 13)
+const REED_RADIUS_M: Vector2 = Vector2(0.3, 0.75)
+const REED_HEIGHT_M: Vector2 = Vector2(1.1, 1.6)
 
 ## Items per square metre on each layer (Layer order), before the clumping
 ## and the density knob. The tuning knobs for how much scatter there is.
@@ -106,19 +137,39 @@ const PATCH_BASE: float = 0.3
 const PATCH_GAIN: float = 2.0
 ## How far each kind leans with the ground (Kind order): 0 stands upright, 1
 ## lies along the slope. Grass and plants grow mostly up.
-const TILT: Array[float] = [0.4, 0.5, 0.25, 1.0]
+const TILT: Array[float] = [0.4, 0.5, 0.25, 1.0, 0.1, 0.1]
 ## Each item's width and depth vary by this share around its height's scale.
 const SPREAD: float = 0.15
 ## Per kind: width and depth over the height's scale. The kit's grass tufts
 ## are tall and narrow; sized to stay under a unit's knee they would be a few
 ## blades, so they are spread wider to read as cover.
-const WIDEN: Array[float] = [2.0, 1.0, 1.0, 1.0]
+const WIDEN: Array[float] = [2.0, 1.0, 1.0, 1.0, 0.4, 1.0]
 ## Trails (TrailMask): nothing stands where the wear is TRAIL_CLEAR or more,
 ## and below that an item stays with the odds 1 - wear / TRAIL_CLEAR, so the
 ## scatter thins toward the worn ground.
 const TRAIL_CLEAR: float = 0.55
 ## The density knob on the Web (WebGL2 on modest GPUs); 1.0 elsewhere.
 const DENSITY_SCALE_WEB: float = 0.4
+
+
+## The kind of an item named name: KINDS, or Kind.REED for REED and
+## Kind.REED_HEAD for REED_HEAD.
+static func kind_of(name: StringName) -> int:
+	if name == REED:
+		return Kind.REED
+	if name == REED_HEAD:
+		return Kind.REED_HEAD
+	return KINDS[name]
+
+
+## The scatter set's model an item named name draws: REED_MODEL for REED,
+## REED_HEAD_MODEL for REED_HEAD, else the name itself.
+static func model_of(name: StringName) -> StringName:
+	if name == REED:
+		return REED_MODEL
+	if name == REED_HEAD:
+		return REED_HEAD_MODEL
+	return name
 
 
 ## The density knob for this platform.
@@ -221,7 +272,81 @@ static func place(
 				layout.models.append(layout.names.find(name))
 				layout.transforms.append(Transform3D(basis, origin))
 				layout.grounds.append(ground)
+	_place_reeds(layout, terrain, heights, depth, keep, trails, native_sizes, seed, density_scale)
 	return layout
+
+
+## The reeds' own pass (see REED): clumps along the water, from their own
+## random numbers, so the rest of the layout is the same with or without them.
+static func _place_reeds(
+	layout: ScatterLayout, terrain: Terrain, heights: PackedInt32Array, depth: PackedFloat32Array,
+	keep: PackedByteArray, trails: TrailMask, native_sizes: Dictionary[StringName, Vector3], seed: int,
+	density_scale: float
+) -> void:
+	if not native_sizes.has(REED_MODEL):
+		return
+	var native: Vector3 = native_sizes[REED_MODEL]
+	var head_native: Vector3 = native_sizes.get(REED_HEAD_MODEL, Vector3.ZERO)
+	var bank: PackedFloat32Array = TerrainView.shore_weights(terrain, REED_BANK_M)
+	var rng: RandomNumberGenerator = RandomNumberGenerator.new()
+	rng.seed = seed + 2
+	var clumping: FastNoiseLite = _noise(seed + 3, REED_CLUMP_M)
+	var cell_m: float = terrain.cell_size / float(World.UNITS_PER_METER)
+	var model: int = -1
+	var head_model: int = -1
+	for j: int in terrain.size_z - 1:
+		for i: int in terrain.size_x - 1:
+			var k: int = j * terrain.size_x + i
+			if depth[k] > REED_MAX_DEPTH_M or bank[k] <= 0.0:
+				continue
+			var gather: float = smoothstep(REED_CLUMP_LOW, REED_CLUMP_HIGH, clumping.get_noise_2d(i * cell_m, j * cell_m))
+			if rng.randf() >= REED_CLUMP_CHANCE * gather * density_scale:
+				continue
+			var centre: Vector2 = Vector2(i + rng.randf() - 0.5, j + rng.randf() - 0.5) * cell_m
+			var radius: float = lerpf(REED_RADIUS_M.x, REED_RADIUS_M.y, rng.randf())
+			for stem: int in rng.randi_range(REED_STEMS.x, REED_STEMS.y):
+				var out: float = sqrt(rng.randf())
+				var at: Vector2 = centre + Vector2.from_angle(rng.randf() * TAU) * radius * out
+				var height: float = lerpf(REED_HEIGHT_M.x, REED_HEIGHT_M.y, rng.randf()) * (1.0 - 0.2 * out)
+				var yaw: float = rng.randf() * TAU
+				var headed: bool = rng.randf() < REED_HEAD_SHARE
+				if water_depth_m(terrain, depth, at.x, at.y) > REED_MAX_DEPTH_M:
+					continue
+				if trails != null and trails.wear_at(at.x, at.y) >= TRAIL_CLEAR:
+					continue
+				var scale: float = height / maxf(native.y, 0.001)
+				var footprint: float = 0.5 * maxf(native.x, native.z) * scale * WIDEN[Kind.REED]
+				if _kept_out(terrain, keep, at.x, at.y, cell_m, footprint):
+					continue
+				var normal: Vector3 = ground_normal(terrain, heights, at.x, at.y)
+				var lean: Quaternion = Quaternion.IDENTITY.slerp(Quaternion(Vector3.UP, normal), TILT[Kind.REED])
+				var basis: Basis = Basis(lean) * Basis(Vector3.UP, yaw) * Basis.from_scale(
+					Vector3(scale * WIDEN[Kind.REED], scale, scale * WIDEN[Kind.REED])
+				)
+				if model < 0:
+					model = layout.names.find(REED)
+					if model < 0:
+						layout.names.append(REED)
+						model = layout.names.size() - 1
+				var foot: Vector3 = Vector3(at.x, ground_height_m(terrain, heights, at.x, at.y), at.y)
+				var si: int = clampi(roundi(at.x / cell_m), 0, terrain.size_x - 1)
+				var sj: int = clampi(roundi(at.y / cell_m), 0, terrain.size_z - 1)
+				var ground: int = terrain.ground[sj * terrain.size_x + si]
+				layout.models.append(model)
+				layout.transforms.append(Transform3D(basis, foot))
+				layout.grounds.append(ground)
+				if not headed or head_native == Vector3.ZERO:
+					continue
+				if head_model < 0:
+					layout.names.append(REED_HEAD)
+					head_model = layout.names.size() - 1
+				var head_basis: Basis = Basis(lean) * Basis(Vector3.UP, yaw) * Basis.from_scale(Vector3(
+					REED_HEAD_SIZE_M.x / maxf(head_native.x, 0.001), REED_HEAD_SIZE_M.y / maxf(head_native.y, 0.001),
+					REED_HEAD_SIZE_M.x / maxf(head_native.z, 0.001)
+				))
+				layout.models.append(head_model)
+				layout.transforms.append(Transform3D(head_basis, foot + Basis(lean) * Vector3(0.0, height * REED_HEAD_AT, 0.0)))
+				layout.grounds.append(ground)
 
 
 ## The heights the view draws (milli-units per sample): the sim's, with

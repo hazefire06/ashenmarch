@@ -28,10 +28,11 @@ const CUTOUT_SHADER: Shader = preload("res://view/scatter/scatter_cutout.gdshade
 ## is within reach, so at most a bucket's diagonal of items past the fade is
 ## sent, already shrunk to nothing.
 const BUCKET_M: float = 16.0
-## Per ScatterPlacer.Kind (grass, plant, bush, pebble): metres along the
+## Per ScatterPlacer.Kind (grass, plant, bush, pebble, reed, reed head): metres
+## along the
 ## ground from the focus at which items have shrunk away; the last
 ## FADE_MARGIN_M of it they shrink. The frame-rate knobs (make bench).
-const FADE_END_M: Array[float] = [65.0, 50.0, 70.0, 60.0]
+const FADE_END_M: Array[float] = [65.0, 50.0, 70.0, 60.0, 70.0, 70.0]
 const FADE_MARGIN_M: float = 20.0
 ## Nothing is drawn while the camera is further than this from the focus (the
 ## widest zooms, where tufts would be smaller than a pixel).
@@ -46,16 +47,19 @@ const REFRESH_M: float = 4.0
 const STRIDE: int = 16
 ## Per kind: sway (scatter.gdshaderinc's wind), how far the lighting normal
 ## bends up, what fire does (its burn_mode) and whether it casts a shadow.
-const WIND: Array[float] = [0.05, 0.03, 0.008, 0.0]
-const NORMAL_UP: Array[float] = [0.6, 0.5, 0.65, 0.0]
-const BURN_MODE: Array[int] = [1, 1, 2, 0]
-const SHADOWS: Array[bool] = [false, false, false, false]
+const WIND: Array[float] = [0.05, 0.03, 0.008, 0.0, 0.035, 0.0]
+const NORMAL_UP: Array[float] = [0.6, 0.5, 0.65, 0.0, 0.4, 0.3]
+const BURN_MODE: Array[int] = [1, 1, 2, 0, 1, 1]
+const SHADOWS: Array[bool] = [false, false, false, false, false, false]
 ## Per kind: how the kit's bright colours are brought toward the ground's
 ## (scatter.gdshaderinc's kit_tint and kit_desaturation).
+## Reeds are a darker olive than the grass round them, their seed heads a
+## dark brown.
 const KIT_TINT: Array[Color] = [
-	Color(0.66, 0.7, 0.5), Color(0.72, 0.76, 0.6), Color(0.95, 0.95, 0.85), Color(0.9, 0.9, 0.88),
+	Color(0.52, 0.6, 0.38), Color(0.62, 0.68, 0.5), Color(0.95, 0.95, 0.85), Color(0.9, 0.9, 0.88),
+	Color(0.55, 0.58, 0.32), Color(0.42, 0.26, 0.14),
 ]
-const KIT_DESATURATION: Array[float] = [0.4, 0.45, 0.35, 0.2]
+const KIT_DESATURATION: Array[float] = [0.4, 0.45, 0.35, 0.2, 0.25, 0.6]
 
 var _materials: Array[ShaderMaterial] = []
 ## Per model mesh (one MultiMeshInstance3D each): "multimesh", "node", "kind",
@@ -114,7 +118,7 @@ func build(
 		by_model[layout.models[n]].append(n)
 	for m: int in layout.names.size():
 		var name: StringName = layout.names[m]
-		var kind: int = ScatterPlacer.KINDS[name]
+		var kind: int = ScatterPlacer.kind_of(name)
 		var placements: Array[Transform3D] = []
 		var grounds: PackedByteArray = PackedByteArray()
 		for n: int in by_model[m]:
@@ -122,7 +126,7 @@ func build(
 			grounds.append(layout.grounds[n])
 		if placements.is_empty():
 			continue
-		for part: Array in _parts(scatter_set.find(name), kind, terrain, fire_texture, cache):
+		for part: Array in _parts(scatter_set.find(ScatterPlacer.model_of(name)), kind, terrain, fire_texture, cache):
 			var multimesh: MultiMesh = MultiMesh.new()
 			multimesh.transform_format = MultiMesh.TRANSFORM_3D
 			multimesh.use_custom_data = true
