@@ -45,6 +45,9 @@ var blocked: PackedByteArray = PackedByteArray()
 var water_m: PackedFloat32Array = PackedFloat32Array()
 ## The houses and walls stamped so far, written to structures.tres for the view.
 var structures: Array[StructureRecord] = []
+## The worn routes recorded so far (trail()), written to trails.tres for the
+## view.
+var trails: Array[TrailRecord] = []
 
 
 func _init(
@@ -275,6 +278,18 @@ func road(points_m: PackedVector2Array, width_m: float) -> void:
 				grounds[k] = Terrain.Ground.SAND
 
 
+## A worn trail for the view (A5): the route people walk, points_m in metres
+## (one point is a disc), width_m across, fading out at its ends unless
+## fade_ends is false. Recorded only, for trails.tres: it changes no height,
+## ground or passability, so the sim's files are the same with or without it.
+func trail(points_m: PackedVector2Array, width_m: float, fade_ends: bool = true) -> void:
+	var record: TrailRecord = TrailRecord.new()
+	record.points_m = points_m
+	record.width_m = width_m
+	record.fade_ends = fade_ends
+	trails.append(record)
+
+
 ## Patches of one ground type: every unblocked, dry sample whose noise exceeds
 ## threshold within radius_m of center_m takes this type. For a few brush or
 ## wood patches by hand around a structure.
@@ -327,7 +342,7 @@ func water_raster() -> PngRaster:
 
 
 ## Writes <out_dir>/height.png, mask.png, and <name>.tres (a MapInfo), plus
-## water.png and structures.tres for the view, and each PNG's keep-importer file, which has to exist before Godot first scans
+## water.png, structures.tres and trails.tres for the view, and each PNG's keep-importer file, which has to exist before Godot first scans
 ## the PNG (otherwise it imports it as a texture, and an export drops the
 ## file). out_dir ends in a slash, like "res://maps/riverside/". Returns the
 ## MapInfo, or null if anything failed to write.
@@ -344,6 +359,12 @@ func save(out_dir: String, name: String, display_name: String, herb_plants: Pack
 	var structures_err: Error = ResourceSaver.save(recorded, out_dir + "structures.tres")
 	if structures_err != OK:
 		push_error("saving structures.tres: %s" % error_string(structures_err))
+		ok = false
+	var routes: MapTrails = MapTrails.new()
+	routes.records = trails
+	var trails_err: Error = ResourceSaver.save(routes, out_dir + "trails.tres")
+	if trails_err != OK:
+		push_error("saving trails.tres: %s" % error_string(trails_err))
 		ok = false
 	var info: MapInfo = MapInfo.new()
 	info.display_name = display_name

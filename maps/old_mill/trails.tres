@@ -1,0 +1,44 @@
+[gd_resource type="Resource" script_class="MapTrails" format=3]
+
+[ext_resource type="Script" path="res://view/trails/trail_record.gd" id="1_70v6p"]
+[ext_resource type="Script" path="res://view/trails/map_trails.gd" id="2_lfbnv"]
+
+[sub_resource type="Resource" id="Resource_06t3q"]
+script = ExtResource("1_70v6p")
+points_m = PackedVector2Array(198, 192, 183, 175.5, 176, 166, 166, 157)
+width_m = 3.2
+
+[sub_resource type="Resource" id="Resource_u5e8c"]
+script = ExtResource("1_70v6p")
+points_m = PackedVector2Array(122, 108, 141, 129, 150, 142, 153, 152, 159, 157)
+width_m = 2.2
+
+[sub_resource type="Resource" id="Resource_rkyyt"]
+script = ExtResource("1_70v6p")
+points_m = PackedVector2Array(166, 157)
+width_m = 12.0
+fade_ends = false
+
+[sub_resource type="Resource" id="Resource_oto00"]
+script = ExtResource("1_70v6p")
+points_m = PackedVector2Array(150, 0, 148, 14, 138, 42, 118, 78, 110, 94, 122, 108)
+width_m = 2.6
+
+[sub_resource type="Resource" id="Resource_y2yuj"]
+script = ExtResource("1_70v6p")
+points_m = PackedVector2Array(0, 172, 14, 170, 48, 158, 86, 140, 106, 122, 122, 108)
+width_m = 2.6
+
+[sub_resource type="Resource" id="Resource_2j03g"]
+script = ExtResource("1_70v6p")
+points_m = PackedVector2Array(150, 319, 150, 306, 156, 268, 164, 236, 182, 208, 198, 192)
+width_m = 2.6
+
+[sub_resource type="Resource" id="Resource_66eph"]
+script = ExtResource("1_70v6p")
+points_m = PackedVector2Array(319, 212, 306, 210, 276, 210, 246, 204, 220, 200, 198, 192)
+width_m = 2.6
+
+[resource]
+script = ExtResource("2_lfbnv")
+records = Array[ExtResource("1_70v6p")]([SubResource("Resource_06t3q"), SubResource("Resource_u5e8c"), SubResource("Resource_rkyyt"), SubResource("Resource_oto00"), SubResource("Resource_y2yuj"), SubResource("Resource_2j03g"), SubResource("Resource_66eph")])

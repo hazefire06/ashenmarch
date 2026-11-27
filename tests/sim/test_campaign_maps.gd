@@ -946,6 +946,20 @@ func _assert_regenerates(generator: String, map_name: String) -> void:
 		assert_gt(fresh.size(), 5000, "%s was written" % file)
 		# assert_true, not assert_eq: a failing assert_eq would print the bytes.
 		assert_true(fresh == committed, "%s/%s regenerates byte for byte" % [map_name, file])
+	# The view's trails (A5) are what the generator records too. Compared by
+	# value: a resource saved to a new path gets new sub-resource ids.
+	var fresh_trails: MapTrails = ResourceLoader.load(scratch + "trails.tres", "", ResourceLoader.CACHE_MODE_IGNORE) as MapTrails
+	var committed_trails: MapTrails = load("res://maps/%s/trails.tres" % map_name) as MapTrails
+	assert_not_null(fresh_trails, "%s/trails.tres was written" % map_name)
+	if fresh_trails != null:
+		assert_eq(fresh_trails.records.size(), committed_trails.records.size(), "%s trails" % map_name)
+		for n: int in mini(fresh_trails.records.size(), committed_trails.records.size()):
+			var a: TrailRecord = fresh_trails.records[n]
+			var b: TrailRecord = committed_trails.records[n]
+			assert_true(
+				a.points_m == b.points_m and a.width_m == b.width_m and a.fade_ends == b.fade_ends,
+				"%s trail %d regenerates" % [map_name, n]
+			)
 	for file: String in DirAccess.get_files_at(scratch):
 		DirAccess.remove_absolute(scratch + file)
 	DirAccess.remove_absolute(scratch)

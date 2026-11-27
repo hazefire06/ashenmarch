@@ -1,0 +1,84 @@
+[gd_resource type="Resource" script_class="MapTrails" format=3]
+
+[ext_resource type="Script" path="res://view/trails/trail_record.gd" id="1_s3hbp"]
+[ext_resource type="Script" path="res://view/trails/map_trails.gd" id="2_hxg16"]
+
+[sub_resource type="Resource" id="Resource_ifwu6"]
+script = ExtResource("1_s3hbp")
+points_m = PackedVector2Array(289, 176, 292, 192, 297, 206, 300, 216, 300, 226, 301, 236)
+width_m = 2.4
+
+[sub_resource type="Resource" id="Resource_cwdov"]
+script = ExtResource("1_s3hbp")
+points_m = PackedVector2Array(300, 228, 303, 241, 313, 257, 331, 276, 352, 293, 372, 304, 392, 322, 410, 343, 421, 353, 431, 363, 439, 370, 445, 375)
+width_m = 3.4
+
+[sub_resource type="Resource" id="Resource_j73a6"]
+script = ExtResource("1_s3hbp")
+points_m = PackedVector2Array(445, 375)
+width_m = 12.0
+fade_ends = false
+
+[sub_resource type="Resource" id="Resource_scd8n"]
+script = ExtResource("1_s3hbp")
+points_m = PackedVector2Array(449, 376, 459, 377)
+width_m = 1.8
+
+[sub_resource type="Resource" id="Resource_lkeh6"]
+script = ExtResource("1_s3hbp")
+points_m = PackedVector2Array(445, 380, 445, 389)
+width_m = 1.8
+
+[sub_resource type="Resource" id="Resource_cduc7"]
+script = ExtResource("1_s3hbp")
+points_m = PackedVector2Array(441, 375, 431, 374)
+width_m = 1.8
+
+[sub_resource type="Resource" id="Resource_mpstn"]
+script = ExtResource("1_s3hbp")
+points_m = PackedVector2Array(445, 371, 446, 361)
+width_m = 1.8
+
+[sub_resource type="Resource" id="Resource_s72kv"]
+script = ExtResource("1_s3hbp")
+points_m = PackedVector2Array(445.49753, 370.0248, 446.55075, 359.49255)
+width_m = 1.4
+
+[sub_resource type="Resource" id="Resource_40g2s"]
+script = ExtResource("1_s3hbp")
+points_m = PackedVector2Array(448.8411, 371.79907, 458.84766, 363.46027)
+width_m = 1.4
+
+[sub_resource type="Resource" id="Resource_cr7s0"]
+script = ExtResource("1_s3hbp")
+points_m = PackedVector2Array(449.97748, 375.47406, 461.50674, 376.57208)
+width_m = 1.4
+
+[sub_resource type="Resource" id="Resource_jg5om"]
+script = ExtResource("1_s3hbp")
+points_m = PackedVector2Array(448.17853, 378.85965, 455.57584, 387.8421)
+width_m = 1.4
+
+[sub_resource type="Resource" id="Resource_fws64"]
+script = ExtResource("1_s3hbp")
+points_m = PackedVector2Array(444.52594, 379.97748, 443.42792, 391.50674)
+width_m = 1.4
+
+[sub_resource type="Resource" id="Resource_268so"]
+script = ExtResource("1_s3hbp")
+points_m = PackedVector2Array(441.25082, 378.3081, 432.12476, 386.3605)
+width_m = 1.4
+
+[sub_resource type="Resource" id="Resource_o1bgu"]
+script = ExtResource("1_s3hbp")
+points_m = PackedVector2Array(440.05533, 374.2583, 429.4834, 372.67252)
+width_m = 1.4
+
+[sub_resource type="Resource" id="Resource_8xb1u"]
+script = ExtResource("1_s3hbp")
+points_m = PackedVector2Array(449.102, 377.85898, 473.18243, 394.6423)
+width_m = 1.4
+
+[resource]
+script = ExtResource("2_hxg16")
+records = Array[ExtResource("1_s3hbp")]([SubResource("Resource_ifwu6"), SubResource("Resource_cwdov"), SubResource("Resource_j73a6"), SubResource("Resource_scd8n"), SubResource("Resource_lkeh6"), SubResource("Resource_cduc7"), SubResource("Resource_mpstn"), SubResource("Resource_s72kv"), SubResource("Resource_40g2s"), SubResource("Resource_cr7s0"), SubResource("Resource_jg5om"), SubResource("Resource_fws64"), SubResource("Resource_268so"), SubResource("Resource_o1bgu"), SubResource("Resource_8xb1u")])
