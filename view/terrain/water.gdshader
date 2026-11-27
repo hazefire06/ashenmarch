@@ -40,8 +40,8 @@ uniform vec4 sky_color : source_color = vec4(0.53, 0.6, 0.66, 1.0);
 uniform float fresnel_strength : hint_range(0.0, 1.0) = 0.75;
 uniform float fresnel_power = 4.0;
 uniform float fresnel_floor = 0.04;
-uniform float sun_specular : hint_range(0.0, 1.0) = 0.5;
-uniform float sun_roughness : hint_range(0.0, 1.0) = 0.12;
+uniform float sun_specular : hint_range(0.0, 1.0) = 0.3;
+uniform float sun_roughness : hint_range(0.0, 1.0) = 0.2;
 // A mission's grade, blended over the water's own color by its alpha.
 uniform vec4 water_grade : source_color = vec4(0.0, 0.0, 0.0, 0.0);
 // Opacity at the shore, rising to deep_alpha with depth.

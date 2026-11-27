@@ -97,20 +97,32 @@ func test_every_campaign_map_records_trails() -> void:
 
 
 func test_no_trail_runs_through_a_structure() -> void:
-	# Its centre line keeps off every blocked sample, sampled each half metre.
+	# Its whole worn width keeps off every blocked sample: each half metre
+	# along a route, at its centre and both edges; across a disc, its centre
+	# and a ring at its radius.
 	for index: int in MAPS.size():
 		var info: MapInfo = load(MAPS[index]) as MapInfo
 		var terrain: Terrain = Terrain.load_map(info)
 		for record: TrailRecord in _trails(index).records:
+			var half: float = record.width_m / 2.0
+			var spots: PackedVector2Array = PackedVector2Array()
+			if record.points_m.size() == 1:
+				var centre: Vector2 = record.points_m[0]
+				spots.append(centre)
+				for step: int in 32:
+					spots.append(centre + Vector2.from_angle(TAU * step / 32.0) * half)
 			for s: int in record.points_m.size() - 1:
 				var a: Vector2 = record.points_m[s]
 				var b: Vector2 = record.points_m[s + 1]
+				var across: Vector2 = (b - a).normalized().orthogonal() * half
 				var steps: int = ceili(a.distance_to(b) * 2.0)
 				for n: int in steps + 1:
 					var p: Vector2 = a.lerp(b, float(n) / maxf(steps, 1))
-					var i: int = clampi(roundi(p.x), 0, terrain.size_x - 1)
-					var j: int = clampi(roundi(p.y), 0, terrain.size_z - 1)
-					assert_eq(terrain.blocked[j * terrain.size_x + i], 0, "%s %s" % [MAPS[index], p])
+					spots.append_array(PackedVector2Array([p, p + across, p - across]))
+			for p: Vector2 in spots:
+				var i: int = clampi(roundi(p.x), 0, terrain.size_x - 1)
+				var j: int = clampi(roundi(p.y), 0, terrain.size_z - 1)
+				assert_eq(terrain.blocked[j * terrain.size_x + i], 0, "%s %s" % [MAPS[index], p])
 
 
 func test_riverside_walks_from_the_squad_through_the_ford_to_the_square() -> void:
