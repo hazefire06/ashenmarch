@@ -734,7 +734,7 @@ The environment changes tactics:
 
 ### View
 - **Terrain:**
-  - Ground types tint the height bands, on the terrain and the overhead map alike, so firebreaks read before anything is lit.
+  - Ground types tint the height bands, on the terrain and the overhead map alike, so firebreaks read before anything is lit. (Since track A5 the 3D terrain draws textured ground layers instead, and the overhead map keeps these flat colours: see The world (track A5).)
   - Blocked samples (houses, walls; Phase 8) are drawn darker and greyer on the terrain, so a house reads as solid: see Mission framework and campaign (Phase 8), Maps.
   - An R8 texel per sample follows `fire.changed` (burning glows with emission, scorched is charred), with one `ImageTexture.update()` per tick that changed.
   - `wetness` darkens and cools the ground.
@@ -1596,7 +1596,7 @@ Hashes from before Phase 8 aren't comparable with later ones. The replay a locks
   - A generator runs as `godot --headless -s scripts/gen_<map>.gd`, checks that the saved map reloads (`quit(1)` if not), and takes an optional `-- --out=<dir>` so the tests can regenerate into a scratch directory and compare bytes.
   - `save(dir, name, display_name, herb_plants)` writes both PNGs, their keep-importer files (before the PNGs, so Godot never imports them as textures), and the `MapInfo`. `report()` reloads the result through the sim and prints what is in it.
   - **Raised structures leave a steep ring.** The sim's per-sample slope takes the steeper edge to a neighbor, so a 3 m step to a house makes the sample beside it unwalkable too. A gate in a wall, or a ramp, needs about four samples of width to keep a walkable core; the builder warns about narrower ones.
-- **Blocked samples are drawn darker** (houses, walls), 45% darker and 25% greyer, on the terrain only. Their height was already in the mesh, but nothing marked them, so a house read as a bump. `TerrainView` writes an R8 `blocked_map` texel per sample once, because the sim never unblocks anything, and the shader's `blocked_tint` uniform (`TerrainPalette.BLOCKED_DARKEN`, `BLOCKED_DESATURATE`) says how. It is applied right after the ground-type tint, so fire, wetness, snow and water still go on top.
+- **Blocked samples are drawn darker** (houses, walls), 45% darker and 25% greyer, on the terrain only. Their height was already in the mesh, but nothing marked them, so a house read as a bump. `TerrainView` writes an R8 `blocked_map` texel per sample once, because the sim never unblocks anything, and the shader's `blocked_tint` uniform (`TerrainPalette.BLOCKED_DARKEN`, `BLOCKED_DESATURATE`) says how. It is applied right after the ground-type tint, so fire, wetness, snow and water still go on top. (Since track A5 a kit model stands on each structure and the darkening is only the fallback for a blocked sample no model covers: see The world (track A5).)
 
 ### Map: the Riverside village
 - **What:** a south-bank village the tutorial mission clears, stamped by `scripts/gen_riverside.gd` through `MapBuilder` after the base fill. It is hand-placed constants, not noise, so the layout reads and stays put.
@@ -2338,3 +2338,130 @@ Facts below are from Godot 4.7.2's source and `docs/plans/2026-11-10-art-a2-meas
 - **ElevenLabs credit rates in `generate.py`** are still assumed: Tim hasn't reported the key's real usage.
 - **Ambience against music** at a mission's start is unjudged since the groan and march fixes.
 - **No bus effects** (reverb, filters): Web's sample playback ignores them.
+
+## The world (track A5)
+
+Designed in `docs/specs/2026-11-24-art-a5-world-design.md` and built by `docs/plans/2026-11-24-art-a5-world.md`. Every value Tim settled at the look builds, with his reasons, is in `docs/plans/2026-11-24-art-a5-look.md`. Phase 1 is the look, and it is view only:
+- `sim/`, `data/units/`, the maps' `height.png`, `mask.png` and `<map>.tres`, and the golden replays are unchanged (`make verify-replays` ok=4);
+- the new map files beside each map (`structures.tres`, `water.png`, `trails.tres`) are read by the view alone.
+
+Phase 2, the play, is in the spec's "Phase 2" section and gets its own spec.
+
+### Pipeline (offline, free)
+- **Sources:**
+  - six ambientCG ground sets (CC0, 1K colour and NormalGL);
+  - Quaternius's Medieval Village MegaKit, for buildings;
+  - Quaternius's Stylized Nature MegaKit, for scatter.
+
+  All three are CC0. The downloaded packs live in `art-src/world/` (LFS, Godot skips it). Their zips are git-ignored, and only the files `art-src/world/world.toml` names are committed.
+- **`scripts/art/world_assets.py`** (`make world-assets`):
+  - copies, renames and packs the chosen files into `assets/world/` (LFS): `textures/ground_albedo.png` and `ground_normal.png` are 6-layer strips that import as `Texture2DArray`;
+  - writes their `.import` settings (VRAM, mipmaps; it keeps uid and path) and runs `godot --import`;
+  - writes the `assets/LICENSES.md` rows;
+  - refuses any source not on its CC0 list, and any glTF extra that is not .png, .jpg or .bin or that leaves its folder.
+- **`scripts/art/assemble_world_kit.py`.** The free MegaKit has modules, not whole buildings, so this script merges modules into one mesh per house shape (five), wall, gate and mill. It works from data only and executes nothing from the pack.
+- **`make world-kit`** (`scripts/art/build_world_kit.gd`):
+  - writes a wrapper scene per piece, re-centred so its origin is its base centre;
+  - writes `data/world/kit.tres` (`WorldKit` of `KitPiece`: scene, `size_m`, door axis).
+  - Rerun it only when models change: it rewrites random unique ids.
+- **`make world-scatter`** writes `data/world/scatter.tres` (25 nature models with their native bounds).
+- **The generators** (`MapBuilder.house`, `wall`, `trail`) record what they build. `save()` writes `maps/<id>/structures.tres`, `water.png` (the surface height per sample, 0 when dry) and `trails.tres`. Regenerating leaves the sim's files byte-identical.
+
+### Ground (`view/terrain/terrain.gdshader`, `terrain_view.gd`, `world_textures.gd`)
+- **The mesh** shares vertices and carries smooth normals, with vertices on the sim's sample heights. The view heights hide structure slabs under their models.
+- **Weights.** Per-sample layer weights go into two RGBA8 textures: grass, brush, forest, sand, rock and mud, plus a covered flag and a shore weight. Mud runs 3 m from water and the shore 6 m.
+  - The shader reads the weights at a place bent by noise at two frequencies, through four filtered taps, so borders are 3–4 m gradients off the sample grid.
+  - A brightness-as-height blend sharpens the borders. A layer can never appear from zero weight.
+- **Texture sampling:**
+  - Anti-tiling: two scales, the far one turned.
+  - Macro variation in value, hue and saturation.
+  - Steep faces (normal y < 0.707) turn to triplanar rock.
+- **The reference look:**
+  - Brush and forest draw as darker shades of one continuous grass.
+  - Sand shows only at the shore; inland sand is a dry-grass tint.
+  - Trails bake into a 0.5 m RG mask (`view/trails/`) and draw as dirt with broken edges and ruts.
+- **Order of the kept layers** (as before A5): grade (recolor, desaturation, tint), char, wetness, snow, ember, water tint, then the blocked darkening only where no model covers the sample.
+  - The water tint and fire are read through the same smooth taps, so there are no 1 m steps.
+- **Cost:** about 44 texture fetches a fragment. The frame cost is measured under Budget.
+
+### Water (`view/terrain/water_view.gd`, `water.gdshader`, `water_map.gd`)
+- One translucent mesh per 64-cell chunk covers the wet samples at the surface height from `water.png`. Its half-float depth map is read with four spread taps, so shallow fords have no grid.
+- It is dark: deep (0.015, 0.06, 0.08), shallow (0.13, 0.22, 0.22). A Fresnel blend reflects the mission's sky (`set_sky`) at grazing angles, and the sun's specular is soft. Ripples come from the shared detail noise, and rain strengthens them.
+- `water_grade` keeps Old Mill's near-black. A Husk under deep water is hidden as before: the surface is drawing only.
+
+### Structures (`view/structures/`)
+- **`StructuresView`** places one model per record:
+  - houses pick the kit shape whose aspect best fits the footprint, door toward open ground;
+  - walls are multimesh pieces along the polyline, with a gate per gap;
+  - the mill.
+  - Each model fills the sim's blocked footprint to within 0.5 m (tested on the real kit), and its top matches the sim's slab height. So arrows stopped by the sim stop at the roof, and `TerrainPicker` agrees with what's drawn.
+- **`world_model.gdshader`** gives models the grade (tint, desaturation), wetness, snow on up-facing roofs, and per-structure fire (glow while the footprint burns, char after). Scars under a model are ignored; it stays standing.
+- A record with no kit piece gets a grey placeholder box.
+
+### Scatter (`view/scatter/`)
+- **What it is:** view-only, walkable grass tufts, ferns, flowers, pebbles, low bushes and reed clumps.
+- **Placement:**
+  - placed from the ground layers, seeded from the map's folder name (the same in campaign, skirmish and replay), never from the sim's RNG;
+  - kept off water, structures (by footprint radius) and trails;
+  - each item's width is capped so nothing is bigger than a soldier.
+- **Drawing:**
+  - one MultiMesh per model mesh, with the items kept in 16 m buckets;
+  - only buckets within `FADE_END_M` (50–70 m) of the camera's look point are submitted;
+  - none at all once the camera is more than 200 m from its look point;
+  - opaque and cut-out shaders, with the grade, weather and fire (scorched grass vanishes).
+- **On Web**, density is 0.4.
+
+### Grade and camera
+- **The grades.** The three atmospheres were re-graded on the textured ground (2026-11-27):
+  - Old Mill is no longer orange: the red is out of its sky, fog, ambient, sun and recolor, its fog is thinner and it is drained a little less;
+  - The Ford went a step darker;
+  - the campaign still darkens Riverside, The Ford, Old Mill in that order. The values are in the look doc.
+- **`AtmosphereView`** also grades the water, models and scatter.
+- **The camera:**
+  - opens at 22 m (`RtsCamera.DEFAULT_DISTANCE`), with a piecewise pitch: 35° at 8 m, 50° at 22 m (the sprites' elevation), 65° at 250 m;
+  - missions and skirmish maps open there;
+  - the bench keeps 75 m.
+
+### Budget (2026-11-27, HEAD of the A5 branch)
+- **Web,** `make export-web`, `scripts/serve_web.py`, `?budget=1` in Chrome through the chrome-devtools MCP, this Mac (M4 Max):
+  `BUDGET tab=592 limit=1000 PASS js_wasm=244 (measured) video=223 textures=191 art=138 types=10 art_load=103 pck=203 wire=203 s3tc=yes ticks=1800 seconds=60 on=web audio=168 audio_cap=270 PASS decoded=125 files=12 play=20 mix=32000 audio_load=607 audio_in_tab=added`
+- **Against A2's final line** (`tab=514 ... video=195 textures=168 ... pck=153`):
+  - the tab is +78 MB, at 592 of 1,000;
+  - video is +28 and textures +23 (the ground arrays and kit textures);
+  - js_wasm is +50, not broken down further (the scatter's instance buffers are the likeliest share);
+  - the pck is +50 MB;
+  - audio is unchanged at 168 of 270.
+- **Web frame rate:** the HUD read 120 fps (the display's cap) with 119–126 draw calls during the run, at 2400 × 1422.
+  - The budget scenario's skirmish now opens at 22 m, so its frame shows mostly ground near the look point, not the whole battle.
+- **The page-measurement wait** is now 60 s of wall time (`BudgetRun.JS_WAIT_MS`), not 1,800 frames.
+  - At 120 fps, 1,800 frames is 15 s. Chrome's `measureUserAgentSpecificMemory` took about 15 s, so the first two runs printed `tab=-1 UNKNOWN` just before the measurement landed.
+- **Desktop,** `make budget` (editor, macOS arm64): `BUDGET video=185 textures=170 static=157 art=138 types=10 art_load=366 ticks=1800 seconds=60 on=macos audio_files=12 audio_load=1`. It prints no frame rate.
+- **Desktop frame rate,** `make bench` (Riverside, 1920 × 1080, 100 units and about 200 projectiles, 30 s), `main` b97cbab against this branch, alternating:
+  - 215.6 against 209.6 fps;
+  - 214.7 against 207.8 fps;
+  - that is −2.8% and −3.2%, with p50 frame time 3.36–3.41 against 3.18–3.24 ms, and draw calls 451 against 296.
+  - The bench camera stays at 75 m, but the new pitch curve tips it from 43° to 52.5°, which cuts draws, so the comparison is not shader-only. Task 9c's isolated pairs, with the old pitch, were −0.7% and −1.1%.
+- **LFS growth against `main`:** 61 new objects, 63.2 MB unique (140 paths, 77.8 MB counting duplicates). That is 43.8 MB in `assets/world` and 34.1 MB in `art-src/world`, by path.
+
+### Decisions
+- **Ground approach 1** (tiling textures blended live) **and free CC0 kits.** Tim, 2026-11-24.
+- **The ground fix:** anti-tiling, macro variation and soft borders. Tim found the first ground "still weird" (2026-11-25), and after the fix said "ground looks better".
+- **View-only scatter now.** Tim wanted "trees and stuff". Solid trees, downed-tree cover and choke points are Phase 2, because they block arrows.
+- **The reference look before merging.** Tim chose it on 2026-11-27. It was built from a Myth II video, for principles only: continuous dark grass, worn trails, reeds, darker water and a closer camera.
+- **The camera stays at 22 m with the 75° FOV,** not narrower and not closer (Tim, 2026-11-27).
+- **"Water looked good"** (Tim).
+- **Phase 1 accepted** (Tim, 2026-11-27): "Still think the world art can look better but I'm ok with closing it for now."
+
+### Not yet
+- **Camera limits.** Tim can still zoom out to the edge of the map and see past it. That is **Phase 13** (its T5, first after A5 merges): a map border band, edge fog, a 150 m zoom cap and a sky limit. It is not part of A5.
+- **More look work** (Tim wants it). Candidates: unit size on screen (FOV); a real reed model; scatter at mid zoom; The Ford's straight road and rectangular shallows; the terracotta roofs under Old Mill's grade.
+- **Phase 2, the play:** standing trees, cover, choke points and bridges. It needs its own spec and re-recorded goldens.
+- **Known minors** (in the A5 ledger):
+  - about 46% of each house's triangles are door ornaments;
+  - the 39 model JPGs are copies of about 8 textures;
+  - scatter placement adds 0.2–0.5 s of load on desktop (Web unmeasured);
+  - the scatter shader mirrors the model shader's constants;
+  - a satchel's scar resubmits all the scatter;
+  - kit wall sections take one ground height (their ends float or sink a little on slopes);
+  - the spec's kit line is stale: the houses are assembled, and there is no mill wheel.
+- **Not checked:** Windows, and WebGL2 on anything but this Mac.
