@@ -1,4 +1,4 @@
-[gd_scene load_steps=22 format=3]
+[gd_scene load_steps=23 format=3]
 
 [ext_resource type="Script" path="res://view/main.gd" id="1_main"]
 [ext_resource type="Script" path="res://view/terrain/terrain_view.gd" id="2_terrain"]
@@ -20,6 +20,7 @@
 [ext_resource type="Script" path="res://view/ai/ai_debug_view.gd" id="18_aidebug"]
 [ext_resource type="Script" path="res://view/hud/pause_menu.gd" id="19_pause"]
 [ext_resource type="Script" path="res://view/hud/objective_panel.gd" id="20_objectives"]
+[ext_resource type="Script" path="res://view/hud/minimap.gd" id="21_minimap"]
 
 [sub_resource type="Environment" id="Environment_sky"]
 resource_local_to_scene = true
@@ -94,6 +95,9 @@ script = ExtResource("17_mission")
 
 [node name="ObjectivePanel" type="PanelContainer" parent="Hud"]
 script = ExtResource("20_objectives")
+
+[node name="Minimap" type="Control" parent="Hud"]
+script = ExtResource("21_minimap")
 
 [node name="OverheadMap" type="Control" parent="Hud"]
 script = ExtResource("4_overhead")

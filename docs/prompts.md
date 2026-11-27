@@ -235,6 +235,22 @@ Plan mode first. Branch feature/PHASE-11-controls.
 
 ---
 
+## Phase 12: Corner map
+
+```
+Read CLAUDE.md. Phases 0-11 merged. Design: docs/specs/2026-11-26-phase-12-minimap-design.md.
+
+An always-on corner map in the top right of the HUD, beside the Tab overhead map.
+1. Display-only spotting. Each unit type gets a sight_radius (data, not code); an enemy is spotted when a unit of your side is in range with a clear line over the heightmap (Visibility.spotted_by). The sim step never reads it: nothing in the state hash, commands or replays changes. A view-side SpottingMemory keeps last-seen marks that fade.
+2. The corner map: your units, spotted enemies, last-seen marks, skirmish flags, the camera's footprint. A click moves the camera; the order button sends the selection; with an order armed, a left click or the pad's X places it there and the order button cancels it, as on the ground (the Tab map too). The pad can use it. It shares its image and click code with the Tab map.
+3. A Settings > Display toggle, on by default. The objectives, message line, skirmish line and replay bar keep clear of the map. It stays within the frame budget: within 5% of main on make bench.
+4. Tests for the sim part, headless; view tests for the layout, clicks and the setting. Update CLAUDE.md's Controls and architecture.md.
+
+Plan first. Branch feature/PHASE-12-minimap.
+```
+
+---
+
 ## After v1
 
 - Art pass: moved to the parallel art and audio track below.

@@ -594,6 +594,14 @@ func ground_attack_at(at: Vector2) -> void:
 	var hit: Vector3 = _pick_ground(at)
 	if hit == Vector3.INF:
 		return
+	ground_attack_world(hit)
+
+
+## The ground attack at a point on the ground (meters): what ground_attack_at
+## gives once it has found the ground, and what a map gives with one armed.
+func ground_attack_world(hit: Vector3) -> void:
+	if paused:
+		return
 	var ids: PackedInt32Array = selection.ids()
 	_world.enqueue(GroundAttackCommand.new(
 		_world.tick, ids, _to_milli(hit.x), _to_milli(hit.z)
@@ -604,6 +612,28 @@ func ground_attack_at(at: Vector2) -> void:
 	_units.show_marker(hit, UnitsView.MarkerKind.GROUND_ATTACK)
 	if armed_order != ArmedOrder.NONE:
 		arm(ArmedOrder.NONE)
+
+
+## Gives the armed order at a point on the ground (meters), as a click on a
+## map does (MapClick): a move, an attack-move, a ground attack or a route
+## point, disarming as on the ground. False, doing nothing, with none armed,
+## one a map can't place (a heal needs a unit), or none that could be given
+## now (paused, or nobody selected): the click is then the map's own.
+func place_armed_world(point: Vector3) -> bool:
+	if paused or selection.is_empty():
+		return false
+	match armed_order:
+		ArmedOrder.MOVE:
+			order_world(point, false, false)
+		ArmedOrder.ATTACK_MOVE:
+			order_world(point, true, false)
+		ArmedOrder.GROUND_ATTACK:
+			ground_attack_world(point)
+		ArmedOrder.WAYPOINT:
+			order_world(point, false, true)
+		_:
+			return false
+	return true
 
 
 ## Gives the armed order at the screen point. Does nothing with none armed.

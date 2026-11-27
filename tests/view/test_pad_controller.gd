@@ -301,6 +301,72 @@ func test_on_the_map_x_sends_the_selection_and_a_moves_the_camera() -> void:
 	assert_almost_eq(_main._camera.focus.x, 45.0, 1.5)
 
 
+func test_on_the_corner_map_x_sends_the_selection_and_a_moves_the_camera() -> void:
+	_main._selection.selection.select(PackedInt32Array([_soldier.id]))
+	var minimap: Minimap = _main.get_node("Hud/Minimap") as Minimap
+	var target: Vector2 = minimap.get_global_rect().position + minimap.map_to_local(Vector2(45.0, 10.0))
+	_pad.place_cursor(target)
+	PadEvents.tap(JOY_BUTTON_X)
+	_main._physics_process(1.0 / World.TICK_RATE)
+	assert_eq(_soldier.order, Unit.Order.MOVE)
+	assert_almost_eq(_soldier.order_x, 45 * M, 1500)
+	PadEvents.tap(JOY_BUTTON_A)
+	assert_almost_eq(_main._camera.focus.x, 45.0, 1.5)
+	assert_false(_main._selection.selection.is_empty(), "A on the map selected nothing away")
+
+
+func test_an_armed_order_is_placed_on_either_map_by_x_and_by_a() -> void:
+	var armed: Array[SelectionController.ArmedOrder] = [
+		SelectionController.ArmedOrder.ATTACK_MOVE, SelectionController.ArmedOrder.GROUND_ATTACK,
+	]
+	var minimap: Minimap = _main.get_node("Hud/Minimap") as Minimap
+	for order: SelectionController.ArmedOrder in armed:
+		for on_tab: bool in [false, true]:
+			for button: JoyButton in [JOY_BUTTON_X, JOY_BUTTON_A]:
+				var what: String = "%s on the %s by %s" % [
+					SelectionController.ArmedOrder.keys()[order], "Tab map" if on_tab else "corner map",
+					"X" if button == JOY_BUTTON_X else "A",
+				]
+				_main._selection.selection.select(PackedInt32Array([_soldier.id]))
+				_main._selection.arm(order)
+				var target: Vector2
+				if on_tab:
+					PadEvents.tap(JOY_BUTTON_BACK)
+					target = _main._overhead_map._world_to_screen(Vector2(45.0, 10.0))
+				else:
+					target = minimap.get_global_rect().position + minimap.map_to_local(Vector2(45.0, 10.0))
+				_pad.place_cursor(target)
+				_main.world._pending = []
+				PadEvents.tap(button)
+				var queued: Array[SimCommand] = _main.world._pending.duplicate()
+				_main.world._pending = []
+				if on_tab:
+					PadEvents.tap(JOY_BUTTON_BACK)
+				assert_eq(queued.size(), 1, what)
+				if queued.size() == 1:
+					if order == SelectionController.ArmedOrder.ATTACK_MOVE:
+						assert_true(queued[0] is AttackMoveCommand, what)
+					else:
+						assert_true(queued[0] is GroundAttackCommand, what)
+				assert_eq(_main._selection.armed_order, SelectionController.ArmedOrder.NONE, "disarmed: " + what)
+
+
+func test_over_the_corner_map_the_cursor_does_not_stick_to_units() -> void:
+	var on_unit: Vector2 = _main._selection.screen_point_of(_soldier.id)
+	var minimap: Minimap = _main.get_node("Hud/Minimap") as Minimap
+	# The map moved over the soldier, so the unit is behind it on screen.
+	minimap.position = on_unit - minimap.size * 0.5
+	_pad.place_cursor(on_unit + Vector2(-60, 0))
+	PadEvents.left_stick(Vector2(1.0, 0.0))
+	while _pad.cursor.at.distance_to(on_unit) > PadController.SNAP_RADIUS * 0.8:
+		_frames(1)
+	PadEvents.left_stick(Vector2.ZERO)
+	_frames(1)
+	assert_true(minimap.get_global_rect().has_point(_pad.cursor.at))
+	assert_gt(_pad.cursor.at.distance_to(on_unit), 1.0, "it stayed where it was let go")
+	assert_false(_pad.cursor.snapped)
+
+
 func test_l3_hands_the_pad_to_the_control_bar_and_b_takes_it_back() -> void:
 	PadEvents.tap(JOY_BUTTON_LEFT_STICK)
 	assert_true(_pad.has_bar_focus())
