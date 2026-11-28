@@ -2430,25 +2430,28 @@ Phase 2, the play, is in the spec's "Phase 2" section and gets its own spec.
   - missions and skirmish maps open there;
   - the bench keeps 75 m.
 
-### Budget (2026-11-27, HEAD of the A5 branch)
+### Budget (2026-11-27, the A5 branch with `main` merged, 48d0eaf and the final-review fixes)
 - **Web,** `make export-web`, `scripts/serve_web.py`, `?budget=1` in Chrome through the chrome-devtools MCP, this Mac (M4 Max):
-  `BUDGET tab=592 limit=1000 PASS js_wasm=244 (measured) video=223 textures=191 art=138 types=10 art_load=103 pck=203 wire=203 s3tc=yes ticks=1800 seconds=60 on=web audio=168 audio_cap=270 PASS decoded=125 files=12 play=20 mix=32000 audio_load=607 audio_in_tab=added`
+  `BUDGET tab=638 limit=1000 PASS js_wasm=289 (measured) video=225 textures=193 art=138 types=10 art_load=95 pck=203 wire=203 s3tc=yes ticks=1800 seconds=62 on=web audio=168 audio_cap=270 PASS decoded=125 files=12 play=20 mix=32000 audio_load=595 audio_in_tab=added`
+  - The budget scenario's camera is pinned at 75 m (`BudgetRun.CAMERA_DISTANCE`, as `BenchScenario` pins the bench's), so the battle is in frame and the line stays comparable with A2's. Skirmish maps themselves open at 22 m.
+  - The browser console held only Godot's startup lines, the art and terrain load lines and the BUDGET line: no WebGL, shader-compile or other warnings or errors.
 - **Against A2's final line** (`tab=514 ... video=195 textures=168 ... pck=153`):
-  - the tab is +78 MB, at 592 of 1,000;
-  - video is +28 and textures +23 (the ground arrays and kit textures);
-  - js_wasm is +50, not broken down further (the scatter's instance buffers are the likeliest share);
+  - the tab is +124 MB, at 638 of 1,000;
+  - video is +30 and textures +25 (the ground arrays and kit textures);
+  - js_wasm is +95, not broken down further (the scatter's instance buffers are the likeliest share; at the 22 m camera it was +50);
   - the pck is +50 MB;
   - audio is unchanged at 168 of 270.
-- **Web frame rate:** the HUD read 120 fps (the display's cap) with 119–126 draw calls during the run, at 2400 × 1422.
-  - The budget scenario's skirmish now opens at 22 m, so its frame shows mostly ground near the look point, not the whole battle.
+- **Earlier line, before the merge and the camera pin** (22 m budget camera): `BUDGET tab=592 limit=1000 PASS js_wasm=244 (measured) video=223 textures=191 art=138 types=10 art_load=103 pck=203 wire=203 s3tc=yes ticks=1800 seconds=60 on=web audio=168 audio_cap=270 PASS decoded=125 files=12 play=20 mix=32000 audio_load=607 audio_in_tab=added`.
+- **Web frame rate:** the HUD read 120 fps (the display's cap) with 155 draw calls at 75 m, at 2400 × 1422 (119–126 at the 22 m camera).
 - **The page-measurement wait** is now 60 s of wall time (`BudgetRun.JS_WAIT_MS`), not 1,800 frames.
   - At 120 fps, 1,800 frames is 15 s. Chrome's `measureUserAgentSpecificMemory` took about 15 s, so the first two runs printed `tab=-1 UNKNOWN` just before the measurement landed.
 - **Desktop,** `make budget` (editor, macOS arm64): `BUDGET video=185 textures=170 static=157 art=138 types=10 art_load=366 ticks=1800 seconds=60 on=macos audio_files=12 audio_load=1`. It prints no frame rate.
 - **Desktop frame rate,** `make bench` (Riverside, 1920 × 1080, 100 units and about 200 projectiles, 30 s), `main` b97cbab against this branch, alternating:
   - 215.6 against 209.6 fps;
   - 214.7 against 207.8 fps;
-  - that is −2.8% and −3.2%, with p50 frame time 3.36–3.41 against 3.18–3.24 ms, and draw calls 451 against 296.
-  - The bench camera stays at 75 m, but the new pitch curve tips it from 43° to 52.5°, which cuts draws, so the comparison is not shader-only. Task 9c's isolated pairs, with the old pitch, were −0.7% and −1.1%.
+  - that is −2.8% and −3.2% in mean fps, with draw calls 451 on `main` against 296 here;
+  - p50 frame time was 3.36 and 3.41 ms on `main` against 3.18 and 3.24 ms here (checked against the bench output: the median frame is faster on this branch, while p99 is slower, 13.92 against 14.77 and 14.64 ms, which is where the mean fps goes).
+  - The bench camera stays at 75 m, but the new pitch curve tips it from 43° to 53.5°, which cuts draws, so the comparison is not shader-only. Task 9c's isolated pairs, with the old pitch, were −0.7% and −1.1%.
 - **LFS growth against `main`:** 61 new objects, 63.2 MB unique (140 paths, 77.8 MB counting duplicates). That is 43.8 MB in `assets/world` and 34.1 MB in `art-src/world`, by path.
 
 ### Decisions

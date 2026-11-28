@@ -36,7 +36,11 @@ sim/            # pure gameplay logic, no Nodes
   skirmish/     # skirmish armies and templates, scoring, the skirmish world builder
 view/           # Godot scenes: camera, sprites, HUD, overhead map, effects
 data/           # unit .tres files, formation definitions, map data
+  world/        # view-only world art data: kit.tres (structure models), scatter.tres (ground scatter models)
 maps/           # heightmaps, passability masks, spawn/trigger layouts, skirmish spawns and flags
+  <id>/structures.tres  # view-only: each house and wall the generator built, for the models
+  <id>/water.png        # view-only: water surface height per sample, for the water mesh
+  <id>/trails.tres      # view-only: worn trails, drawn as dirt and kept clear of scatter
 assets/         # game-ready art and audio (LFS; owned or CC0 only, see assets/LICENSES.md)
 art-src/        # art recipes, Meshy models, render grids and review sheets (LFS; Godot skips it)
 audio-src/      # sound prompts and raw downloads (LFS; Godot skips it)

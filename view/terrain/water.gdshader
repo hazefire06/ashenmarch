@@ -22,7 +22,10 @@ uniform sampler2D detail_noise : hint_default_white, filter_linear_mipmap, repea
 // Terrain samples along x and z, and meters between them.
 uniform vec2 sample_count = vec2(2.0, 2.0);
 uniform float cell_size = 1.0;
-// Meters of water at which depth_map reads 1.
+// Meters of water at which depth_map reads 1. Unused by the shader:
+// WaterView already divides each depth by its DEPTH_RANGE_M when it writes
+// depth_map, so the colour and alpha ramps work on 0..1. It is set so the
+// scale travels with the material (tests and debugging read it back).
 uniform float depth_range = 4.0;
 // The depth is the average of four reads depth_spread samples apart (the
 // terrain's water tint reads its texture the same way), so the bilinear
