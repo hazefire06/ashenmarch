@@ -160,18 +160,52 @@ func test_a_house_glows_while_its_footprint_burns_then_stays_charred() -> void:
 	fire.state.resize(loaded.terrain.size_x * loaded.terrain.size_z)
 	for n: int in record.samples.size() / 2:
 		fire.state[record.samples[n]] = Fire.Cell.BURNING
+		fire.changed.append(record.samples[n])
 	view.update_fire(fire, loaded.terrain)
 	assert_almost_eq(view.fire_amount(2).x, 0.5, 0.05, "half its footprint burns")
 	assert_eq(view.fire_amount(1), Vector2.ZERO, "its neighbour doesn't")
 	var material: ShaderMaterial = _materials(view.get_child(2))[0] as ShaderMaterial
 	assert_gt(material.get_shader_parameter(&"burning"), 0.0, "the shader glows")
+	fire.changed.clear()
 	for k: int in record.samples:
 		fire.state[k] = Fire.Cell.SCORCHED
+		fire.changed.append(k)
 	view.update_fire(fire, loaded.terrain)
 	assert_eq(view.fire_amount(2).x, 0.0, "burnt out")
 	assert_gt(view.fire_amount(2).y, 0.0, "charred")
 	assert_eq(material.get_shader_parameter(&"burning"), 0.0)
 	assert_eq(material.get_shader_parameter(&"charred"), 1.0)
+
+
+# The sim lists every cell it changes in Fire.changed (cleared each step), so
+# a tick with no changes and nothing burning can't change any structure's
+# share: update_fire skips its scan of every footprint then.
+func test_a_quiet_fire_is_not_rescanned() -> void:
+	var loaded: Loaded = _load(RIVERSIDE)
+	var view: StructuresView = _view(loaded)
+	var fire: Fire = Fire.new(loaded.terrain)
+	fire.state.resize(loaded.terrain.size_x * loaded.terrain.size_z)
+	view.update_fire(fire, loaded.terrain)
+	var record: StructureRecord = loaded.structures.records[2]
+	for k: int in record.samples:
+		fire.state[k] = Fire.Cell.SCORCHED
+	view.update_fire(fire, loaded.terrain)
+	assert_eq(view.fire_amount(2), Vector2.ZERO, "no change listed and nothing burning: not rescanned")
+	fire.changed.append(record.samples[0])
+	view.update_fire(fire, loaded.terrain)
+	assert_eq(view.fire_amount(2), Vector2(0.0, 1.0), "a listed change rescans")
+
+
+func test_the_first_fire_update_after_a_build_always_scans() -> void:
+	var loaded: Loaded = _load(RIVERSIDE)
+	var fire: Fire = Fire.new(loaded.terrain)
+	fire.state.resize(loaded.terrain.size_x * loaded.terrain.size_z)
+	var record: StructureRecord = loaded.structures.records[2]
+	for k: int in record.samples:
+		fire.state[k] = Fire.Cell.SCORCHED
+	var view: StructuresView = _view(loaded)
+	view.update_fire(fire, loaded.terrain)
+	assert_eq(view.fire_amount(2), Vector2(0.0, 1.0), "a view built after the fire still shows the char")
 
 
 func test_the_grade_reaches_every_model_material() -> void:

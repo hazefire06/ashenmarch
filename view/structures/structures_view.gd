@@ -21,6 +21,8 @@ var _records: Array[StructureRecord] = []
 ## x burning, y burnt out.
 var _record_materials: Array[Array] = []
 var _fire_amounts: PackedVector2Array = PackedVector2Array()
+## Whether update_fire has scanned the footprints since the last build.
+var _fire_synced: bool = false
 var _materials: Array[ShaderMaterial] = []
 ## What the placeholders are drawn as and with: a unit box standing on its
 ## origin, and a grey material for it and for kit surfaces with none.
@@ -48,6 +50,7 @@ func build(structures: MapStructures, terrain: Terrain, kit: WorldKit = WorldKit
 	_records = []
 	_record_materials = []
 	_fire_amounts = PackedVector2Array()
+	_fire_synced = false
 	_materials = []
 	if structures == null:
 		return
@@ -83,10 +86,15 @@ func set_weather(weather: Weather) -> void:
 
 ## Brings each structure's glow and char up to date with the fire on its
 ## samples. Call it after each World.step(). A fire that has never burned has
-## no grid yet, and burns nothing.
+## no grid yet, and burns nothing. A step that changed no cell (Fire.changed is
+## empty) while nothing burns can't change any share, so once the footprints
+## have been scanned since the last build, such a step skips the scan.
 func update_fire(fire: Fire, terrain: Terrain) -> void:
 	if fire == null:
 		return
+	if _fire_synced and fire.changed.is_empty() and not fire.is_burning():
+		return
+	_fire_synced = true
 	var has_grid: bool = fire.state.size() == terrain.size_x * terrain.size_z
 	for n: int in _records.size():
 		var samples: PackedInt32Array = _records[n].samples
