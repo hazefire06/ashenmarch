@@ -188,6 +188,32 @@ class WorldAssetsTest(unittest.TestCase):
         self.assertEqual(self.run_cmd()[0], 0)  # idempotent
         self.assertEqual(self.licences.read_text(), before)
 
+    def test_a_rerun_after_a_fresh_clone_keeps_the_licence_dates(self) -> None:
+        # Git keeps no mtimes, so on a fresh clone every source looks new. A row whose file,
+        # source, terms and description are unchanged keeps the date it was first written with.
+        self.write_toml(toml_for(models='[models.house_a]\nsource = "acg"\nfile = "m/house.glb"\n'))
+        (self.world / "m").mkdir()
+        glb = self.world / "m" / "house.glb"
+        glb.write_bytes(b"glTF-fake")
+        old = 946684800  # 2000-01-01 UTC
+        for path in self.world.rglob("*"):
+            if path.is_file():
+                os.utime(path, (old, old))
+        self.assertEqual(self.run_cmd()[0], 0)
+        first = self.licences.read_text()
+        self.assertIn("| 2000-01-01 |", first)
+        now = 1795800000  # 2026-11-27 UTC: what a fresh clone's checkout would give
+        for path in self.world.rglob("*"):
+            if path.is_file():
+                os.utime(path, (now, now))
+        self.assertEqual(self.run_cmd()[0], 0)
+        self.assertEqual(self.licences.read_text(), first, "no row changed, so no date moved")
+        self.write_toml(toml_for(models='[models.house_b]\nsource = "acg"\nfile = "m/house.glb"\n'))
+        self.assertEqual(self.run_cmd()[0], 0)
+        rows = [line for line in self.licences.read_text().splitlines() if "house_b" in line]
+        self.assertEqual(len(rows), 1)
+        self.assertIn("| 2026-11-27 |", rows[0], "a new or changed row takes its file's date")
+
     def test_missing_markers_are_added_at_the_end(self) -> None:
         self.licences.write_text(LICENCES_TEXT)
         self.write_toml(toml_for())
