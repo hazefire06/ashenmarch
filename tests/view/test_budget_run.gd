@@ -47,6 +47,15 @@ func test_the_worst_case_fields_every_buyable_type_on_old_mill() -> void:
 	assert_eq(fielded.size(), 10, "the ten v1 types; the villager is not for sale")
 
 
+func test_the_budget_keeps_the_75_m_camera_without_changing_the_shared_map() -> void:
+	# So the Web line stays comparable with A2's, and the battle is in frame.
+	var skirmishes: SkirmishCatalog = _skirmishes()
+	var setup: SkirmishSetup = BudgetRun.worst_case_setup(_units(), skirmishes)
+	assert_eq(setup.map.camera_distance, BudgetRun.CAMERA_DISTANCE)
+	assert_eq(BudgetRun.CAMERA_DISTANCE, 75000)
+	assert_ne(skirmishes.skirmish_map(BudgetRun.MAP_ID).camera_distance, 75000, "the shared map keeps its own")
+
+
 func test_the_verdict() -> void:
 	assert_eq(BudgetRun.verdict(999.6), "PASS")
 	assert_eq(BudgetRun.verdict(1000.0), "PASS")

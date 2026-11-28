@@ -40,6 +40,11 @@ const EACH: int = 2
 const MAP_ID: StringName = &"old_mill"
 const SEED: int = 1000
 const MINUTES: int = 10
+## The camera's opening distance in mm, pinned as BenchScenario pins the bench's:
+## skirmish maps open at 22 m since A5, which frames mostly ground near the
+## look point. At 75 m the battle is in frame and the line stays comparable
+## with A2's.
+const CAMERA_DISTANCE: int = 75000
 ## Milliseconds to wait for the browser's memory measurement, which Chrome
 ## takes at its next garbage collection, before giving up on it. It was 1800
 ## frames, which at 120 fps is 15 s: Chrome took about 15 s (A5's run, 2026-11-27)
@@ -117,7 +122,9 @@ static func asked_in_query(search: String) -> bool:
 ## each, AI against AI on Old Mill, with a budget that buys both armies.
 static func worst_case_setup(units: UnitCatalog, skirmishes: SkirmishCatalog) -> SkirmishSetup:
 	var setup: SkirmishSetup = SkirmishSetup.new()
-	setup.map = skirmishes.skirmish_map(MAP_ID)
+	# A copy, so the shared map keeps its own opening distance.
+	setup.map = skirmishes.skirmish_map(MAP_ID).duplicate() as SkirmishMap
+	setup.map.camera_distance = CAMERA_DISTANCE
 	setup.rules = SkirmishRules.for_map(setup.map, SkirmishRules.Mode.BODY_COUNT, MINUTES, UnitType.Faction.LIGHT)
 	var light: Army = Army.new(UnitType.Faction.LIGHT)
 	var dark: Army = Army.new(UnitType.Faction.DARK)
