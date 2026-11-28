@@ -76,8 +76,11 @@ uniform float sand_shore_high = 0.75;
 uniform float sand_shore_share = 0.5;
 uniform float rock_flat = 0.35;
 uniform vec3 rock_grass_tint = vec3(0.88, 0.9, 0.84);
-// How hard noise pushes one layer over another within a border, 0..1. Any
-// value is safe: the push fades to nothing where a layer's weight is 0 or 1.
+// How hard noise pushes one layer over another within a border, 0..1. No
+// value makes a layer appear from nothing: the push fades to nothing where a
+// layer's weight is 0 or 1. But above about 0.36 the push can drive a layer's
+// low weights in a border to 0 (clamped) over larger patches, so the border
+// thins out; 0.35 is the tuned value.
 uniform float border_jitter = 0.35;
 // World normal y below which a face turns to rock (0.707 is 45 degrees, the
 // walkable limit), fully rock rock_band lower.
@@ -295,9 +298,14 @@ void fragment() {
 	vec4 mud_recolor = under_weight > 0.001 ? under / under_weight : ground_recolor[0];
 	vec3 ground = vec3(0.0);
 	vec3 normal_map = vec3(0.0);
+	// ground_recolor has one entry per Terrain.Ground, so only the layers
+	// before MUD index it; mud (the last layer) is added on its own. Indexing
+	// it with MUD, even behind a ternary, reads past the array's end.
+	for (int i = 0; i < MUD; i++) {
+		ground += mix(color[i], ground_recolor[i].rgb, ground_recolor[i].a) * w[i];
+	}
+	ground += mix(color[MUD], mud_recolor.rgb, mud_recolor.a) * w[MUD];
 	for (int i = 0; i < LAYER_COUNT; i++) {
-		vec4 recolor = i == MUD ? mud_recolor : ground_recolor[i];
-		ground += mix(color[i], recolor.rgb, recolor.a) * w[i];
 		normal_map += bump[i] * w[i];
 	}
 	// Worn trails: dirt where the wear, broken up by fine noise, is high;

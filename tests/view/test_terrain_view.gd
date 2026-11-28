@@ -343,6 +343,35 @@ func test_the_shader_parses() -> void:
 	assert_gt(shader.get_shader_uniform_list().size(), 0, "a shader that fails to parse lists no uniforms")
 
 
+## ground_recolor has one entry per Terrain.Ground (5), but the layers loop runs
+## over LAYER_COUNT (6, mud last). A loop over every layer that indexes
+## ground_recolor reads past its end, even behind a ternary, and some Windows GL
+## drivers miscompile that, so no such loop may index it.
+func test_no_layer_loop_indexes_past_the_ground_recolor() -> void:
+	var code: String = TerrainView.TERRAIN_SHADER.code
+	var header: String = "for (int i = 0; i < LAYER_COUNT; i++) {"
+	var from: int = code.find(header)
+	var loops: int = 0
+	while from != -1:
+		var depth: int = 0
+		var at: int = from + header.length() - 1
+		var body_end: int = at
+		while body_end < code.length():
+			var c: String = code[body_end]
+			if c == "{":
+				depth += 1
+			elif c == "}":
+				depth -= 1
+				if depth == 0:
+					break
+			body_end += 1
+		var body: String = code.substr(at, body_end - at + 1)
+		assert_false(body.contains("ground_recolor["), "a LAYER_COUNT loop indexes ground_recolor:\n" + body)
+		loops += 1
+		from = code.find(header, body_end)
+	assert_gt(loops, 0, "the shader still loops over its layers")
+
+
 func test_the_fire_texture_follows_the_fire() -> void:
 	var rows: Array[String] = []
 	for j: int in 11:
