@@ -496,6 +496,23 @@ func test_the_camera_outline_surrounds_the_focus() -> void:
 	assert_gt(absf(corners[1].x - corners[0].x), absf(corners[2].x - corners[3].x), "a trapezoid, far edge wider")
 
 
+# The world-art camera opens close (DEFAULT_DISTANCE, at PITCH_DEFAULT): every
+# corner's ray still meets the ground, so the outline is a trapezoid round the
+# focus, not stretched out to VIEW_REACH.
+func test_the_camera_outline_fits_the_default_close_view() -> void:
+	var f: Dictionary = _fixture()
+	var minimap: Minimap = f["minimap"]
+	var rig: RtsCamera = f["rig"]
+	rig.set_pose(Vector2(20.0, 20.0), 0.0, RtsCamera.DEFAULT_DISTANCE)
+	var corners: PackedVector2Array = minimap.camera_footprint()
+	assert_eq(corners.size(), 4)
+	assert_true(Geometry2D.is_point_in_polygon(Vector2(20.0, 20.0), corners), str(corners))
+	for corner: Vector2 in corners:
+		assert_lt(corner.distance_to(Vector2(20.0, 20.0)), Minimap.VIEW_REACH * 0.5, "every ray meets the ground: %s" % corners)
+	assert_lt(corners[2].distance_to(Vector2(20.0, 20.0)), RtsCamera.DEFAULT_DISTANCE * 2.0, "the near edge is close: %s" % corners)
+	assert_gt(absf(corners[1].x - corners[0].x), absf(corners[2].x - corners[3].x), "a trapezoid, far edge wider")
+
+
 func test_spotted_enemies_and_your_units_are_dotted() -> void:
 	var f: Dictionary = _fixture()
 	var world: World = f["world"]

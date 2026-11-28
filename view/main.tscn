@@ -1,4 +1,4 @@
-[gd_scene load_steps=23 format=3]
+[gd_scene load_steps=26 format=3]
 
 [ext_resource type="Script" path="res://view/main.gd" id="1_main"]
 [ext_resource type="Script" path="res://view/terrain/terrain_view.gd" id="2_terrain"]
@@ -20,7 +20,10 @@
 [ext_resource type="Script" path="res://view/ai/ai_debug_view.gd" id="18_aidebug"]
 [ext_resource type="Script" path="res://view/hud/pause_menu.gd" id="19_pause"]
 [ext_resource type="Script" path="res://view/hud/objective_panel.gd" id="20_objectives"]
-[ext_resource type="Script" path="res://view/hud/minimap.gd" id="21_minimap"]
+[ext_resource type="Script" path="res://view/terrain/water_view.gd" id="21_water"]
+[ext_resource type="Script" path="res://view/structures/structures_view.gd" id="22_structures"]
+[ext_resource type="Script" path="res://view/scatter/scatter_view.gd" id="23_scatter"]
+[ext_resource type="Script" path="res://view/hud/minimap.gd" id="24_minimap"]
 
 [sub_resource type="Environment" id="Environment_sky"]
 resource_local_to_scene = true
@@ -41,6 +44,15 @@ transform = Transform3D(0.866025, 0.25, -0.433013, 0, 0.866025, 0.5, 0.5, -0.433
 
 [node name="TerrainView" type="Node3D" parent="."]
 script = ExtResource("2_terrain")
+
+[node name="WaterView" type="Node3D" parent="."]
+script = ExtResource("21_water")
+
+[node name="StructuresView" type="Node3D" parent="."]
+script = ExtResource("22_structures")
+
+[node name="ScatterView" type="Node3D" parent="."]
+script = ExtResource("23_scatter")
 
 [node name="Units" type="Node3D" parent="."]
 script = ExtResource("5_units")
@@ -97,7 +109,7 @@ script = ExtResource("17_mission")
 script = ExtResource("20_objectives")
 
 [node name="Minimap" type="Control" parent="Hud"]
-script = ExtResource("21_minimap")
+script = ExtResource("24_minimap")
 
 [node name="OverheadMap" type="Control" parent="Hud"]
 script = ExtResource("4_overhead")

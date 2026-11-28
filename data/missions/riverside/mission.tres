@@ -54,6 +54,9 @@ deploy = PackedInt32Array(290000, 180000)
 deploy_facing_x = 0
 deploy_facing_z = 1
 deploy_formation = 4
-; The camera looks at the creek and the south bank beyond the squad.
-camera_start = PackedInt32Array(285000, 240000)
+; The camera looks just south of the squad, close in (RtsCamera's default
+; framing, A5), and turns to look the way the squad deploys (south): the squad
+; in the lower middle of the view and the creek ahead of it, at the top.
+camera_start = PackedInt32Array(290000, 186000)
+camera_distance = 22000
 atmosphere = ExtResource("5_atm01")

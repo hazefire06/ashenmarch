@@ -58,6 +58,9 @@ deploy = PackedInt32Array(156000, 158000)
 deploy_facing_x = 0
 deploy_facing_z = -1
 deploy_formation = 4
-; The camera looks at the plateau from the south, over the south-east ramp.
-camera_start = PackedInt32Array(160000, 205000)
+; The camera looks at the plateau's top from the south, close in (RtsCamera's
+; default framing, A5): the squad above the middle of the view, the mill
+; beyond it.
+camera_start = PackedInt32Array(157000, 165000)
+camera_distance = 22000
 atmosphere = ExtResource("5_atm01")

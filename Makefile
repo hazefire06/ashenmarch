@@ -3,7 +3,7 @@ MAC_APP := build/mac/Ashenmarch.app
 WIN_EXE := build/windows/Ashenmarch.exe
 WEB_HTML := build/web/index.html
 
-.PHONY: pad-playthrough import run demo demo-projectiles demo-abilities demo-ai test check-sim export-mac export-windows export-web export-all serve-web bench profile-sim golden-replays verify-replays verify-replays-app verify-replays-x86 maps fixtures playtest skirmish-playtest capture capture-skirmish hooks check-leaks check-layout test-art test-audio audio-build audio-synthetic audio-synthetic-clean art-candidates art-render art-attach art-prop-candidates art-build art-probe budget budget-app
+.PHONY: pad-playthrough import run demo demo-projectiles demo-abilities demo-ai test check-sim export-mac export-windows export-web export-all serve-web bench profile-sim golden-replays verify-replays verify-replays-app verify-replays-x86 maps fixtures playtest skirmish-playtest capture capture-skirmish hooks check-leaks check-layout test-art test-audio world-assets world-kit world-scatter audio-build audio-synthetic audio-synthetic-clean art-candidates art-render art-attach art-prop-candidates art-build art-probe budget budget-app
 
 # Builds the .godot/ import and class_name cache. A fresh clone has none, and
 # GUT can't resolve class_name types without it.
@@ -239,6 +239,26 @@ BLENDER_RUN = $(BLENDER) -b --factory-startup --python-exit-code 1
 test-art:
 	python3 -m unittest discover -s scripts/art -p "test_*.py"
 	$(BLENDER_RUN) --python scripts/art/blender_test_render.py
+
+# Imports the CC0 world sources in art-src/world/ (world.toml) into assets/world/ and their rows in assets/LICENSES.md, then lets Godot
+# import them, so the .import files are complete (uid, imported paths) and a second run changes nothing. Free, local, no network.
+world-assets:
+	python3 scripts/art/world_assets.py import
+	$(GODOT) --headless --path . --import
+
+# Rebuilds the world kit from the unpacked MegaKit (art-src/world/quaternius/megakit/, gitignored: unzip the pack there first):
+# assembles the structures, imports them, and writes the wrapper scenes and data/world/kit.tres.
+WORLD_KIT_SRC ?= art-src/world/quaternius/megakit/Medieval Village MegaKit[Standard]/glTF
+world-kit:
+	python3 -I scripts/art/assemble_world_kit.py "$(WORLD_KIT_SRC)" art-src/world/quaternius/assembled
+	$(MAKE) world-assets
+	$(GODOT) --headless --path . -s scripts/art/build_world_kit.gd
+
+# Rebuilds the ground scatter's set (data/world/scatter.tres) from the imported Stylized Nature MegaKit models
+# (assets/world/models/nature/, from make world-assets). Free, local.
+world-scatter:
+	$(MAKE) world-assets
+	$(GODOT) --headless --path . -s scripts/art/build_scatter_set.gd
 
 # Python tests for the audio pipeline (scripts/audio/). No network, no paid calls.
 test-audio:

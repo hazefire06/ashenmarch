@@ -161,10 +161,20 @@ const LANDING_GUARD: Vector2 = Vector2(192.0, 145.0)
 const DRIFTER_WEST: Array[Vector2] = [Vector2(110.0, 192.0), Vector2(150.0, 190.0)]
 const DRIFTER_EAST: Array[Vector2] = [Vector2(240.0, 195.0), Vector2(300.0, 200.0)]
 const RIPPER_SPAWN: Vector2 = Vector2(330.0, 140.0)
-## Where the mission camera starts looking: 15 m up the road from the deploy
-## point, so the squad stands in the lower middle of the view, clear of the
-## control bar, with the river ahead of it.
-const CAMERA_START: Vector2 = Vector2(192.0, 285.0)
+## Where the mission camera starts looking: 5 m up the road from the deploy
+## point, so at the close default framing (A5) the squad stands in the lower
+## middle of the view, clear of the control bar, with the road ahead of it.
+const CAMERA_START: Vector2 = Vector2(192.0, 295.0)
+
+## Worn trails for the view (A5, trails.tres; the sim never sees them): the
+## escort's road from the south edge through the deploy area, across the ford
+## and through the gate to the hamlet's square, the square itself, and a path
+## from the square to each house's door.
+const TRAIL_ROAD_FROM: Vector2 = Vector2(192.0, 383.0)
+const TRAIL_ROAD_WIDTH_M: float = 3.6
+const TRAIL_SQUARE_RADIUS_M: float = 5.0
+const TRAIL_DOOR_GAP_M: float = 1.5
+const TRAIL_DOOR_WIDTH_M: float = 1.4
 
 ## Ground types: noise layers and where each one takes over.
 const WOOD_SEED: int = 2102
@@ -213,6 +223,7 @@ func _initialize() -> void:
 	_build_hamlet(map)
 	map.road(ROAD, ROAD_WIDTH_M)
 	map.road(PackedVector2Array([HAMLET_CENTER, HAMLET_CENTER]), HAMLET_PLAZA_RADIUS_M * 2.0)
+	_record_trails(map)
 
 	var info: MapInfo = map.save(_out_dir(), "the_ford", "The Ford", HERB_PLANTS)
 	if info == null:
@@ -272,7 +283,26 @@ func _build_hamlet(map: MapBuilder) -> void:
 	var gap: Vector2 = Vector2(length / 2.0 - GATE_WIDTH_M / 2.0, length / 2.0 + GATE_WIDTH_M / 2.0)
 	map.wall(points, PALISADE_THICKNESS_M, PALISADE_HEIGHT_M, [gap])
 	for house: Vector4 in HAMLET_HOUSES:
-		map.house(house.x, house.y, house.z, house.w, HOUSE_HEIGHT_M)
+		var center: Vector2 = Vector2(house.x, house.y)
+		var road_point: Vector2 = MapBuilder.nearest_on_polyline(center, ROAD)
+		map.house(house.x, house.y, house.z, house.w, HOUSE_HEIGHT_M, road_point)
+
+
+## Records the trails (see TRAIL_ROAD_FROM). View only: none of it changes the
+## map.
+func _record_trails(map: MapBuilder) -> void:
+	var road: PackedVector2Array = PackedVector2Array([TRAIL_ROAD_FROM])
+	road.append_array(ROAD)
+	map.trail(road, TRAIL_ROAD_WIDTH_M)
+	map.trail(PackedVector2Array([HAMLET_CENTER]), TRAIL_SQUARE_RADIUS_M * 2.0, false)
+	for house: Vector4 in HAMLET_HOUSES:
+		var center: Vector2 = Vector2(house.x, house.y)
+		var toward: Vector2 = (center - HAMLET_CENTER).normalized()
+		var half: Vector2 = Vector2(house.z, house.w) / 2.0
+		var edge: float = minf(half.x / maxf(absf(toward.x), 0.001), half.y / maxf(absf(toward.y), 0.001))
+		map.trail(PackedVector2Array([
+			HAMLET_CENTER + toward * (TRAIL_SQUARE_RADIUS_M - 1.0), center - toward * (edge + TRAIL_DOOR_GAP_M),
+		]), TRAIL_DOOR_WIDTH_M)
 
 
 ## (ground height, water depth) in meters at (x, z) meters.

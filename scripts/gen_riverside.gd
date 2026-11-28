@@ -124,6 +124,29 @@ const VILLAGE_BRUSH_PATCHES: Array[Vector3] = [
 ]
 const VILLAGE_PATCH_THRESHOLD: float = -0.1
 
+## Worn trails for the view (A5, trails.tres; the sim never sees them): the
+## way the squad walks from its start on the north bank down through the ford,
+## the cart road on from the ford's south landing to the village, its lanes,
+## the square, and a path from the square to each house's door.
+const TRAIL_TO_FORD: PackedVector2Array = [
+	Vector2(289.0, 176.0), Vector2(292.0, 192.0), Vector2(297.0, 206.0), Vector2(300.0, 216.0),
+	Vector2(300.0, 226.0), Vector2(301.0, 236.0),
+]
+const TRAIL_TO_FORD_WIDTH_M: float = 2.4
+## From the ford's south landing it joins the sand road (FORD_ROAD) where the
+## road begins, then follows the road and the main lane in to the square.
+const TRAIL_CART_ROAD: PackedVector2Array = [
+	Vector2(300.0, 228.0), Vector2(303.0, 241.0), Vector2(313.0, 257.0), Vector2(331.0, 276.0),
+	Vector2(352.0, 293.0), Vector2(372.0, 304.0), Vector2(392.0, 322.0), Vector2(410.0, 343.0),
+	Vector2(421.0, 353.0), Vector2(431.0, 363.0), Vector2(439.0, 370.0), VILLAGE_SQUARE,
+]
+const TRAIL_CART_ROAD_WIDTH_M: float = 3.4
+const TRAIL_LANE_WIDTH_M: float = 1.8
+const TRAIL_SQUARE_RADIUS_M: float = 6.0
+## A house's path stops this far short of its footprint's edge, at its door.
+const TRAIL_DOOR_GAP_M: float = 1.5
+const TRAIL_DOOR_WIDTH_M: float = 1.4
+
 
 
 func _initialize() -> void:
@@ -145,6 +168,7 @@ func _initialize() -> void:
 			return _ground_type(wood, brush, x, z, height_m, slope)
 	)
 	_build_village(map, wood, brush)
+	_record_trails(map)
 	var info: MapInfo = map.save(OUT_DIR, "riverside", "Riverside", HERB_PLANTS)
 	if info != null:
 		map.report(info)
@@ -160,12 +184,40 @@ func _build_village(map: MapBuilder, wood: FastNoiseLite, brush: FastNoiseLite) 
 	for spot: Vector3 in VILLAGE_BRUSH_PATCHES:
 		map.patch(Vector2(spot.x, spot.y), spot.z, brush, VILLAGE_PATCH_THRESHOLD, Terrain.Ground.BRUSH)
 	for house: Vector4 in VILLAGE_HOUSES:
-		map.house(house.x, house.y, house.z, house.w, VILLAGE_HOUSE_HEIGHT_M)
+		map.house(
+			house.x, house.y, house.z, house.w, VILLAGE_HOUSE_HEIGHT_M, VILLAGE_SQUARE
+		)
 	# A one-point polyline is a disc.
 	map.road(PackedVector2Array([VILLAGE_SQUARE, VILLAGE_SQUARE]), VILLAGE_PLAZA_RADIUS_M * 2.0)
 	for lane: PackedVector2Array in VILLAGE_LANES:
 		map.road(lane, LANE_MAIN_WIDTH_M if lane == LANE_MAIN else LANE_SPUR_WIDTH_M)
 	map.road(FORD_ROAD, FORD_ROAD_WIDTH_M)
+
+
+## Records the trails (see TRAIL_TO_FORD). View only: none of it changes the map.
+func _record_trails(map: MapBuilder) -> void:
+	map.trail(TRAIL_TO_FORD, TRAIL_TO_FORD_WIDTH_M)
+	map.trail(TRAIL_CART_ROAD, TRAIL_CART_ROAD_WIDTH_M)
+	map.trail(PackedVector2Array([VILLAGE_SQUARE]), TRAIL_SQUARE_RADIUS_M * 2.0, false)
+	for lane: PackedVector2Array in VILLAGE_LANES:
+		if lane != LANE_MAIN:
+			map.trail(lane, TRAIL_LANE_WIDTH_M)
+	for house: Vector4 in VILLAGE_HOUSES:
+		map.trail(_door_path(house), TRAIL_DOOR_WIDTH_M)
+
+
+## From the square toward a house (center x, center z, width, depth), stopping
+## TRAIL_DOOR_GAP_M short of the footprint's edge.
+func _door_path(house: Vector4) -> PackedVector2Array:
+	var center: Vector2 = Vector2(house.x, house.y)
+	var toward: Vector2 = (center - VILLAGE_SQUARE).normalized()
+	# How far from the center the footprint's edge is along -toward.
+	var half: Vector2 = Vector2(house.z, house.w) / 2.0
+	var edge: float = minf(
+		half.x / maxf(absf(toward.x), 0.001), half.y / maxf(absf(toward.y), 0.001)
+	)
+	var door: Vector2 = center - toward * (edge + TRAIL_DOOR_GAP_M)
+	return PackedVector2Array([VILLAGE_SQUARE + toward * (TRAIL_SQUARE_RADIUS_M - 1.0), door])
 
 
 ## (ground height, water depth) in meters at (x, z) meters.

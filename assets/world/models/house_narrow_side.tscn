@@ -1,0 +1,8 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://assets/world/models/house_narrow_side/house_narrow_side.gltf" id="1_ed2ji"]
+
+[node name="HouseNarrowSide" type="Node3D" unique_id=1340688014]
+
+[node name="house_narrow_side2" type="Node3D" parent="." unique_id=2075503562 instance=ExtResource("1_ed2ji")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.008544829, 0)

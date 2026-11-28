@@ -112,6 +112,23 @@ func test_the_camera_starts_where_the_mission_says() -> void:
 	assert_almost_eq(camera.distance, 40.0, 0.01)
 
 
+func test_the_camera_looks_the_way_the_squad_faces() -> void:
+	# The fixture's squad faces +z (south), so the camera sits north of it
+	# looking south over the squad's shoulders: yaw pi.
+	var camera: RtsCamera = _view().get_node("CameraRig") as RtsCamera
+	assert_almost_eq(absf(camera.yaw), PI, 0.001)
+	var def: MissionDef = ViewFixtures.mission()
+	def.deploy_facing_x = -1
+	def.deploy_facing_z = 0
+	var state: CampaignState = CampaignState.new_campaign(1, 2)
+	var plan: DeployPlan = state.plan_deploy(def, PackedInt32Array(), PackedStringArray(["Ada"]))
+	var main: MainView = (load("res://view/main.tscn") as PackedScene).instantiate() as MainView
+	main.launch = MissionLaunch.new(def, 2, 1, plan.command(0, def), true)
+	add_child_autofree(main)
+	var west: RtsCamera = main.get_node("CameraRig") as RtsCamera
+	assert_almost_eq(west.yaw, atan2(1.0, 0.0), 0.001, "facing west, the camera sits east of the focus")
+
+
 func test_the_missions_atmosphere_is_applied() -> void:
 	var atmosphere: Atmosphere = Atmosphere.new()
 	atmosphere.background_color = Color(0.4, 0.2, 0.1)

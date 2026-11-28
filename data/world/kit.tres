@@ -1,0 +1,61 @@
+[gd_resource type="Resource" script_class="WorldKit" format=3]
+
+[ext_resource type="PackedScene" path="res://assets/world/models/gate.tscn" id="1_gas1t"]
+[ext_resource type="Script" path="res://view/structures/kit_piece.gd" id="2_nkcmx"]
+[ext_resource type="PackedScene" path="res://assets/world/models/house_square.tscn" id="3_dsibw"]
+[ext_resource type="PackedScene" path="res://assets/world/models/house_long_side.tscn" id="4_2vldb"]
+[ext_resource type="PackedScene" path="res://assets/world/models/house_long_front.tscn" id="5_p35uv"]
+[ext_resource type="PackedScene" path="res://assets/world/models/house_narrow_side.tscn" id="6_kjykk"]
+[ext_resource type="PackedScene" path="res://assets/world/models/house_narrow_front.tscn" id="7_17dad"]
+[ext_resource type="PackedScene" path="res://assets/world/models/mill.tscn" id="8_h0vlb"]
+[ext_resource type="Script" path="res://view/structures/world_kit.gd" id="9_2qa5g"]
+[ext_resource type="PackedScene" path="res://assets/world/models/wall.tscn" id="10_fx3ph"]
+
+[sub_resource type="Resource" id="Resource_4jvcp"]
+script = ExtResource("2_nkcmx")
+scene = ExtResource("1_gas1t")
+size_m = Vector3(6.008, 3.123, 2)
+
+[sub_resource type="Resource" id="Resource_bycnb"]
+script = ExtResource("2_nkcmx")
+scene = ExtResource("3_dsibw")
+size_m = Vector3(6.728, 4.965, 6.725)
+
+[sub_resource type="Resource" id="Resource_kfllu"]
+script = ExtResource("2_nkcmx")
+scene = ExtResource("4_2vldb")
+size_m = Vector3(6.728, 4.965, 8.725)
+door = Vector2i(1, 0)
+
+[sub_resource type="Resource" id="Resource_2g14d"]
+script = ExtResource("2_nkcmx")
+scene = ExtResource("5_p35uv")
+size_m = Vector3(6.728, 4.965, 8.725)
+
+[sub_resource type="Resource" id="Resource_8xjku"]
+script = ExtResource("2_nkcmx")
+scene = ExtResource("6_kjykk")
+size_m = Vector3(4.714, 4.496, 6.724)
+door = Vector2i(1, 0)
+
+[sub_resource type="Resource" id="Resource_h4oc7"]
+script = ExtResource("2_nkcmx")
+scene = ExtResource("7_17dad")
+size_m = Vector3(4.714, 4.494, 8.725)
+
+[sub_resource type="Resource" id="Resource_jivpk"]
+script = ExtResource("2_nkcmx")
+scene = ExtResource("8_h0vlb")
+size_m = Vector3(9.992, 6.011, 10.006)
+
+[sub_resource type="Resource" id="Resource_gyp36"]
+script = ExtResource("2_nkcmx")
+scene = ExtResource("10_fx3ph")
+size_m = Vector3(2, 3.123, 2.005)
+
+[resource]
+script = ExtResource("9_2qa5g")
+houses = Array[ExtResource("2_nkcmx")]([SubResource("Resource_bycnb"), SubResource("Resource_kfllu"), SubResource("Resource_2g14d"), SubResource("Resource_8xjku"), SubResource("Resource_h4oc7")])
+wall = SubResource("Resource_gyp36")
+gate = SubResource("Resource_4jvcp")
+mill = SubResource("Resource_jivpk")

@@ -2,9 +2,10 @@ extends GutTest
 ## TerrainView.set_grade: a mission's look for the ground and water, passed to
 ## the terrain shader as uniforms. Unset, every one is "no change" (white tint,
 ## no desaturation, no recolor, no water blend), so sandbox and every other
-## view renders as it did before the grade existed; set, it survives a rebuild
-## and shows each sample's ground type to the shader. The shader's own math is
-## checked by eye (the headless renderer compiles nothing).
+## view renders as it did before the grade existed; set, it survives a rebuild.
+## The textured ground (A5) recolors each layer by its per-sample weight, so
+## the weights tell the shader each sample's ground type. The shader's own math
+## is checked by eye (the headless renderer only parses it).
 
 const M: int = 1000
 
@@ -27,7 +28,7 @@ func test_the_shader_declares_every_grade_uniform() -> void:
 	var names: Array[String] = []
 	for uniform: Dictionary in _view().get_child(0).material_override.shader.get_shader_uniform_list():
 		names.append(uniform["name"])
-	for wanted: String in ["grade_tint", "grade_desaturation", "ground_recolor", "water_grade", "ground_kind"]:
+	for wanted: String in ["grade_tint", "grade_desaturation", "ground_recolor", "water_grade", "ground_weights_a", "ground_weights_b"]:
 		assert_has(names, wanted, "set_shader_parameter would silently ignore a missing uniform")
 
 
@@ -72,33 +73,43 @@ func test_the_grade_survives_a_rebuild_and_a_rebuilt_region() -> void:
 	assert_eq(view.shader_parameter(&"grade_desaturation"), 0.4)
 
 
+func _weight(view: TerrainView, i: int, j: int) -> PackedByteArray:
+	var a: Color = (view.shader_parameter(&"ground_weights_a") as ImageTexture).get_image().get_pixel(i, j)
+	var b: Color = (view.shader_parameter(&"ground_weights_b") as ImageTexture).get_image().get_pixel(i, j)
+	# Terrain.Ground order: grass, brush, wood, sand, rock.
+	return PackedByteArray([a.r8, a.g8, a.b8, a.a8, b.r8])
+
+
 func test_the_shader_is_told_each_samples_ground_type() -> void:
 	var terrain: Terrain = TestTerrains.from_ascii([
 		"..bw",
 		"sr.#",
 	])
 	var view: TerrainView = _view(terrain)
-	var kind: Image = (view.shader_parameter(&"ground_kind") as ImageTexture).get_image()
-	assert_eq(kind.get_width(), 4)
-	assert_eq(kind.get_height(), 2)
-	assert_eq(kind.get_pixel(0, 0).r8, Terrain.Ground.GRASS)
-	assert_eq(kind.get_pixel(2, 0).r8, Terrain.Ground.BRUSH)
-	assert_eq(kind.get_pixel(3, 0).r8, Terrain.Ground.WOOD)
-	assert_eq(kind.get_pixel(0, 1).r8, Terrain.Ground.SAND)
-	assert_eq(kind.get_pixel(1, 1).r8, Terrain.Ground.ROCK)
+	var expected: Dictionary[Vector2i, int] = {
+		Vector2i(0, 0): Terrain.Ground.GRASS,
+		Vector2i(2, 0): Terrain.Ground.BRUSH,
+		Vector2i(3, 0): Terrain.Ground.WOOD,
+		Vector2i(0, 1): Terrain.Ground.SAND,
+		Vector2i(1, 1): Terrain.Ground.ROCK,
+	}
+	for at: Vector2i in expected:
+		var weights: PackedByteArray = _weight(view, at.x, at.y)
+		for ground: int in Terrain.GROUND_COUNT:
+			assert_eq(weights[ground], 255 if ground == expected[at] else 0, "sample %s, ground %d" % [at, ground])
 
 
-func test_the_ground_texture_holds_every_type_the_terrain_has() -> void:
+func test_the_weights_hold_every_type_the_terrain_has() -> void:
 	var shipped: Terrain = TestTerrains.riverside()
 	var view: TerrainView = _view(shipped)
-	var kind: Image = (view.shader_parameter(&"ground_kind") as ImageTexture).get_image()
 	var seen: Dictionary[int, bool] = {}
-	for j: int in shipped.size_z:
-		for i: int in shipped.size_x:
-			seen[kind.get_pixel(i, j).r8] = true
+	for j: int in range(0, shipped.size_z, 4):
+		for i: int in range(0, shipped.size_x, 4):
+			var weights: PackedByteArray = _weight(view, i, j)
+			for ground: int in Terrain.GROUND_COUNT:
+				if weights[ground] > 0:
+					seen[ground] = true
 	assert_true(seen.has(Terrain.Ground.GRASS))
-	for ground: int in seen:
-		assert_lt(ground, Terrain.GROUND_COUNT)
 
 
 func test_a_recolor_of_the_wrong_size_is_refused() -> void:

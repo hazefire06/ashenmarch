@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="MapStructures" format=3]
+
+[ext_resource type="Script" path="res://view/structures/structure_record.gd" id="1_a04dl"]
+[ext_resource type="Script" path="res://view/structures/map_structures.gd" id="2_4d3jy"]
+
+[sub_resource type="Resource" id="Resource_rqat6"]
+script = ExtResource("1_a04dl")
+model = &"mill"
+center_m = Vector2(166, 144)
+size_m = Vector2(10, 10)
+base_m = 12.0
+height_m = 6.0
+facing = Vector2i(0, 1)
+points_m = PackedVector2Array()
+gaps_m = PackedVector2Array()
+samples = PackedInt32Array(44641, 44642, 44643, 44644, 44645, 44646, 44647, 44648, 44649, 44650, 44961, 44962, 44963, 44964, 44965, 44966, 44967, 44968, 44969, 44970, 45281, 45282, 45283, 45284, 45285, 45286, 45287, 45288, 45289, 45290, 45601, 45602, 45603, 45604, 45605, 45606, 45607, 45608, 45609, 45610, 45921, 45922, 45923, 45924, 45925, 45926, 45927, 45928, 45929, 45930, 46241, 46242, 46243, 46244, 46245, 46246, 46247, 46248, 46249, 46250, 46561, 46562, 46563, 46564, 46565, 46566, 46567, 46568, 46569, 46570, 46881, 46882, 46883, 46884, 46885, 46886, 46887, 46888, 46889, 46890, 47201, 47202, 47203, 47204, 47205, 47206, 47207, 47208, 47209, 47210, 47521, 47522, 47523, 47524, 47525, 47526, 47527, 47528, 47529, 47530)
+
+[resource]
+script = ExtResource("2_4d3jy")
+records = Array[ExtResource("1_a04dl")]([SubResource("Resource_rqat6")])

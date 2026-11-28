@@ -100,13 +100,36 @@ const LANE_HALF_M: float = 5.0
 
 ## What the mission data and tests are written against.
 const DEPLOY: Vector2 = Vector2(156.0, 158.0)
-const CAMERA_START: Vector2 = Vector2(160.0, 205.0)
+const CAMERA_START: Vector2 = Vector2(157.0, 165.0)
 ## Edge spawn zones: north, west, south, east. The east one is across the
 ## millstream from the plateau.
 const SPAWN_N: Vector2 = Vector2(150.0, 14.0)
 const SPAWN_W: Vector2 = Vector2(14.0, 170.0)
 const SPAWN_S: Vector2 = Vector2(150.0, 306.0)
 const SPAWN_E: Vector2 = Vector2(306.0, 210.0)
+
+## Worn trails for the view (A5, trails.tres; the sim never sees them). The
+## way up: the cart track from the south-east ramp's foot to the yard, the
+## footpath up the north-west ramp and round the mill's west side to the yard,
+## and the yard itself. The approaches: from each edge spawn zone, the way the
+## waves come in to the ramp feet, mostly down the grass lanes through the
+## wheat. The ramps' tops are on the plateau's edge (ramp()).
+const TRAIL_SE_UP: PackedVector2Array = [
+	SE_RAMP_FOOT, Vector2(183.0, 175.5), Vector2(176.0, 166.0), YARD_CENTER,
+]
+const TRAIL_NW_UP: PackedVector2Array = [
+	NW_RAMP_FOOT, Vector2(141.0, 129.0), Vector2(150.0, 142.0), Vector2(153.0, 152.0), Vector2(159.0, 157.0),
+]
+const TRAIL_APPROACHES: Array[PackedVector2Array] = [
+	[Vector2(150.0, 0.0), Vector2(148.0, 14.0), Vector2(138.0, 42.0), Vector2(118.0, 78.0), Vector2(110.0, 94.0), NW_RAMP_FOOT],
+	[Vector2(0.0, 172.0), Vector2(14.0, 170.0), Vector2(48.0, 158.0), Vector2(86.0, 140.0), Vector2(106.0, 122.0), NW_RAMP_FOOT],
+	[Vector2(150.0, 319.0), Vector2(150.0, 306.0), Vector2(156.0, 268.0), Vector2(164.0, 236.0), Vector2(182.0, 208.0), SE_RAMP_FOOT],
+	[Vector2(319.0, 212.0), Vector2(306.0, 210.0), Vector2(276.0, 210.0), Vector2(246.0, 204.0), Vector2(220.0, 200.0), SE_RAMP_FOOT],
+]
+const TRAIL_CART_WIDTH_M: float = 3.2
+const TRAIL_PATH_WIDTH_M: float = 2.2
+const TRAIL_APPROACH_WIDTH_M: float = 2.6
+const TRAIL_YARD_RADIUS_M: float = 6.0
 
 ## Noise layers and where each takes over.
 const FIELD_SEED: int = 3102
@@ -149,8 +172,13 @@ func _initialize() -> void:
 		PLATEAU_CENTER, top_radius, PLATEAU_TOP_M, CLIFF_WIDTH_M,
 		[ramp(NW_RAMP_FOOT), ramp(SE_RAMP_FOOT)]
 	)
-	map.house(MILL_CENTER.x, MILL_CENTER.y, MILL_SIZE_M, MILL_SIZE_M, MILL_HEIGHT_M)
+	# The mill faces its yard, to the south.
+	map.house(
+		MILL_CENTER.x, MILL_CENTER.y, MILL_SIZE_M, MILL_SIZE_M, MILL_HEIGHT_M,
+		MILL_CENTER + Vector2(0.0, MILL_SIZE_M), &"mill"
+	)
 
+	_record_trails(map)
 	var info: MapInfo = map.save(_out_dir(), "old_mill", "Old Mill", HERB_PLANTS)
 	if info == null:
 		quit(1)
@@ -171,6 +199,15 @@ func _out_dir() -> String:
 		if arg.begins_with("--out="):
 			return arg.trim_prefix("--out=")
 	return OUT_DIR
+
+
+## Records the trails (see TRAIL_SE_UP). View only: none of it changes the map.
+func _record_trails(map: MapBuilder) -> void:
+	map.trail(TRAIL_SE_UP, TRAIL_CART_WIDTH_M)
+	map.trail(TRAIL_NW_UP, TRAIL_PATH_WIDTH_M)
+	map.trail(PackedVector2Array([YARD_CENTER]), TRAIL_YARD_RADIUS_M * 2.0, false)
+	for approach: PackedVector2Array in TRAIL_APPROACHES:
+		map.trail(approach, TRAIL_APPROACH_WIDTH_M)
 
 
 ## The plateau top's radius in meters at a bearing in radians (atan2(dz, dx)):

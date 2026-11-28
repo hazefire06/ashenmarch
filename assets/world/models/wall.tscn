@@ -1,0 +1,7 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://assets/world/models/wall/wall.gltf" id="1_xkjph"]
+
+[node name="Wall" type="Node3D" unique_id=2013498426]
+
+[node name="wall2" type="Node3D" parent="." unique_id=1581645822 instance=ExtResource("1_xkjph")]

@@ -1,0 +1,8 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://assets/world/models/house_square/house_square.gltf" id="1_jbu61"]
+
+[node name="HouseSquare" type="Node3D" unique_id=1278606426]
+
+[node name="house_square2" type="Node3D" parent="." unique_id=1767903309 instance=ExtResource("1_jbu61")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.008544829, -0.0007247925)

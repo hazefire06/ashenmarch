@@ -9,13 +9,19 @@ extends Node3D
 ## top of the overhead map). Yaw grows counter-clockwise seen from above, so
 ## increasing yaw turns the view to the left.
 ##
-## Pitch follows zoom: PITCH_NEAR above horizontal at MIN_DISTANCE, PITCH_FAR
-## at MAX_DISTANCE.
+## Pitch follows zoom: PITCH_NEAR above horizontal at MIN_DISTANCE,
+## PITCH_DEFAULT at DEFAULT_DISTANCE and PITCH_FAR at MAX_DISTANCE, linear
+## between them (pitch_at).
 
 const MIN_DISTANCE: float = 8.0
 const MAX_DISTANCE: float = 250.0
-const DEFAULT_DISTANCE: float = 90.0
+## The default framing (A5): close and fairly top-down, as in the late-90s
+## tactics games, so soldiers are large on screen; and at PITCH_DEFAULT, the
+## elevation the unit sprites are rendered at (50 degrees), so they look as
+## drawn.
+const DEFAULT_DISTANCE: float = 22.0
 const PITCH_NEAR: float = deg_to_rad(35.0)
+const PITCH_DEFAULT: float = deg_to_rad(50.0)
 const PITCH_FAR: float = deg_to_rad(65.0)
 const NEAR_PLANE: float = 0.25
 const FAR_PLANE: float = 2000.0
@@ -326,8 +332,16 @@ func _apply_transform() -> void:
 
 
 func _pitch() -> float:
-	var t: float = clampf(inverse_lerp(MIN_DISTANCE, MAX_DISTANCE, distance), 0.0, 1.0)
-	return lerpf(PITCH_NEAR, PITCH_FAR, t)
+	return pitch_at(distance)
+
+
+## The pitch above horizontal, radians, at this distance from the focus.
+static func pitch_at(at_distance: float) -> float:
+	if at_distance <= DEFAULT_DISTANCE:
+		var near: float = clampf(inverse_lerp(MIN_DISTANCE, DEFAULT_DISTANCE, at_distance), 0.0, 1.0)
+		return lerpf(PITCH_NEAR, PITCH_DEFAULT, near)
+	var far: float = clampf(inverse_lerp(DEFAULT_DISTANCE, MAX_DISTANCE, at_distance), 0.0, 1.0)
+	return lerpf(PITCH_DEFAULT, PITCH_FAR, far)
 
 
 func _horizontal_reach() -> float:

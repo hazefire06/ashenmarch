@@ -114,6 +114,22 @@ func test_it_grades_the_terrain() -> void:
 	assert_eq(recolor[Terrain.Ground.ROCK], Color(0.2, 0.15, 0.13, 0.3))
 
 
+func test_it_grades_the_ground_scatter() -> void:
+	var rows: Array[String] = []
+	for j: int in 30:
+		rows.append("b".repeat(30))
+	var scatter: ScatterView = ScatterView.new()
+	add_child_autofree(scatter)
+	scatter.build(TestTerrains.from_ascii(rows), null, PackedFloat32Array(), "test", null, ScatterSet.shared(), 1.0)
+	assert_gt(scatter.materials().size(), 0)
+	AtmosphereView.new(_environment, _sun, _terrain, _precipitation, null, null, scatter).apply(_look())
+	for material: ShaderMaterial in scatter.materials():
+		assert_eq(material.get_shader_parameter(&"grade_tint"), Color(0.85, 0.65, 0.55))
+		assert_eq(material.get_shader_parameter(&"grade_desaturation"), 0.55)
+		var recolor: PackedColorArray = material.get_shader_parameter(&"ground_recolor")
+		assert_eq(recolor[Terrain.Ground.BRUSH], Color(0.1, 0.06, 0.04, 0.65))
+
+
 func test_it_starts_the_ash() -> void:
 	assert_eq(_precipitation.ash_count(), 0)
 	_view.apply(_look())
@@ -170,3 +186,16 @@ func test_the_shipped_atmospheres_apply() -> void:
 			PrecipitationView.visible_count(PrecipitationView.ASH_MAX, roundi(atmosphere.ash_fall * 1000.0)),
 			path
 		)
+
+
+func test_it_gives_the_water_the_sky_to_reflect() -> void:
+	var terrain: Terrain = TestTerrains.from_ascii(["....", ".11.", ".11.", "...."] as Array[String])
+	var water_m: PackedFloat32Array = PackedFloat32Array()
+	water_m.resize(16)
+	for k: int in 16:
+		water_m[k] = 0.5 if terrain.water[k] != 0 else 0.0
+	var water: WaterView = WaterView.new()
+	add_child_autofree(water)
+	water.build(terrain, water_m)
+	AtmosphereView.new(_environment, _sun, _terrain, _precipitation, water).apply(_look())
+	assert_eq(water.shader_parameter(&"sky_color"), Color(0.42, 0.2, 0.1), "the mission's sky")

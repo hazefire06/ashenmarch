@@ -40,9 +40,16 @@ const EACH: int = 2
 const MAP_ID: StringName = &"old_mill"
 const SEED: int = 1000
 const MINUTES: int = 10
-## Frames to wait for the browser's memory measurement, which Chrome takes at
-## its next garbage collection, before giving up on it.
-const JS_WAIT_FRAMES: int = 1800
+## The camera's opening distance in mm, pinned as BenchScenario pins the bench's:
+## skirmish maps open at 22 m since A5, which frames mostly ground near the
+## look point. At 75 m the battle is in frame and the line stays comparable
+## with A2's.
+const CAMERA_DISTANCE: int = 75000
+## Milliseconds to wait for the browser's memory measurement, which Chrome
+## takes at its next garbage collection, before giving up on it. It was 1800
+## frames, which at 120 fps is 15 s: Chrome took about 15 s (A5's run, 2026-11-27)
+## and the line came out unknown just before the measurement landed.
+const JS_WAIT_MS: int = 60000
 const MAIN_SCENE: String = "res://view/main.tscn"
 const MB: float = 1_000_000.0
 ## Until Chrome is shown to count decoded audio in its memory figure (the A2
@@ -80,7 +87,7 @@ var line: String = ""
 
 var _started_ms: int = 0
 var _measuring: bool = false
-var _js_frames: int = 0
+var _js_started_ms: int = 0
 var _fields: Dictionary = {}
 var _label: Label
 
@@ -115,7 +122,9 @@ static func asked_in_query(search: String) -> bool:
 ## each, AI against AI on Old Mill, with a budget that buys both armies.
 static func worst_case_setup(units: UnitCatalog, skirmishes: SkirmishCatalog) -> SkirmishSetup:
 	var setup: SkirmishSetup = SkirmishSetup.new()
-	setup.map = skirmishes.skirmish_map(MAP_ID)
+	# A copy, so the shared map keeps its own opening distance.
+	setup.map = skirmishes.skirmish_map(MAP_ID).duplicate() as SkirmishMap
+	setup.map.camera_distance = CAMERA_DISTANCE
 	setup.rules = SkirmishRules.for_map(setup.map, SkirmishRules.Mode.BODY_COUNT, MINUTES, UnitType.Faction.LIGHT)
 	var light: Army = Army.new(UnitType.Faction.LIGHT)
 	var dark: Army = Army.new(UnitType.Faction.DARK)
@@ -260,6 +269,7 @@ func _measure() -> void:
 		"seconds": roundi((Time.get_ticks_msec() - _started_ms) / 1000.0),
 	}
 	if OS.has_feature("web"):
+		_js_started_ms = Time.get_ticks_msec()
 		JavaScriptBridge.eval(JS_MEASURE, true)
 	else:
 		_finish(desktop_line(_fields))
@@ -267,10 +277,9 @@ func _measure() -> void:
 
 # Reads the page's measurement once it is there, or gives up on it.
 func _poll_page() -> void:
-	_js_frames += 1
 	var raw: Variant = JavaScriptBridge.eval("window.__amBudget", true)
 	if not raw is String or (raw as String).is_empty():
-		if _js_frames < JS_WAIT_FRAMES:
+		if Time.get_ticks_msec() - _js_started_ms < JS_WAIT_MS:
 			return
 		raw = "{}"
 	_fields.merge(page_fields(raw), true)

@@ -96,10 +96,12 @@ const TEST_SAPPER_COUNT: int = 3
 const TEST_WARDEN_COUNT: int = 3
 ## Where the camera starts: south of the squads at the ford, looking north.
 const CAMERA_START: Vector2 = Vector2(285.0, 245.0)
-const CAMERA_START_DISTANCE: float = 75.0
-## How far ahead of the player's skirmish army the camera starts looking, in
-## meters, so the block isn't under the control bar.
-const SKIRMISH_CAMERA_LEAD: float = 15.0
+const CAMERA_START_DISTANCE: float = RtsCamera.DEFAULT_DISTANCE
+## How far ahead of the player's skirmish army the camera starts looking, as a
+## share of the camera's distance, so the block isn't under the control bar:
+## 15 m at the 75 m skirmishes used to open at, 4.4 m at today's 22 m (a fixed
+## 15 m would put the army behind a close camera).
+const SKIRMISH_CAMERA_LEAD: float = 0.2
 ## Weight of the newest sample in the sim-time moving average.
 const SIM_TIME_SMOOTHING: float = 0.05
 ## Real seconds between the mission being decided and mission_ended: long
@@ -206,6 +208,9 @@ var _barks: Barks
 var _laying_out: bool = false
 
 @onready var _terrain_view: TerrainView = $TerrainView
+@onready var _water_view: WaterView = $WaterView
+@onready var _structures_view: StructuresView = $StructuresView
+@onready var _scatter_view: ScatterView = $ScatterView
 @onready var _units_view: UnitsView = $Units
 @onready var _gibs: Gibs = $Gibs
 @onready var _projectiles_view: ProjectilesView = $Projectiles
@@ -249,7 +254,22 @@ func _ready() -> void:
 	# The World's copy, which explosions scar. The views draw this one.
 	var terrain: Terrain = world.terrain
 	var loaded_ms: int = Time.get_ticks_msec()
-	_terrain_view.build(terrain)
+	var map_info: MapInfo = _map_info()
+	var structures: MapStructures = null
+	var trails: MapTrails = null
+	var water_m: PackedFloat32Array = PackedFloat32Array()
+	if map_info != null:
+		structures = MapStructures.load_beside(map_info.heightmap_path)
+		trails = MapTrails.load_beside(map_info.heightmap_path)
+		water_m = WaterMap.load_beside(map_info.heightmap_path, terrain, map_info.max_height)
+	_terrain_view.build(terrain, structures, trails)
+	_water_view.build(terrain, water_m, structures)
+	_structures_view.build(structures, terrain)
+	_scatter_view.build(
+		terrain, structures, water_m, _scatter_name(map_info), _terrain_view.fire_texture(), ScatterSet.shared(),
+		ScatterPlacer.default_density_scale(), _terrain_view.trail_mask()
+	)
+	_terrain_view.region_rebuilt.connect(_scatter_view.rebuild_region)
 	_camera.setup(terrain)
 	_place_camera()
 	# One picture of the map, built once, for both maps.
@@ -305,7 +325,9 @@ func _ready() -> void:
 		var look: Atmosphere = (
 			launch.skirmish.map.atmosphere if launch.is_skirmish() else launch.mission.atmosphere
 		)
-		AtmosphereView.new(_world_environment, _sun, _terrain_view, _precipitation).apply(look)
+		AtmosphereView.new(
+			_world_environment, _sun, _terrain_view, _precipitation, _water_view, _structures_view, _scatter_view
+		).apply(look)
 	_ai_debug.setup(world)
 	_mission_hud.show_world(world)
 	_objectives.show_world(world)
@@ -469,6 +491,10 @@ func _advance() -> void:
 		_skirmish_hud.show_world(world)
 	_terrain_view.update_fire(world.fire)
 	_terrain_view.set_weather(world.weather)
+	_water_view.set_weather(world.weather)
+	_structures_view.set_weather(world.weather)
+	_structures_view.update_fire(world.fire, world.terrain)
+	_scatter_view.set_weather(world.weather)
 	# Only a launched mission freezes; the sandbox plays on whatever it decides.
 	if launch != null and world.mission != null and world.mission.outcome != MissionRuntime.Outcome.NONE:
 		_freeze()
@@ -652,6 +678,23 @@ func _map_id() -> StringName:
 	return launch.skirmish.map.id if launch.is_skirmish() else launch.mission.id
 
 
+# The name that seeds a map's ground scatter: its folder under maps/, so a
+# map gets the same scatter in the campaign, in skirmish and in a replay.
+static func _scatter_name(map_info: MapInfo) -> String:
+	return map_info.heightmap_path.get_base_dir().get_file() if map_info != null else ""
+
+
+# The map this game is played on (its world files sit beside the heightmap):
+# the launch's mission or skirmish map (a replay's launch has one too), or
+# the sandbox's Riverside.
+func _map_info() -> MapInfo:
+	if launch == null:
+		return load(MAP_PATH) as MapInfo
+	if launch.is_skirmish():
+		return launch.skirmish.map.map if launch.skirmish.map != null else null
+	return launch.mission.map if launch.mission != null else null
+
+
 # The world to play: the launch's mission, set up by MissionSetup, or the
 # sandbox's bare world on Riverside. Null, after push_error, if it can't be made.
 func _create_world() -> World:
@@ -687,8 +730,8 @@ func _load_catalog() -> UnitCatalog:
 
 
 # The sandbox starts south of the squads at the ford, looking north; a mission
-# starts where its MissionDef says (and the camera's own default, the middle of
-# the map, if it says nothing).
+# starts where its MissionDef says, looking the way its squad deploys facing
+# (and the camera's own default, the middle of the map, if it says nothing).
 func _place_camera() -> void:
 	if launch == null:
 		_camera.set_pose(CAMERA_START, 0.0, CAMERA_START_DISTANCE)
@@ -700,8 +743,11 @@ func _place_camera() -> void:
 	if mission.camera_start.size() != 2:
 		return
 	var mm: float = float(World.UNITS_PER_METER)
+	# Looking the way the squad faces, over its shoulders, as a skirmish does.
+	var facing: Vector2 = Vector2(mission.deploy_facing_x, mission.deploy_facing_z)
+	var yaw: float = 0.0 if facing == Vector2.ZERO else atan2(-facing.x, -facing.y)
 	_camera.set_pose(
-		Vector2(mission.camera_start[0], mission.camera_start[1]) / mm, 0.0, mission.camera_distance / mm
+		Vector2(mission.camera_start[0], mission.camera_start[1]) / mm, yaw, mission.camera_distance / mm
 	)
 
 
@@ -715,8 +761,9 @@ func _place_skirmish_camera() -> void:
 	var facing: Vector2 = Vector2(setup.map.facing(setup.player_spawn)).normalized()
 	if facing == Vector2.ZERO:
 		facing = Vector2(0.0, -1.0)
-	var focus: Vector2 = Vector2(at) / mm + facing * SKIRMISH_CAMERA_LEAD
-	_camera.set_pose(focus, atan2(-facing.x, -facing.y), setup.map.camera_distance / mm)
+	var distance: float = setup.map.camera_distance / mm
+	var focus: Vector2 = Vector2(at) / mm + facing * SKIRMISH_CAMERA_LEAD * distance
+	_camera.set_pose(focus, atan2(-facing.x, -facing.y), distance)
 
 
 # A skirmish's own views: its flags in the world, and under the HUD its score

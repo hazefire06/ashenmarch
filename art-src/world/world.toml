@@ -1,0 +1,246 @@
+# The world art sources, read by scripts/art/world_assets.py (make world-assets). Only CC0 packs from ambientcg, polyhaven, quaternius
+# or kenney are accepted. Paths are relative to art-src/world/. The houses, wall, gate and mill are
+# assembled from MegaKit pieces by scripts/art/assemble_world_kit.py (see its docstring).
+#
+# [source.<id>]            name, url, licence = "CC0", site = "ambientcg" | "polyhaven" | "quaternius" | "kenney"
+# [ground.<layer>]         for grass, brush, forest, sand, rock, mud: source, albedo, normal
+# [models.<name>]          source, file (.glb or .gltf), and optionally folder: the models naming one folder are written to
+#                          assets/world/models/<folder>/ and share the textures and buffers they have in common
+#
+# The ground scatter (view/scatter/) comes from the Stylized Nature MegaKit (Standard): its glTF/ files for the models below, with
+# the buffers and textures they use and the pack's licence, unpacked into quaternius/nature/ (the zip stays out of git).
+
+[source.grass004]
+name = "ambientCG Grass004"
+url = "https://ambientcg.com/a/Grass004"
+licence = "CC0"
+site = "ambientcg"
+
+[source.ground037]
+name = "ambientCG Ground037"
+url = "https://ambientcg.com/a/Ground037"
+licence = "CC0"
+site = "ambientcg"
+
+[source.ground023]
+name = "ambientCG Ground023"
+url = "https://ambientcg.com/a/Ground023"
+licence = "CC0"
+site = "ambientcg"
+
+[source.ground054]
+name = "ambientCG Ground054"
+url = "https://ambientcg.com/a/Ground054"
+licence = "CC0"
+site = "ambientcg"
+
+[source.rock030]
+name = "ambientCG Rock030"
+url = "https://ambientcg.com/a/Rock030"
+licence = "CC0"
+site = "ambientcg"
+
+[source.ground051]
+name = "ambientCG Ground051"
+url = "https://ambientcg.com/a/Ground051"
+licence = "CC0"
+site = "ambientcg"
+
+[source.megakit]
+name = "Medieval Village MegaKit (Standard), pieces merged by scripts/art/assemble_world_kit.py"
+url = "https://quaternius.com"
+licence = "CC0"
+site = "quaternius"
+
+[ground.grass]
+source = "grass004"
+albedo = "ambientcg/Grass004/Grass004_1K-JPG_Color.jpg"
+normal = "ambientcg/Grass004/Grass004_1K-JPG_NormalGL.jpg"
+
+[ground.brush]
+source = "ground037"
+albedo = "ambientcg/Ground037/Ground037_1K-JPG_Color.jpg"
+normal = "ambientcg/Ground037/Ground037_1K-JPG_NormalGL.jpg"
+
+[ground.forest]
+source = "ground023"
+albedo = "ambientcg/Ground023/Ground023_1K-JPG_Color.jpg"
+normal = "ambientcg/Ground023/Ground023_1K-JPG_NormalGL.jpg"
+
+[ground.sand]
+source = "ground054"
+albedo = "ambientcg/Ground054/Ground054_1K-JPG_Color.jpg"
+normal = "ambientcg/Ground054/Ground054_1K-JPG_NormalGL.jpg"
+
+[ground.rock]
+source = "rock030"
+albedo = "ambientcg/Rock030/Rock030_1K-JPG_Color.jpg"
+normal = "ambientcg/Rock030/Rock030_1K-JPG_NormalGL.jpg"
+
+[ground.mud]
+source = "ground051"
+albedo = "ambientcg/Ground051/Ground051_1K-JPG_Color.jpg"
+normal = "ambientcg/Ground051/Ground051_1K-JPG_NormalGL.jpg"
+
+[models.house_square]
+source = "megakit"
+file = "quaternius/assembled/house_square.gltf"
+
+[models.house_long_side]
+source = "megakit"
+file = "quaternius/assembled/house_long_side.gltf"
+
+[models.house_long_front]
+source = "megakit"
+file = "quaternius/assembled/house_long_front.gltf"
+
+[models.house_narrow_side]
+source = "megakit"
+file = "quaternius/assembled/house_narrow_side.gltf"
+
+[models.house_narrow_front]
+source = "megakit"
+file = "quaternius/assembled/house_narrow_front.gltf"
+
+[models.wall]
+source = "megakit"
+file = "quaternius/assembled/wall.gltf"
+
+[models.gate]
+source = "megakit"
+file = "quaternius/assembled/gate.gltf"
+
+[models.mill]
+source = "megakit"
+file = "quaternius/assembled/mill.gltf"
+
+[source.nature]
+name = "Stylized Nature MegaKit (Standard)"
+url = "https://quaternius.com/packs/stylizednaturemegakit.html"
+licence = "CC0"
+site = "quaternius"
+
+[models.grass_common_short]
+source = "nature"
+file = "quaternius/nature/Grass_Common_Short.gltf"
+folder = "nature"
+
+[models.grass_common_tall]
+source = "nature"
+file = "quaternius/nature/Grass_Common_Tall.gltf"
+folder = "nature"
+
+[models.grass_wispy_short]
+source = "nature"
+file = "quaternius/nature/Grass_Wispy_Short.gltf"
+folder = "nature"
+
+[models.grass_wispy_tall]
+source = "nature"
+file = "quaternius/nature/Grass_Wispy_Tall.gltf"
+folder = "nature"
+
+[models.clover_1]
+source = "nature"
+file = "quaternius/nature/Clover_1.gltf"
+folder = "nature"
+
+[models.clover_2]
+source = "nature"
+file = "quaternius/nature/Clover_2.gltf"
+folder = "nature"
+
+[models.fern_1]
+source = "nature"
+file = "quaternius/nature/Fern_1.gltf"
+folder = "nature"
+
+[models.flower_3_group]
+source = "nature"
+file = "quaternius/nature/Flower_3_Group.gltf"
+folder = "nature"
+
+[models.flower_4_group]
+source = "nature"
+file = "quaternius/nature/Flower_4_Group.gltf"
+folder = "nature"
+
+[models.plant_1]
+source = "nature"
+file = "quaternius/nature/Plant_1.gltf"
+folder = "nature"
+
+[models.plant_7]
+source = "nature"
+file = "quaternius/nature/Plant_7.gltf"
+folder = "nature"
+
+[models.mushroom_common]
+source = "nature"
+file = "quaternius/nature/Mushroom_Common.gltf"
+folder = "nature"
+
+[models.bush_common]
+source = "nature"
+file = "quaternius/nature/Bush_Common.gltf"
+folder = "nature"
+
+[models.bush_common_flowers]
+source = "nature"
+file = "quaternius/nature/Bush_Common_Flowers.gltf"
+folder = "nature"
+
+[models.pebble_round_1]
+source = "nature"
+file = "quaternius/nature/Pebble_Round_1.gltf"
+folder = "nature"
+
+[models.pebble_round_2]
+source = "nature"
+file = "quaternius/nature/Pebble_Round_2.gltf"
+folder = "nature"
+
+[models.pebble_round_3]
+source = "nature"
+file = "quaternius/nature/Pebble_Round_3.gltf"
+folder = "nature"
+
+[models.pebble_round_4]
+source = "nature"
+file = "quaternius/nature/Pebble_Round_4.gltf"
+folder = "nature"
+
+[models.pebble_round_5]
+source = "nature"
+file = "quaternius/nature/Pebble_Round_5.gltf"
+folder = "nature"
+
+[models.pebble_square_1]
+source = "nature"
+file = "quaternius/nature/Pebble_Square_1.gltf"
+folder = "nature"
+
+[models.pebble_square_2]
+source = "nature"
+file = "quaternius/nature/Pebble_Square_2.gltf"
+folder = "nature"
+
+[models.pebble_square_3]
+source = "nature"
+file = "quaternius/nature/Pebble_Square_3.gltf"
+folder = "nature"
+
+[models.pebble_square_4]
+source = "nature"
+file = "quaternius/nature/Pebble_Square_4.gltf"
+folder = "nature"
+
+[models.pebble_square_5]
+source = "nature"
+file = "quaternius/nature/Pebble_Square_5.gltf"
+folder = "nature"
+
+[models.pebble_square_6]
+source = "nature"
+file = "quaternius/nature/Pebble_Square_6.gltf"
+folder = "nature"

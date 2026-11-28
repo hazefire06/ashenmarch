@@ -23,8 +23,11 @@ expect_lfs art-src/units/shieldman/model/rigged.glb
 expect_lfs art-src/units/shieldman/review/contact.png
 expect_lfs art-src/units/shieldman/review/walk.gif
 expect_lfs audio-src/raw/hit_1.mp3
+expect_lfs assets/world/textures/ground_albedo.png
+expect_lfs assets/world/models/house_square/house_square.bin
 expect_plain maps/riverside/height.png
 expect_plain assets/units/shieldman/walk.png.import
+expect_plain assets/world/textures/ground_albedo.png.import
 expect_plain art-src/units/shieldman/spec.toml
 expect_plain art-src/units/shieldman/manifest.json
 expect_file art-src/.gdignore

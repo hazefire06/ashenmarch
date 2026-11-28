@@ -289,3 +289,15 @@ Read CLAUDE.md and the art and audio spec. A1 is merged.
 
 Plan first: art only for the other nine units (voices moved to A2 on 2026-10-08), one contact sheet per unit for my approval. Branch feature/PHASE-A3-roster.
 ```
+
+### A5: The world
+
+Tim's request (2026-11-24): "the world art is very pixelated… improve the quality, add more buildings and choke points from geography where appropriate". His reference is Myth II, for principles only: ground painted over a fine mesh, real 3D buildings, walls and bridges, and terrain that offers choices. No layout, name, art or text is taken from it.
+
+```
+Read CLAUDE.md, docs/specs/2026-11-24-art-a5-world-design.md and docs/plans/2026-11-24-art-a5-world.md. A2 is merged.
+
+Phase 1, the look, view only: textured ground, water surfaces, kit buildings on the sim's footprints, ground scatter, worn trails, and the three grades re-tuned. The sim, the height and mask files, and the golden replays don't change. Branch feature/PHASE-A5-world-art.
+```
+
+What Tim settled at the look builds, and why: `docs/plans/2026-11-24-art-a5-look.md`. Phase 2, the play (standing trees, cover, choke points, bridges), follows the agreed direction in the spec's "Phase 2" section and gets its own spec first. Camera limits (a map border band, edge fog, a 150 m zoom cap, a sky limit) are Phase 13's, not A5's.
